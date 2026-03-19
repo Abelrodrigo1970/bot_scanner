@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Strategy {
+  id          String   @id @default(cuid())
+  name        String   @unique // ex: "RSI", "MA_CROSSOVER"
+  displayName String   // ex: "RSI Sobrecomprado/Sobrevendido"
+  description String
+  isActive    Boolean  @default(true)
+  params      String   @default("{}") // JSON string com parâmetros
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  signals Signal[]
+}
+
+model Signal {
+  id           String   @id @default(cuid())
+  symbol       String   // ex: "BTCUSDT"
+  direction    String   // "BUY" | "SELL"
+  timeframe    String   // ex: "1m", "5m", "1h"
+  strategyId   String
+  strategyName String   // denormalizado para facilitar leitura
+  entryPrice   Float
+  stopLoss     Float
+  target1      Float?
+  target2      Float?
+  target3      Float?
+  strength     Int      // 0-100
+  status       String   @default("NEW") // "NEW" | "IN_PROGRESS" | "HIT_TARGET" | "HIT_STOP" | "EXPIRED"
+  generatedAt  DateTime @default(now())
+  lastCheckedAt DateTime?
+  extraInfo    String?  // JSON string com detalhes do cálculo
+  price24h     Float?   // Preço após 24 horas
+  result24h    Float?   // Resultado após 24h (diferença de preço)
+  status24h    String?  // "CLOSED" quando já passaram 24h, null caso contrário
+  high24h       Float?   // Preço mais alto durante as 24 horas
+  low24h        Float?   // Preço mais baixo durante as 24 horas
+  // executedAt e executionOrderId removidos - BD sem essas colunas (adicionar depois via migration)
+
+  strategy Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+
+  @@index([symbol])
+  @@index([strategyId])
+  @@index([generatedAt])
+  @@index([status])
+}
+
+
+
+
