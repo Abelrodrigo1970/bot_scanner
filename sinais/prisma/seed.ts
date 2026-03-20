@@ -5,20 +5,30 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Iniciando seed do banco de dados (RSI + Volume)...');
 
-  // Estratégia RSI
+  // Estratégia RSI (invertida / momentum) com filtro MA200
   const rsiStrategy = await prisma.strategy.upsert({
     where: { name: 'RSI' },
-    update: {},
+    update: {
+      description:
+        'COMPRA quando RSI sobe acima de 69 E preço > MA200. VENDA quando RSI desce abaixo de 29 E preço < MA200. Stop 10%, TP1 35% @ 9%, TP2 35% @ 24%, 30% às 24h.',
+      params: JSON.stringify({
+        period: 14,
+        buyThreshold: 69,
+        sellThreshold: 29,
+        maPeriod: 200,
+      }),
+    },
     create: {
       name: 'RSI',
-      displayName: 'RSI Sobrecomprado/Sobrevendido',
+      displayName: 'RSI Momentum (cruzamento 69/29)',
       description:
-        'Gera sinais quando o RSI (Relative Strength Index) está sobrecomprado (acima de 70) ou sobrevendido (abaixo de 30).',
+        'COMPRA quando RSI sobe acima de 69 E preço > MA200. VENDA quando RSI desce abaixo de 29 E preço < MA200. Stop 10%, TP1 35% @ 9%, TP2 35% @ 24%, 30% às 24h.',
       isActive: true,
       params: JSON.stringify({
         period: 14,
-        overbought: 70,
-        oversold: 30,
+        buyThreshold: 69,
+        sellThreshold: 29,
+        maPeriod: 200,
       }),
     },
   });

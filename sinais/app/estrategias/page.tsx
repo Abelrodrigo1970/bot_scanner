@@ -133,7 +133,7 @@ export default function EstrategiasPage() {
   const getDefaultParams = (strategyName: string) => {
     switch (strategyName) {
       case 'RSI':
-        return { period: 14, overbought: 70, oversold: 30 };
+        return { period: 14, buyThreshold: 69, sellThreshold: 29 };
       case 'MA_CROSSOVER':
         return { fastPeriod: 9, slowPeriod: 21 };
       case 'MACD':
@@ -169,15 +169,15 @@ export default function EstrategiasPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Limite de Sobrecompra
+                Compra quando RSI sobe acima de
               </label>
               <input
                 type="number"
-                defaultValue={params.overbought || defaults.overbought}
+                defaultValue={params.buyThreshold ?? defaults.buyThreshold}
                 onBlur={(e) =>
                   handleUpdateParams(strategy, {
                     ...params,
-                    overbought: parseInt(e.target.value) || defaults.overbought,
+                    buyThreshold: parseInt(e.target.value) || defaults.buyThreshold,
                   })
                 }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -185,15 +185,15 @@ export default function EstrategiasPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Limite de Sobrevenda
+                Venda quando RSI desce abaixo de
               </label>
               <input
                 type="number"
-                defaultValue={params.oversold || defaults.oversold}
+                defaultValue={params.sellThreshold ?? defaults.sellThreshold}
                 onBlur={(e) =>
                   handleUpdateParams(strategy, {
                     ...params,
-                    oversold: parseInt(e.target.value) || defaults.oversold,
+                    sellThreshold: parseInt(e.target.value) || defaults.sellThreshold,
                   })
                 }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"

@@ -45,27 +45,38 @@ export default function DashboardPage() {
   const fetchSignals = async () => {
     try {
       setLoading(true);
+      setMessage('');
       const params = new URLSearchParams();
       if (filters.symbol) params.append('symbol', filters.symbol);
       if (filters.direction) params.append('direction', filters.direction);
       if (filters.timeframe) params.append('timeframe', filters.timeframe);
       if (filters.strategy) params.append('strategy', filters.strategy);
-      // Enviar minStrength apenas se especificado (removido padrão para teste)
       if (filters.minStrength && filters.minStrength !== '0') {
         params.append('minStrength', filters.minStrength);
       }
 
       const url = `/api/signals?${params.toString()}`;
       const response = await fetch(url);
-      const data = await response.json();
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: `Resposta inválida (${response.status})` };
+      }
 
       if (response.ok) {
-        setSignals(data.signals);
+        setSignals(data.signals || []);
       } else {
-        console.error('❌ Erro na API:', data);
+        const errMsg = data.hint || data.error || data.details || (typeof data === 'object' ? JSON.stringify(data) : String(data));
+        console.error('❌ Erro na API de sinais:', errMsg);
+        setMessage(response.status === 503
+          ? `⚠️ ${data.error || 'Banco indisponível'}. ${data.hint || ''}`
+          : `Erro: ${data.error || data.details || 'Falha ao carregar sinais'}`);
       }
     } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Erro de conexão';
       console.error('Erro ao buscar sinais:', error);
+      setMessage(`Erro de conexão: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -74,12 +85,20 @@ export default function DashboardPage() {
   const fetchStrategies = async () => {
     try {
       const res = await fetch('/api/strategies');
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: `Resposta inválida (${res.status})` };
+      }
       if (res.ok && data.strategies) {
         setStrategies(data.strategies);
+      } else if (res.status === 503 || res.status === 500) {
+        setMessage(data.hint || data.error || data.details || 'Banco de dados não está pronto.');
       }
     } catch (e) {
       console.error('Erro ao buscar estratégias:', e);
+      setMessage('Erro ao conectar. Verifique se o servidor está a correr.');
     }
   };
 

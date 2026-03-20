@@ -6,6 +6,7 @@ import { prisma } from './db';
 import { fetchCandles, fetchTopSymbolsBy1hPriceChange, fetchTopSymbolsBy24hPriceChange, type Timeframe } from './marketData';
 import {
   calculateRSI,
+  calculateSMA,
   getCloses,
   getVolumes,
   calculateVolumeMA,
@@ -237,8 +238,10 @@ export async function runVolumeSpike15mStrategy(
 }
 
 /**
- * Estratégia RSI: Sobrecomprado (SELL) ou Sobrevendido (BUY)
- * RSI > overbought (70) = SELL, RSI < oversold (30) = BUY
+ * Estratégia RSI (invertida / momentum):
+ * COMPRA quando RSI sobe acima de 69 (cruzamento) E preço > MA200
+ * VENDA quando RSI desce abaixo de 29 (cruzamento) E preço < MA200
+ * Stop 10%, TP1 35% posição @ 9%, TP2 35% posição @ 24%, TP3 30% às 24h
  */
 export async function runRsiStrategy(
   symbol: string,
@@ -248,43 +251,68 @@ export async function runRsiStrategy(
   if (timeframe !== '1h') return null;
 
   const period = params.period || 14;
-  const overbought = params.overbought || 70;
-  const oversold = params.oversold || 30;
+  const buyThreshold = params.buyThreshold ?? 69;   // Compra quando sobe acima
+  const sellThreshold = params.sellThreshold ?? 29; // Vende quando desce abaixo
+  const maPeriod = params.maPeriod ?? 200;
 
   try {
-    const candles = await fetchCandles(symbol, timeframe, period + 20);
-    if (candles.length < period + 2) return null;
+    const candlesNeeded = Math.max(period + 25, maPeriod + 5);
+    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    if (candles.length < period + 3 || candles.length < maPeriod) return null;
 
     const closes = getCloses(candles);
     const rsi = calculateRSI(closes, period);
-    if (rsi === null) return null;
+    const prevCloses = closes.slice(0, -1);
+    const prevRsi = calculateRSI(prevCloses, period);
+    const ma200 = calculateSMA(closes, maPeriod);
+    if (rsi === null || prevRsi === null || ma200 === null) return null;
 
     const currentPrice = candles[candles.length - 1].close;
 
-    if (rsi < oversold) {
+    // COMPRA: RSI sobe acima de 69 (cruzamento) E preço acima da MA200
+    if (prevRsi <= buyThreshold && rsi > buyThreshold && currentPrice > ma200) {
       return {
         direction: 'BUY',
         entryPrice: currentPrice,
-        stopLoss: currentPrice * 0.96,
-        target1: currentPrice * 1.20,
-        target2: currentPrice * 1.20,
-        target3: currentPrice * 1.20,
-        strength: Math.min(100, Math.max(60, Math.round(60 + (oversold - rsi) * 2))),
-        extraInfo: JSON.stringify({ rsi: rsi.toFixed(2), oversold, period }),
+        stopLoss: currentPrice * 0.90,    // 10% stop
+        target1: currentPrice * 1.09,     // TP1: 9% valorização, 35% posição
+        target2: currentPrice * 1.24,     // TP2: 24% valorização, 35% posição
+        target3: undefined,               // TP3: 30% restante às 24h
+        strength: Math.min(100, Math.max(60, Math.round(60 + (rsi - buyThreshold) * 2))),
+        extraInfo: JSON.stringify({
+          rsi: rsi.toFixed(2),
+          prevRsi: prevRsi.toFixed(2),
+          buyThreshold,
+          ma200: ma200.toFixed(4),
+          tp1Percent: 9,
+          tp2Percent: 24,
+          tp3Percent: '24h',
+        }),
       };
     }
-    if (rsi > overbought) {
+
+    // VENDA: RSI desce abaixo de 29 (cruzamento) E preço abaixo da MA200
+    if (prevRsi >= sellThreshold && rsi < sellThreshold && currentPrice < ma200) {
       return {
         direction: 'SELL',
         entryPrice: currentPrice,
-        stopLoss: currentPrice * 1.04,
-        target1: currentPrice * 0.80,
-        target2: currentPrice * 0.80,
-        target3: currentPrice * 0.80,
-        strength: Math.min(100, Math.max(60, Math.round(60 + (rsi - overbought) * 2))),
-        extraInfo: JSON.stringify({ rsi: rsi.toFixed(2), overbought, period }),
+        stopLoss: currentPrice * 1.10,    // 10% stop
+        target1: currentPrice * 0.91,     // TP1: 9% valorização, 35% posição
+        target2: currentPrice * 0.76,     // TP2: 24% valorização, 35% posição
+        target3: undefined,               // TP3: 30% restante às 24h
+        strength: Math.min(100, Math.max(60, Math.round(60 + (sellThreshold - rsi) * 2))),
+        extraInfo: JSON.stringify({
+          rsi: rsi.toFixed(2),
+          prevRsi: prevRsi.toFixed(2),
+          sellThreshold,
+          ma200: ma200.toFixed(4),
+          tp1Percent: 9,
+          tp2Percent: 24,
+          tp3Percent: '24h',
+        }),
       };
     }
+
     return null;
   } catch (error) {
     console.error(`Erro na estratégia RSI para ${symbol}:`, error);

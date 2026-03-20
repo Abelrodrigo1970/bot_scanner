@@ -12,10 +12,14 @@ export async function GET(request: NextRequest) {
     // Garantir que o banco está inicializado
     const dbReady = await ensureDatabase();
     if (!dbReady) {
+      const dbUrl = process.env.DATABASE_URL || '';
+      const hasPostgresUrl = dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://');
       return NextResponse.json(
         {
           error: 'Banco de dados não está pronto',
-          hint: 'Tente acessar /api/init-db para inicializar manualmente',
+          hint: 'Verifique DATABASE_URL. Se usar PostgreSQL no Railway, o schema.prisma deve ter provider = "postgresql". Tente /api/init-db ou /api/health para diagnóstico.',
+          dbConfigured: !!dbUrl,
+          isPostgresUrl: hasPostgresUrl,
         },
         { status: 503 }
       );
