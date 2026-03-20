@@ -9,7 +9,7 @@ import { executeSignal, getExecutorStatus } from '../lib/tradingExecutor';
 async function main() {
   console.log('=== Teste Trading Executor (dry run) ===\n');
 
-  const status = getExecutorStatus();
+  const status = await getExecutorStatus();
   console.log('Status:', status);
   console.log('');
 

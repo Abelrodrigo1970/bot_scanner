@@ -18,10 +18,49 @@ export default function EstrategiasPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [tradingEnabled, setTradingEnabled] = useState<boolean | null>(null);
+  const [savingTrading, setSavingTrading] = useState(false);
 
   useEffect(() => {
     fetchStrategies();
+    fetchTradingSetting();
   }, []);
+
+  const fetchTradingSetting = async () => {
+    try {
+      const res = await fetch('/api/settings/trading');
+      const data = await res.json();
+      if (res.ok && typeof data.enabled === 'boolean') {
+        setTradingEnabled(data.enabled);
+      }
+    } catch {
+      setTradingEnabled(false);
+    }
+  };
+
+  const handleToggleTrading = async () => {
+    if (tradingEnabled === null) return;
+    try {
+      setSavingTrading(true);
+      const res = await fetch('/api/settings/trading', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !tradingEnabled }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTradingEnabled(data.enabled);
+        setMessage(data.message || (data.enabled ? 'Trades ativados' : 'Trades desativados'));
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setMessage(data.error || 'Erro ao atualizar');
+      }
+    } catch {
+      setMessage('Erro ao atualizar trades');
+    } finally {
+      setSavingTrading(false);
+    }
+  };
 
   const fetchStrategies = async () => {
     try {
@@ -278,6 +317,40 @@ export default function EstrategiasPage() {
             {message}
           </div>
         )}
+
+        {/* Toggle Trades Binance */}
+        <div className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Execução de Trades na Binance
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Quando ativo, os sinais com força suficiente são executados automaticamente no cron, e podes executar manualmente na página do sinal. Os sinais continuam sempre a ser gerados.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-medium ${tradingEnabled ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                {tradingEnabled === null ? '...' : tradingEnabled ? 'Ativado' : 'Desativado'}
+              </span>
+              <button
+                onClick={handleToggleTrading}
+                disabled={tradingEnabled === null || savingTrading}
+                className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  tradingEnabled ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
+                } ${(tradingEnabled === null || savingTrading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                role="switch"
+                aria-checked={tradingEnabled ?? false}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition ${
+                    tradingEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </div>
 
         {loading ? (
           <div className="text-center py-12">

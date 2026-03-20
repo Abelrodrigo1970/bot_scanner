@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    const status = getExecutorStatus();
+    const status = await getExecutorStatus();
     return NextResponse.json({
       tradingEnabled: status.tradingEnabled,
       hasCredentials: status.hasCredentials,

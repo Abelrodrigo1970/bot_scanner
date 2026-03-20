@@ -93,6 +93,13 @@ async function main() {
     console.log(`Removidas ${removed.count} estratégias antigas`);
   }
 
+  // Configuração: trades na Binance desativados por defeito
+  await prisma.appSetting.upsert({
+    where: { key: 'trading_enabled' },
+    update: {},
+    create: { key: 'trading_enabled', value: 'false' },
+  });
+
   console.log('Seed concluído!');
   console.log('Estratégias ativas:', {
     rsi: rsiStrategy.id,

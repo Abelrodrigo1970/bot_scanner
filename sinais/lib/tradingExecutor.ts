@@ -13,10 +13,10 @@ import {
   type SignalForTrading,
 } from './tradingRules';
 import {
-  isTradingEnabled,
   hasTradingCredentials,
   isTestnet,
 } from './binanceConfig';
+import { getTradingEnabled } from './settings';
 import {
   createOrder,
   createAlgoOrder,
@@ -111,11 +111,12 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
     };
   }
 
-  if (!isTradingEnabled()) {
+  const tradingEnabled = await getTradingEnabled();
+  if (!tradingEnabled) {
     return {
       success: false,
       dryRun: false,
-      message: 'Trading desativado (TRADING_ENABLED=false)',
+      message: 'Trades desativados na aplicação (ativa em Estratégias)',
     };
   }
 
@@ -225,21 +226,21 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
 }
 
 /**
- * Verifica se o executor pode correr (credenciais, TRADING_ENABLED, Testnet).
+ * Verifica se o executor pode correr (credenciais, trades ativados na app, Testnet).
  */
-export function getExecutorStatus(): {
+export async function getExecutorStatus(): Promise<{
   hasCredentials: boolean;
   tradingEnabled: boolean;
   isTestnet: boolean;
   ready: boolean;
   reason?: string;
-} {
+}> {
   const hasCredentials = hasTradingCredentials();
-  const tradingEnabled = isTradingEnabled();
+  const tradingEnabled = await getTradingEnabled();
   const testnet = isTestnet();
   let reason: string | undefined;
   if (!hasCredentials) reason = 'API Key/Secret não configurados';
-  else if (!tradingEnabled) reason = 'TRADING_ENABLED=false';
+  else if (!tradingEnabled) reason = 'Trades desativados (ativa em Estratégias)';
   else if (!testnet) reason = 'Apenas Testnet permitido para execução';
 
   return {
