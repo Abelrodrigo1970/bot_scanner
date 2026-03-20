@@ -11,12 +11,12 @@ const SESSION_VALUE = 'authenticated';
  * Verifica se o código de acesso está correto
  */
 export function validateAccessCode(code: string): boolean {
-  const correctCode = process.env.ACCESS_CODE;
+  const correctCode = process.env.ACCESS_CODE?.trim();
   if (!correctCode) {
     console.warn('ACCESS_CODE não configurado no .env');
     return false;
   }
-  return code === correctCode;
+  return code.trim() === correctCode;
 }
 
 /**
@@ -33,9 +33,13 @@ export async function createSession() {
 }
 
 /**
- * Verifica se o usuário está autenticado
+ * Verifica se o usuário está autenticado.
+ * Se AUTH_DISABLED=true, considera sempre autenticado (acesso sem login).
  */
 export async function isAuthenticated(): Promise<boolean> {
+  if (process.env.AUTH_DISABLED === 'true') {
+    return true;
+  }
   const cookieStore = await cookies();
   const session = cookieStore.get(SESSION_COOKIE_NAME);
   return session?.value === SESSION_VALUE;

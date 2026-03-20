@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  // Se AUTH_DISABLED=true, permite acesso sem login
+  if (process.env.AUTH_DISABLED === 'true') {
+    return NextResponse.next();
+  }
+
   const session = request.cookies.get('crypto-sinais-session');
   const isAuthenticated = session?.value === 'authenticated';
   const isLoginPage = request.nextUrl.pathname === '/login';
