@@ -33,7 +33,6 @@ export default function DashboardPage() {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [updatingMa60, setUpdatingMa60] = useState(false);
   const [message, setMessage] = useState('');
   const [filters, setFilters] = useState({
     symbol: '',
@@ -100,46 +99,15 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(data.message || `${data.signalsCreated} novo(s) sinal(is) gerado(s)`);
+        setMessage(data.message || 'Processamento iniciado. Os sinais aparecem em breve.');
         fetchSignals();
       } else {
-        setMessage(data.error || 'Erro ao gerar sinais');
+        setMessage(data.error || data.details || 'Erro ao gerar sinais');
       }
     } catch (error) {
-      setMessage('Erro ao gerar sinais. Tente novamente.');
+      setMessage('Erro de conexão. Tente novamente.');
     } finally {
       setUpdating(false);
-    }
-  };
-
-  const handleUpdateMa60Signals = async () => {
-    try {
-      setUpdatingMa60(true);
-      setMessage('');
-      console.log('🔍 Chamando endpoint /api/run-ma60-signals...');
-      const response = await fetch('/api/run-ma60-signals', { method: 'POST' });
-      
-      if (!response.ok) {
-        console.error('❌ Erro na resposta:', response.status, response.statusText);
-        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-        setMessage(errorData.error || `Erro ${response.status}: ${response.statusText}`);
-        return;
-      }
-      
-      const data = await response.json();
-      console.log('✅ Resposta recebida:', data);
-
-      if (data.success) {
-        setMessage(data.message || `${data.signalsCreated} novo(s) sinal(is) Volume Spike gerado(s)`);
-        fetchSignals();
-      } else {
-        setMessage(data.error || 'Erro ao gerar sinais Volume Spike');
-      }
-    } catch (error) {
-      console.error('❌ Erro ao chamar endpoint:', error);
-      setMessage(`Erro ao gerar sinais Volume Spike: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    } finally {
-      setUpdatingMa60(false);
     }
   };
 
@@ -164,22 +132,13 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <div className="flex gap-3">
-            <button
-              onClick={handleUpdateMa60Signals}
-              disabled={updatingMa60 || updating}
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg transition-colors"
-            >
-              {updatingMa60 ? 'Gerando Volume Spike...' : 'Atualizar Volume Spike'}
-            </button>
-            <button
-              onClick={handleUpdateSignals}
-              disabled={updating || updatingMa60}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
-            >
-              {updating ? 'Gerando...' : 'Atualizar sinais agora'}
-            </button>
-          </div>
+          <button
+            onClick={handleUpdateSignals}
+            disabled={updating}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
+          >
+            {updating ? 'A processar...' : 'Atualizar sinais agora'}
+          </button>
         </div>
 
         {message && (
