@@ -359,3 +359,73 @@ export async function fetchTopSymbolsBy1hPriceChange(
     throw error;
   }
 }
+
+export interface TopVolatileItem {
+  symbol: string;
+  high3m: number;
+  low3m: number;
+  volatilityPercent: number;
+  lastPrice: number;
+  rank: number;
+}
+
+/**
+ * Busca as top 20 criptos mais voláteis dos últimos 3 meses.
+ * Volatilidade = (max - min) / min * 100 sobre candles diários.
+ * Usa o maior número possível de pares USDT com volume mínimo.
+ */
+export async function fetchTopVolatile(limit: number = 20): Promise<TopVolatileItem[]> {
+  try {
+    const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+    if (!tickerRes.ok) throw new Error('Erro ao buscar tickers');
+    const tickerData = await tickerRes.json();
+
+    const symbols = tickerData
+      .filter((t: any) => t.symbol?.endsWith('USDT') && !t.symbol?.includes('BUSD') && parseFloat(t.quoteVolume || '0') > 500000)
+      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .slice(0, 200)
+      .map((t: any) => t.symbol);
+
+    const results: { symbol: string; high3m: number; low3m: number; volatilityPercent: number; lastPrice: number }[] = [];
+    const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      try {
+        const klinesRes = await fetch(
+          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1d&limit=100&startTime=${threeMonthsAgo}`
+        );
+        if (!klinesRes.ok) continue;
+        const klines = await klinesRes.json();
+        if (klines.length < 7) continue;
+
+        let high3m = -Infinity;
+        let low3m = Infinity;
+        for (const k of klines) {
+          const h = parseFloat(k[2]);
+          const l = parseFloat(k[3]);
+          if (h > high3m) high3m = h;
+          if (l < low3m && l > 0) low3m = l;
+        }
+        if (low3m <= 0 || !isFinite(high3m)) continue;
+
+        const volatilityPercent = ((high3m - low3m) / low3m) * 100;
+        const lastPrice = parseFloat(klines[klines.length - 1][4]);
+
+        results.push({ symbol, high3m, low3m, volatilityPercent, lastPrice });
+      } catch {
+        // ignorar falha por símbolo
+      }
+      await delay(i % 5 === 4 ? 150 : 80);
+    }
+
+    results.sort((a, b) => b.volatilityPercent - a.volatilityPercent);
+    return results.slice(0, limit).map((r, i) => ({
+      ...r,
+      rank: i + 1,
+    }));
+  } catch (error) {
+    console.error('Erro ao buscar Top Voláteis:', error);
+    throw error;
+  }
+}

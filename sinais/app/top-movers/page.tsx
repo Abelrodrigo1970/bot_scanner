@@ -4,46 +4,68 @@ import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import Disclaimer from '@/components/Disclaimer';
 
-interface TopMover {
+interface TopVolatileItem {
+  id?: string;
   symbol: string;
-  priceChangePercent: number;
-  lastPrice: number;
-  volume: number;
-  highPrice: number;
-  lowPrice: number;
+  high3m: number;
+  low3m: number;
+  volatilityPercent: number;
+  lastPrice: number | null;
+  rank: number;
+  updatedAt?: string;
 }
 
-export default function TopMoversPage() {
-  const [topMovers, setTopMovers] = useState<TopMover[]>([]);
+export default function TopVolateisPage() {
+  const [topVolatile, setTopVolatile] = useState<TopVolatileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  const fetchTopMovers = async () => {
+  const fetchFromDb = async () => {
     try {
-      setRefreshing(true);
-      setError('');
       const response = await fetch('/api/top-movers');
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setTopMovers(data.topMovers);
-        setLastUpdate(new Date());
+        setTopVolatile(data.topVolatile || []);
+        if (data.fetchedAt) {
+          setLastUpdate(new Date(data.fetchedAt));
+        }
       } else {
-        setError(data.error || 'Erro ao buscar Top Movers');
+        setError(data.error || 'Erro ao carregar Top Voláteis');
       }
     } catch (err) {
-      setError('Erro ao buscar Top Movers. Tente novamente.');
+      setError('Erro ao carregar Top Voláteis. Tente novamente.');
       console.error('Erro:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      setError('');
+      const response = await fetch('/api/top-movers', { method: 'POST' });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setTopVolatile(data.topVolatile || []);
+        setLastUpdate(new Date());
+      } else {
+        setError(data.error || data.details || 'Erro ao atualizar Top Voláteis');
+      }
+    } catch (err) {
+      setError('Erro ao atualizar Top Voláteis. Tente novamente.');
+      console.error('Erro:', err);
+    } finally {
       setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchTopMovers();
+    fetchFromDb();
   }, []);
 
   const formatPrice = (price: number) => {
@@ -56,17 +78,6 @@ export default function TopMoversPage() {
     }
   };
 
-  const formatVolume = (volume: number) => {
-    if (volume >= 1e9) {
-      return `${(volume / 1e9).toFixed(2)}B`;
-    } else if (volume >= 1e6) {
-      return `${(volume / 1e6).toFixed(2)}M`;
-    } else if (volume >= 1e3) {
-      return `${(volume / 1e3).toFixed(2)}K`;
-    }
-    return volume.toFixed(2);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
@@ -75,14 +86,14 @@ export default function TopMoversPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Top Movers (Futuros)
+              Top Voláteis
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Maiores ganhadores nas últimas 24 horas - Binance Futures USDⓈ-M
+              As 20 criptos com maior diferença entre máxima e mínima dos últimos 3 meses - Binance Futures
             </p>
           </div>
           <button
-            onClick={fetchTopMovers}
+            onClick={handleRefresh}
             disabled={refreshing}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
           >
@@ -108,7 +119,7 @@ export default function TopMoversPage() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   ></path>
                 </svg>
-                Atualizando...
+                A processar... (pode demorar ~30s)
               </>
             ) : (
               <>
@@ -125,7 +136,7 @@ export default function TopMoversPage() {
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
                 </svg>
-                Atualizar
+                Atualizar Top Volatilidade
               </>
             )}
           </button>
@@ -145,12 +156,12 @@ export default function TopMoversPage() {
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400">Carregando Top Movers...</p>
+            <p className="text-gray-600 dark:text-gray-400">Carregando Top Voláteis...</p>
           </div>
-        ) : topMovers.length === 0 ? (
+        ) : topVolatile.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600 dark:text-gray-400">
-              Nenhum dado disponível. Tente atualizar.
+              Nenhum dado. Clica em &quot;Atualizar Top Volatilidade&quot; para analisar ~200 criptos e gravar as 20 mais voláteis.
             </p>
           </div>
         ) : (
@@ -166,52 +177,46 @@ export default function TopMoversPage() {
                       Símbolo
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Variação % (24h)
+                      Volatilidade % (3 meses)
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Máxima (3m)
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Mínima (3m)
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Último Preço
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Volume (24h)
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Máxima
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Mínima
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {topMovers.map((mover, index) => (
+                  {topVolatile.map((item) => (
                     <tr
-                      key={mover.symbol}
+                      key={item.symbol}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {index + 1}
+                        {item.rank}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {mover.symbol}
+                          {item.symbol}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                          +{mover.priceChangePercent.toFixed(2)}%
+                        <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                          {item.volatilityPercent.toFixed(1)}%
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600 dark:text-gray-400">
+                        ${formatPrice(item.high3m)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600 dark:text-gray-400">
+                        ${formatPrice(item.low3m)}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                        ${formatPrice(mover.lastPrice)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600 dark:text-gray-400">
-                        {formatVolume(mover.volume)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600 dark:text-gray-400">
-                        ${formatPrice(mover.highPrice)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600 dark:text-gray-400">
-                        ${formatPrice(mover.lowPrice)}
+                        {item.lastPrice != null ? `$${formatPrice(item.lastPrice)}` : '-'}
                       </td>
                     </tr>
                   ))}
@@ -226,9 +231,3 @@ export default function TopMoversPage() {
     </div>
   );
 }
-
-
-
-
-
-

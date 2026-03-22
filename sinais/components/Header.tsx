@@ -24,7 +24,7 @@ export default function Header() {
     { href: '/resultados', label: 'Resultados' },
     { href: '/estatisticas', label: 'Estatísticas' },
     { href: '/analise', label: 'Análise' },
-    { href: '/top-movers', label: 'Top Movers' },
+    { href: '/top-movers', label: 'Top Voláteis' },
   ];
 
   return (

@@ -61,6 +61,19 @@ model Signal {
   @@index([status])
 }
 
+model TopVolatile {
+  id               String   @id @default(cuid())
+  symbol           String
+  high3m           Float    // Máxima dos últimos 3 meses
+  low3m            Float    // Mínima dos últimos 3 meses
+  volatilityPercent Float   // (high3m - low3m) / low3m * 100
+  lastPrice        Float?   // Preço atual no momento do cálculo
+  rank             Int      // Posição 1-20
+  updatedAt        DateTime @default(now())
+
+  @@index([rank])
+}
+
 
 
 
