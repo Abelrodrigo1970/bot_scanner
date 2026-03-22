@@ -31,13 +31,16 @@ export async function GET() {
       count: topVolatile.length,
       fetchedAt: topVolatile[0]?.updatedAt?.toISOString() ?? null,
     });
-  } catch (error) {
+  } catch (error: any) {
+    const msg = error?.message || '';
+    const isTableMissing = msg.includes('"TopVolatile"') || msg.includes('does not exist') || msg.includes('P2021');
     console.error('Erro ao buscar Top Voláteis:', error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Ocorreu um erro ao buscar Top Voláteis',
+        error: isTableMissing ? 'Tabela TopVolatile não existe' : 'Ocorreu um erro ao buscar Top Voláteis',
         details: error instanceof Error ? error.message : 'Erro desconhecido',
+        hint: isTableMissing ? 'Faça redeploy ou aceda POST /api/init-db para criar a tabela' : undefined,
       },
       { status: 500 }
     );
@@ -89,13 +92,16 @@ export async function POST() {
       count: topVolatile.length,
       message: 'Top Voláteis atualizados com sucesso',
     });
-  } catch (error) {
+  } catch (error: any) {
+    const msg = error?.message || '';
+    const isTableMissing = msg.includes('"TopVolatile"') || msg.includes('does not exist') || msg.includes('P2021');
     console.error('Erro ao atualizar Top Voláteis:', error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Ocorreu um erro ao atualizar Top Voláteis',
+        error: isTableMissing ? 'Tabela TopVolatile não existe' : 'Ocorreu um erro ao atualizar Top Voláteis',
         details: error instanceof Error ? error.message : 'Erro desconhecido',
+        hint: isTableMissing ? 'Faça redeploy ou aceda POST /api/init-db para criar a tabela' : undefined,
       },
       { status: 500 }
     );

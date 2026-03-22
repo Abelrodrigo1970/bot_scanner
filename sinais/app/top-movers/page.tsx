@@ -33,7 +33,8 @@ export default function TopVolateisPage() {
           setLastUpdate(new Date(data.fetchedAt));
         }
       } else {
-        setError(data.error || 'Erro ao carregar Top Voláteis');
+        const err = data.error || 'Erro ao carregar Top Voláteis';
+        setError(data.hint ? `${err}. ${data.hint}` : err);
       }
     } catch (err) {
       setError('Erro ao carregar Top Voláteis. Tente novamente.');
@@ -54,7 +55,8 @@ export default function TopVolateisPage() {
         setTopVolatile(data.topVolatile || []);
         setLastUpdate(new Date());
       } else {
-        setError(data.error || data.details || 'Erro ao atualizar Top Voláteis');
+        const err = data.error || data.details || 'Erro ao atualizar Top Voláteis';
+        setError(data.hint ? `${err}. ${data.hint}` : err);
       }
     } catch (err) {
       setError('Erro ao atualizar Top Voláteis. Tente novamente.');

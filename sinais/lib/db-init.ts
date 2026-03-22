@@ -37,6 +37,13 @@ export async function ensureDatabase() {
         try {
           await prisma.strategy.count();
           console.log('✅ PostgreSQL conectado e tabelas existem');
+          // Sincronizar schema (criar novas tabelas como TopVolatile se existirem no schema)
+          try {
+            execSync('npx prisma db push', { stdio: 'pipe', cwd: process.cwd(), env: { ...process.env }, timeout: 15000 });
+            console.log('✅ Schema sincronizado (novas tabelas se houver)');
+          } catch (pushErr) {
+            console.warn('⚠️ db push (sync) falhou:', (pushErr as any)?.message?.slice(0, 80) || '');
+          }
           dbInitialized = true;
           return true;
         } catch (e: any) {
