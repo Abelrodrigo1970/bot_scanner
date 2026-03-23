@@ -121,6 +121,44 @@ async function main() {
     },
   });
 
+  // Estratégia MA (somente MA200) nos 20 Top Voláteis
+  const ma200VolatileStrategy = await prisma.strategy.upsert({
+    where: { name: 'MA200_VOLATILE' },
+    update: {
+      description:
+        'Analisa apenas as 20 Top Voláteis. COMPRA: preço cruza MA200 para cima. Stop 10%, TP1 20% (30% posição), TP2 40% (40% posição). VENDA: preço cruza MA200 para baixo. Stop 10%, TP1 -10%, TP2 -20%.',
+      params: JSON.stringify({
+        ma200Period: 200,
+        buyStopPercent: 10,
+        buyTp1Percent: 20,
+        buyTp1PositionPercent: 30,
+        buyTp2Percent: 40,
+        buyTp2PositionPercent: 40,
+        sellStopPercent: 10,
+        sellTp1Percent: 10,
+        sellTp2Percent: 20,
+      }),
+    },
+    create: {
+      name: 'MA200_VOLATILE',
+      displayName: 'MA200 Top Voláteis',
+      description:
+        'Analisa apenas as 20 Top Voláteis. COMPRA: preço cruza MA200 para cima. Stop 10%, TP1 20% (30% posição), TP2 40% (40% posição). VENDA: preço cruza MA200 para baixo. Stop 10%, TP1 -10%, TP2 -20%.',
+      isActive: true,
+      params: JSON.stringify({
+        ma200Period: 200,
+        buyStopPercent: 10,
+        buyTp1Percent: 20,
+        buyTp1PositionPercent: 30,
+        buyTp2Percent: 40,
+        buyTp2PositionPercent: 40,
+        sellStopPercent: 10,
+        sellTp1Percent: 10,
+        sellTp2Percent: 20,
+      }),
+    },
+  });
+
   // Remover estratégias que não usamos (caso existam de import anterior)
   const removed = await prisma.strategy.deleteMany({
     where: {
@@ -156,6 +194,7 @@ async function main() {
     volumeSpike: volumeSpikeStrategy.id,
     volumeSpike15m: volumeSpike15mStrategy.id,
     maVolatile: maVolatileStrategy.id,
+    ma200Volatile: ma200VolatileStrategy.id,
   });
 }
 
