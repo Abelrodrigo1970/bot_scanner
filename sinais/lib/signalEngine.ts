@@ -40,10 +40,10 @@ export async function runVolumeSpikeStrategy(
     return null;
   }
 
-  const configuredMultiplier = Number(params.volumeMultiplier ?? 12);
+  const configuredMultiplier = Number(params.volumeMultiplier ?? 20);
   const volumeMultiplier = Number.isFinite(configuredMultiplier) && configuredMultiplier > 0
-    ? Math.max(12, configuredMultiplier)
-    : 12;
+    ? Math.max(20, configuredMultiplier)
+    : 20;
   const lookbackHours = params.lookbackHours || 20;
 
   try {
@@ -145,10 +145,10 @@ export async function runVolumeSpike15mStrategy(
     return null;
   }
 
-  const configuredMultiplier = Number(params.volumeMultiplier ?? 12);
+  const configuredMultiplier = Number(params.volumeMultiplier ?? 20);
   const volumeMultiplier = Number.isFinite(configuredMultiplier) && configuredMultiplier > 0
-    ? Math.max(12, configuredMultiplier)
-    : 12;
+    ? Math.max(20, configuredMultiplier)
+    : 20;
   const lookbackPeriods = params.lookbackPeriods ?? 15;
 
   try {

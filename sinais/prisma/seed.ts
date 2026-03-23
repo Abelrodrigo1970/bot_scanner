@@ -38,9 +38,9 @@ async function main() {
     where: { name: 'VOLUME_SPIKE' },
     update: {
       description:
-        'Gera sinais quando o volume do último candle fechado é maior que 12 vezes a média das últimas 20 horas. COMPRA: volume spike com preço a subir. VENDA: volume spike com preço a descer. Timeframe 1h.',
+        'Gera sinais quando o volume do último candle fechado é maior que 20 vezes a média das últimas 20 horas. COMPRA: volume spike com preço a subir. VENDA: volume spike com preço a descer. Timeframe 1h.',
       params: JSON.stringify({
-        volumeMultiplier: 12,
+        volumeMultiplier: 20,
         lookbackHours: 20,
       }),
     },
@@ -48,10 +48,10 @@ async function main() {
       name: 'VOLUME_SPIKE',
       displayName: 'Volume Spike 1h',
       description:
-        'Gera sinais quando o volume do último candle fechado é maior que 12 vezes a média das últimas 20 horas. COMPRA: volume spike com preço a subir. VENDA: volume spike com preço a descer. Timeframe 1h.',
+        'Gera sinais quando o volume do último candle fechado é maior que 20 vezes a média das últimas 20 horas. COMPRA: volume spike com preço a subir. VENDA: volume spike com preço a descer. Timeframe 1h.',
       isActive: true,
       params: JSON.stringify({
-        volumeMultiplier: 12,
+        volumeMultiplier: 20,
         lookbackHours: 20,
       }),
     },
@@ -102,9 +102,9 @@ async function main() {
     where: { name: 'VOLUME_SPIKE_15M' },
     update: {
       description:
-        'Igual ao Volume Spike 1h mas em timeframe 15m com 15 períodos. Volume do último candle 15m fechado > 12x a média dos últimos 15 candles. COMPRA: preço a subir. VENDA: preço a descer.',
+        'Igual ao Volume Spike 1h mas em timeframe 15m com 15 períodos. Volume do último candle 15m fechado > 20x a média dos últimos 15 candles. COMPRA: preço a subir. VENDA: preço a descer.',
       params: JSON.stringify({
-        volumeMultiplier: 12,
+        volumeMultiplier: 20,
         lookbackPeriods: 15,
       }),
     },
@@ -112,10 +112,10 @@ async function main() {
       name: 'VOLUME_SPIKE_15M',
       displayName: 'Volume Spike 15m',
       description:
-        'Igual ao Volume Spike 1h mas em timeframe 15m com 15 períodos. Volume do último candle 15m fechado > 12x a média dos últimos 15 candles. COMPRA: preço a subir. VENDA: preço a descer.',
+        'Igual ao Volume Spike 1h mas em timeframe 15m com 15 períodos. Volume do último candle 15m fechado > 20x a média dos últimos 15 candles. COMPRA: preço a subir. VENDA: preço a descer.',
       isActive: true,
       params: JSON.stringify({
-        volumeMultiplier: 12,
+        volumeMultiplier: 20,
         lookbackPeriods: 15,
       }),
     },
