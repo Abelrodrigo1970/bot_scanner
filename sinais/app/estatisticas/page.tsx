@@ -127,8 +127,10 @@ export default function EstatisticasPage() {
   const [sellStopLoss, setSellStopLoss] = useState<string>('4');
   const [sellTakeProfit1, setSellTakeProfit1] = useState<string>('9');
   const [sellTakeProfit2, setSellTakeProfit2] = useState<string>('24');
-  const [tp1PositionPercent, setTp1PositionPercent] = useState<string>('35');
-  const [tp2PositionPercent, setTp2PositionPercent] = useState<string>('35');
+  const [buyTp1PositionPercent, setBuyTp1PositionPercent] = useState<string>('35');
+  const [buyTp2PositionPercent, setBuyTp2PositionPercent] = useState<string>('35');
+  const [sellTp1PositionPercent, setSellTp1PositionPercent] = useState<string>('35');
+  const [sellTp2PositionPercent, setSellTp2PositionPercent] = useState<string>('35');
   const [finalCloseHours, setFinalCloseHours] = useState<string>('24');
   const [simulatedStats, setSimulatedStats] = useState<Statistics | null>(null);
 
@@ -177,8 +179,8 @@ export default function EstatisticasPage() {
     signal: SignalWithResult,
     buyParams: { stopLossPercent: number; tp1Percent: number; tp2Percent: number },
     sellParams: { stopLossPercent: number; tp1Percent: number; tp2Percent: number },
-    tp1PosPercent: number,
-    tp2PosPercent: number,
+    buyPositionParams: { tp1PosPercent: number; tp2PosPercent: number },
+    sellPositionParams: { tp1PosPercent: number; tp2PosPercent: number },
     finalHours: number
   ): number => {
     const FEE_OPEN = 0.0005;
@@ -186,20 +188,19 @@ export default function EstatisticasPage() {
     const TOTAL_FEE = FEE_OPEN + FEE_CLOSE;
     const feeAmount = 100 * TOTAL_FEE;
 
-    // Pesos de posição por etapa (em % da posição total)
-    const tp1Weight = Math.max(0, Math.min(100, tp1PosPercent)) / 100;
-    const tp2Weight = Math.max(0, Math.min(100, tp2PosPercent)) / 100;
-    const finalWeight = Math.max(0, 1 - tp1Weight - tp2Weight);
-
     // Calcular preços de stop loss e take profits
     let stopLossPrice: number;
     let takeProfit1Price: number;
     let takeProfit2Price: number;
 
     const activeParams = signal.direction === 'BUY' ? buyParams : sellParams;
+    const activePositionParams = signal.direction === 'BUY' ? buyPositionParams : sellPositionParams;
     const stopLossPercent = activeParams.stopLossPercent;
     const tp1Percent = activeParams.tp1Percent;
     const tp2Percent = activeParams.tp2Percent;
+    const tp1Weight = Math.max(0, Math.min(100, activePositionParams.tp1PosPercent)) / 100;
+    const tp2Weight = Math.max(0, Math.min(100, activePositionParams.tp2PosPercent)) / 100;
+    const finalWeight = Math.max(0, 1 - tp1Weight - tp2Weight);
 
     if (signal.direction === 'BUY') {
       stopLossPrice = signal.entryPrice * (1 - stopLossPercent / 100);
@@ -266,8 +267,10 @@ export default function EstatisticasPage() {
     const sellStopLossNum = parseFloat(sellStopLoss) || 4;
     const sellTakeProfit1Num = parseFloat(sellTakeProfit1) || 9;
     const sellTakeProfit2Num = parseFloat(sellTakeProfit2) || 24;
-    const tp1PositionNum = parseFloat(tp1PositionPercent) || 35;
-    const tp2PositionNum = parseFloat(tp2PositionPercent) || 35;
+    const buyTp1PositionNum = parseFloat(buyTp1PositionPercent) || 35;
+    const buyTp2PositionNum = parseFloat(buyTp2PositionPercent) || 35;
+    const sellTp1PositionNum = parseFloat(sellTp1PositionPercent) || 35;
+    const sellTp2PositionNum = parseFloat(sellTp2PositionPercent) || 35;
     const finalHoursNum = parseFloat(finalCloseHours) || 24;
 
     // Simular cada trade
@@ -285,8 +288,14 @@ export default function EstatisticasPage() {
           tp1Percent: sellTakeProfit1Num,
           tp2Percent: sellTakeProfit2Num,
         },
-        tp1PositionNum,
-        tp2PositionNum,
+        {
+          tp1PosPercent: buyTp1PositionNum,
+          tp2PosPercent: buyTp2PositionNum,
+        },
+        {
+          tp1PosPercent: sellTp1PositionNum,
+          tp2PosPercent: sellTp2PositionNum,
+        },
         finalHoursNum
       ),
     }));
@@ -708,34 +717,67 @@ export default function EstatisticasPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                % Posição TP1
+                % Posição TP1 BUY
               </label>
               <input
                 type="number"
                 step="1"
                 min="0"
                 max="100"
-                value={tp1PositionPercent}
-                onChange={(e) => setTp1PositionPercent(e.target.value)}
+                value={buyTp1PositionPercent}
+                onChange={(e) => setBuyTp1PositionPercent(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="35"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                % Posição TP2
+                % Posição TP2 BUY
               </label>
               <input
                 type="number"
                 step="1"
                 min="0"
                 max="100"
-                value={tp2PositionPercent}
-                onChange={(e) => setTp2PositionPercent(e.target.value)}
+                value={buyTp2PositionPercent}
+                onChange={(e) => setBuyTp2PositionPercent(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="35"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                % Posição TP1 SELL
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                max="100"
+                value={sellTp1PositionPercent}
+                onChange={(e) => setSellTp1PositionPercent(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="35"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                % Posição TP2 SELL
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                max="100"
+                value={sellTp2PositionPercent}
+                onChange={(e) => setSellTp2PositionPercent(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="35"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mt-4">
             <div>
               <button
                 onClick={calculateSimulatedStatistics}
@@ -753,7 +795,7 @@ export default function EstatisticasPage() {
           {useSimulation && (
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Simulação ativa:</strong> BUY [SL {buyStopLoss}% | TP1 {buyTakeProfit1}% | TP2 {buyTakeProfit2}%] | SELL [SL {sellStopLoss}% | TP1 {sellTakeProfit1}% | TP2 {sellTakeProfit2}%] | Posição: TP1 {tp1PositionPercent}% / TP2 {tp2PositionPercent}% | Fechamento final em {finalCloseHours}h
+                <strong>Simulação ativa:</strong> BUY [SL {buyStopLoss}% | TP1 {buyTakeProfit1}% ({buyTp1PositionPercent}%) | TP2 {buyTakeProfit2}% ({buyTp2PositionPercent}%)] | SELL [SL {sellStopLoss}% | TP1 {sellTakeProfit1}% ({sellTp1PositionPercent}%) | TP2 {sellTakeProfit2}% ({sellTp2PositionPercent}%)] | Fechamento final em {finalCloseHours}h
               </p>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                 As estatísticas abaixo usam 2 take profits + fechamento final do restante. Para horas acima de 24h, o resultado final usa projeção linear baseada no resultado de 24h (simulação).
