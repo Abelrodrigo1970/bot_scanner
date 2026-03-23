@@ -119,9 +119,14 @@ export default function EstatisticasPage() {
   
   // Estados para simulação
   const [useSimulation, setUseSimulation] = useState(false);
-  const [stopLoss, setStopLoss] = useState<string>('4');
-  const [takeProfit1, setTakeProfit1] = useState<string>('9');
-  const [takeProfit2, setTakeProfit2] = useState<string>('24');
+  // BUY (compra): defaults pedidos
+  const [buyStopLoss, setBuyStopLoss] = useState<string>('11');
+  const [buyTakeProfit1, setBuyTakeProfit1] = useState<string>('15');
+  const [buyTakeProfit2, setBuyTakeProfit2] = useState<string>('24');
+  // SELL (venda): manter defaults atuais
+  const [sellStopLoss, setSellStopLoss] = useState<string>('4');
+  const [sellTakeProfit1, setSellTakeProfit1] = useState<string>('9');
+  const [sellTakeProfit2, setSellTakeProfit2] = useState<string>('24');
   const [tp1PositionPercent, setTp1PositionPercent] = useState<string>('35');
   const [tp2PositionPercent, setTp2PositionPercent] = useState<string>('35');
   const [finalCloseHours, setFinalCloseHours] = useState<string>('24');
@@ -170,9 +175,8 @@ export default function EstatisticasPage() {
   // Para horas > 24, usa projeção linear a partir do resultado de 24h.
   const simulateTrade = (
     signal: SignalWithResult,
-    stopLossPercent: number,
-    tp1Percent: number,
-    tp2Percent: number,
+    buyParams: { stopLossPercent: number; tp1Percent: number; tp2Percent: number },
+    sellParams: { stopLossPercent: number; tp1Percent: number; tp2Percent: number },
     tp1PosPercent: number,
     tp2PosPercent: number,
     finalHours: number
@@ -191,6 +195,11 @@ export default function EstatisticasPage() {
     let stopLossPrice: number;
     let takeProfit1Price: number;
     let takeProfit2Price: number;
+
+    const activeParams = signal.direction === 'BUY' ? buyParams : sellParams;
+    const stopLossPercent = activeParams.stopLossPercent;
+    const tp1Percent = activeParams.tp1Percent;
+    const tp2Percent = activeParams.tp2Percent;
 
     if (signal.direction === 'BUY') {
       stopLossPrice = signal.entryPrice * (1 - stopLossPercent / 100);
@@ -251,9 +260,12 @@ export default function EstatisticasPage() {
 
   // Função para calcular estatísticas simuladas
   const calculateSimulatedStatistics = () => {
-    const stopLossNum = parseFloat(stopLoss) || 4;
-    const takeProfit1Num = parseFloat(takeProfit1) || 9;
-    const takeProfit2Num = parseFloat(takeProfit2) || 24;
+    const buyStopLossNum = parseFloat(buyStopLoss) || 11;
+    const buyTakeProfit1Num = parseFloat(buyTakeProfit1) || 15;
+    const buyTakeProfit2Num = parseFloat(buyTakeProfit2) || 24;
+    const sellStopLossNum = parseFloat(sellStopLoss) || 4;
+    const sellTakeProfit1Num = parseFloat(sellTakeProfit1) || 9;
+    const sellTakeProfit2Num = parseFloat(sellTakeProfit2) || 24;
     const tp1PositionNum = parseFloat(tp1PositionPercent) || 35;
     const tp2PositionNum = parseFloat(tp2PositionPercent) || 35;
     const finalHoursNum = parseFloat(finalCloseHours) || 24;
@@ -263,9 +275,16 @@ export default function EstatisticasPage() {
       ...s,
       netResult: simulateTrade(
         s,
-        stopLossNum,
-        takeProfit1Num,
-        takeProfit2Num,
+        {
+          stopLossPercent: buyStopLossNum,
+          tp1Percent: buyTakeProfit1Num,
+          tp2Percent: buyTakeProfit2Num,
+        },
+        {
+          stopLossPercent: sellStopLossNum,
+          tp1Percent: sellTakeProfit1Num,
+          tp2Percent: sellTakeProfit2Num,
+        },
         tp1PositionNum,
         tp2PositionNum,
         finalHoursNum
@@ -549,52 +568,144 @@ export default function EstatisticasPage() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Simulação com Stop Loss, 2 TPs e Fechamento Final
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-4">
+            <div className="md:col-span-4 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+              Compra (BUY)
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Stop Loss (%)
+                SL BUY (%)
               </label>
               <input
                 type="number"
                 step="0.1"
                 min="0"
                 max="100"
-                value={stopLoss}
-                onChange={(e) => setStopLoss(e.target.value)}
+                value={buyStopLoss}
+                onChange={(e) => setBuyStopLoss(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="11"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                TP1 BUY (%)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={buyTakeProfit1}
+                onChange={(e) => setBuyTakeProfit1(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="15"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                TP2 BUY (%)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={buyTakeProfit2}
+                onChange={(e) => setBuyTakeProfit2(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="24"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Fechamento Final (h)
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="1"
+                max="240"
+                value={finalCloseHours}
+                onChange={(e) => setFinalCloseHours(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="24"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-4">
+            <div className="md:col-span-4 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+              Venda (SELL)
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                SL SELL (%)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={sellStopLoss}
+                onChange={(e) => setSellStopLoss(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="4"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Take Profit 1 (%)
+                TP1 SELL (%)
               </label>
               <input
                 type="number"
                 step="0.1"
                 min="0"
                 max="100"
-                value={takeProfit1}
-                onChange={(e) => setTakeProfit1(e.target.value)}
+                value={sellTakeProfit1}
+                onChange={(e) => setSellTakeProfit1(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="9"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Take Profit 2 (%)
+                TP2 SELL (%)
               </label>
               <input
                 type="number"
                 step="0.1"
                 min="0"
                 max="100"
-                value={takeProfit2}
-                onChange={(e) => setTakeProfit2(e.target.value)}
+                value={sellTakeProfit2}
+                onChange={(e) => setSellTakeProfit2(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="24"
               />
             </div>
+            <div className="flex items-center">
+              <label className="flex items-center cursor-pointer mt-6">
+                <input
+                  type="checkbox"
+                  checked={useSimulation}
+                  onChange={(e) => {
+                    setUseSimulation(e.target.checked);
+                    if (e.target.checked) {
+                      calculateSimulatedStatistics();
+                    } else {
+                      setSimulatedStats(null);
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  Usar Simulação
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 % Posição TP1
@@ -626,41 +737,6 @@ export default function EstatisticasPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Fechamento Final (h)
-              </label>
-              <input
-                type="number"
-                step="1"
-                min="1"
-                max="240"
-                value={finalCloseHours}
-                onChange={(e) => setFinalCloseHours(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="24"
-              />
-            </div>
-            <div className="flex items-center">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useSimulation}
-                  onChange={(e) => {
-                    setUseSimulation(e.target.checked);
-                    if (e.target.checked) {
-                      calculateSimulatedStatistics();
-                    } else {
-                      setSimulatedStats(null);
-                    }
-                  }}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                  Usar Simulação
-                </span>
-              </label>
-            </div>
-            <div>
               <button
                 onClick={calculateSimulatedStatistics}
                 disabled={!useSimulation}
@@ -677,7 +753,7 @@ export default function EstatisticasPage() {
           {useSimulation && (
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Simulação ativa:</strong> SL {stopLoss}% | TP1 {takeProfit1}% ({tp1PositionPercent}%) | TP2 {takeProfit2}% ({tp2PositionPercent}%) | Fechamento final em {finalCloseHours}h
+                <strong>Simulação ativa:</strong> BUY [SL {buyStopLoss}% | TP1 {buyTakeProfit1}% | TP2 {buyTakeProfit2}%] | SELL [SL {sellStopLoss}% | TP1 {sellTakeProfit1}% | TP2 {sellTakeProfit2}%] | Posição: TP1 {tp1PositionPercent}% / TP2 {tp2PositionPercent}% | Fechamento final em {finalCloseHours}h
               </p>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                 As estatísticas abaixo usam 2 take profits + fechamento final do restante. Para horas acima de 24h, o resultado final usa projeção linear baseada no resultado de 24h (simulação).
