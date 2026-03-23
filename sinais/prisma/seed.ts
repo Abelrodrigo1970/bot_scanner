@@ -57,6 +57,46 @@ async function main() {
     },
   });
 
+  // Estratégia MA Cross Voláteis (apenas nos 20 top voláteis)
+  const maVolatileStrategy = await prisma.strategy.upsert({
+    where: { name: 'MA_VOLATILE' },
+    update: {
+      description:
+        'Analisa apenas as 20 Top Voláteis. COMPRA: preço cruza MA60 para cima. Stop 10%, TP1 20% (30% posição), TP2 40% (40% posição). VENDA: preço abaixo de MA60 e MA200. Stop 10% ou cruzamento acima MA200, TP1 +10%, TP2 +20%.',
+      params: JSON.stringify({
+        ma60Period: 60,
+        ma200Period: 200,
+        buyStopPercent: 10,
+        buyTp1Percent: 20,
+        buyTp1PositionPercent: 30,
+        buyTp2Percent: 40,
+        buyTp2PositionPercent: 40,
+        sellStopPercent: 10,
+        sellTp1Percent: 10,
+        sellTp2Percent: 20,
+      }),
+    },
+    create: {
+      name: 'MA_VOLATILE',
+      displayName: 'MA Cross Top Voláteis',
+      description:
+        'Analisa apenas as 20 Top Voláteis. COMPRA: preço cruza MA60 para cima. Stop 10%, TP1 20% (30% posição), TP2 40% (40% posição). VENDA: preço abaixo de MA60 e MA200. Stop 10% ou cruzamento acima MA200, TP1 +10%, TP2 +20%.',
+      isActive: true,
+      params: JSON.stringify({
+        ma60Period: 60,
+        ma200Period: 200,
+        buyStopPercent: 10,
+        buyTp1Percent: 20,
+        buyTp1PositionPercent: 30,
+        buyTp2Percent: 40,
+        buyTp2PositionPercent: 40,
+        sellStopPercent: 10,
+        sellTp1Percent: 10,
+        sellTp2Percent: 20,
+      }),
+    },
+  });
+
   // Estratégia Volume Spike 15m (15 períodos)
   const volumeSpike15mStrategy = await prisma.strategy.upsert({
     where: { name: 'VOLUME_SPIKE_15M' },
@@ -115,6 +155,7 @@ async function main() {
     rsi: rsiStrategy.id,
     volumeSpike: volumeSpikeStrategy.id,
     volumeSpike15m: volumeSpike15mStrategy.id,
+    maVolatile: maVolatileStrategy.id,
   });
 }
 

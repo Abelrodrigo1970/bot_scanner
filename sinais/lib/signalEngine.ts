@@ -238,6 +238,107 @@ export async function runVolumeSpike15mStrategy(
 }
 
 /**
+ * Estratégia MA Cross Top Voláteis:
+ * Analisa apenas as 20 Top Voláteis da BD.
+ * COMPRA: preço cruza MA60 para cima. Stop 10%, TP1 20% (30% posição), TP2 40% (40% posição).
+ * VENDA: preço abaixo de MA60 e MA200 (cruzamento para baixo). Stop 10% ou cruzamento acima MA200. TP1 +10%, TP2 +20%.
+ */
+export async function runMa60VolatileStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  if (timeframe !== '1h') return null;
+
+  const ma60Period = params.ma60Period ?? 60;
+  const ma200Period = params.ma200Period ?? 200;
+  const buyStopPercent = params.buyStopPercent ?? 10;
+  const buyTp1Percent = params.buyTp1Percent ?? 20;
+  const buyTp2Percent = params.buyTp2Percent ?? 40;
+  const sellStopPercent = params.sellStopPercent ?? 10;
+  const sellTp1Percent = params.sellTp1Percent ?? 10;
+  const sellTp2Percent = params.sellTp2Percent ?? 20;
+
+  try {
+    const candlesNeeded = ma200Period + 5;
+    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    if (candles.length < ma200Period + 2) return null;
+
+    const closes = getCloses(candles);
+    const ma60 = calculateSMA(closes, ma60Period);
+    const ma200 = calculateSMA(closes, ma200Period);
+    if (ma60 === null || ma200 === null) return null;
+
+    // Valores do candle anterior para detectar cruzamento
+    const prevCloses = closes.slice(0, -1);
+    const prevMa60 = calculateSMA(prevCloses, ma60Period);
+    const prevMa200 = calculateSMA(prevCloses, ma200Period);
+    if (prevMa60 === null || prevMa200 === null) return null;
+
+    const currentPrice = candles[candles.length - 1].close;
+    const prevPrice = candles[candles.length - 2].close;
+
+    // COMPRA: preço cruza MA60 para cima (prev <= MA60, agora > MA60)
+    if (prevPrice <= prevMa60 && currentPrice > ma60) {
+      const stopLoss = currentPrice * (1 - buyStopPercent / 100);
+      const target1 = currentPrice * (1 + buyTp1Percent / 100);
+      const target2 = currentPrice * (1 + buyTp2Percent / 100);
+
+      return {
+        direction: 'BUY',
+        entryPrice: currentPrice,
+        stopLoss,
+        target1,
+        target2,
+        target3: undefined,
+        strength: 70,
+        extraInfo: JSON.stringify({
+          ma60: ma60.toFixed(4),
+          ma200: ma200.toFixed(4),
+          crossover: 'price crosses above MA60',
+          stopPercent: buyStopPercent,
+          tp1Percent: buyTp1Percent,
+          tp2Percent: buyTp2Percent,
+          tp1Position: '30%',
+          tp2Position: '40%',
+        }),
+      };
+    }
+
+    // VENDA: preço cruza MA60 para baixo E preço abaixo de MA200
+    if (prevPrice >= prevMa60 && currentPrice < ma60 && currentPrice < ma200) {
+      const stopLoss = currentPrice * (1 + sellStopPercent / 100);
+      const target1 = currentPrice * (1 - sellTp1Percent / 100);
+      const target2 = currentPrice * (1 - sellTp2Percent / 100);
+
+      return {
+        direction: 'SELL',
+        entryPrice: currentPrice,
+        stopLoss,
+        target1,
+        target2,
+        target3: undefined,
+        strength: 70,
+        extraInfo: JSON.stringify({
+          ma60: ma60.toFixed(4),
+          ma200: ma200.toFixed(4),
+          crossover: 'price crosses below MA60, below MA200',
+          stopPercent: sellStopPercent,
+          exitOnMa200Cross: 'close when price crosses above MA200',
+          tp1Percent: sellTp1Percent,
+          tp2Percent: sellTp2Percent,
+        }),
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error(`Erro na estratégia MA Voláteis para ${symbol}:`, error);
+    return null;
+  }
+}
+
+/**
  * Estratégia RSI (invertida / momentum):
  * COMPRA quando RSI sobe acima de 69 (cruzamento) E preço > MA200
  * VENDA quando RSI desce abaixo de 29 (cruzamento) E preço < MA200
@@ -363,7 +464,8 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
       const params = JSON.parse(strategy.params || '{}');
 
       const timeframesToUse: Timeframe[] =
-        strategy.name === 'VOLUME_SPIKE_15M' ? ['15m'] : timeframes;
+        strategy.name === 'VOLUME_SPIKE_15M' ? ['15m'] :
+        strategy.name === 'MA_VOLATILE' ? ['1h'] : timeframes;
 
       let symbolsToAnalyze = symbols;
       if (strategy.name === 'VOLUME_SPIKE' || strategy.name === 'VOLUME_SPIKE_15M') {
@@ -374,6 +476,16 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         if (volumeSymbols.length > 0) {
           symbolsToAnalyze = volumeSymbols;
           console.log(`✅ Encontrados ${volumeSymbols.length} símbolos`);
+        }
+      } else if (strategy.name === 'MA_VOLATILE') {
+        console.log(`🔍 Buscando Top Voláteis na BD para ${strategy.name}...`);
+        const topVolatile = await prisma.topVolatile.findMany({ orderBy: { rank: 'asc' } });
+        if (topVolatile.length > 0) {
+          symbolsToAnalyze = topVolatile.map((t) => t.symbol);
+          console.log(`✅ Encontradas ${symbolsToAnalyze.length} Top Voláteis`);
+        } else {
+          console.warn(`⚠️ Nenhuma Top Volátil na BD. Execute "Atualizar Top Volatilidade" antes. Ignorando ${strategy.name}.`);
+          continue;
         }
       }
 
@@ -399,6 +511,12 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 signalResult = await runRsiStrategy(symbol, timeframe, params);
                 if (signalResult) {
                   console.log(`✅ RSI: ${symbol} ${signalResult.direction} (${timeframe})`);
+                }
+                break;
+              case 'MA_VOLATILE':
+                signalResult = await runMa60VolatileStrategy(symbol, timeframe, params);
+                if (signalResult) {
+                  console.log(`✅ MA Voláteis: ${symbol} ${signalResult.direction} (${timeframe})`);
                 }
                 break;
               default:
