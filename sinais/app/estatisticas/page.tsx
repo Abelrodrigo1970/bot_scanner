@@ -120,7 +120,11 @@ export default function EstatisticasPage() {
   // Estados para simulação
   const [useSimulation, setUseSimulation] = useState(false);
   const [stopLoss, setStopLoss] = useState<string>('4');
-  const [takeProfit, setTakeProfit] = useState<string>('20');
+  const [takeProfit1, setTakeProfit1] = useState<string>('9');
+  const [takeProfit2, setTakeProfit2] = useState<string>('24');
+  const [tp1PositionPercent, setTp1PositionPercent] = useState<string>('35');
+  const [tp2PositionPercent, setTp2PositionPercent] = useState<string>('35');
+  const [finalCloseHours, setFinalCloseHours] = useState<string>('24');
   const [simulatedStats, setSimulatedStats] = useState<Statistics | null>(null);
 
   useEffect(() => {
@@ -162,68 +166,110 @@ export default function EstatisticasPage() {
     }
   };
 
-  // Função para simular trade com stop loss e take profit
+  // Simulação com 2 TPs + fechamento final por tempo (24h por padrão).
+  // Para horas > 24, usa projeção linear a partir do resultado de 24h.
   const simulateTrade = (
     signal: SignalWithResult,
     stopLossPercent: number,
-    takeProfitPercent: number
+    tp1Percent: number,
+    tp2Percent: number,
+    tp1PosPercent: number,
+    tp2PosPercent: number,
+    finalHours: number
   ): number => {
     const FEE_OPEN = 0.0005;
     const FEE_CLOSE = 0.0005;
     const TOTAL_FEE = FEE_OPEN + FEE_CLOSE;
     const feeAmount = 100 * TOTAL_FEE;
 
-    // Calcular preços de stop loss e take profit
+    // Pesos de posição por etapa (em % da posição total)
+    const tp1Weight = Math.max(0, Math.min(100, tp1PosPercent)) / 100;
+    const tp2Weight = Math.max(0, Math.min(100, tp2PosPercent)) / 100;
+    const finalWeight = Math.max(0, 1 - tp1Weight - tp2Weight);
+
+    // Calcular preços de stop loss e take profits
     let stopLossPrice: number;
-    let takeProfitPrice: number;
+    let takeProfit1Price: number;
+    let takeProfit2Price: number;
 
     if (signal.direction === 'BUY') {
       stopLossPrice = signal.entryPrice * (1 - stopLossPercent / 100);
-      takeProfitPrice = signal.entryPrice * (1 + takeProfitPercent / 100);
+      takeProfit1Price = signal.entryPrice * (1 + tp1Percent / 100);
+      takeProfit2Price = signal.entryPrice * (1 + tp2Percent / 100);
     } else {
-      // Para SELL, stop loss é acima e take profit é abaixo
+      // Para SELL, stop loss é acima e take profits são abaixo
       stopLossPrice = signal.entryPrice * (1 + stopLossPercent / 100);
-      takeProfitPrice = signal.entryPrice * (1 - takeProfitPercent / 100);
+      takeProfit1Price = signal.entryPrice * (1 - tp1Percent / 100);
+      takeProfit2Price = signal.entryPrice * (1 - tp2Percent / 100);
     }
 
-    // Verificar se stop loss ou take profit foi atingido primeiro
+    // Resultado base em 24h, depois projetado para N horas (simulação)
+    const base24hPercent =
+      signal.result24h === null ? 0 : (signal.result24h / signal.entryPrice) * 100;
+    const hoursMultiplier = Math.max(0.25, finalHours / 24);
+    const finalResultPercent = base24hPercent * hoursMultiplier;
+
+    let grossPercentResult = 0;
+
+    // Regra conservadora: se SL aparece nas extremas, considera SL primeiro (como na lógica anterior).
     if (signal.direction === 'BUY') {
-      // Para compra: verificar se low24h atingiu stop loss ou high24h atingiu take profit
       if (signal.low24h !== null && signal.low24h <= stopLossPrice) {
-        // Stop loss atingido primeiro
-        return -stopLossPercent - feeAmount;
-      }
-      if (signal.high24h !== null && signal.high24h >= takeProfitPrice) {
-        // Take profit atingido primeiro
-        return takeProfitPercent - feeAmount;
+        grossPercentResult = -stopLossPercent;
+      } else if (signal.high24h !== null && signal.high24h >= takeProfit2Price) {
+        // TP2 atingido -> assume TP1 + TP2 + restante no fechamento final
+        grossPercentResult =
+          tp1Weight * tp1Percent +
+          tp2Weight * tp2Percent +
+          finalWeight * finalResultPercent;
+      } else if (signal.high24h !== null && signal.high24h >= takeProfit1Price) {
+        // Apenas TP1 atingido -> restante no fechamento final
+        const remainingWeight = Math.max(0, 1 - tp1Weight);
+        grossPercentResult = tp1Weight * tp1Percent + remainingWeight * finalResultPercent;
+      } else {
+        // Nenhum TP/SL -> fechamento final
+        grossPercentResult = finalResultPercent;
       }
     } else {
-      // Para venda: verificar se high24h atingiu stop loss ou low24h atingiu take profit
       if (signal.high24h !== null && signal.high24h >= stopLossPrice) {
-        // Stop loss atingido primeiro
-        return -stopLossPercent - feeAmount;
-      }
-      if (signal.low24h !== null && signal.low24h <= takeProfitPrice) {
-        // Take profit atingido primeiro
-        return takeProfitPercent - feeAmount;
+        grossPercentResult = -stopLossPercent;
+      } else if (signal.low24h !== null && signal.low24h <= takeProfit2Price) {
+        grossPercentResult =
+          tp1Weight * tp1Percent +
+          tp2Weight * tp2Percent +
+          finalWeight * finalResultPercent;
+      } else if (signal.low24h !== null && signal.low24h <= takeProfit1Price) {
+        const remainingWeight = Math.max(0, 1 - tp1Weight);
+        grossPercentResult = tp1Weight * tp1Percent + remainingWeight * finalResultPercent;
+      } else {
+        grossPercentResult = finalResultPercent;
       }
     }
 
-    // Se nenhum foi atingido, usar resultado real após 24h
-    if (signal.result24h === null) return 0;
-    const grossResult = (signal.result24h / signal.entryPrice) * 100;
-    return grossResult - feeAmount;
+    // netResult em $ para posição de $100 => valor numérico equivale ao %
+    return grossPercentResult - feeAmount;
   };
 
   // Função para calcular estatísticas simuladas
   const calculateSimulatedStatistics = () => {
     const stopLossNum = parseFloat(stopLoss) || 4;
-    const takeProfitNum = parseFloat(takeProfit) || 20;
+    const takeProfit1Num = parseFloat(takeProfit1) || 9;
+    const takeProfit2Num = parseFloat(takeProfit2) || 24;
+    const tp1PositionNum = parseFloat(tp1PositionPercent) || 35;
+    const tp2PositionNum = parseFloat(tp2PositionPercent) || 35;
+    const finalHoursNum = parseFloat(finalCloseHours) || 24;
 
     // Simular cada trade
     const simulatedSignals: SignalWithResult[] = signals.map((s) => ({
       ...s,
-      netResult: simulateTrade(s, stopLossNum, takeProfitNum),
+      netResult: simulateTrade(
+        s,
+        stopLossNum,
+        takeProfit1Num,
+        takeProfit2Num,
+        tp1PositionNum,
+        tp2PositionNum,
+        finalHoursNum
+      ),
     }));
 
     // Recalcular estatísticas com trades simulados
@@ -501,9 +547,9 @@ export default function EstatisticasPage() {
         {/* Painel de Simulação */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mb-8 border border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Simulação com Stop Loss e Take Profit
+            Simulação com Stop Loss, 2 TPs e Fechamento Final
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Stop Loss (%)
@@ -521,17 +567,77 @@ export default function EstatisticasPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Take Profit (%)
+                Take Profit 1 (%)
               </label>
               <input
                 type="number"
                 step="0.1"
                 min="0"
                 max="100"
-                value={takeProfit}
-                onChange={(e) => setTakeProfit(e.target.value)}
+                value={takeProfit1}
+                onChange={(e) => setTakeProfit1(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="20"
+                placeholder="9"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Take Profit 2 (%)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={takeProfit2}
+                onChange={(e) => setTakeProfit2(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="24"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                % Posição TP1
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                max="100"
+                value={tp1PositionPercent}
+                onChange={(e) => setTp1PositionPercent(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="35"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                % Posição TP2
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                max="100"
+                value={tp2PositionPercent}
+                onChange={(e) => setTp2PositionPercent(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="35"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Fechamento Final (h)
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="1"
+                max="240"
+                value={finalCloseHours}
+                onChange={(e) => setFinalCloseHours(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="24"
               />
             </div>
             <div className="flex items-center">
@@ -571,10 +677,10 @@ export default function EstatisticasPage() {
           {useSimulation && (
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Simulação ativa:</strong> Stop Loss {stopLoss}% | Take Profit {takeProfit}%
+                <strong>Simulação ativa:</strong> SL {stopLoss}% | TP1 {takeProfit1}% ({tp1PositionPercent}%) | TP2 {takeProfit2}% ({tp2PositionPercent}%) | Fechamento final em {finalCloseHours}h
               </p>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                As estatísticas abaixo são baseadas na simulação. Cada trade é fechado quando atinge o stop loss ou take profit primeiro, ou após 24h se nenhum for atingido.
+                As estatísticas abaixo usam 2 take profits + fechamento final do restante. Para horas acima de 24h, o resultado final usa projeção linear baseada no resultado de 24h (simulação).
               </p>
             </div>
           )}
