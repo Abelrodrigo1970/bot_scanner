@@ -2,15 +2,16 @@
 
 Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
 
-## Endpoints disponíveis (3 cron jobs)
+## Endpoints disponíveis (4 cron jobs)
 
 | Endpoint | Estratégias | Tempo estimado |
 |----------|-------------|----------------|
 | `/api/cron/run-signals` | RSI | ~5-10 min |
 | `/api/cron/run-volume-spike` | Volume Spike 1h (400 símbolos, background) | Resposta imediata |
 | `/api/cron/run-volume-spike-15m` | Volume Spike 15m (400 símbolos, background) | Resposta imediata |
+| `/api/cron/run-ma-volatile` | MA_VOLATILE (Top Voláteis + MA60/MA200) | Resposta imediata |
 
-**Configuração:** Crie 3 cron jobs no cron-job.org.
+**Configuração:** Crie 4 cron jobs no cron-job.org.
 
 ## Horários de Execução
 
@@ -28,7 +29,7 @@ Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
 1. Acesse: https://cron-job.org
 2. Crie uma conta gratuita
 
-### Passo 2: Criar os 3 Cron Jobs
+### Passo 2: Criar os 4 Cron Jobs
 
 **Cron Job 1 – RSI:**
 - **Title:** Sinais RSI
@@ -48,6 +49,13 @@ Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
 - **Title:** Sinais Volume Spike 15m
 - **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-volume-spike-15m`
 - **Schedule:** `*/15 8-23 * * *` (a cada 15 min, 8h–23h)
+- **Method:** GET
+- **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
+
+**Cron Job 4 – MA Voláteis:**
+- **Title:** Sinais MA Voláteis
+- **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-ma-volatile`
+- **Schedule:** `0 8-23 * * *` (hora a hora, entre 8h e 23h)
 - **Method:** GET
 - **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
 
@@ -83,6 +91,11 @@ https://SEU-DOMINIO.up.railway.app/api/cron/run-volume-spike
 **Volume Spike 15m:**
 ```
 https://SEU-DOMINIO.up.railway.app/api/cron/run-volume-spike-15m
+```
+
+**MA Voláteis:**
+```
+https://SEU-DOMINIO.up.railway.app/api/cron/run-ma-volatile
 ```
 
 **Respostas esperadas:**
