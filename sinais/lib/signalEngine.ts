@@ -258,7 +258,6 @@ export async function runMa60VolatileStrategy(
   const sellStopPercent = params.sellStopPercent ?? 10;
   const sellTp1Percent = params.sellTp1Percent ?? 10;
   const sellTp2Percent = params.sellTp2Percent ?? 20;
-  const minCrossPercent = params.minCrossPercent ?? 2;
 
   try {
     const candlesNeeded = ma200Period + 5;
@@ -279,12 +278,8 @@ export async function runMa60VolatileStrategy(
     const currentPrice = candles[candles.length - 1].close;
     const prevPrice = candles[candles.length - 2].close;
 
-    const buyCrossPercent = ((currentPrice - ma60) / ma60) * 100;
-    const sellCrossPercent = ((ma60 - currentPrice) / ma60) * 100;
-
     // COMPRA: preço cruza MA60 para cima (prev <= MA60, agora > MA60)
-    // e fechamento do candle de sinal deve estar acima da MA60 por pelo menos 2%
-    if (prevPrice <= prevMa60 && currentPrice > ma60 && buyCrossPercent >= minCrossPercent) {
+    if (prevPrice <= prevMa60 && currentPrice > ma60) {
       const stopLoss = currentPrice * (1 - buyStopPercent / 100);
       const target1 = currentPrice * (1 + buyTp1Percent / 100);
       const target2 = currentPrice * (1 + buyTp2Percent / 100);
@@ -300,9 +295,7 @@ export async function runMa60VolatileStrategy(
         extraInfo: JSON.stringify({
           ma60: ma60.toFixed(4),
           ma200: ma200.toFixed(4),
-          crossover: 'price crosses above MA60 with >=2% close distance',
-          crossPercent: buyCrossPercent.toFixed(2),
-          minCrossPercent,
+          crossover: 'price crosses above MA60',
           stopPercent: buyStopPercent,
           tp1Percent: buyTp1Percent,
           tp2Percent: buyTp2Percent,
@@ -314,8 +307,7 @@ export async function runMa60VolatileStrategy(
     }
 
     // VENDA: preço cruza MA60 para baixo, abaixo da MA200
-    // e fechamento do candle de sinal deve estar abaixo da MA60 por pelo menos 2%
-    if (prevPrice >= prevMa60 && currentPrice < ma60 && currentPrice < ma200 && sellCrossPercent >= minCrossPercent) {
+    if (prevPrice >= prevMa60 && currentPrice < ma60 && currentPrice < ma200) {
       const stopLoss = currentPrice * (1 + sellStopPercent / 100);
       const target1 = currentPrice * (1 - sellTp1Percent / 100);
       const target2 = currentPrice * (1 - sellTp2Percent / 100);
@@ -331,9 +323,7 @@ export async function runMa60VolatileStrategy(
         extraInfo: JSON.stringify({
           ma60: ma60.toFixed(4),
           ma200: ma200.toFixed(4),
-          crossover: 'price crosses below MA60, below MA200, with >=2% close distance',
-          crossPercent: sellCrossPercent.toFixed(2),
-          minCrossPercent,
+          crossover: 'price crosses below MA60, below MA200',
           stopPercent: sellStopPercent,
           exitOnMa200Cross: 'close when price crosses above MA200',
           tp1Percent: sellTp1Percent,
