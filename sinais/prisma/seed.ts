@@ -62,10 +62,11 @@ async function main() {
     where: { name: 'MA_VOLATILE' },
     update: {
       description:
-        'Analisa apenas as 20 Top Voláteis. COMPRA: preço cruza MA60 para cima. Stop 10%, TP1 20% (30% posição), TP2 40% (40% posição). VENDA: preço abaixo de MA60 e MA200. Stop 10% ou cruzamento acima MA200, TP1 +10%, TP2 +20%.',
+        'Analisa apenas as 20 Top Voláteis em 15m. COMPRA: preço cruza MA60 para cima e fecha >=2% acima da MA60. VENDA: cruza para baixo, abaixo da MA200 e fecha >=2% abaixo da MA60. Stop 10%, TP1/TP2 iguais e TP3 no sinal contrário.',
       params: JSON.stringify({
         ma60Period: 60,
         ma200Period: 200,
+        minCrossPercent: 2,
         buyStopPercent: 10,
         buyTp1Percent: 20,
         buyTp1PositionPercent: 30,
@@ -80,11 +81,12 @@ async function main() {
       name: 'MA_VOLATILE',
       displayName: 'MA Cross Top Voláteis',
       description:
-        'Analisa apenas as 20 Top Voláteis. COMPRA: preço cruza MA60 para cima. Stop 10%, TP1 20% (30% posição), TP2 40% (40% posição). VENDA: preço abaixo de MA60 e MA200. Stop 10% ou cruzamento acima MA200, TP1 +10%, TP2 +20%.',
+        'Analisa apenas as 20 Top Voláteis em 15m. COMPRA: preço cruza MA60 para cima e fecha >=2% acima da MA60. VENDA: cruza para baixo, abaixo da MA200 e fecha >=2% abaixo da MA60. Stop 10%, TP1/TP2 iguais e TP3 no sinal contrário.',
       isActive: true,
       params: JSON.stringify({
         ma60Period: 60,
         ma200Period: 200,
+        minCrossPercent: 2,
         buyStopPercent: 10,
         buyTp1Percent: 20,
         buyTp1PositionPercent: 30,
