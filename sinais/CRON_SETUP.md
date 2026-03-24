@@ -2,16 +2,14 @@
 
 Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
 
-## Endpoints disponíveis (4 cron jobs)
+## Endpoints disponíveis (modo agregado: 2 cron jobs)
 
 | Endpoint | Estratégias | Tempo estimado |
 |----------|-------------|----------------|
-| `/api/cron/run-signals` | RSI | ~5-10 min |
-| `/api/cron/run-volume-spike` | Volume Spike 1h (400 símbolos, background) | Resposta imediata |
-| `/api/cron/run-volume-spike-15m` | Volume Spike 15m (400 símbolos, background) | Resposta imediata |
-| `/api/cron/run-ma-volatile` | MA_VOLATILE (Top Voláteis + MA60/MA200) | Resposta imediata |
+| `/api/cron/run-15m` | Volume Spike 15m + MA_VOLATILE (MA60 15m) | Resposta imediata |
+| `/api/cron/run-1h` | RSI + MA200_VOLATILE + Volume Spike 1h | Resposta imediata |
 
-**Configuração:** Crie 4 cron jobs no cron-job.org.
+**Configuração:** Crie 2 cron jobs no cron-job.org.
 
 ## Horários de Execução
 
@@ -29,33 +27,19 @@ Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
 1. Acesse: https://cron-job.org
 2. Crie uma conta gratuita
 
-### Passo 2: Criar os 4 Cron Jobs
+### Passo 2: Criar os 2 Cron Jobs
 
-**Cron Job 1 – RSI:**
-- **Title:** Sinais RSI
-- **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-signals`
-- **Schedule:** `0 8-23 * * *` (hora a hora 8h–23h)
-- **Method:** GET
-- **Headers:** `Authorization: Bearer SEU_CRON_SECRET` (se configurado)
-
-**Cron Job 2 – Volume Spike 1h:**
-- **Title:** Sinais Volume Spike 1h
-- **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-volume-spike`
-- **Schedule:** `0 8-23 * * *` (hora a hora)
-- **Method:** GET
-- **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
-
-**Cron Job 3 – Volume Spike 15m:**
-- **Title:** Sinais Volume Spike 15m
-- **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-volume-spike-15m`
+**Cron Job 1 – Agregado 15m:**
+- **Title:** Sinais 15m (Volume + MA60)
+- **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-15m`
 - **Schedule:** `*/15 8-23 * * *` (a cada 15 min, 8h–23h)
 - **Method:** GET
 - **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
 
-**Cron Job 4 – MA Voláteis:**
-- **Title:** Sinais MA Voláteis
-- **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-ma-volatile`
-- **Schedule:** `0 8-23 * * *` (hora a hora, entre 8h e 23h)
+**Cron Job 2 – Agregado 1h:**
+- **Title:** Sinais 1h (RSI + MA200 + Volume)
+- **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-1h`
+- **Schedule:** `0 8-23 * * *` (hora a hora 8h–23h)
 - **Method:** GET
 - **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
 
@@ -78,24 +62,14 @@ Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
 
 Substitua `SEU-DOMINIO` pelo domínio do seu projeto Railway.
 
-**RSI:**
+**Agregado 15m:**
 ```
-https://SEU-DOMINIO.up.railway.app/api/cron/run-signals
-```
-
-**Volume Spike 1h:**
-```
-https://SEU-DOMINIO.up.railway.app/api/cron/run-volume-spike
+https://SEU-DOMINIO.up.railway.app/api/cron/run-15m
 ```
 
-**Volume Spike 15m:**
+**Agregado 1h:**
 ```
-https://SEU-DOMINIO.up.railway.app/api/cron/run-volume-spike-15m
-```
-
-**MA Voláteis:**
-```
-https://SEU-DOMINIO.up.railway.app/api/cron/run-ma-volatile
+https://SEU-DOMINIO.up.railway.app/api/cron/run-1h
 ```
 
 **Respostas esperadas:**

@@ -3,13 +3,16 @@ import { runAllStrategies } from '@/lib/signalEngine';
 import { update24hResults, updateMissingHighLow24h } from '@/lib/update24hResults';
 
 /**
- * Executa sinais RSI em background (fire-and-forget).
- * Volume Spike tem crons separados: /api/cron/run-volume-spike e /api/cron/run-volume-spike-15m
+ * Executa sinais de 1h em background (fire-and-forget):
+ * RSI + MA200_VOLATILE.
+ * Volume Spike 1h tem cron separado: /api/cron/run-volume-spike
  */
 async function runSignalsInBackground(hour: number, minute: number): Promise<void> {
   try {
-    console.log('[Run-Signals BG] Iniciando RSI...');
-    const signalsCreated = await runAllStrategies({ exclude: ['VOLUME_SPIKE', 'VOLUME_SPIKE_15M'] });
+    console.log('[Run-Signals BG] Iniciando estratégias 1h (RSI + MA200)...');
+    const signalsCreated = await runAllStrategies({
+      exclude: ['VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA_VOLATILE'],
+    });
 
     const update24h = await update24hResults();
 
@@ -27,8 +30,8 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
 }
 
 /**
- * Endpoint de cron para RSI
- * Volume Spike tem crons separados (/api/cron/run-volume-spike, /api/cron/run-volume-spike-15m)
+ * Endpoint de cron para estratégias 1h (RSI + MA200).
+ * Volume Spike tem cron separado (/api/cron/run-volume-spike).
  * Resposta imediata - processamento em background evita timeout 502
  */
 export async function GET(request: NextRequest) {
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento iniciado em background (RSI)',
+      message: 'Processamento iniciado em background (RSI + MA200 1h)',
       executedAt: now.toISOString(),
       nextExecution: `${(hour + 1) % 24}:00`,
     });

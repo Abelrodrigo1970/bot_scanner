@@ -5,7 +5,7 @@ import { closeActivePositionForSymbol, executeSignalReal } from '@/lib/tradingEx
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 
 /**
- * Cron dedicado para MA_VOLATILE.
+ * Cron dedicado para MA_VOLATILE (MA60 15m).
  * Executa em background para evitar timeout.
  */
 async function runMaVolatileInBackground(): Promise<void> {
@@ -15,7 +15,7 @@ async function runMaVolatileInBackground(): Promise<void> {
 
     // Exclui todas as outras estratégias para ficar apenas MA_VOLATILE
     const signalsCreated = await runAllStrategies({
-      exclude: ['RSI', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M'],
+      exclude: ['RSI', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA200_VOLATILE'],
     });
 
     // Auto-exec apenas para MA_VOLATILE:
