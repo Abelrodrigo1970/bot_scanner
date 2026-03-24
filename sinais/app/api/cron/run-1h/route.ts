@@ -24,20 +24,39 @@ async function run1hInBackground(origin: string, authHeader: string): Promise<vo
       calls.map((url) => fetch(url, { method: 'GET', headers, cache: 'no-store' }))
     );
 
+    let okCount = 0;
     for (let i = 0; i < results.length; i++) {
       const endpoint = calls[i];
       const result = results[i];
       if (result.status === 'fulfilled') {
+        okCount++;
         console.log(`[Run-1h BG] ${endpoint} -> HTTP ${result.value.status}`);
       } else {
         console.error(`[Run-1h BG] ${endpoint} -> erro`, result.reason);
       }
     }
 
-    console.log('[Run-1h BG] Agregado 1h disparado com sucesso');
+    console.log(`[Run-1h BG] Agregado 1h finalizado: ${okCount}/${calls.length} chamadas OK`);
   } catch (error) {
     console.error('[Run-1h BG] Erro fatal:', error);
   }
+}
+
+function resolveInternalOrigin(request: NextRequest): string {
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+
+  if (forwardedHost) {
+    return `${forwardedProto || 'https'}://${forwardedHost}`;
+  }
+
+  const url = request.nextUrl;
+  const isLocalHost =
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1' ||
+    url.hostname === '0.0.0.0';
+  const protocol = isLocalHost ? 'http:' : url.protocol;
+  return `${protocol}//${url.host}`;
 }
 
 export async function GET(request: NextRequest) {
@@ -50,7 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date();
-    const origin = request.nextUrl.origin;
+    const origin = resolveInternalOrigin(request);
 
     run1hInBackground(origin, authHeader || (cronSecret ? `Bearer ${cronSecret}` : ''));
 
