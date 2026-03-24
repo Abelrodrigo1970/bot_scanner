@@ -117,6 +117,7 @@ export async function createOrder(params: {
   quantity?: string;
   price?: string;
   timeInForce?: 'GTC' | 'IOC' | 'FOK';
+  reduceOnly?: boolean;
 }): Promise<{ orderId: number; symbol: string; status: string }> {
   const p: Record<string, string> = {
     symbol: params.symbol,
@@ -126,6 +127,7 @@ export async function createOrder(params: {
   if (params.quantity) p.quantity = params.quantity;
   if (params.price) p.price = params.price;
   if (params.timeInForce) p.timeInForce = params.timeInForce;
+  if (params.reduceOnly) p.reduceOnly = 'true';
 
   return signedRequest('POST', '/fapi/v1/order', p);
 }

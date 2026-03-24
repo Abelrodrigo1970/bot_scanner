@@ -20,6 +20,7 @@ import { getTradingEnabled } from './settings';
 import {
   createOrder,
   createAlgoOrder,
+  getPositionRisk,
   getLotSizeStep,
   getTickSize,
 } from './binanceFuturesClient';
@@ -31,6 +32,14 @@ export interface ExecuteResult {
   params?: ReturnType<typeof getExecutionParams>;
   orderId?: number;
   stopOrderId?: number;
+}
+
+export interface ClosePositionResult {
+  closed: boolean;
+  message: string;
+  side?: 'BUY' | 'SELL';
+  quantity?: string;
+  orderId?: number;
 }
 
 function toSignalForRules(signal: SignalForTrading): SignalForTrading {
@@ -222,6 +231,63 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
       dryRun: false,
       message: `Erro Binance: ${msg}`,
     };
+  }
+}
+
+/**
+ * Fecha posição ativa de um símbolo (se existir) antes de abrir novo sinal.
+ * Útil para estratégia "flip" (ex.: MA60 sinal contrário).
+ */
+export async function closeActivePositionForSymbol(symbol: string): Promise<ClosePositionResult> {
+  if (!hasTradingCredentials()) {
+    return { closed: false, message: 'Credenciais Binance não configuradas' };
+  }
+
+  const tradingEnabled = await getTradingEnabled();
+  if (!tradingEnabled) {
+    return { closed: false, message: 'Trades desativados na aplicação' };
+  }
+
+  if (!isTestnet()) {
+    return { closed: false, message: 'Fecho automático permitido apenas em Testnet' };
+  }
+
+  try {
+    const positions = await getPositionRisk();
+    const active = positions.find((p) => p.symbol === symbol && Math.abs(parseFloat(p.positionAmt)) > 0);
+
+    if (!active) {
+      return { closed: false, message: `Sem posição ativa em ${symbol}` };
+    }
+
+    const amt = parseFloat(active.positionAmt);
+    const closeSide: 'BUY' | 'SELL' = amt > 0 ? 'SELL' : 'BUY';
+    const absQty = Math.abs(amt);
+    const step = await getLotSizeStep(symbol);
+    const qty = roundQuantity(absQty, Number.isFinite(step) && step > 0 ? step : 0.001);
+
+    if (parseFloat(qty) <= 0) {
+      return { closed: false, message: `Quantidade inválida para fechar ${symbol}: ${qty}` };
+    }
+
+    const closeOrder = await createOrder({
+      symbol,
+      side: closeSide,
+      type: 'MARKET',
+      quantity: qty,
+      reduceOnly: true,
+    });
+
+    return {
+      closed: true,
+      message: `Posição ativa fechada em ${symbol}`,
+      side: closeSide,
+      quantity: qty,
+      orderId: closeOrder.orderId,
+    };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return { closed: false, message: `Erro ao fechar posição de ${symbol}: ${msg}` };
   }
 }
 

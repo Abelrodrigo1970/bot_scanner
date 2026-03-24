@@ -20,7 +20,15 @@ export interface SignalForTrading {
 }
 
 /** Estratégias permitidas para trading automático */
-const ALLOWED_STRATEGIES = ['Volume Spike', 'Volume Spike 1h', '15MVolume'];
+const ALLOWED_STRATEGIES = [
+  'Volume Spike',
+  'Volume Spike 1h',
+  '15MVolume',
+  'MA Cross Top Voláteis',
+  'MA200 Top Voláteis',
+  'MA_VOLATILE',
+  'MA200_VOLATILE',
+];
 
 /** Força mínima para executar (70) */
 const MIN_STRENGTH = 70;
@@ -40,10 +48,9 @@ export function canExecuteSignal(signal: SignalForTrading): { ok: boolean; reaso
     return { ok: false, reason: `Força ${signal.strength} < ${MIN_STRENGTH}` };
   }
 
-  const isVolumeSpike = ALLOWED_STRATEGIES.some((s) =>
-    signal.strategyName?.toLowerCase().includes('volume spike')
-  );
-  if (!isVolumeSpike) {
+  const normalizedName = (signal.strategyName || '').toLowerCase();
+  const isAllowed = ALLOWED_STRATEGIES.some((s) => normalizedName.includes(s.toLowerCase()));
+  if (!isAllowed) {
     return { ok: false, reason: `Estratégia não permitida: ${signal.strategyName}` };
   }
 
