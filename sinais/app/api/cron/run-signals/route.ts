@@ -7,7 +7,7 @@ import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 
 /**
  * Executa sinais de 1h em background (fire-and-forget):
- * RSI + MA200_VOLATILE. Auto-executa ordens para sinais com força suficiente.
+ * RSI + MA200_VOLATILE. Auto-executa ordens apenas para MA200_VOLATILE.
  * Volume Spike 1h tem cron separado: /api/cron/run-volume-spike
  */
 async function runSignalsInBackground(hour: number, minute: number): Promise<void> {
@@ -19,17 +19,16 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
       exclude: ['VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA_VOLATILE'],
     });
 
-    // Auto-exec para RSI e MA200_VOLATILE
-    const autoMinStrength = getAutoExecuteMinStrength();
-    const rsiStrategy = await prisma.strategy.findFirst({ where: { name: 'RSI', isActive: true } });
-    const ma200Strategy = await prisma.strategy.findFirst({ where: { name: 'MA200_VOLATILE', isActive: true } });
+    // Auto-exec apenas para MA200_VOLATILE
+    const ma200Strategy = await prisma.strategy.findFirst({
+      where: { name: 'MA200_VOLATILE', isActive: true },
+    });
 
-    const strategyIds = [rsiStrategy?.id, ma200Strategy?.id].filter(Boolean) as string[];
-
-    if (strategyIds.length > 0) {
+    if (ma200Strategy) {
+      const autoMinStrength = getAutoExecuteMinStrength();
       const newSignals = await prisma.signal.findMany({
         where: {
-          strategyId: { in: strategyIds },
+          strategyId: ma200Strategy.id,
           status: 'NEW',
           generatedAt: { gte: startedAt },
           strength: { gte: autoMinStrength },
@@ -55,7 +54,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
 
           if (execResult.success && execResult.orderId) {
             await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${sig.id}`;
-            console.log(`[Run-Signals BG] ✅ Auto-executado: ${sig.symbol} ${sig.direction} (${sig.strategyName}) order ${execResult.orderId}`);
+            console.log(`[Run-Signals BG] ✅ Auto-executado: ${sig.symbol} ${sig.direction} (MA200) order ${execResult.orderId}`);
           } else {
             console.warn(`[Run-Signals BG] ⚠️ Auto-exec falhou ${sig.symbol}: ${execResult.message}`);
           }
@@ -98,7 +97,6 @@ export async function GET(request: NextRequest) {
     const hour = now.getHours();
     const minute = now.getMinutes();
 
-    // Fire-and-forget: responde imediatamente, processa em background
     runSignalsInBackground(hour, minute);
 
     return NextResponse.json({
