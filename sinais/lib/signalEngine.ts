@@ -181,6 +181,10 @@ export async function runVolumeSpike15mStrategy(
     const direction: 'BUY' | 'SELL' = priceChange >= 0 ? 'BUY' : 'SELL';
 
     if (direction === 'BUY') {
+      if (currentVolume < 2_000_000) {
+        return null;
+      }
+
       const stopLoss = currentPrice * 0.87;
       const target1 = currentPrice * 1.09;
       const target2 = currentPrice * 1.25;
