@@ -370,11 +370,11 @@ export interface TopVolatileItem {
 }
 
 /**
- * Busca as top 20 criptos mais voláteis dos últimos 3 meses.
+ * Busca as top 25 criptos mais voláteis dos últimos 3 meses.
  * Volatilidade = (max - min) / min * 100 sobre candles diários.
  * Usa o maior número possível de pares USDT com volume mínimo.
  */
-export async function fetchTopVolatile(limit: number = 20): Promise<TopVolatileItem[]> {
+export async function fetchTopVolatile(limit: number = 25): Promise<TopVolatileItem[]> {
   try {
     const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
     if (!tickerRes.ok) throw new Error('Erro ao buscar tickers');

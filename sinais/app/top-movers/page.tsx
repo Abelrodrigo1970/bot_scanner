@@ -24,6 +24,12 @@ export default function TopVolateisPage() {
   const [error, setError] = useState('');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
+  // Adicionar símbolo manual
+  const [addInput, setAddInput] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [addMessage, setAddMessage] = useState('');
+  const [addError, setAddError] = useState('');
+
   const fetchFromDb = async () => {
     try {
       const response = await fetch('/api/top-movers');
@@ -109,6 +115,50 @@ export default function TopVolateisPage() {
     }
   };
 
+  const handleAddSymbol = async () => {
+    const raw = addInput.trim().toUpperCase();
+    if (!raw) return;
+
+    // Suporta múltiplos separados por vírgula ou espaço
+    const symbols = raw.split(/[\s,]+/).filter((s) => /^[A-Z0-9]+$/.test(s));
+    if (symbols.length === 0) {
+      setAddError('Símbolo inválido. Exemplo: BTCUSDT ou ETHUSDT,SOLUSDT');
+      return;
+    }
+
+    try {
+      setAdding(true);
+      setAddError('');
+      setAddMessage('');
+      const response = await fetch('/api/top-movers/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols }),
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setTopVolatile(data.topVolatile || []);
+        setSelectedSymbols([]);
+        setAddInput('');
+        let msg = data.message || `${data.added?.length ?? 0} símbolo(s) adicionado(s)`;
+        if (data.skipped?.length > 0) {
+          const skippedInfo = data.skipped.map((s: { symbol: string; reason: string }) => `${s.symbol}: ${s.reason}`).join(' | ');
+          msg += ` — Ignorados: ${skippedInfo}`;
+        }
+        setAddMessage(msg);
+        setTimeout(() => setAddMessage(''), 6000);
+      } else {
+        setAddError(data.error || data.details || 'Erro ao adicionar símbolo');
+      }
+    } catch (err) {
+      setAddError('Erro ao adicionar símbolo. Tente novamente.');
+      console.error('Erro:', err);
+    } finally {
+      setAdding(false);
+    }
+  };
+
   useEffect(() => {
     fetchFromDb();
   }, []);
@@ -134,7 +184,7 @@ export default function TopVolateisPage() {
               Top Voláteis
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              As 20 criptos com maior diferença entre máxima e mínima dos últimos 3 meses - Binance Futures
+              As 25 criptos com maior diferença entre máxima e mínima dos últimos 3 meses - Binance Futures
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -196,6 +246,40 @@ export default function TopVolateisPage() {
           </div>
         </div>
 
+        {/* Adicionar símbolo manual */}
+        <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 border border-gray-200 dark:border-gray-700">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Adicionar símbolo manualmente
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Adiciona um ou mais pares à lista para serem usados nas estratégias MA Cross e MA200. Separa múltiplos por vírgula ou espaço. Ex: <span className="font-mono">BTCUSDT</span> ou <span className="font-mono">ETHUSDT, SOLUSDT</span>
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={addInput}
+              onChange={(e) => setAddInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddSymbol()}
+              placeholder="Ex: BTCUSDT ou ETHUSDT, SOLUSDT"
+              disabled={adding}
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleAddSymbol}
+              disabled={adding || addInput.trim() === ''}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg transition-colors text-sm whitespace-nowrap"
+            >
+              {adding ? 'A adicionar...' : '+ Adicionar'}
+            </button>
+          </div>
+          {addMessage && (
+            <p className="mt-2 text-sm text-green-700 dark:text-green-400">{addMessage}</p>
+          )}
+          {addError && (
+            <p className="mt-2 text-sm text-red-700 dark:text-red-400">{addError}</p>
+          )}
+        </div>
+
         {lastUpdate && (
           <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
             Última atualização: {lastUpdate.toLocaleString('pt-PT')}
@@ -215,7 +299,7 @@ export default function TopVolateisPage() {
         ) : topVolatile.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600 dark:text-gray-400">
-              Nenhum dado. Clica em &quot;Atualizar Top Volatilidade&quot; para analisar ~200 criptos e gravar as 20 mais voláteis.
+              Nenhum dado. Clica em &quot;Atualizar Top Volatilidade&quot; para analisar ~200 criptos e gravar as 25 mais voláteis, ou adiciona símbolos manualmente acima.
             </p>
           </div>
         ) : (

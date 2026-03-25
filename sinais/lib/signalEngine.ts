@@ -243,7 +243,7 @@ export async function runVolumeSpike15mStrategy(
 
 /**
  * Estratégia MA Cross Top Voláteis:
- * Analisa apenas as 20 Top Voláteis da BD.
+ * Analisa apenas as 25 Top Voláteis da BD.
  * COMPRA: preço cruza MA60 para cima. Stop 10%, TP1 20% (30% posição), TP2 40% (40% posição).
  * VENDA: preço abaixo de MA60 e MA200 (cruzamento para baixo). Stop 10% ou cruzamento acima MA200. TP1 +10%, TP2 +20%.
  */
@@ -349,7 +349,7 @@ export async function runMa60VolatileStrategy(
 
 /**
  * Estratégia MA Cross Top Voláteis (somente MA200):
- * - Análise só nos 20 Top Voláteis da BD
+ * - Análise só nos 25 Top Voláteis da BD
  * - BUY: preço cruza MA200 para cima
  * - SELL: preço cruza MA200 para baixo
  *

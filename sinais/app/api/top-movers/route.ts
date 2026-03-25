@@ -5,7 +5,7 @@ import { ensureDatabase } from '@/lib/db-init';
 import { fetchTopVolatile } from '@/lib/marketData';
 
 /**
- * GET: Retorna as top 20 criptos mais voláteis (dos últimos 3 meses) guardadas na base de dados.
+ * GET: Retorna as top 25 criptos mais voláteis (dos últimos 3 meses) guardadas na base de dados.
  */
 export async function GET() {
   try {
@@ -48,7 +48,7 @@ export async function GET() {
 }
 
 /**
- * POST: Apaga os registos existentes, busca as 20 mais voláteis dos últimos 3 meses e grava na BD.
+ * POST: Apaga os registos existentes, busca as 25 mais voláteis dos últimos 3 meses e grava na BD.
  */
 export async function POST() {
   try {
@@ -67,8 +67,8 @@ export async function POST() {
     // Apagar todos os registos existentes
     await prisma.topVolatile.deleteMany({});
 
-    // Buscar as 20 mais voláteis da Binance
-    const items = await fetchTopVolatile(20);
+    // Buscar as 25 mais voláteis da Binance
+    const items = await fetchTopVolatile(25);
 
     // Inserir na base de dados
     await prisma.topVolatile.createMany({
