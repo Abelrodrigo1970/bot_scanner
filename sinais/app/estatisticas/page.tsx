@@ -117,6 +117,7 @@ export default function EstatisticasPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<Statistics | null>(null);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('');
+  const [selectedDirection, setSelectedDirection] = useState<string>('');
   
   // Estados para simulação
   const [useSimulation, setUseSimulation] = useState(false);
@@ -141,9 +142,12 @@ export default function EstatisticasPage() {
   }, [signals]);
 
   const filteredSignals = useMemo(() => {
-    if (!selectedStrategy) return signals;
-    return signals.filter((s) => s.strategyName === selectedStrategy);
-  }, [signals, selectedStrategy]);
+    return signals.filter((s) => {
+      const matchesStrategy = !selectedStrategy || s.strategyName === selectedStrategy;
+      const matchesDirection = !selectedDirection || s.direction === selectedDirection;
+      return matchesStrategy && matchesDirection;
+    });
+  }, [signals, selectedStrategy, selectedDirection]);
 
   useEffect(() => {
     fetchSignals();
@@ -175,8 +179,11 @@ export default function EstatisticasPage() {
 
         setSignals(signalsWithResults);
         const calculatedStats = calculateStatistics(
-          selectedStrategy
-            ? signalsWithResults.filter((s) => s.strategyName === selectedStrategy)
+          selectedStrategy || selectedDirection
+            ? signalsWithResults.filter((s) =>
+                (!selectedStrategy || s.strategyName === selectedStrategy) &&
+                (!selectedDirection || s.direction === selectedDirection)
+              )
             : signalsWithResults
         );
         setStats(calculatedStats);
@@ -614,6 +621,20 @@ export default function EstatisticasPage() {
                     {strategy}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Direção
+              </label>
+              <select
+                value={selectedDirection}
+                onChange={(e) => setSelectedDirection(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value="">Todas</option>
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
               </select>
             </div>
           </div>
