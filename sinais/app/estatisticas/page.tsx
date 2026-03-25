@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/Header';
 import Disclaimer from '@/components/Disclaimer';
 
@@ -116,6 +116,7 @@ export default function EstatisticasPage() {
   const [signals, setSignals] = useState<SignalWithResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<Statistics | null>(null);
+  const [selectedStrategy, setSelectedStrategy] = useState<string>('');
   
   // Estados para simulação
   const [useSimulation, setUseSimulation] = useState(false);
@@ -133,6 +134,16 @@ export default function EstatisticasPage() {
   const [sellTp2PositionPercent, setSellTp2PositionPercent] = useState<string>('35');
   const [finalCloseHours, setFinalCloseHours] = useState<string>('24');
   const [simulatedStats, setSimulatedStats] = useState<Statistics | null>(null);
+
+  const strategyOptions = useMemo(() => {
+    const unique = new Set(signals.map((s) => s.strategyName).filter(Boolean));
+    return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  }, [signals]);
+
+  const filteredSignals = useMemo(() => {
+    if (!selectedStrategy) return signals;
+    return signals.filter((s) => s.strategyName === selectedStrategy);
+  }, [signals, selectedStrategy]);
 
   useEffect(() => {
     fetchSignals();
@@ -163,7 +174,11 @@ export default function EstatisticasPage() {
         });
 
         setSignals(signalsWithResults);
-        const calculatedStats = calculateStatistics(signalsWithResults);
+        const calculatedStats = calculateStatistics(
+          selectedStrategy
+            ? signalsWithResults.filter((s) => s.strategyName === selectedStrategy)
+            : signalsWithResults
+        );
         setStats(calculatedStats);
       }
     } catch (error) {
@@ -260,7 +275,7 @@ export default function EstatisticasPage() {
   };
 
   // Função para calcular estatísticas simuladas
-  const calculateSimulatedStatistics = () => {
+  const calculateSimulatedStatistics = (sourceSignals?: SignalWithResult[]) => {
     const buyStopLossNum = parseFloat(buyStopLoss) || 11;
     const buyTakeProfit1Num = parseFloat(buyTakeProfit1) || 15;
     const buyTakeProfit2Num = parseFloat(buyTakeProfit2) || 24;
@@ -274,7 +289,8 @@ export default function EstatisticasPage() {
     const finalHoursNum = parseFloat(finalCloseHours) || 24;
 
     // Simular cada trade
-    const simulatedSignals: SignalWithResult[] = signals.map((s) => ({
+    const baseSignals = sourceSignals ?? filteredSignals;
+    const simulatedSignals: SignalWithResult[] = baseSignals.map((s) => ({
       ...s,
       netResult: simulateTrade(
         s,
@@ -304,6 +320,14 @@ export default function EstatisticasPage() {
     const calculatedStats = calculateStatistics(simulatedSignals);
     setSimulatedStats(calculatedStats);
   };
+
+  useEffect(() => {
+    const calculatedStats = calculateStatistics(filteredSignals);
+    setStats(calculatedStats);
+    if (useSimulation) {
+      calculateSimulatedStatistics(filteredSignals);
+    }
+  }, [filteredSignals, useSimulation]);
 
   const calculateStatistics = (signalsToCalculate: SignalWithResult[]): Statistics => {
     const total = signalsToCalculate.length;
@@ -572,6 +596,29 @@ export default function EstatisticasPage() {
           Estatísticas dos Resultados
         </h1>
 
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mb-6 border border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Filtro</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Estratégia
+              </label>
+              <select
+                value={selectedStrategy}
+                onChange={(e) => setSelectedStrategy(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value="">Todas</option>
+                {strategyOptions.map((strategy) => (
+                  <option key={strategy} value={strategy}>
+                    {strategy}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
         {/* Painel de Simulação */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mb-8 border border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -700,7 +747,7 @@ export default function EstatisticasPage() {
                   onChange={(e) => {
                     setUseSimulation(e.target.checked);
                     if (e.target.checked) {
-                      calculateSimulatedStatistics();
+                      calculateSimulatedStatistics(filteredSignals);
                     } else {
                       setSimulatedStats(null);
                     }
@@ -780,7 +827,7 @@ export default function EstatisticasPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mt-4">
             <div>
               <button
-                onClick={calculateSimulatedStatistics}
+                onClick={() => calculateSimulatedStatistics(filteredSignals)}
                 disabled={!useSimulation}
                 className={`w-full px-4 py-2 rounded-md font-medium transition-colors ${
                   useSimulation
