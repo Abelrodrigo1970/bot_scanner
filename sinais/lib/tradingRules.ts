@@ -152,10 +152,10 @@ export function getTakeProfitLevels(signal: SignalForTrading): Array<{
   const tp2 = signal.target2 ?? signal.entryPrice;
 
   const levels = [
-    { price: tp1, percentOfPosition: 35, label: 'TP1' },
-    { price: tp2, percentOfPosition: 35, label: 'TP2' },
+    { price: tp1, percentOfPosition: 60, label: 'TP1' },
+    { price: tp2, percentOfPosition: 30, label: 'TP2' },
   ];
-  // 30% restante = fechar às 24h (preço de mercado), não colocamos ordem
+  // 10% restante = fechar às 24h (preço de mercado), não colocamos ordem
   return levels;
 }
 

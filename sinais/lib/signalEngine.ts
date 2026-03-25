@@ -185,9 +185,9 @@ export async function runVolumeSpike15mStrategy(
         return null;
       }
 
-      const stopLoss = currentPrice * 0.87;
-      const target1 = currentPrice * 1.09;
-      const target2 = currentPrice * 1.25;
+      const stopLoss = currentPrice * 0.94;
+      const target1 = currentPrice * 1.04;
+      const target2 = currentPrice * 1.10;
       const target3: number | undefined = undefined;
       const strength = Math.min(100, Math.max(60, Math.round(60 + (volumeRatio - volumeMultiplier) * 5)));
 
@@ -210,9 +210,9 @@ export async function runVolumeSpike15mStrategy(
         }),
       };
     } else {
-      const stopLoss = currentPrice * 1.13;
-      const target1 = currentPrice * 0.91;
-      const target2 = currentPrice * 0.75;
+      const stopLoss = currentPrice * 1.06;
+      const target1 = currentPrice * 0.96;
+      const target2 = currentPrice * 0.90;
       const target3: number | undefined = undefined;
       const strength = Math.min(100, Math.max(60, Math.round(60 + (volumeRatio - volumeMultiplier) * 5)));
 

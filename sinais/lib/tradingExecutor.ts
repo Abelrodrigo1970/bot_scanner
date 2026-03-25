@@ -181,10 +181,10 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
       }
     }
 
-    // Take Profit: TP1 40% (9%), TP2 35% (25%), 25% às 24h (sem ordem na Binance)
+    // Take Profit: TP1 60% (4%), TP2 30% (10%), 10% às 24h (sem ordem na Binance)
     const tps = params.takeProfits ?? [];
     const totalQty = qty;
-    const tpPercents = [0.35, 0.35]; // TP1 35%, TP2 35%, 30% às 24h
+    const tpPercents = [0.60, 0.30]; // TP1 60%, TP2 30%, 10% às 24h
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
       const tp = tps[i];
