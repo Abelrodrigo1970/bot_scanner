@@ -262,21 +262,24 @@ export async function runMa60VolatileStrategy(
   try {
     const candlesNeeded = ma200Period + 5;
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
-    if (candles.length < ma200Period + 2) return null;
+    if (candles.length < ma200Period + 3) return null;
 
     const closes = getCloses(candles);
-    const ma60 = calculateSMA(closes, ma60Period);
-    const ma200 = calculateSMA(closes, ma200Period);
+    // Usar apenas vela fechada para sinal (evita intrabar)
+    const closedCloses = closes.slice(0, -1);
+    const prevClosedCloses = closes.slice(0, -2);
+
+    const ma60 = calculateSMA(closedCloses, ma60Period);
+    const ma200 = calculateSMA(closedCloses, ma200Period);
     if (ma60 === null || ma200 === null) return null;
 
     // Valores do candle anterior para detectar cruzamento
-    const prevCloses = closes.slice(0, -1);
-    const prevMa60 = calculateSMA(prevCloses, ma60Period);
-    const prevMa200 = calculateSMA(prevCloses, ma200Period);
+    const prevMa60 = calculateSMA(prevClosedCloses, ma60Period);
+    const prevMa200 = calculateSMA(prevClosedCloses, ma200Period);
     if (prevMa60 === null || prevMa200 === null) return null;
 
-    const currentPrice = candles[candles.length - 1].close;
-    const prevPrice = candles[candles.length - 2].close;
+    const currentPrice = candles[candles.length - 2].close;
+    const prevPrice = candles[candles.length - 3].close;
 
     // COMPRA: preço cruza MA60 para cima (prev <= MA60, agora > MA60)
     if (prevPrice <= prevMa60 && currentPrice > ma60) {
@@ -295,7 +298,7 @@ export async function runMa60VolatileStrategy(
         extraInfo: JSON.stringify({
           ma60: ma60.toFixed(4),
           ma200: ma200.toFixed(4),
-          crossover: 'price crosses above MA60',
+          crossover: 'closed candle crosses above MA60',
           stopPercent: buyStopPercent,
           tp1Percent: buyTp1Percent,
           tp2Percent: buyTp2Percent,
@@ -323,7 +326,7 @@ export async function runMa60VolatileStrategy(
         extraInfo: JSON.stringify({
           ma60: ma60.toFixed(4),
           ma200: ma200.toFixed(4),
-          crossover: 'price crosses below MA60, below MA200',
+          crossover: 'closed candle crosses below MA60, below MA200',
           stopPercent: sellStopPercent,
           exitOnMa200Cross: 'close when price crosses above MA200',
           tp1Percent: sellTp1Percent,
@@ -366,19 +369,22 @@ export async function runMa200VolatileStrategy(
   try {
     const candlesNeeded = ma200Period + 5;
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
-    if (candles.length < ma200Period + 2) return null;
+    if (candles.length < ma200Period + 3) return null;
 
     const closes = getCloses(candles);
-    const ma200 = calculateSMA(closes, ma200Period);
+    // Usar apenas vela fechada para sinal (evita intrabar)
+    const closedCloses = closes.slice(0, -1);
+    const prevClosedCloses = closes.slice(0, -2);
+
+    const ma200 = calculateSMA(closedCloses, ma200Period);
     if (ma200 === null) return null;
 
     // Valores do candle anterior para detectar cruzamento
-    const prevCloses = closes.slice(0, -1);
-    const prevMa200 = calculateSMA(prevCloses, ma200Period);
+    const prevMa200 = calculateSMA(prevClosedCloses, ma200Period);
     if (prevMa200 === null) return null;
 
-    const currentPrice = candles[candles.length - 1].close;
-    const prevPrice = candles[candles.length - 2].close;
+    const currentPrice = candles[candles.length - 2].close;
+    const prevPrice = candles[candles.length - 3].close;
 
     // COMPRA: preço cruza MA200 para cima (prev <= MA200, agora > MA200)
     if (prevPrice <= prevMa200 && currentPrice > ma200) {
@@ -396,7 +402,7 @@ export async function runMa200VolatileStrategy(
         strength: 70,
         extraInfo: JSON.stringify({
           ma200: ma200.toFixed(4),
-          crossover: 'price crosses above MA200',
+          crossover: 'closed candle crosses above MA200',
           stopPercent: buyStopPercent,
           tp1Percent: buyTp1Percent,
           tp2Percent: buyTp2Percent,
@@ -422,7 +428,7 @@ export async function runMa200VolatileStrategy(
         strength: 70,
         extraInfo: JSON.stringify({
           ma200: ma200.toFixed(4),
-          crossover: 'price crosses below MA200',
+          crossover: 'closed candle crosses below MA200',
           stopPercent: sellStopPercent,
           tp1Percent: sellTp1Percent,
           tp2Percent: sellTp2Percent,
