@@ -1,78 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runAllStrategies } from '@/lib/signalEngine';
-import { prisma } from '@/lib/db';
-import { closeActivePositionForSymbol, executeSignalReal } from '@/lib/tradingExecutor';
-import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 
 /**
  * Cron dedicado para MA_VOLATILE (MA60 15m).
- * Executa em background para evitar timeout.
+ * Gera sinais apenas - sem auto-exec de ordens.
  */
 async function runMaVolatileInBackground(): Promise<void> {
   try {
     console.log('[Run-MA_VOLATILE BG] Iniciando MA_VOLATILE...');
-    const startedAt = new Date();
 
-    // Exclui todas as outras estratégias para ficar apenas MA_VOLATILE
     const signalsCreated = await runAllStrategies({
       exclude: ['RSI', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA200_VOLATILE'],
     });
-
-    // Auto-exec apenas para MA_VOLATILE:
-    // 1) fecha posição ativa do símbolo (se houver)
-    // 2) abre nova posição do sinal
-    const ma60Strategy = await prisma.strategy.findFirst({
-      where: { name: 'MA_VOLATILE', isActive: true },
-    });
-
-    if (ma60Strategy) {
-      const autoMinStrength = getAutoExecuteMinStrength();
-      const newMa60Signals = await prisma.signal.findMany({
-        where: {
-          strategyId: ma60Strategy.id,
-          status: 'NEW',
-          generatedAt: { gte: startedAt },
-          strength: { gte: autoMinStrength },
-        },
-        orderBy: { generatedAt: 'asc' },
-      });
-
-      for (const sig of newMa60Signals) {
-        try {
-          const closeResult = await closeActivePositionForSymbol(sig.symbol);
-          if (closeResult.closed) {
-            console.log(
-              `[Run-MA_VOLATILE BG] 🔄 Fecho prévio ${sig.symbol}: ${closeResult.side} ${closeResult.quantity} (order ${closeResult.orderId})`
-            );
-          } else {
-            console.log(`[Run-MA_VOLATILE BG] ℹ️ ${closeResult.message}`);
-          }
-
-          const execResult = await executeSignalReal({
-            id: sig.id,
-            symbol: sig.symbol,
-            direction: sig.direction as 'BUY' | 'SELL',
-            entryPrice: sig.entryPrice,
-            stopLoss: sig.stopLoss,
-            target1: sig.target1,
-            target2: sig.target2,
-            target3: sig.target3 ?? null,
-            strength: sig.strength,
-            strategyName: sig.strategyName,
-            status: sig.status,
-          });
-
-          if (execResult.success && execResult.orderId) {
-            await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${sig.id}`;
-            console.log(`[Run-MA_VOLATILE BG] ✅ Auto-executado: ${sig.symbol} order ${execResult.orderId}`);
-          } else {
-            console.warn(`[Run-MA_VOLATILE BG] ⚠️ Auto-exec falhou ${sig.symbol}: ${execResult.message}`);
-          }
-        } catch (err) {
-          console.error(`[Run-MA_VOLATILE BG] ❌ Erro auto-exec ${sig.symbol}:`, err);
-        }
-      }
-    }
 
     console.log(`[Run-MA_VOLATILE BG] Concluído: ${signalsCreated} sinais criados`);
   } catch (error) {
@@ -89,7 +28,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    // Fire-and-forget
     runMaVolatileInBackground();
 
     const now = new Date();
@@ -109,4 +47,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

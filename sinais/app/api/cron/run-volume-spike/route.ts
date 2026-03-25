@@ -3,8 +3,6 @@ import { prisma } from '@/lib/db';
 import { runVolumeSpikeStrategy } from '@/lib/signalEngine';
 import { fetchTopSymbolsBy24hPriceChange } from '@/lib/marketData';
 import { update24hResults } from '@/lib/update24hResults';
-import { executeSignalReal } from '@/lib/tradingExecutor';
-import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 
 /** Estratégia para passar ao background */
 interface StrategyData {
@@ -13,8 +11,8 @@ interface StrategyData {
 }
 
 /**
- * Executa Volume Spike em background (fire-and-forget).
- * 400 símbolos, sinais BUY e SELL. Resposta imediata.
+ * Executa Volume Spike 1h em background (fire-and-forget).
+ * 400 símbolos, sinais BUY e SELL. Sem auto-exec de ordens.
  */
 async function runVolumeSpikeInBackground(
   strategy: StrategyData,
@@ -33,7 +31,6 @@ async function runVolumeSpikeInBackground(
       try {
         const signalResult = await runVolumeSpikeStrategy(symbol, timeframe, params);
 
-        // Sinais de compra e venda com força >= 85
         if (signalResult && signalResult.strength >= 85) {
           const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
           const existingSignal = await prisma.signal.findFirst({
@@ -47,7 +44,7 @@ async function runVolumeSpikeInBackground(
           });
 
           if (!existingSignal) {
-            const created = await prisma.signal.create({
+            await prisma.signal.create({
               data: {
                 symbol,
                 direction: signalResult.direction,
@@ -65,36 +62,7 @@ async function runVolumeSpikeInBackground(
               },
             });
             signalsCreated++;
-
-            // Execução automática: força >= AUTO_EXECUTE_MIN_STRENGTH (default 80)
-            // Awaited para que a ordem seja enviada antes do processo terminar (serverless)
-            const autoMinStrength = getAutoExecuteMinStrength();
-            if (signalResult.strength >= autoMinStrength) {
-              console.log(`[Volume Spike BG] 🚀 Auto-exec: ${symbol} força ${signalResult.strength} (>= ${autoMinStrength})`);
-              try {
-                const result = await executeSignalReal({
-                  id: created.id,
-                  symbol: created.symbol,
-                  direction: created.direction as 'BUY' | 'SELL',
-                  entryPrice: created.entryPrice,
-                  stopLoss: created.stopLoss,
-                  target1: created.target1,
-                  target2: created.target2,
-                  target3: created.target3 ?? null,
-                  strength: created.strength,
-                  strategyName: created.strategyName,
-                  status: created.status,
-                });
-                if (result.success && result.orderId) {
-                  await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${created.id}`;
-                  console.log(`[Volume Spike BG] ✅ Auto-executado: ${created.symbol} order ${result.orderId}`);
-                } else {
-                  console.warn(`[Volume Spike BG] ⚠️ Auto-exec falhou ${created.symbol}: ${result.message}`);
-                }
-              } catch (err) {
-                console.error(`[Volume Spike BG] ❌ Erro auto-exec ${created.symbol}:`, err);
-              }
-            }
+            console.log(`[Volume Spike BG] ✅ Sinal criado: ${symbol} ${signalResult.direction}`);
           }
         }
 
@@ -114,9 +82,8 @@ async function runVolumeSpikeInBackground(
 }
 
 /**
- * Endpoint de cron dedicado para Volume Spike
- * Resposta imediata - 400 símbolos, compra e venda
- * Evita timeout 30s do cron-job.org
+ * Endpoint de cron dedicado para Volume Spike 1h.
+ * Gera sinais apenas - sem auto-exec de ordens.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -150,7 +117,6 @@ export async function GET(request: NextRequest) {
 
     const params = JSON.parse(strategy.params || '{}') as Record<string, unknown>;
 
-    // Fire-and-forget: inicia em background, responde imediatamente
     runVolumeSpikeInBackground(
       { id: strategy.id, displayName: strategy.displayName },
       params
