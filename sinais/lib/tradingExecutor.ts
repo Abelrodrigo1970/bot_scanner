@@ -48,7 +48,12 @@ function isVolumeSpike15m(strategyName: string): boolean {
 
 function isMa200Volatile(strategyName: string): boolean {
   const n = strategyName.toLowerCase();
-  return n.includes('ma200 top') || n.includes('ma200_volatile');
+  return (
+    n.includes('ma200 top') ||
+    n.includes('ma200_volatile') ||
+    n.includes('ma cross top') ||
+    n.includes('ma_volatile')
+  );
 }
 
 /**

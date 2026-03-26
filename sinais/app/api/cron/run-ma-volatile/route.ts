@@ -1,17 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runAllStrategies } from '@/lib/signalEngine';
+import { prisma } from '@/lib/db';
+import { executeSignalReal, closeActivePositionForSymbol } from '@/lib/tradingExecutor';
 
 /**
  * Cron dedicado para MA_VOLATILE (MA60 15m).
- * Gera sinais apenas - sem auto-exec de ordens.
+ * Gera sinais e auto-executa com reversal close (igual à lógica MA200_VOLATILE).
  */
 async function runMaVolatileInBackground(): Promise<void> {
   try {
     console.log('[Run-MA_VOLATILE BG] Iniciando MA_VOLATILE...');
+    const startedAt = new Date();
 
     const signalsCreated = await runAllStrategies({
       exclude: ['RSI', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA200_VOLATILE'],
     });
+
+    // Auto-exec MA_VOLATILE — força fixa 70
+    const maVolatileStrategy = await prisma.strategy.findFirst({
+      where: { name: 'MA_VOLATILE', isActive: true },
+    });
+
+    if (maVolatileStrategy) {
+      const MA_VOLATILE_MIN_STRENGTH = 70;
+      const newSignals = await prisma.signal.findMany({
+        where: {
+          strategyId: maVolatileStrategy.id,
+          status: 'NEW',
+          generatedAt: { gte: startedAt },
+          strength: { gte: MA_VOLATILE_MIN_STRENGTH },
+        },
+        orderBy: { generatedAt: 'asc' },
+      });
+
+      for (const sig of newSignals) {
+        try {
+          // Fechar posição ativa no mesmo símbolo antes de abrir reversão
+          const closeResult = await closeActivePositionForSymbol(sig.symbol);
+          if (closeResult.closed) {
+            console.log(`[Run-MA_VOLATILE BG] 🔄 Posição anterior fechada em ${sig.symbol}: ${closeResult.message}`);
+          }
+
+          const execResult = await executeSignalReal({
+            id: sig.id,
+            symbol: sig.symbol,
+            direction: sig.direction as 'BUY' | 'SELL',
+            entryPrice: sig.entryPrice,
+            stopLoss: sig.stopLoss,
+            target1: sig.target1,
+            target2: sig.target2,
+            target3: sig.target3 ?? null,
+            strength: sig.strength,
+            strategyName: sig.strategyName,
+            status: sig.status,
+          });
+
+          if (execResult.success && execResult.orderId) {
+            await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${sig.id}`;
+            console.log(`[Run-MA_VOLATILE BG] ✅ Auto-executado: ${sig.symbol} ${sig.direction} order ${execResult.orderId}`);
+          } else {
+            console.warn(`[Run-MA_VOLATILE BG] ⚠️ Auto-exec falhou ${sig.symbol}: ${execResult.message}`);
+          }
+        } catch (err) {
+          console.error(`[Run-MA_VOLATILE BG] ❌ Erro auto-exec ${sig.symbol}:`, err);
+        }
+      }
+    }
 
     console.log(`[Run-MA_VOLATILE BG] Concluído: ${signalsCreated} sinais criados`);
   } catch (error) {
