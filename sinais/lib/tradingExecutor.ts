@@ -42,6 +42,31 @@ export interface ClosePositionResult {
   orderId?: number;
 }
 
+function isVolumeSpike15m(strategyName: string): boolean {
+  return strategyName.toLowerCase().includes('volume spike 15m');
+}
+
+/**
+ * Regra operacional validada em backtests:
+ * - Volume Spike 15m executa sempre como SELL (inclui sinais BUY invertidos)
+ * - SL 7%, TP1 10%, TP2 11%
+ */
+function applyVolumeSpike15mExecutionProfile(signal: SignalForTrading): SignalForTrading {
+  if (!isVolumeSpike15m(signal.strategyName)) {
+    return signal;
+  }
+
+  const entry = signal.entryPrice;
+  return {
+    ...signal,
+    direction: 'SELL',
+    stopLoss: entry * 1.07,
+    target1: entry * 0.90,
+    target2: entry * 0.89,
+    target3: null,
+  };
+}
+
 function toSignalForRules(signal: SignalForTrading): SignalForTrading {
   return {
     id: signal.id,
@@ -62,7 +87,8 @@ function toSignalForRules(signal: SignalForTrading): SignalForTrading {
  * Simulação: verifica regras, calcula params e faz LOG. NÃO cria ordens.
  */
 export function executeSignal(signal: SignalForTrading): ExecuteResult {
-  const check = canExecuteSignal(toSignalForRules(signal));
+  const executionSignal = applyVolumeSpike15mExecutionProfile(signal);
+  const check = canExecuteSignal(toSignalForRules(executionSignal));
   if (!check.ok) {
     console.log(`[TradingExecutor] Sinal ${signal.id} rejeitado: ${check.reason}`);
     return {
@@ -72,7 +98,7 @@ export function executeSignal(signal: SignalForTrading): ExecuteResult {
     };
   }
 
-  const params = getExecutionParams(toSignalForRules(signal));
+  const params = getExecutionParams(toSignalForRules(executionSignal));
   if (!params.canExecute || !params.positionSizeUsdt) {
     return {
       success: false,
@@ -82,7 +108,10 @@ export function executeSignal(signal: SignalForTrading): ExecuteResult {
   }
 
   console.log('[TradingExecutor] ===== SIMULAÇÃO (dry run) =====');
-  console.log(`[TradingExecutor] Sinal: ${signal.symbol} ${signal.direction} | Força ${signal.strength}`);
+  if (signal.direction !== executionSignal.direction) {
+    console.log(`[TradingExecutor] Perfil Volume Spike 15m aplicado: ${signal.symbol} ${signal.direction} -> ${executionSignal.direction} (SL 7%, TP1 10%, TP2 11%)`);
+  }
+  console.log(`[TradingExecutor] Sinal: ${executionSignal.symbol} ${executionSignal.direction} | Força ${executionSignal.strength}`);
   console.log(`[TradingExecutor] Entrada: ${params.entryPrice} | Qty: ${params.quantity} | Posição: ${params.positionSizeUsdt} USDT`);
   console.log(`[TradingExecutor] Stop Loss: ${params.stopLoss}`);
   params.takeProfits.forEach((tp) => {
@@ -103,7 +132,8 @@ export function executeSignal(signal: SignalForTrading): ExecuteResult {
  * Só executa se TRADING_ENABLED=true e BINANCE_FUTURES_BASE_URL for Testnet.
  */
 export async function executeSignalReal(signal: SignalForTrading): Promise<ExecuteResult> {
-  const check = canExecuteSignal(toSignalForRules(signal));
+  const executionSignal = applyVolumeSpike15mExecutionProfile(signal);
+  const check = canExecuteSignal(toSignalForRules(executionSignal));
   if (!check.ok) {
     return {
       success: false,
@@ -137,34 +167,38 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
     };
   }
 
-  const params = getExecutionParams(toSignalForRules(signal));
+  const params = getExecutionParams(toSignalForRules(executionSignal));
   if (!params.canExecute) {
     return { success: false, dryRun: false, message: 'Parâmetros inválidos' };
   }
 
   try {
     const [stepSize, tickSize] = await Promise.all([
-      getLotSizeStep(signal.symbol),
-      getTickSize(signal.symbol),
+      getLotSizeStep(executionSignal.symbol),
+      getTickSize(executionSignal.symbol),
     ]);
     const qty = typeof params.quantity === 'number' ? params.quantity : 0;
     const step = Number.isFinite(stepSize) && stepSize > 0 ? stepSize : 0.001;
     const tick = Number.isFinite(tickSize) && tickSize > 0 ? tickSize : 0.01;
     const qtyStr = roundQuantity(qty, step);
-    const triggerPriceStr = roundPriceStopLoss(signal.stopLoss, tick, signal.direction);
+    const triggerPriceStr = roundPriceStopLoss(executionSignal.stopLoss, tick, executionSignal.direction);
+
+    if (signal.direction !== executionSignal.direction) {
+      console.log(`[TradingExecutor] Perfil Volume Spike 15m aplicado: ${signal.symbol} ${signal.direction} -> ${executionSignal.direction} (SL 7%, TP1 10%, TP2 11%)`);
+    }
 
     const entryOrder = await createOrder({
-      symbol: signal.symbol,
-      side: signal.direction,
+      symbol: executionSignal.symbol,
+      side: executionSignal.direction,
       type: 'MARKET',
       quantity: qtyStr,
     });
 
-    const slSide = signal.direction === 'BUY' ? 'SELL' : 'BUY';
+    const slSide = executionSignal.direction === 'BUY' ? 'SELL' : 'BUY';
     let stopOrderId: number | undefined;
     try {
       const stopOrder = await createAlgoOrder({
-        symbol: signal.symbol,
+        symbol: executionSignal.symbol,
         side: slSide,
         type: 'STOP_MARKET',
         triggerPrice: triggerPriceStr,
@@ -175,20 +209,21 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
     } catch (slError: unknown) {
       const slMsg = slError instanceof Error ? slError.message : String(slError);
       if (slMsg.includes('closePosition') && slMsg.includes('existing')) {
-        console.log(`[TradingExecutor] Stop loss já existe para ${signal.symbol}, entrada OK: ${entryOrder.orderId}`);
+        console.log(`[TradingExecutor] Stop loss já existe para ${executionSignal.symbol}, entrada OK: ${entryOrder.orderId}`);
       } else {
         throw slError;
       }
     }
 
-    // Take Profit: TP1 60% (4%), TP2 30% (10%), 10% às 24h (sem ordem na Binance)
+    // Take Profit: TP1 60%, TP2 30%, 10% às 24h (sem ordem na Binance).
+    // Em Volume Spike 15m, os preços já chegam ajustados pelo perfil (TP1 10%, TP2 11%).
     const tps = params.takeProfits ?? [];
     const totalQty = qty;
     const tpPercents = [0.60, 0.30]; // TP1 60%, TP2 30%, 10% às 24h
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
       const tp = tps[i];
-      if (!tp || tp.price === signal.entryPrice) continue;
+      if (!tp || tp.price === executionSignal.entryPrice) continue;
       const tpQty = totalQty * tpPercents[i];
       if (tpQty <= 0) continue;
       const tpQtyStr = roundQuantity(tpQty, step);
@@ -196,7 +231,7 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
       const tpTriggerStr = roundPrice(tp.price, tick);
       try {
         const tpOrder = await createAlgoOrder({
-          symbol: signal.symbol,
+          symbol: executionSignal.symbol,
           side: slSide,
           type: 'TAKE_PROFIT_MARKET',
           triggerPrice: tpTriggerStr,
@@ -217,8 +252,8 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
       success: true,
       dryRun: false,
       message: (stopOrderId
-        ? `Trade executado: ${signal.symbol} ${signal.direction} order ${entryOrder.orderId}`
-        : `Entrada executada: ${signal.symbol} ${signal.direction}. Stop loss já existia para este par.`) + tpWarning,
+        ? `Trade executado: ${executionSignal.symbol} ${executionSignal.direction} order ${entryOrder.orderId}`
+        : `Entrada executada: ${executionSignal.symbol} ${executionSignal.direction}. Stop loss já existia para este par.`) + tpWarning,
       params,
       orderId: entryOrder.orderId,
       stopOrderId,

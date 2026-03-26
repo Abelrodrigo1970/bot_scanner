@@ -185,34 +185,11 @@ export async function runVolumeSpike15mStrategy(
         return null;
       }
 
-      const stopLoss = currentPrice * 0.94;
-      const target1 = currentPrice * 1.04;
-      const target2 = currentPrice * 1.10;
-      const target3: number | undefined = undefined;
-      const strength = Math.min(100, Math.max(60, Math.round(60 + (volumeRatio - volumeMultiplier) * 5)));
-
-      return {
-        direction: 'BUY',
-        entryPrice: currentPrice,
-        stopLoss,
-        target1,
-        target2,
-        target3,
-        strength,
-        extraInfo: JSON.stringify({
-          currentVolume: currentVolume.toFixed(2),
-          volumeAverage: volumeAverage.toFixed(2),
-          volumeRatio: volumeRatio.toFixed(2),
-          volumeMultiplier,
-          lookbackPeriods,
-          priceChange: priceChange.toFixed(4),
-          priceChangePercent: ((priceChange / prevPrice) * 100).toFixed(2),
-        }),
-      };
-    } else {
-      const stopLoss = currentPrice * 1.06;
-      const target1 = currentPrice * 0.96;
-      const target2 = currentPrice * 0.90;
+      // Perfil operacional validado: sinais BUY do Volume Spike 15m são invertidos para SELL
+      // com SL 7%, TP1 10%, TP2 11%.
+      const stopLoss = currentPrice * 1.07;
+      const target1 = currentPrice * 0.90;
+      const target2 = currentPrice * 0.89;
       const target3: number | undefined = undefined;
       const strength = Math.min(100, Math.max(60, Math.round(60 + (volumeRatio - volumeMultiplier) * 5)));
 
@@ -232,6 +209,35 @@ export async function runVolumeSpike15mStrategy(
           lookbackPeriods,
           priceChange: priceChange.toFixed(4),
           priceChangePercent: ((priceChange / prevPrice) * 100).toFixed(2),
+          executionProfile: 'BUY signal inverted to SELL | SL 7% | TP1 10% | TP2 11%',
+          originalDirection: 'BUY',
+        }),
+      };
+    } else {
+      const stopLoss = currentPrice * 1.07;
+      const target1 = currentPrice * 0.90;
+      const target2 = currentPrice * 0.89;
+      const target3: number | undefined = undefined;
+      const strength = Math.min(100, Math.max(60, Math.round(60 + (volumeRatio - volumeMultiplier) * 5)));
+
+      return {
+        direction: 'SELL',
+        entryPrice: currentPrice,
+        stopLoss,
+        target1,
+        target2,
+        target3,
+        strength,
+        extraInfo: JSON.stringify({
+          currentVolume: currentVolume.toFixed(2),
+          volumeAverage: volumeAverage.toFixed(2),
+          volumeRatio: volumeRatio.toFixed(2),
+          volumeMultiplier,
+          lookbackPeriods,
+          priceChange: priceChange.toFixed(4),
+          priceChangePercent: ((priceChange / prevPrice) * 100).toFixed(2),
+          executionProfile: 'SELL signal | SL 7% | TP1 10% | TP2 11%',
+          originalDirection: 'SELL',
         }),
       };
     }
