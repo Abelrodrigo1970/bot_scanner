@@ -355,11 +355,12 @@ export async function runMa60VolatileStrategy(
 
 /**
  * Estratégia MA Cross Top Voláteis (somente MA200):
- * - Análise só nos 25 Top Voláteis da BD
- * - BUY: preço cruza MA200 para cima
- * - SELL: preço cruza MA200 para baixo
- *
- * Mantém stop e TPs iguais à MA_VOLATILE.
+ * - Análise só nos Top Voláteis da BD
+ * - BUY : preço fecha 2%+ ACIMA da MA200 (cruzamento confirmado)
+ *         SL -8% | TP1 +8% (40% posição) | TP2 +15% (40% posição) | 20% restante sai na reversão
+ * - SELL: preço fecha 2%+ ABAIXO da MA200 (cruzamento confirmado)
+ *         SL +8% | TP1 -9% (40% posição) | TP2 -17% (40% posição) | 20% restante sai na reversão
+ * Reversão: novo sinal oposto gerado quando preço cruza MA200 com confirmação de 2%.
  */
 export async function runMa200VolatileStrategy(
   symbol: string,
@@ -368,13 +369,22 @@ export async function runMa200VolatileStrategy(
 ): Promise<SignalResult | null> {
   if (timeframe !== '1h') return null;
 
-  const ma200Period = params.ma200Period ?? 200;
-  const buyStopPercent = params.buyStopPercent ?? 10;
-  const buyTp1Percent = params.buyTp1Percent ?? 20;
-  const buyTp2Percent = params.buyTp2Percent ?? 40;
-  const sellStopPercent = params.sellStopPercent ?? 10;
-  const sellTp1Percent = params.sellTp1Percent ?? 10;
-  const sellTp2Percent = params.sellTp2Percent ?? 20;
+  const ma200Period       = params.ma200Period       ?? 200;
+  const confirmationPct   = params.confirmationPct   ?? 2;   // % além da MA200 para confirmar entrada/reversão
+
+  // Parâmetros COMPRA
+  const buyStopPercent    = params.buyStopPercent    ?? 8;
+  const buyTp1Percent     = params.buyTp1Percent     ?? 8;
+  const buyTp1Position    = params.buyTp1Position    ?? 40;  // % da posição saída no TP1
+  const buyTp2Percent     = params.buyTp2Percent     ?? 15;
+  const buyTp2Position    = params.buyTp2Position    ?? 30;  // % da posição saída no TP2
+
+  // Parâmetros VENDA
+  const sellStopPercent   = params.sellStopPercent   ?? 8;
+  const sellTp1Percent    = params.sellTp1Percent    ?? 9;
+  const sellTp1Position   = params.sellTp1Position   ?? 40;
+  const sellTp2Percent    = params.sellTp2Percent    ?? 17;
+  const sellTp2Position   = params.sellTp2Position   ?? 30;
 
   try {
     const candlesNeeded = ma200Period + 5;
@@ -383,24 +393,28 @@ export async function runMa200VolatileStrategy(
 
     const closes = getCloses(candles);
     // Usar apenas vela fechada para sinal (evita intrabar)
-    const closedCloses = closes.slice(0, -1);
+    const closedCloses     = closes.slice(0, -1);
     const prevClosedCloses = closes.slice(0, -2);
 
     const ma200 = calculateSMA(closedCloses, ma200Period);
     if (ma200 === null) return null;
 
-    // Valores do candle anterior para detectar cruzamento
     const prevMa200 = calculateSMA(prevClosedCloses, ma200Period);
     if (prevMa200 === null) return null;
 
     const currentPrice = candles[candles.length - 2].close;
-    const prevPrice = candles[candles.length - 3].close;
+    const prevPrice    = candles[candles.length - 3].close;
 
-    // COMPRA: preço cruza MA200 para cima (prev <= MA200, agora > MA200)
-    if (prevPrice <= prevMa200 && currentPrice > ma200) {
+    // Limites de confirmação: o fecho deve estar 2%+ além da MA200
+    const confirmUp   = ma200 * (1 + confirmationPct / 100);  // ex: MA200 + 2%
+    const confirmDown = ma200 * (1 - confirmationPct / 100);  // ex: MA200 - 2%
+
+    // COMPRA: vela fechada cruza MA200 para cima E fecha 2%+ acima (reversão confirmada de SELL → BUY)
+    if (prevPrice <= prevMa200 && currentPrice > confirmUp) {
       const stopLoss = currentPrice * (1 - buyStopPercent / 100);
-      const target1 = currentPrice * (1 + buyTp1Percent / 100);
-      const target2 = currentPrice * (1 + buyTp2Percent / 100);
+      const target1  = currentPrice * (1 + buyTp1Percent  / 100);
+      const target2  = currentPrice * (1 + buyTp2Percent  / 100);
+      const distPct  = ((currentPrice - ma200) / ma200 * 100).toFixed(2);
 
       return {
         direction: 'BUY',
@@ -412,21 +426,24 @@ export async function runMa200VolatileStrategy(
         strength: 70,
         extraInfo: JSON.stringify({
           ma200: ma200.toFixed(4),
-          crossover: 'closed candle crosses above MA200',
+          distFromMA200: `+${distPct}%`,
+          crossover: `closed candle crosses +${confirmationPct}% above MA200 (reversal BUY)`,
           stopPercent: buyStopPercent,
           tp1Percent: buyTp1Percent,
+          tp1Position: `${buyTp1Position}%`,
           tp2Percent: buyTp2Percent,
-          tp1Position: '30%',
-          tp2Position: '40%',
+          tp2Position: `${buyTp2Position}%`,
+          remainingPosition: `${100 - buyTp1Position - buyTp2Position}% — exit on reversal`,
         }),
       };
     }
 
-    // VENDA: preço cruza MA200 para baixo (prev >= MA200, agora < MA200)
-    if (prevPrice >= prevMa200 && currentPrice < ma200) {
+    // VENDA: vela fechada cruza MA200 para baixo E fecha 2%+ abaixo (reversão confirmada de BUY → SELL)
+    if (prevPrice >= prevMa200 && currentPrice < confirmDown) {
       const stopLoss = currentPrice * (1 + sellStopPercent / 100);
-      const target1 = currentPrice * (1 - sellTp1Percent / 100);
-      const target2 = currentPrice * (1 - sellTp2Percent / 100);
+      const target1  = currentPrice * (1 - sellTp1Percent  / 100);
+      const target2  = currentPrice * (1 - sellTp2Percent  / 100);
+      const distPct  = ((ma200 - currentPrice) / ma200 * 100).toFixed(2);
 
       return {
         direction: 'SELL',
@@ -438,10 +455,14 @@ export async function runMa200VolatileStrategy(
         strength: 70,
         extraInfo: JSON.stringify({
           ma200: ma200.toFixed(4),
-          crossover: 'closed candle crosses below MA200',
+          distFromMA200: `-${distPct}%`,
+          crossover: `closed candle crosses -${confirmationPct}% below MA200 (reversal SELL)`,
           stopPercent: sellStopPercent,
           tp1Percent: sellTp1Percent,
+          tp1Position: `${sellTp1Position}%`,
           tp2Percent: sellTp2Percent,
+          tp2Position: `${sellTp2Position}%`,
+          remainingPosition: `${100 - sellTp1Position - sellTp2Position}% — exit on reversal`,
         }),
       };
     }

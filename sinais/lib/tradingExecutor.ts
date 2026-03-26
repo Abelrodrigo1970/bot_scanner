@@ -46,6 +46,11 @@ function isVolumeSpike15m(strategyName: string): boolean {
   return strategyName.toLowerCase().includes('volume spike 15m');
 }
 
+function isMa200Volatile(strategyName: string): boolean {
+  const n = strategyName.toLowerCase();
+  return n.includes('ma200 top') || n.includes('ma200_volatile');
+}
+
 /**
  * Regra operacional validada em backtests:
  * - Volume Spike 15m executa sempre como SELL (inclui sinais BUY invertidos)
@@ -215,11 +220,14 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
       }
     }
 
-    // Take Profit: TP1 60%, TP2 30%, 10% às 24h (sem ordem na Binance).
-    // Em Volume Spike 15m, os preços já chegam ajustados pelo perfil (TP1 10%, TP2 11%).
+    // Take Profit:
+    //   MA200_VOLATILE  → TP1 40%, TP2 30%, 30% sai na reversão (sem ordem)
+    //   Outras          → TP1 60%, TP2 30%, 10% às 24h (sem ordem)
     const tps = params.takeProfits ?? [];
     const totalQty = qty;
-    const tpPercents = [0.60, 0.30]; // TP1 60%, TP2 30%, 10% às 24h
+    const tpPercents = isMa200Volatile(signal.strategyName)
+      ? [0.40, 0.30]   // MA200: 40% TP1, 30% TP2, 30% fecha na reversão
+      : [0.60, 0.30];  // outros: 60% TP1, 30% TP2, 10% às 24h
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
       const tp = tps[i];

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runAllStrategies } from '@/lib/signalEngine';
 import { update24hResults, updateMissingHighLow24h } from '@/lib/update24hResults';
 import { prisma } from '@/lib/db';
-import { executeSignalReal } from '@/lib/tradingExecutor';
+import { executeSignalReal, closeActivePositionForSymbol } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 
 /**
@@ -19,25 +19,32 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
       exclude: ['VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA_VOLATILE'],
     });
 
-    // Auto-exec apenas para MA200_VOLATILE
+    // Auto-exec MA200_VOLATILE — força mínima 70 (igual à força fixa dos sinais MA200)
     const ma200Strategy = await prisma.strategy.findFirst({
       where: { name: 'MA200_VOLATILE', isActive: true },
     });
 
     if (ma200Strategy) {
-      const autoMinStrength = getAutoExecuteMinStrength();
+      // MA200 gera sinais com força 70; não usar autoMinStrength (padrão 80) pois bloquearia todos
+      const MA200_MIN_STRENGTH = 70;
       const newSignals = await prisma.signal.findMany({
         where: {
           strategyId: ma200Strategy.id,
           status: 'NEW',
           generatedAt: { gte: startedAt },
-          strength: { gte: autoMinStrength },
+          strength: { gte: MA200_MIN_STRENGTH },
         },
         orderBy: { generatedAt: 'asc' },
       });
 
       for (const sig of newSignals) {
         try {
+          // Fechar posição ativa no mesmo símbolo antes de abrir reversão
+          const closeResult = await closeActivePositionForSymbol(sig.symbol);
+          if (closeResult.closed) {
+            console.log(`[Run-Signals BG] 🔄 Posição anterior fechada em ${sig.symbol}: ${closeResult.message}`);
+          }
+
           const execResult = await executeSignalReal({
             id: sig.id,
             symbol: sig.symbol,
