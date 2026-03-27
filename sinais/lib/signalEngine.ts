@@ -693,8 +693,12 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
             if (signalResult) {
               const allowBuy  = params.allowBuy  !== false;
               const allowSell = params.allowSell !== false;
-              if (signalResult.direction === 'BUY'  && !allowBuy)  signalResult = null;
-              if (signalResult.direction === 'SELL' && !allowSell) signalResult = null;
+              if (
+                (signalResult.direction === 'BUY'  && !allowBuy) ||
+                (signalResult.direction === 'SELL' && !allowSell)
+              ) {
+                signalResult = null;
+              }
               if (!signalResult) continue;
             }
 
