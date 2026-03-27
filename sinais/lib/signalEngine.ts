@@ -689,6 +689,15 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 continue;
             }
 
+            // Filtrar direção com base em allowBuy / allowSell dos params
+            if (signalResult) {
+              const allowBuy  = params.allowBuy  !== false;
+              const allowSell = params.allowSell !== false;
+              if (signalResult.direction === 'BUY'  && !allowBuy)  signalResult = null;
+              if (signalResult.direction === 'SELL' && !allowSell) signalResult = null;
+              if (!signalResult) continue;
+            }
+
             if (signalResult) {
               const recentSignal = await prisma.signal.findFirst({
                 where: {

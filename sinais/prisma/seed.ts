@@ -16,6 +16,8 @@ async function main() {
         buyThreshold: 69,
         sellThreshold: 29,
         maPeriod: 200,
+        allowBuy: true,
+        allowSell: true,
       }),
     },
     create: {
@@ -29,6 +31,8 @@ async function main() {
         buyThreshold: 69,
         sellThreshold: 29,
         maPeriod: 200,
+        allowBuy: true,
+        allowSell: true,
       }),
     },
   });
@@ -42,6 +46,8 @@ async function main() {
       params: JSON.stringify({
         volumeMultiplier: 20,
         lookbackHours: 20,
+        allowBuy: true,
+        allowSell: true,
       }),
     },
     create: {
@@ -53,6 +59,8 @@ async function main() {
       params: JSON.stringify({
         volumeMultiplier: 20,
         lookbackHours: 20,
+        allowBuy: true,
+        allowSell: true,
       }),
     },
   });
@@ -77,6 +85,8 @@ async function main() {
         sellTp1Position: 40,
         sellTp2Percent: 17,
         sellTp2Position: 30,
+        allowBuy: true,
+        allowSell: true,
       }),
     },
     create: {
@@ -99,6 +109,8 @@ async function main() {
         sellTp1Position: 40,
         sellTp2Percent: 17,
         sellTp2Position: 30,
+        allowBuy: true,
+        allowSell: true,
       }),
     },
   });
@@ -112,6 +124,8 @@ async function main() {
       params: JSON.stringify({
         volumeMultiplier: 20,
         lookbackPeriods: 15,
+        allowBuy: true,
+        allowSell: true,
       }),
     },
     create: {
@@ -123,6 +137,8 @@ async function main() {
       params: JSON.stringify({
         volumeMultiplier: 20,
         lookbackPeriods: 15,
+        allowBuy: true,
+        allowSell: true,
       }),
     },
   });
@@ -146,6 +162,8 @@ async function main() {
         sellTp1Position: 40,
         sellTp2Percent: 17,
         sellTp2Position: 30,
+        allowBuy: true,
+        allowSell: true,
       }),
     },
     create: {
@@ -167,6 +185,8 @@ async function main() {
         sellTp1Position: 40,
         sellTp2Percent: 17,
         sellTp2Position: 30,
+        allowBuy: true,
+        allowSell: true,
       }),
     },
   });

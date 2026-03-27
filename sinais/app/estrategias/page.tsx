@@ -20,11 +20,20 @@ export default function EstrategiasPage() {
   const [message, setMessage] = useState('');
   const [tradingEnabled, setTradingEnabled] = useState<boolean | null>(null);
   const [savingTrading, setSavingTrading] = useState(false);
+  const [exchange, setExchange] = useState<{ exchange: string; label: string } | null>(null);
 
   useEffect(() => {
     fetchStrategies();
     fetchTradingSetting();
+    fetchExchange();
   }, []);
+
+  const fetchExchange = async () => {
+    try {
+      const res = await fetch('/api/settings/exchange');
+      if (res.ok) setExchange(await res.json());
+    } catch { /* ignorar */ }
+  };
 
   const fetchTradingSetting = async () => {
     try {
@@ -125,6 +134,31 @@ export default function EstrategiasPage() {
       }
     } catch (error) {
       setMessage('Erro ao atualizar parâmetros');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleToggleDirection = async (strategy: Strategy, direction: 'BUY' | 'SELL') => {
+    const params = JSON.parse(strategy.params || '{}');
+    const field = direction === 'BUY' ? 'allowBuy' : 'allowSell';
+    const current = params[field] !== false; // default true
+    try {
+      setSaving(strategy.id + direction);
+      const response = await fetch('/api/strategies', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: strategy.id, [field]: !current }),
+      });
+      if (response.ok) {
+        await fetchStrategies();
+        setMessage(`${direction} ${!current ? 'ativado' : 'desativado'} em ${strategy.displayName}`);
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setMessage('Erro ao atualizar');
+      }
+    } catch {
+      setMessage('Erro ao atualizar');
     } finally {
       setSaving(null);
     }
@@ -318,18 +352,30 @@ export default function EstrategiasPage() {
           </div>
         )}
 
-        {/* Toggle Trades Binance */}
+        {/* Toggle Trades + Exchange */}
         <div className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Execução de Trades na Binance
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Quando ativo, os sinais com força suficiente são executados automaticamente no cron, e podes executar manualmente na página do sinal. Os sinais continuam sempre a ser gerados.
+          <div className="flex justify-between items-start gap-4 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-1 flex-wrap">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Execução de Trades
+                </h2>
+                {exchange && (
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${
+                    exchange.exchange === 'bybit'
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700'
+                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                  }`}>
+                    {exchange.exchange === 'bybit' ? '🟡 Bybit' : '🔵 Binance'}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Quando ativo, os sinais com força suficiente são executados automaticamente no cron.
+                A exchange é configurada via variável <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">EXCHANGE</code> no Railway.
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-shrink-0">
               <span className={`text-sm font-medium ${tradingEnabled ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
                 {tradingEnabled === null ? '...' : tradingEnabled ? 'Ativado' : 'Desativado'}
               </span>
@@ -396,6 +442,39 @@ export default function EstrategiasPage() {
                       ? 'Desativar'
                       : 'Ativar'}
                   </button>
+                </div>
+
+                {/* Toggles BUY / SELL */}
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    Direções permitidas
+                  </h3>
+                  <div className="flex gap-3">
+                    {(['BUY', 'SELL'] as const).map((dir) => {
+                      const params   = JSON.parse(strategy.params || '{}');
+                      const field    = dir === 'BUY' ? 'allowBuy' : 'allowSell';
+                      const enabled  = params[field] !== false;
+                      const isSaving = saving === strategy.id + dir;
+                      return (
+                        <button
+                          key={dir}
+                          onClick={() => handleToggleDirection(strategy, dir)}
+                          disabled={isSaving}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                            enabled
+                              ? dir === 'BUY'
+                                ? 'bg-green-100 border-green-400 text-green-800 dark:bg-green-900/40 dark:border-green-600 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/60'
+                                : 'bg-red-100 border-red-400 text-red-800 dark:bg-red-900/40 dark:border-red-600 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60'
+                              : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          } ${isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${enabled ? (dir === 'BUY' ? 'bg-green-500' : 'bg-red-500') : 'bg-gray-400'}`} />
+                          {dir === 'BUY' ? '↑ COMPRA' : '↓ VENDA'}
+                          <span className="text-xs opacity-70">{enabled ? 'ON' : 'OFF'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">

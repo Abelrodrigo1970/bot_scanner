@@ -53,7 +53,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, isActive, params } = body;
+    const { id, isActive, params, allowBuy, allowSell } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -66,8 +66,23 @@ export async function PUT(request: NextRequest) {
     if (typeof isActive === 'boolean') {
       updateData.isActive = isActive;
     }
-    if (params) {
-      updateData.params = JSON.stringify(params);
+
+    // allowBuy / allowSell podem vir directamente no body ou dentro de params
+    if (params || typeof allowBuy === 'boolean' || typeof allowSell === 'boolean') {
+      // Se vierem allowBuy/allowSell directamente, mergear com params existentes
+      if (typeof allowBuy === 'boolean' || typeof allowSell === 'boolean') {
+        const current = await prisma.strategy.findUnique({ where: { id } });
+        const currentParams = current?.params ? JSON.parse(current.params) : {};
+        const merged = {
+          ...currentParams,
+          ...(params ?? {}),
+          ...(typeof allowBuy  === 'boolean' ? { allowBuy }  : {}),
+          ...(typeof allowSell === 'boolean' ? { allowSell } : {}),
+        };
+        updateData.params = JSON.stringify(merged);
+      } else {
+        updateData.params = JSON.stringify(params);
+      }
     }
 
     const strategy = await prisma.strategy.update({
