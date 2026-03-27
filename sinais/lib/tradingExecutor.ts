@@ -1,7 +1,8 @@
 /**
- * Executor de sinais Volume Spike.
- * executeSignal() = simulação (logs).
- * executeSignalReal() = ordens reais na Binance (apenas Testnet quando TRADING_ENABLED).
+ * Executor de sinais — Binance Futures e Bybit Linear Futures.
+ * executeSignal()     = simulação (logs, sem ordens).
+ * executeSignalReal() = ordens reais (Testnet quando TRADING_ENABLED).
+ * Define EXCHANGE=bybit para usar Bybit em vez de Binance.
  */
 
 import {
@@ -16,6 +17,11 @@ import {
   hasTradingCredentials,
   isTestnet,
 } from './binanceConfig';
+import {
+  hasBybitCredentials,
+  isBybitEnabled,
+  isBybitTestnet,
+} from './bybitConfig';
 import { getTradingEnabled } from './settings';
 import {
   createOrder,
@@ -24,6 +30,12 @@ import {
   getLotSizeStep,
   getTickSize,
 } from './binanceFuturesClient';
+import {
+  createBybitOrder,
+  getBybitPositionRisk,
+  getBybitLotSizeStep,
+  getBybitTickSize,
+} from './bybitFuturesClient';
 
 export interface ExecuteResult {
   success: boolean;
@@ -138,48 +150,22 @@ export function executeSignal(signal: SignalForTrading): ExecuteResult {
 }
 
 /**
- * Execução real: cria ordem MARKET (entrada) + STOP_MARKET (stop loss).
- * Só executa se TRADING_ENABLED=true e BINANCE_FUTURES_BASE_URL for Testnet.
+ * Execução real na Binance Futures (Testnet obrigatório).
+ * Cria ordem MARKET (entrada) + STOP_MARKET (SL) + TAKE_PROFIT_MARKET (TP1/TP2).
  */
-export async function executeSignalReal(signal: SignalForTrading): Promise<ExecuteResult> {
-  const executionSignal = applyVolumeSpike15mExecutionProfile(signal);
-  const check = canExecuteSignal(toSignalForRules(executionSignal));
-  if (!check.ok) {
-    return {
-      success: false,
-      dryRun: false,
-      message: check.reason ?? 'Sinal não executável',
-    };
-  }
-
+async function executeSignalBinance(
+  signal: SignalForTrading,
+  executionSignal: SignalForTrading,
+  params: ReturnType<typeof getExecutionParams>
+): Promise<ExecuteResult> {
   if (!hasTradingCredentials()) {
-    return {
-      success: false,
-      dryRun: false,
-      message: 'Credenciais Binance não configuradas',
-    };
+    return { success: false, dryRun: false, message: 'Credenciais Binance não configuradas' };
   }
-
-  const tradingEnabled = await getTradingEnabled();
-  if (!tradingEnabled) {
-    return {
-      success: false,
-      dryRun: false,
-      message: 'Trades desativados na aplicação (ativa em Estratégias)',
-    };
-  }
-
   if (!isTestnet()) {
     return {
-      success: false,
-      dryRun: false,
+      success: false, dryRun: false,
       message: 'Execução apenas permitida no Testnet. Configure BINANCE_FUTURES_BASE_URL para testnet.binancefuture.com',
     };
-  }
-
-  const params = getExecutionParams(toSignalForRules(executionSignal));
-  if (!params.canExecute) {
-    return { success: false, dryRun: false, message: 'Parâmetros inválidos' };
   }
 
   try {
@@ -187,20 +173,20 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
       getLotSizeStep(executionSignal.symbol),
       getTickSize(executionSignal.symbol),
     ]);
-    const qty = typeof params.quantity === 'number' ? params.quantity : 0;
+    const qty  = typeof params.quantity === 'number' ? params.quantity : 0;
     const step = Number.isFinite(stepSize) && stepSize > 0 ? stepSize : 0.001;
     const tick = Number.isFinite(tickSize) && tickSize > 0 ? tickSize : 0.01;
-    const qtyStr = roundQuantity(qty, step);
+    const qtyStr          = roundQuantity(qty, step);
     const triggerPriceStr = roundPriceStopLoss(executionSignal.stopLoss, tick, executionSignal.direction);
 
     if (signal.direction !== executionSignal.direction) {
-      console.log(`[TradingExecutor] Perfil Volume Spike 15m aplicado: ${signal.symbol} ${signal.direction} -> ${executionSignal.direction} (SL 7%, TP1 10%, TP2 11%)`);
+      console.log(`[Binance] Perfil VS15m: ${signal.symbol} ${signal.direction} -> ${executionSignal.direction}`);
     }
 
     const entryOrder = await createOrder({
       symbol: executionSignal.symbol,
-      side: executionSignal.direction,
-      type: 'MARKET',
+      side:   executionSignal.direction,
+      type:   'MARKET',
       quantity: qtyStr,
     });
 
@@ -208,160 +194,292 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
     let stopOrderId: number | undefined;
     try {
       const stopOrder = await createAlgoOrder({
-        symbol: executionSignal.symbol,
-        side: slSide,
-        type: 'STOP_MARKET',
+        symbol:       executionSignal.symbol,
+        side:         slSide,
+        type:         'STOP_MARKET',
         triggerPrice: triggerPriceStr,
         closePosition: true,
       });
       stopOrderId = stopOrder.algoId;
-      console.log(`[TradingExecutor] Ordem entrada: ${entryOrder.orderId} | Stop Loss algo: ${stopOrderId}`);
+      console.log(`[Binance] Entrada: ${entryOrder.orderId} | SL algo: ${stopOrderId}`);
     } catch (slError: unknown) {
       const slMsg = slError instanceof Error ? slError.message : String(slError);
       if (slMsg.includes('closePosition') && slMsg.includes('existing')) {
-        console.log(`[TradingExecutor] Stop loss já existe para ${executionSignal.symbol}, entrada OK: ${entryOrder.orderId}`);
+        console.log(`[Binance] SL já existe para ${executionSignal.symbol}, entrada OK: ${entryOrder.orderId}`);
       } else {
         throw slError;
       }
     }
 
-    // Take Profit:
-    //   MA200_VOLATILE  → TP1 40%, TP2 30%, 30% sai na reversão (sem ordem)
-    //   Outras          → TP1 60%, TP2 30%, 10% às 24h (sem ordem)
-    const tps = params.takeProfits ?? [];
-    const totalQty = qty;
-    const tpPercents = isMa200Volatile(signal.strategyName)
-      ? [0.40, 0.30]   // MA200: 40% TP1, 30% TP2, 30% fecha na reversão
-      : [0.60, 0.30];  // outros: 60% TP1, 30% TP2, 10% às 24h
+    const tps       = params.takeProfits ?? [];
+    const totalQty  = qty;
+    const tpPercents = isMa200Volatile(signal.strategyName) ? [0.40, 0.30] : [0.60, 0.30];
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
       const tp = tps[i];
       if (!tp || tp.price === executionSignal.entryPrice) continue;
-      const tpQty = totalQty * tpPercents[i];
+      const tpQty    = totalQty * tpPercents[i];
       if (tpQty <= 0) continue;
       const tpQtyStr = roundQuantity(tpQty, step);
       if (parseFloat(tpQtyStr) <= 0) continue;
-      const tpTriggerStr = roundPrice(tp.price, tick);
+      const tpTrigger = roundPrice(tp.price, tick);
       try {
         const tpOrder = await createAlgoOrder({
-          symbol: executionSignal.symbol,
-          side: slSide,
-          type: 'TAKE_PROFIT_MARKET',
-          triggerPrice: tpTriggerStr,
-          quantity: tpQtyStr,
-          reduceOnly: true,
+          symbol:       executionSignal.symbol,
+          side:         slSide,
+          type:         'TAKE_PROFIT_MARKET',
+          triggerPrice: tpTrigger,
+          quantity:     tpQtyStr,
+          reduceOnly:   true,
         });
-        console.log(`[TradingExecutor] TP${i + 1} (${tp.label}): ${tpQtyStr} @ ${tpTriggerStr} | algo: ${tpOrder.algoId}`);
+        console.log(`[Binance] TP${i + 1}: ${tpQtyStr} @ ${tpTrigger} | algo: ${tpOrder.algoId}`);
       } catch (tpErr) {
         const msg = tpErr instanceof Error ? tpErr.message : String(tpErr);
         tpErrors.push(`TP${i + 1}: ${msg}`);
-        console.warn(`[TradingExecutor] Erro ao criar TP${i + 1}:`, tpErr);
+        console.warn(`[Binance] Erro TP${i + 1}:`, tpErr);
       }
     }
 
-    const tpWarning = tpErrors.length > 0 ? ` (TP não colocados: ${tpErrors.join('; ')})` : '';
-
+    const tpWarning = tpErrors.length > 0 ? ` (TPs não colocados: ${tpErrors.join('; ')})` : '';
     return {
-      success: true,
-      dryRun: false,
-      message: (stopOrderId
-        ? `Trade executado: ${executionSignal.symbol} ${executionSignal.direction} order ${entryOrder.orderId}`
-        : `Entrada executada: ${executionSignal.symbol} ${executionSignal.direction}. Stop loss já existia para este par.`) + tpWarning,
+      success:     true,
+      dryRun:      false,
+      message:     (stopOrderId
+        ? `[Binance] Trade: ${executionSignal.symbol} ${executionSignal.direction} order ${entryOrder.orderId}`
+        : `[Binance] Entrada: ${executionSignal.symbol}. SL já existia.`) + tpWarning,
       params,
-      orderId: entryOrder.orderId,
+      orderId:     entryOrder.orderId,
       stopOrderId,
     };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error('[TradingExecutor] Erro ao executar:', msg);
-    return {
-      success: false,
-      dryRun: false,
-      message: `Erro Binance: ${msg}`,
-    };
+    console.error('[Binance] Erro ao executar:', msg);
+    return { success: false, dryRun: false, message: `Erro Binance: ${msg}` };
   }
 }
 
 /**
- * Fecha posição ativa de um símbolo (se existir) antes de abrir novo sinal.
- * Útil para estratégia "flip" (ex.: MA60 sinal contrário).
+ * Execução real na Bybit Linear Futures (Testnet obrigatório).
+ * Cria ordem MARKET com SL embutido + ordens condicionais TP1/TP2.
  */
-export async function closeActivePositionForSymbol(symbol: string): Promise<ClosePositionResult> {
-  if (!hasTradingCredentials()) {
-    return { closed: false, message: 'Credenciais Binance não configuradas' };
+async function executeSignalBybit(
+  signal: SignalForTrading,
+  executionSignal: SignalForTrading,
+  params: ReturnType<typeof getExecutionParams>
+): Promise<ExecuteResult> {
+  if (!hasBybitCredentials()) {
+    return { success: false, dryRun: false, message: 'Credenciais Bybit não configuradas (BYBIT_API_KEY / BYBIT_API_SECRET)' };
+  }
+  if (!isBybitTestnet()) {
+    return {
+      success: false, dryRun: false,
+      message: 'Execução Bybit apenas permitida no Testnet. Configure BYBIT_BASE_URL=https://api-testnet.bybit.com',
+    };
+  }
+
+  try {
+    const [stepSize, tickSize] = await Promise.all([
+      getBybitLotSizeStep(executionSignal.symbol),
+      getBybitTickSize(executionSignal.symbol),
+    ]);
+    const qty  = typeof params.quantity === 'number' ? params.quantity : 0;
+    const step = Number.isFinite(stepSize) && stepSize > 0 ? stepSize : 0.001;
+    const tick = Number.isFinite(tickSize) && tickSize > 0 ? tickSize : 0.01;
+    const qtyStr    = roundQuantity(qty, step);
+    const slPriceStr = roundPriceStopLoss(executionSignal.stopLoss, tick, executionSignal.direction);
+
+    if (signal.direction !== executionSignal.direction) {
+      console.log(`[Bybit] Perfil VS15m: ${signal.symbol} ${signal.direction} -> ${executionSignal.direction}`);
+    }
+
+    // Bybit usa "Buy"/"Sell" (capitalizado)
+    const bybitSide: 'Buy' | 'Sell' = executionSignal.direction === 'BUY' ? 'Buy' : 'Sell';
+    const bybitSlSide: 'Buy' | 'Sell' = bybitSide === 'Buy' ? 'Sell' : 'Buy';
+
+    // Ordem de entrada com SL embutido
+    const entryOrder = await createBybitOrder({
+      symbol:     executionSignal.symbol,
+      side:       bybitSide,
+      qty:        qtyStr,
+      stopLoss:   slPriceStr,
+      slTriggerBy: 'MarkPrice',
+    });
+    console.log(`[Bybit] Entrada: ${entryOrder.orderId} | SL @ ${slPriceStr}`);
+
+    // Ordens de Take Profit separadas
+    const tps        = params.takeProfits ?? [];
+    const totalQty   = qty;
+    const tpPercents = isMa200Volatile(signal.strategyName) ? [0.40, 0.30] : [0.60, 0.30];
+    const tpErrors: string[] = [];
+    for (let i = 0; i < Math.min(tps.length, 2); i++) {
+      const tp = tps[i];
+      if (!tp || tp.price === executionSignal.entryPrice) continue;
+      const tpQty    = totalQty * tpPercents[i];
+      if (tpQty <= 0) continue;
+      const tpQtyStr  = roundQuantity(tpQty, step);
+      if (parseFloat(tpQtyStr) <= 0) continue;
+      const tpTrigger = roundPrice(tp.price, tick);
+      try {
+        const tpOrder = await createBybitOrder({
+          symbol:         executionSignal.symbol,
+          side:           bybitSlSide,
+          qty:            tpQtyStr,
+          stopOrderType:  'TakeProfit',
+          triggerPrice:   tpTrigger,
+          triggerBy:      'MarkPrice',
+          reduceOnly:     true,
+        });
+        console.log(`[Bybit] TP${i + 1}: ${tpQtyStr} @ ${tpTrigger} | order: ${tpOrder.orderId}`);
+      } catch (tpErr) {
+        const msg = tpErr instanceof Error ? tpErr.message : String(tpErr);
+        tpErrors.push(`TP${i + 1}: ${msg}`);
+        console.warn(`[Bybit] Erro TP${i + 1}:`, tpErr);
+      }
+    }
+
+    const tpWarning = tpErrors.length > 0 ? ` (TPs não colocados: ${tpErrors.join('; ')})` : '';
+    // Converter orderId string -> number para compatibilidade com ExecuteResult
+    const orderIdNum = parseInt(entryOrder.orderId, 10) || 0;
+    return {
+      success: true,
+      dryRun:  false,
+      message: `[Bybit] Trade: ${executionSignal.symbol} ${executionSignal.direction} order ${entryOrder.orderId}` + tpWarning,
+      params,
+      orderId: orderIdNum,
+    };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('[Bybit] Erro ao executar:', msg);
+    return { success: false, dryRun: false, message: `Erro Bybit: ${msg}` };
+  }
+}
+
+/**
+ * Execução real: encaminha para Bybit ou Binance conforme EXCHANGE env var.
+ * Só executa se TRADING_ENABLED=true e a exchange estiver em Testnet.
+ */
+export async function executeSignalReal(signal: SignalForTrading): Promise<ExecuteResult> {
+  const executionSignal = applyVolumeSpike15mExecutionProfile(signal);
+  const check = canExecuteSignal(toSignalForRules(executionSignal));
+  if (!check.ok) {
+    return { success: false, dryRun: false, message: check.reason ?? 'Sinal não executável' };
   }
 
   const tradingEnabled = await getTradingEnabled();
   if (!tradingEnabled) {
-    return { closed: false, message: 'Trades desativados na aplicação' };
+    return { success: false, dryRun: false, message: 'Trades desativados na aplicação (ativa em Estratégias)' };
   }
 
-  if (!isTestnet()) {
-    return { closed: false, message: 'Fecho automático permitido apenas em Testnet' };
+  const params = getExecutionParams(toSignalForRules(executionSignal));
+  if (!params.canExecute) {
+    return { success: false, dryRun: false, message: 'Parâmetros inválidos' };
   }
+
+  if (isBybitEnabled()) {
+    return executeSignalBybit(signal, executionSignal, params);
+  }
+  return executeSignalBinance(signal, executionSignal, params);
+}
+
+/**
+ * Fecha posição ativa de um símbolo (se existir) antes de abrir novo sinal (flip/reversão).
+ * Funciona tanto em Binance como em Bybit conforme EXCHANGE env var.
+ */
+export async function closeActivePositionForSymbol(symbol: string): Promise<ClosePositionResult> {
+  const tradingEnabled = await getTradingEnabled();
+  if (!tradingEnabled) return { closed: false, message: 'Trades desativados na aplicação' };
+
+  if (isBybitEnabled()) {
+    // --- Bybit ---
+    if (!hasBybitCredentials()) return { closed: false, message: 'Credenciais Bybit não configuradas' };
+    if (!isBybitTestnet())      return { closed: false, message: 'Fecho automático permitido apenas em Testnet Bybit' };
+
+    try {
+      const positions = await getBybitPositionRisk(symbol);
+      const active = positions.find((p) => p.symbol === symbol && parseFloat(p.size) > 0 && p.side !== 'None');
+      if (!active) return { closed: false, message: `Sem posição ativa em ${symbol} (Bybit)` };
+
+      const size      = parseFloat(active.size);
+      const closeSide: 'BUY' | 'SELL' = active.side === 'Buy' ? 'SELL' : 'BUY';
+      const step      = await getBybitLotSizeStep(symbol);
+      const qty       = roundQuantity(size, Number.isFinite(step) && step > 0 ? step : 0.001);
+
+      if (parseFloat(qty) <= 0) return { closed: false, message: `Quantidade inválida para fechar ${symbol}: ${qty}` };
+
+      const bybitSide: 'Buy' | 'Sell' = closeSide === 'BUY' ? 'Buy' : 'Sell';
+      const closeOrder = await createBybitOrder({ symbol, side: bybitSide, qty, reduceOnly: true });
+      return {
+        closed: true,
+        message: `Posição fechada em ${symbol} (Bybit)`,
+        side: closeSide,
+        quantity: qty,
+        orderId: parseInt(closeOrder.orderId, 10) || 0,
+      };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return { closed: false, message: `Erro Bybit ao fechar ${symbol}: ${msg}` };
+    }
+  }
+
+  // --- Binance (default) ---
+  if (!hasTradingCredentials()) return { closed: false, message: 'Credenciais Binance não configuradas' };
+  if (!isTestnet())             return { closed: false, message: 'Fecho automático permitido apenas em Testnet Binance' };
 
   try {
     const positions = await getPositionRisk();
     const active = positions.find((p) => p.symbol === symbol && Math.abs(parseFloat(p.positionAmt)) > 0);
+    if (!active) return { closed: false, message: `Sem posição ativa em ${symbol}` };
 
-    if (!active) {
-      return { closed: false, message: `Sem posição ativa em ${symbol}` };
-    }
-
-    const amt = parseFloat(active.positionAmt);
+    const amt       = parseFloat(active.positionAmt);
     const closeSide: 'BUY' | 'SELL' = amt > 0 ? 'SELL' : 'BUY';
-    const absQty = Math.abs(amt);
-    const step = await getLotSizeStep(symbol);
-    const qty = roundQuantity(absQty, Number.isFinite(step) && step > 0 ? step : 0.001);
+    const step      = await getLotSizeStep(symbol);
+    const qty       = roundQuantity(Math.abs(amt), Number.isFinite(step) && step > 0 ? step : 0.001);
 
-    if (parseFloat(qty) <= 0) {
-      return { closed: false, message: `Quantidade inválida para fechar ${symbol}: ${qty}` };
-    }
+    if (parseFloat(qty) <= 0) return { closed: false, message: `Quantidade inválida para fechar ${symbol}: ${qty}` };
 
-    const closeOrder = await createOrder({
-      symbol,
-      side: closeSide,
-      type: 'MARKET',
-      quantity: qty,
-      reduceOnly: true,
-    });
-
+    const closeOrder = await createOrder({ symbol, side: closeSide, type: 'MARKET', quantity: qty, reduceOnly: true });
     return {
       closed: true,
-      message: `Posição ativa fechada em ${symbol}`,
+      message: `Posição fechada em ${symbol} (Binance)`,
       side: closeSide,
       quantity: qty,
       orderId: closeOrder.orderId,
     };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    return { closed: false, message: `Erro ao fechar posição de ${symbol}: ${msg}` };
+    return { closed: false, message: `Erro Binance ao fechar ${symbol}: ${msg}` };
   }
 }
 
 /**
- * Verifica se o executor pode correr (credenciais, trades ativados na app, Testnet).
+ * Verifica se o executor pode correr (credenciais, trades ativados, Testnet).
  */
 export async function getExecutorStatus(): Promise<{
+  exchange:       string;
   hasCredentials: boolean;
   tradingEnabled: boolean;
-  isTestnet: boolean;
-  ready: boolean;
-  reason?: string;
+  isTestnet:      boolean;
+  ready:          boolean;
+  reason?:        string;
 }> {
-  const hasCredentials = hasTradingCredentials();
   const tradingEnabled = await getTradingEnabled();
-  const testnet = isTestnet();
-  let reason: string | undefined;
-  if (!hasCredentials) reason = 'API Key/Secret não configurados';
-  else if (!tradingEnabled) reason = 'Trades desativados (ativa em Estratégias)';
-  else if (!testnet) reason = 'Apenas Testnet permitido para execução';
+  const exchange       = isBybitEnabled() ? 'bybit' : 'binance';
 
-  return {
-    hasCredentials,
-    tradingEnabled,
-    isTestnet: testnet,
-    ready: hasCredentials && tradingEnabled && testnet,
-    reason,
-  };
+  if (isBybitEnabled()) {
+    const hasCredentials = hasBybitCredentials();
+    const testnet        = isBybitTestnet();
+    let reason: string | undefined;
+    if (!hasCredentials) reason = 'BYBIT_API_KEY / BYBIT_API_SECRET não configurados';
+    else if (!tradingEnabled) reason = 'Trades desativados (ativa em Estratégias)';
+    else if (!testnet)   reason = 'Apenas Testnet Bybit permitido. Configure BYBIT_BASE_URL=https://api-testnet.bybit.com';
+    return { exchange, hasCredentials, tradingEnabled, isTestnet: testnet, ready: hasCredentials && tradingEnabled && testnet, reason };
+  }
+
+  const hasCredentials = hasTradingCredentials();
+  const testnet        = isTestnet();
+  let reason: string | undefined;
+  if (!hasCredentials) reason = 'BINANCE_API_KEY / BINANCE_API_SECRET não configurados';
+  else if (!tradingEnabled) reason = 'Trades desativados (ativa em Estratégias)';
+  else if (!testnet)   reason = 'Apenas Testnet Binance permitido. Configure BINANCE_FUTURES_BASE_URL';
+  return { exchange, hasCredentials, tradingEnabled, isTestnet: testnet, ready: hasCredentials && tradingEnabled && testnet, reason };
 }
