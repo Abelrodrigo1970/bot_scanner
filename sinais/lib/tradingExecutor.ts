@@ -150,7 +150,7 @@ export function executeSignal(signal: SignalForTrading): ExecuteResult {
 }
 
 /**
- * Execução real na Binance Futures (Testnet obrigatório).
+ * Execução real na Binance Futures (Testnet e Mainnet).
  * Cria ordem MARKET (entrada) + STOP_MARKET (SL) + TAKE_PROFIT_MARKET (TP1/TP2).
  */
 async function executeSignalBinance(
@@ -160,12 +160,6 @@ async function executeSignalBinance(
 ): Promise<ExecuteResult> {
   if (!hasTradingCredentials()) {
     return { success: false, dryRun: false, message: 'Credenciais Binance não configuradas' };
-  }
-  if (!isTestnet()) {
-    return {
-      success: false, dryRun: false,
-      message: 'Execução apenas permitida no Testnet. Configure BINANCE_FUTURES_BASE_URL para testnet.binancefuture.com',
-    };
   }
 
   try {
@@ -430,7 +424,6 @@ export async function closeActivePositionForSymbol(
 
   // --- Binance (default) ---
   if (!hasTradingCredentials()) return { closed: false, message: 'Credenciais Binance não configuradas' };
-  if (!isTestnet())             return { closed: false, message: 'Fecho automático permitido apenas em Testnet Binance' };
 
   try {
     const positions = await getPositionRisk();
@@ -485,8 +478,7 @@ export async function getExecutorStatus(): Promise<{
   const hasCredentials = hasTradingCredentials();
   const testnet        = isTestnet();
   let reason: string | undefined;
-  if (!hasCredentials) reason = 'BINANCE_API_KEY / BINANCE_API_SECRET não configurados';
+  if (!hasCredentials)    reason = 'BINANCE_API_KEY / BINANCE_API_SECRET não configurados';
   else if (!tradingEnabled) reason = 'Trades desativados (ativa em Estratégias)';
-  else if (!testnet)   reason = 'Apenas Testnet Binance permitido. Configure BINANCE_FUTURES_BASE_URL';
-  return { exchange, hasCredentials, tradingEnabled, isTestnet: testnet, ready: hasCredentials && tradingEnabled && testnet, reason };
+  return { exchange, hasCredentials, tradingEnabled, isTestnet: testnet, ready: hasCredentials && tradingEnabled, reason };
 }
