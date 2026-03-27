@@ -18,7 +18,7 @@ async function main() {
         maPeriod: 200,
         allowBuy: true,
         allowSell: true,
-        exchange: 'binance',
+        exchange: 'bybit',
       }),
     },
     create: {
@@ -34,7 +34,7 @@ async function main() {
         maPeriod: 200,
         allowBuy: true,
         allowSell: true,
-        exchange: 'binance',
+        exchange: 'bybit',
       }),
     },
   });
@@ -50,7 +50,7 @@ async function main() {
         lookbackHours: 20,
         allowBuy: true,
         allowSell: true,
-        exchange: 'binance',
+        exchange: 'bybit',
       }),
     },
     create: {
@@ -64,7 +64,7 @@ async function main() {
         lookbackHours: 20,
         allowBuy: true,
         allowSell: true,
-        exchange: 'binance',
+        exchange: 'bybit',
       }),
     },
   });
@@ -89,7 +89,7 @@ async function main() {
         sellTp1Position: 40,
         sellTp2Percent: 17,
         sellTp2Position: 30,
-        allowBuy: true,
+        allowBuy: false,
         allowSell: true,
         exchange: 'binance',
       }),
@@ -114,7 +114,7 @@ async function main() {
         sellTp1Position: 40,
         sellTp2Percent: 17,
         sellTp2Position: 30,
-        allowBuy: true,
+        allowBuy: false,
         allowSell: true,
         exchange: 'binance',
       }),
@@ -130,7 +130,7 @@ async function main() {
       params: JSON.stringify({
         volumeMultiplier: 20,
         lookbackPeriods: 15,
-        allowBuy: true,
+        allowBuy: false,
         allowSell: true,
         exchange: 'binance',
       }),
@@ -144,7 +144,7 @@ async function main() {
       params: JSON.stringify({
         volumeMultiplier: 20,
         lookbackPeriods: 15,
-        allowBuy: true,
+        allowBuy: false,
         allowSell: true,
         exchange: 'binance',
       }),
