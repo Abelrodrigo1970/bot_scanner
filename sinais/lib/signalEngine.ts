@@ -149,13 +149,15 @@ export async function runVolumeSpike15mStrategy(
   const volumeMultiplier = Number.isFinite(configuredMultiplier) && configuredMultiplier > 0
     ? Math.max(20, configuredMultiplier)
     : 20;
-  const lookbackPeriods = params.lookbackPeriods ?? 15;
+  const lookbackPeriods  = params.lookbackPeriods  ?? 15;
+  const ma200Period      = params.ma200Period       ?? 200;
+  const buyMa200PctAbove = params.buyMa200PctAbove  ?? 8;  // % acima da MA200 para confirmar SELL invertido
 
   try {
-    const candlesNeeded = lookbackPeriods + 5;
+    const candlesNeeded = Math.max(ma200Period + 5, lookbackPeriods + 5);
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
 
-    if (candles.length < lookbackPeriods + 2) {
+    if (candles.length < ma200Period + 2) {
       return null;
     }
 
@@ -175,9 +177,13 @@ export async function runVolumeSpike15mStrategy(
       return null;
     }
 
+    const closes      = getCloses(candles);
+    const closedCloses = closes.slice(0, -1);
+    const ma200        = calculateSMA(closedCloses, ma200Period);
+
     const currentPrice = candles[lastClosedIndex].close;
-    const prevPrice = candles[lastClosedIndex - 1].close;
-    const priceChange = currentPrice - prevPrice;
+    const prevPrice    = candles[lastClosedIndex - 1].close;
+    const priceChange  = currentPrice - prevPrice;
     const direction: 'BUY' | 'SELL' = priceChange >= 0 ? 'BUY' : 'SELL';
 
     if (direction === 'BUY') {
@@ -185,11 +191,14 @@ export async function runVolumeSpike15mStrategy(
         return null;
       }
 
-      // Perfil operacional validado: sinais BUY do Volume Spike 15m são invertidos para SELL
-      // com SL 7%, TP1 10%, TP2 11%.
+      // Só inverte para SELL se o preço estiver 8%+ acima da MA200 (15m)
+      if (ma200 === null || currentPrice < ma200 * (1 + buyMa200PctAbove / 100)) {
+        return null;
+      }
+
       const stopLoss = currentPrice * 1.07;
-      const target1 = currentPrice * 0.90;
-      const target2 = currentPrice * 0.89;
+      const target1  = currentPrice * 0.90;
+      const target2  = currentPrice * 0.89;
       const target3: number | undefined = undefined;
       const strength = Math.min(100, Math.max(60, Math.round(60 + (volumeRatio - volumeMultiplier) * 5)));
 
@@ -207,9 +216,12 @@ export async function runVolumeSpike15mStrategy(
           volumeRatio: volumeRatio.toFixed(2),
           volumeMultiplier,
           lookbackPeriods,
+          ma200: ma200?.toFixed(4),
+          pctAboveMa200: (((currentPrice / ma200!) - 1) * 100).toFixed(2),
+          buyMa200PctAbove,
           priceChange: priceChange.toFixed(4),
           priceChangePercent: ((priceChange / prevPrice) * 100).toFixed(2),
-          executionProfile: 'BUY signal inverted to SELL | SL 7% | TP1 10% | TP2 11%',
+          executionProfile: `BUY signal inverted to SELL (price ${buyMa200PctAbove}%+ above MA200) | SL 7% | TP1 10% | TP2 11%`,
           originalDirection: 'BUY',
         }),
       };
