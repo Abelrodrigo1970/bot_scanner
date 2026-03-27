@@ -452,7 +452,9 @@ export async function closeActivePositionForSymbol(
 }
 
 /**
- * Verifica se o executor pode correr (credenciais, trades ativados, Testnet).
+ * Verifica se o executor pode correr (credenciais, trades ativados).
+ * `ready` é true se pelo menos uma exchange estiver configurada (Binance ou Bybit Testnet),
+ * para o botão "Executar" funcionar com a exchange definida por estratégia.
  */
 export async function getExecutorStatus(): Promise<{
   exchange:       string;
@@ -461,24 +463,41 @@ export async function getExecutorStatus(): Promise<{
   isTestnet:      boolean;
   ready:          boolean;
   reason?:        string;
+  readyBinance?:  boolean;
+  readyBybit?:    boolean;
 }> {
-  const tradingEnabled = await getTradingEnabled();
-  const exchange       = isBybitEnabled() ? 'bybit' : 'binance';
+  const tradingEnabled   = await getTradingEnabled();
+  const envExchange      = isBybitEnabled() ? 'bybit' : 'binance';
+  const hasBinance       = hasTradingCredentials();
+  const hasBybit         = hasBybitCredentials();
+  const bybitTestnet     = isBybitTestnet();
+  const binanceTestnet   = isTestnet();
 
-  if (isBybitEnabled()) {
-    const hasCredentials = hasBybitCredentials();
-    const testnet        = isBybitTestnet();
-    let reason: string | undefined;
-    if (!hasCredentials) reason = 'BYBIT_API_KEY / BYBIT_API_SECRET não configurados';
-    else if (!tradingEnabled) reason = 'Trades desativados (ativa em Estratégias)';
-    else if (!testnet)   reason = 'Apenas Testnet Bybit permitido. Configure BYBIT_BASE_URL=https://api-testnet.bybit.com';
-    return { exchange, hasCredentials, tradingEnabled, isTestnet: testnet, ready: hasCredentials && tradingEnabled && testnet, reason };
+  const readyBinance = hasBinance;
+  const readyBybit   = hasBybit && bybitTestnet;
+  const ready        = tradingEnabled && (readyBinance || readyBybit);
+
+  let reason: string | undefined;
+  if (!tradingEnabled) {
+    reason = 'Trades desativados (ativa em Estratégias)';
+  } else if (!readyBinance && !readyBybit) {
+    if (!hasBinance && !hasBybit) {
+      reason = 'Configure BINANCE_API_KEY/SECRET e/ou BYBIT (Testnet)';
+    } else if (hasBybit && !bybitTestnet) {
+      reason = 'Bybit: use Testnet (api-testnet.bybit.com) ou configure Binance para estratégias Binance';
+    } else {
+      reason = 'Credenciais incompletas para executar';
+    }
   }
 
-  const hasCredentials = hasTradingCredentials();
-  const testnet        = isTestnet();
-  let reason: string | undefined;
-  if (!hasCredentials)    reason = 'BINANCE_API_KEY / BINANCE_API_SECRET não configurados';
-  else if (!tradingEnabled) reason = 'Trades desativados (ativa em Estratégias)';
-  return { exchange, hasCredentials, tradingEnabled, isTestnet: testnet, ready: hasCredentials && tradingEnabled, reason };
+  return {
+    exchange: envExchange,
+    hasCredentials: envExchange === 'bybit' ? hasBybit : hasBinance,
+    tradingEnabled,
+    isTestnet: envExchange === 'bybit' ? bybitTestnet : binanceTestnet,
+    ready,
+    reason,
+    readyBinance,
+    readyBybit,
+  };
 }

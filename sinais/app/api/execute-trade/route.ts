@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
         strength: true,
         strategyName: true,
         status: true,
+        strategy: { select: { params: true } },
       },
     });
 
@@ -79,6 +80,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const stratParams = JSON.parse(signal.strategy?.params || '{}');
+    const strategyExchange = (stratParams.exchange === 'bybit' ? 'bybit' : 'binance') as
+      | 'binance'
+      | 'bybit';
+
     const result = await executeSignalReal({
       id: signal.id,
       symbol: signal.symbol,
@@ -91,6 +97,7 @@ export async function POST(request: NextRequest) {
       strength: signal.strength,
       strategyName: signal.strategyName,
       status: signal.status,
+      exchange: strategyExchange,
     });
 
     if (result.success && result.orderId) {
