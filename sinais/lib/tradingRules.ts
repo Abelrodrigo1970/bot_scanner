@@ -17,6 +17,8 @@ export interface SignalForTrading {
   strength: number;
   strategyName: string;
   status: string;
+  /** Exchange onde executar: 'binance' | 'bybit'. Sobrepõe a variável EXCHANGE global. */
+  exchange?: 'binance' | 'bybit';
 }
 
 /** Estratégias permitidas para trading automático */

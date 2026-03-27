@@ -139,6 +139,30 @@ export default function EstrategiasPage() {
     }
   };
 
+  const handleSetExchange = async (strategy: Strategy, ex: 'binance' | 'bybit') => {
+    const params = JSON.parse(strategy.params || '{}');
+    if (params.exchange === ex) return;
+    try {
+      setSaving(strategy.id + 'exchange');
+      const response = await fetch('/api/strategies', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: strategy.id, params: { ...params, exchange: ex } }),
+      });
+      if (response.ok) {
+        await fetchStrategies();
+        setMessage(`Exchange de ${strategy.displayName} alterada para ${ex === 'bybit' ? 'Bybit' : 'Binance'}`);
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setMessage('Erro ao atualizar exchange');
+      }
+    } catch {
+      setMessage('Erro ao atualizar exchange');
+    } finally {
+      setSaving(null);
+    }
+  };
+
   const handleToggleDirection = async (strategy: Strategy, direction: 'BUY' | 'SELL') => {
     const params = JSON.parse(strategy.params || '{}');
     const field = direction === 'BUY' ? 'allowBuy' : 'allowSell';
@@ -443,6 +467,35 @@ export default function EstrategiasPage() {
                       : 'Ativar'}
                   </button>
                 </div>
+
+                {/* Selector Exchange */}
+                {(() => {
+                  const params = JSON.parse(strategy.params || '{}');
+                  const currentEx = params.exchange || 'binance';
+                  return (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Exchange</h3>
+                      <div className="flex gap-2">
+                        {(['binance', 'bybit'] as const).map((ex) => (
+                          <button
+                            key={ex}
+                            onClick={() => handleSetExchange(strategy, ex)}
+                            disabled={saving === strategy.id + 'exchange'}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                              currentEx === ex
+                                ? ex === 'bybit'
+                                  ? 'bg-yellow-400 border-yellow-500 text-yellow-900 dark:bg-yellow-500 dark:text-yellow-950'
+                                  : 'bg-blue-500 border-blue-600 text-white dark:bg-blue-600'
+                                : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            {ex === 'bybit' ? '🟡 Bybit' : '🔵 Binance'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Toggles BUY / SELL */}
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">

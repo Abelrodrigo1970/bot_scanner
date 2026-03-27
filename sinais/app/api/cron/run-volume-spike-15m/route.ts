@@ -65,6 +65,7 @@ async function runVolumeSpike15mInBackground(
             signalsCreated++;
 
             const autoMinStrength = getAutoExecuteMinStrength();
+            const vsExchange = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
             if (signalResult.strength >= autoMinStrength) {
               console.log(`[Volume Spike 15m BG] 🚀 Auto-exec: ${symbol} força ${signalResult.strength} (>= ${autoMinStrength})`);
               try {
@@ -80,6 +81,7 @@ async function runVolumeSpike15mInBackground(
                   strength: created.strength,
                   strategyName: created.strategyName,
                   status: created.status,
+                  exchange: vsExchange,
                 });
                 if (result.success && result.orderId) {
                   await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${created.id}`;

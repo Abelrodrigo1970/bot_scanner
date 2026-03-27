@@ -23,6 +23,9 @@ async function runMaVolatileInBackground(): Promise<void> {
 
     if (maVolatileStrategy) {
       const MA_VOLATILE_MIN_STRENGTH = 70;
+      const maParams = JSON.parse(maVolatileStrategy.params || '{}');
+      const maExchange = (maParams.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+
       const newSignals = await prisma.signal.findMany({
         where: {
           strategyId: maVolatileStrategy.id,
@@ -35,8 +38,7 @@ async function runMaVolatileInBackground(): Promise<void> {
 
       for (const sig of newSignals) {
         try {
-          // Fechar posição ativa no mesmo símbolo antes de abrir reversão
-          const closeResult = await closeActivePositionForSymbol(sig.symbol);
+          const closeResult = await closeActivePositionForSymbol(sig.symbol, maExchange);
           if (closeResult.closed) {
             console.log(`[Run-MA_VOLATILE BG] 🔄 Posição anterior fechada em ${sig.symbol}: ${closeResult.message}`);
           }
@@ -53,6 +55,7 @@ async function runMaVolatileInBackground(): Promise<void> {
             strength: sig.strength,
             strategyName: sig.strategyName,
             status: sig.status,
+            exchange: maExchange,
           });
 
           if (execResult.success && execResult.orderId) {

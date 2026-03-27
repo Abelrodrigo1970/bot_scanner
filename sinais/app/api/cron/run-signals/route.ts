@@ -25,8 +25,10 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
     });
 
     if (ma200Strategy) {
-      // MA200 gera sinais com força 70; não usar autoMinStrength (padrão 80) pois bloquearia todos
       const MA200_MIN_STRENGTH = 70;
+      const ma200Params = JSON.parse(ma200Strategy.params || '{}');
+      const ma200Exchange = (ma200Params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+
       const newSignals = await prisma.signal.findMany({
         where: {
           strategyId: ma200Strategy.id,
@@ -39,8 +41,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
 
       for (const sig of newSignals) {
         try {
-          // Fechar posição ativa no mesmo símbolo antes de abrir reversão
-          const closeResult = await closeActivePositionForSymbol(sig.symbol);
+          const closeResult = await closeActivePositionForSymbol(sig.symbol, ma200Exchange);
           if (closeResult.closed) {
             console.log(`[Run-Signals BG] 🔄 Posição anterior fechada em ${sig.symbol}: ${closeResult.message}`);
           }
@@ -57,6 +58,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
             strength: sig.strength,
             strategyName: sig.strategyName,
             status: sig.status,
+            exchange: ma200Exchange,
           });
 
           if (execResult.success && execResult.orderId) {

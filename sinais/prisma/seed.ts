@@ -18,6 +18,7 @@ async function main() {
         maPeriod: 200,
         allowBuy: true,
         allowSell: true,
+        exchange: 'binance',
       }),
     },
     create: {
@@ -33,6 +34,7 @@ async function main() {
         maPeriod: 200,
         allowBuy: true,
         allowSell: true,
+        exchange: 'binance',
       }),
     },
   });
@@ -48,6 +50,7 @@ async function main() {
         lookbackHours: 20,
         allowBuy: true,
         allowSell: true,
+        exchange: 'binance',
       }),
     },
     create: {
@@ -61,6 +64,7 @@ async function main() {
         lookbackHours: 20,
         allowBuy: true,
         allowSell: true,
+        exchange: 'binance',
       }),
     },
   });
@@ -87,6 +91,7 @@ async function main() {
         sellTp2Position: 30,
         allowBuy: true,
         allowSell: true,
+        exchange: 'binance',
       }),
     },
     create: {
@@ -111,6 +116,7 @@ async function main() {
         sellTp2Position: 30,
         allowBuy: true,
         allowSell: true,
+        exchange: 'binance',
       }),
     },
   });
@@ -126,6 +132,7 @@ async function main() {
         lookbackPeriods: 15,
         allowBuy: true,
         allowSell: true,
+        exchange: 'binance',
       }),
     },
     create: {
@@ -139,6 +146,7 @@ async function main() {
         lookbackPeriods: 15,
         allowBuy: true,
         allowSell: true,
+        exchange: 'binance',
       }),
     },
   });
@@ -164,6 +172,7 @@ async function main() {
         sellTp2Position: 30,
         allowBuy: true,
         allowSell: true,
+        exchange: 'binance',
       }),
     },
     create: {
@@ -187,6 +196,7 @@ async function main() {
         sellTp2Position: 30,
         allowBuy: true,
         allowSell: true,
+        exchange: 'binance',
       }),
     },
   });

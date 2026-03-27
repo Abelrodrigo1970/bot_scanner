@@ -375,7 +375,9 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
     return { success: false, dryRun: false, message: 'Parâmetros inválidos' };
   }
 
-  if (isBybitEnabled()) {
+  // Prioridade: exchange do sinal > variável EXCHANGE global
+  const useBybit = signal.exchange === 'bybit' || (signal.exchange !== 'binance' && isBybitEnabled());
+  if (useBybit) {
     return executeSignalBybit(signal, executionSignal, params);
   }
   return executeSignalBinance(signal, executionSignal, params);
@@ -383,13 +385,18 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
 
 /**
  * Fecha posição ativa de um símbolo (se existir) antes de abrir novo sinal (flip/reversão).
- * Funciona tanto em Binance como em Bybit conforme EXCHANGE env var.
+ * Funciona tanto em Binance como em Bybit conforme exchange passada ou EXCHANGE env var.
  */
-export async function closeActivePositionForSymbol(symbol: string): Promise<ClosePositionResult> {
+export async function closeActivePositionForSymbol(
+  symbol: string,
+  exchange?: 'binance' | 'bybit'
+): Promise<ClosePositionResult> {
   const tradingEnabled = await getTradingEnabled();
   if (!tradingEnabled) return { closed: false, message: 'Trades desativados na aplicação' };
 
-  if (isBybitEnabled()) {
+  const useBybit = exchange === 'bybit' || (exchange !== 'binance' && isBybitEnabled());
+
+  if (useBybit) {
     // --- Bybit ---
     if (!hasBybitCredentials()) return { closed: false, message: 'Credenciais Bybit não configuradas' };
     if (!isBybitTestnet())      return { closed: false, message: 'Fecho automático permitido apenas em Testnet Bybit' };
