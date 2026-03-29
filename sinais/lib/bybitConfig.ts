@@ -1,19 +1,30 @@
 /**
  * Configuração da Bybit para o bot de trading.
- * Suporta Linear Futures (USDT perpetual) em Mainnet e Testnet.
+ * Só ambientes sem dinheiro real: Demo Trading ou Testnet.
+ * Docs Demo: https://bybit-exchange.github.io/docs/v5/demo
  */
 
-const BYBIT_MAINNET = 'https://api.bybit.com';
-const BYBIT_TESTNET = 'https://api-testnet.bybit.com';
+/** Demo Trading (fundos fictícios, API keys criadas no modo Demo da conta). */
+const BYBIT_DEMO_DEFAULT = 'https://api-demo.bybit.com';
 
 export function getBybitBaseUrl(): string {
   const url = process.env.BYBIT_BASE_URL;
   if (url) return url.replace(/\/$/, '');
-  return BYBIT_MAINNET;
+  return BYBIT_DEMO_DEFAULT;
 }
 
 export function isBybitTestnet(): boolean {
-  return getBybitBaseUrl().includes('testnet');
+  return getBybitBaseUrl().toLowerCase().includes('testnet');
+}
+
+/** Demo Trading (api-demo.bybit.com) — não é Mainnet real. */
+export function isBybitDemo(): boolean {
+  return getBybitBaseUrl().toLowerCase().includes('api-demo');
+}
+
+/** Ambiente permitido pelo bot: Testnet ou Demo (nunca Mainnet real). */
+export function isBybitPaperTrading(): boolean {
+  return isBybitTestnet() || isBybitDemo();
 }
 
 export function hasBybitCredentials(): boolean {
