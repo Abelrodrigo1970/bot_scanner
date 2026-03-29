@@ -1,7 +1,7 @@
 /**
  * Executor de sinais — Binance Futures e Bybit Linear Futures.
  * executeSignal()     = simulação (logs, sem ordens).
- * executeSignalReal() = ordens reais (Testnet quando TRADING_ENABLED).
+ * executeSignalReal() = ordens reais quando TRADING_ENABLED (Binance/Bybit Testnet ou Mainnet).
  * Define EXCHANGE=bybit para usar Bybit em vez de Binance.
  */
 
@@ -253,7 +253,7 @@ async function executeSignalBinance(
 }
 
 /**
- * Execução real na Bybit Linear Futures (Testnet obrigatório).
+ * Execução real na Bybit Linear Futures (Testnet ou Mainnet).
  * Cria ordem MARKET com SL embutido + ordens condicionais TP1/TP2.
  */
 async function executeSignalBybit(
@@ -263,12 +263,6 @@ async function executeSignalBybit(
 ): Promise<ExecuteResult> {
   if (!hasBybitCredentials()) {
     return { success: false, dryRun: false, message: 'Credenciais Bybit não configuradas (BYBIT_API_KEY / BYBIT_API_SECRET)' };
-  }
-  if (!isBybitTestnet()) {
-    return {
-      success: false, dryRun: false,
-      message: 'Execução Bybit apenas permitida no Testnet. Configure BYBIT_BASE_URL=https://api-testnet.bybit.com',
-    };
   }
 
   try {
@@ -350,7 +344,7 @@ async function executeSignalBybit(
 
 /**
  * Execução real: encaminha para Bybit ou Binance conforme EXCHANGE env var.
- * Só executa se TRADING_ENABLED=true e a exchange estiver em Testnet.
+ * Só executa se TRADING_ENABLED=true.
  */
 export async function executeSignalReal(signal: SignalForTrading): Promise<ExecuteResult> {
   const executionSignal = applyVolumeSpike15mExecutionProfile(signal);
@@ -393,7 +387,6 @@ export async function closeActivePositionForSymbol(
   if (useBybit) {
     // --- Bybit ---
     if (!hasBybitCredentials()) return { closed: false, message: 'Credenciais Bybit não configuradas' };
-    if (!isBybitTestnet())      return { closed: false, message: 'Fecho automático permitido apenas em Testnet Bybit' };
 
     try {
       const positions = await getBybitPositionRisk(symbol);
@@ -453,7 +446,7 @@ export async function closeActivePositionForSymbol(
 
 /**
  * Verifica se o executor pode correr (credenciais, trades ativados).
- * `ready` é true se pelo menos uma exchange estiver configurada (Binance ou Bybit Testnet),
+ * `ready` é true se pelo menos uma exchange estiver configurada (Binance ou Bybit),
  * para o botão "Executar" funcionar com a exchange definida por estratégia.
  */
 export async function getExecutorStatus(): Promise<{
@@ -474,7 +467,7 @@ export async function getExecutorStatus(): Promise<{
   const binanceTestnet   = isTestnet();
 
   const readyBinance = hasBinance;
-  const readyBybit   = hasBybit && bybitTestnet;
+  const readyBybit   = hasBybit;
   const ready        = tradingEnabled && (readyBinance || readyBybit);
 
   let reason: string | undefined;
@@ -482,9 +475,7 @@ export async function getExecutorStatus(): Promise<{
     reason = 'Trades desativados (ativa em Estratégias)';
   } else if (!readyBinance && !readyBybit) {
     if (!hasBinance && !hasBybit) {
-      reason = 'Configure BINANCE_API_KEY/SECRET e/ou BYBIT (Testnet)';
-    } else if (hasBybit && !bybitTestnet) {
-      reason = 'Bybit: use Testnet (api-testnet.bybit.com) ou configure Binance para estratégias Binance';
+      reason = 'Configure BINANCE_API_KEY/SECRET e/ou BYBIT_API_KEY/SECRET';
     } else {
       reason = 'Credenciais incompletas para executar';
     }
