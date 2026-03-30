@@ -494,10 +494,11 @@ export async function runMa200VolatileStrategy(
 }
 
 /**
- * Estratégia RSI (invertida / momentum):
- * COMPRA quando RSI sobe acima de 69 (cruzamento) E preço > MA200
- * VENDA quando RSI desce abaixo de 29 (cruzamento) E preço < MA200
- * Stop 10%, TP1 35% posição @ 9%, TP2 35% posição @ 24%, TP3 30% às 24h
+ * Estratégia RSI — Top Volatilidade 1h:
+ * BUY  quando RSI cruza de baixo para cima 60  → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h
+ * SELL quando RSI cruza de cima para baixo 40  → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h
+ * Usa sempre o candle fechado (não o em formação).
+ * Corre apenas em símbolos Top Volatilidade (filtrado em runAllStrategies).
  */
 export async function runRsiStrategy(
   symbol: string,
@@ -506,65 +507,69 @@ export async function runRsiStrategy(
 ): Promise<SignalResult | null> {
   if (timeframe !== '1h') return null;
 
-  const period = params.period || 14;
-  const buyThreshold = params.buyThreshold ?? 69;   // Compra quando sobe acima
-  const sellThreshold = params.sellThreshold ?? 29; // Vende quando desce abaixo
-  const maPeriod = params.maPeriod ?? 200;
+  const period        = params.period        ?? 14;
+  const buyThreshold  = params.buyThreshold  ?? 60;
+  const sellThreshold = params.sellThreshold ?? 40;
+  const maPeriod      = params.maPeriod      ?? 200;
 
   try {
     const candlesNeeded = Math.max(period + 25, maPeriod + 5);
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
-    if (candles.length < period + 3 || candles.length < maPeriod) return null;
+    if (candles.length < maPeriod + 3) return null;
 
     const closes = getCloses(candles);
-    const rsi = calculateRSI(closes, period);
-    const prevCloses = closes.slice(0, -1);
-    const prevRsi = calculateRSI(prevCloses, period);
-    const ma200 = calculateSMA(closes, maPeriod);
+
+    // Usa candle fechado: exclui o candle ainda em formação
+    const closedCloses     = closes.slice(0, -1);
+    const prevClosedCloses = closes.slice(0, -2);
+
+    const rsi     = calculateRSI(closedCloses,     period);
+    const prevRsi = calculateRSI(prevClosedCloses,  period);
+    const ma200   = calculateSMA(closedCloses, maPeriod);
     if (rsi === null || prevRsi === null || ma200 === null) return null;
 
-    const currentPrice = candles[candles.length - 1].close;
+    const currentPrice = candles[candles.length - 2].close; // último candle fechado
 
-    // COMPRA: RSI sobe acima de 69 (cruzamento) E preço acima da MA200
+    // BUY: RSI cruza de baixo para cima 60 E preço acima MA200
     if (prevRsi <= buyThreshold && rsi > buyThreshold && currentPrice > ma200) {
       return {
         direction: 'BUY',
         entryPrice: currentPrice,
-        stopLoss: currentPrice * 0.90,    // 10% stop
-        target1: currentPrice * 1.09,     // TP1: 9% valorização, 35% posição
-        target2: currentPrice * 1.24,     // TP2: 24% valorização, 35% posição
-        target3: undefined,               // TP3: 30% restante às 24h
+        stopLoss: currentPrice * 0.95,   // SL -5%
+        target1:  currentPrice * 1.05,   // TP1 +5%  — 35% posição
+        target2:  currentPrice * 1.11,   // TP2 +11% — 35% posição (30% fecha às 24h)
+        target3:  undefined,
         strength: Math.min(100, Math.max(60, Math.round(60 + (rsi - buyThreshold) * 2))),
         extraInfo: JSON.stringify({
           rsi: rsi.toFixed(2),
           prevRsi: prevRsi.toFixed(2),
           buyThreshold,
           ma200: ma200.toFixed(4),
-          tp1Percent: 9,
-          tp2Percent: 24,
-          tp3Percent: '24h',
+          sl: 5, tp1Percent: 5, tp1Position: 35,
+          tp2Percent: 11, tp2Position: 35,
+          tp3: '30% às 24h',
         }),
       };
     }
 
-    // VENDA: RSI desce abaixo de 29 (cruzamento) E preço abaixo da MA200
+    // SELL: RSI cruza de cima para baixo 40 E preço abaixo MA200
     if (prevRsi >= sellThreshold && rsi < sellThreshold && currentPrice < ma200) {
       return {
         direction: 'SELL',
         entryPrice: currentPrice,
-        stopLoss: currentPrice * 1.10,    // 10% stop
-        target1: currentPrice * 0.91,     // TP1: 9% valorização, 35% posição
-        target2: currentPrice * 0.76,     // TP2: 24% valorização, 35% posição
-        target3: undefined,               // TP3: 30% restante às 24h
+        stopLoss: currentPrice * 1.05,   // SL +5%
+        target1:  currentPrice * 0.95,   // TP1 -5%  — 30% posição
+        target2:  currentPrice * 0.89,   // TP2 -11% — 35% posição (35% fecha às 24h)
+        target3:  undefined,
         strength: Math.min(100, Math.max(60, Math.round(60 + (sellThreshold - rsi) * 2))),
         extraInfo: JSON.stringify({
           rsi: rsi.toFixed(2),
           prevRsi: prevRsi.toFixed(2),
           sellThreshold,
           ma200: ma200.toFixed(4),
-          tp1Percent: 9,
-          tp2Percent: 24,
-          tp3Percent: '24h',
+          sl: 5, tp1Percent: 5, tp1Position: 30,
+          tp2Percent: 11, tp2Position: 35,
+          tp3: '35% às 24h',
         }),
       };
     }
@@ -620,8 +625,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
       const timeframesToUse: Timeframe[] =
         strategy.name === 'VOLUME_SPIKE_15M' ? ['15m'] :
-        strategy.name === 'MA_VOLATILE' ? ['15m'] :
-        strategy.name === 'MA200_VOLATILE' ? ['1h'] : timeframes;
+        strategy.name === 'MA_VOLATILE'      ? ['15m'] :
+        strategy.name === 'MA200_VOLATILE'   ? ['1h'] :
+        strategy.name === 'RSI'              ? ['1h'] : timeframes;
 
       let symbolsToAnalyze = symbols;
       if (strategy.name === 'VOLUME_SPIKE' || strategy.name === 'VOLUME_SPIKE_15M') {
@@ -633,7 +639,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           symbolsToAnalyze = volumeSymbols;
           console.log(`✅ Encontrados ${volumeSymbols.length} símbolos`);
         }
-      } else if (strategy.name === 'MA_VOLATILE' || strategy.name === 'MA200_VOLATILE') {
+      } else if (strategy.name === 'MA_VOLATILE' || strategy.name === 'MA200_VOLATILE' || strategy.name === 'RSI') {
         console.log(`🔍 Buscando Top Voláteis na BD para ${strategy.name}...`);
         const topVolatile = await prisma.topVolatile.findMany({ orderBy: { rank: 'asc' } });
         if (topVolatile.length > 0) {

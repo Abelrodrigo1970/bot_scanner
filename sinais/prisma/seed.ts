@@ -9,12 +9,13 @@ async function main() {
   const rsiStrategy = await prisma.strategy.upsert({
     where: { name: 'RSI' },
     update: {
+      displayName: 'RSI Top Volatilidade (60/40)',
       description:
-        'COMPRA quando RSI sobe acima de 69 E preço > MA200. VENDA quando RSI desce abaixo de 29 E preço < MA200. Stop 10%, TP1 35% @ 9%, TP2 35% @ 24%, 30% às 24h.',
+        'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h.',
       params: JSON.stringify({
         period: 14,
-        buyThreshold: 69,
-        sellThreshold: 29,
+        buyThreshold: 60,
+        sellThreshold: 40,
         maPeriod: 200,
         allowBuy: true,
         allowSell: true,
@@ -23,14 +24,14 @@ async function main() {
     },
     create: {
       name: 'RSI',
-      displayName: 'RSI Momentum (cruzamento 69/29)',
+      displayName: 'RSI Top Volatilidade (60/40)',
       description:
-        'COMPRA quando RSI sobe acima de 69 E preço > MA200. VENDA quando RSI desce abaixo de 29 E preço < MA200. Stop 10%, TP1 35% @ 9%, TP2 35% @ 24%, 30% às 24h.',
+        'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h.',
       isActive: true,
       params: JSON.stringify({
         period: 14,
-        buyThreshold: 69,
-        sellThreshold: 29,
+        buyThreshold: 60,
+        sellThreshold: 40,
         maPeriod: 200,
         allowBuy: true,
         allowSell: true,

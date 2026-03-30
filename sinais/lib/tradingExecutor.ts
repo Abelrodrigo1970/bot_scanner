@@ -69,6 +69,10 @@ function isMa200Volatile(strategyName: string): boolean {
   );
 }
 
+function isRsiStrategy(strategyName: string): boolean {
+  return strategyName.toLowerCase().includes('rsi');
+}
+
 /**
  * Regra operacional validada em backtests:
  * - Volume Spike 15m executa sempre como SELL (inclui sinais BUY invertidos)
@@ -208,7 +212,11 @@ async function executeSignalBinance(
 
     const tps       = params.takeProfits ?? [];
     const totalQty  = qty;
-    const tpPercents = isMa200Volatile(signal.strategyName) ? [0.40, 0.30] : [0.60, 0.30];
+    const tpPercents =
+      isMa200Volatile(signal.strategyName) ? [0.40, 0.30] :
+      isRsiStrategy(signal.strategyName) && signal.direction === 'BUY'  ? [0.35, 0.35] :
+      isRsiStrategy(signal.strategyName) && signal.direction === 'SELL' ? [0.30, 0.35] :
+      [0.60, 0.30];
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
       const tp = tps[i];
@@ -306,7 +314,11 @@ async function executeSignalBybit(
     // Ordens de Take Profit separadas
     const tps        = params.takeProfits ?? [];
     const totalQty   = qty;
-    const tpPercents = isMa200Volatile(signal.strategyName) ? [0.40, 0.30] : [0.60, 0.30];
+    const tpPercents =
+      isMa200Volatile(signal.strategyName) ? [0.40, 0.30] :
+      isRsiStrategy(signal.strategyName) && signal.direction === 'BUY'  ? [0.35, 0.35] :
+      isRsiStrategy(signal.strategyName) && signal.direction === 'SELL' ? [0.30, 0.35] :
+      [0.60, 0.30];
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
       const tp = tps[i];
