@@ -202,6 +202,41 @@ async function main() {
     },
   });
 
+  // Nova estratégia RSI 15m Top Volatilidade
+  const rsi15mStrategy = await prisma.strategy.upsert({
+    where: { name: 'RSI_15M' },
+    update: {
+      displayName: 'RSI 15m Top Volatilidade (62/38)',
+      description:
+        'Só Top Voláteis 15m. BUY quando RSI cruza acima de 62 E preço > MA200 → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h. SELL quando RSI cruza abaixo de 38 E preço < MA200 → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h.',
+      params: JSON.stringify({
+        period: 14,
+        buyThreshold: 62,
+        sellThreshold: 38,
+        maPeriod: 200,
+        allowBuy: true,
+        allowSell: true,
+        exchange: 'bybit',
+      }),
+    },
+    create: {
+      name: 'RSI_15M',
+      displayName: 'RSI 15m Top Volatilidade (62/38)',
+      description:
+        'Só Top Voláteis 15m. BUY quando RSI cruza acima de 62 E preço > MA200 → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h. SELL quando RSI cruza abaixo de 38 E preço < MA200 → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h.',
+      isActive: true,
+      params: JSON.stringify({
+        period: 14,
+        buyThreshold: 62,
+        sellThreshold: 38,
+        maPeriod: 200,
+        allowBuy: true,
+        allowSell: true,
+        exchange: 'bybit',
+      }),
+    },
+  });
+
   // Remover estratégias que não usamos (caso existam de import anterior)
   const removed = await prisma.strategy.deleteMany({
     where: {

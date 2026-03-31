@@ -69,6 +69,7 @@ function isMa200Volatile(strategyName: string): boolean {
   );
 }
 
+/** Cobre RSI 1h e RSI 15m (displayName contém "rsi") */
 function isRsiStrategy(strategyName: string): boolean {
   return strategyName.toLowerCase().includes('rsi');
 }
