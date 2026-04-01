@@ -582,10 +582,11 @@ export async function runRsiStrategy(
 }
 
 /**
- * Estratégia RSI 15m — Top Volatilidade:
- * BUY  quando RSI cruza de baixo para cima 62  → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h
- * SELL quando RSI cruza de cima para baixo 38  → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h
+ * Estratégia RSI 15m — Top Volatilidade (sem filtro MA200):
+ * BUY  quando RSI cruza de baixo para cima 62  → SL -4% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h
+ * SELL quando RSI cruza de cima para baixo 38  → SL +4% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h
  * Usa sempre o candle fechado (não o em formação).
+ * Sem filtro MA200 para sinal mais rápido.
  * Corre apenas em símbolos Top Volatilidade (filtrado em runAllStrategies).
  */
 export async function runRsi15mStrategy(
@@ -598,12 +599,11 @@ export async function runRsi15mStrategy(
   const period        = params.period        ?? 14;
   const buyThreshold  = params.buyThreshold  ?? 62;
   const sellThreshold = params.sellThreshold ?? 38;
-  const maPeriod      = params.maPeriod      ?? 200;
 
   try {
-    const candlesNeeded = Math.max(period + 25, maPeriod + 5);
+    const candlesNeeded = period + 30;
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
-    if (candles.length < maPeriod + 3) return null;
+    if (candles.length < period + 3) return null;
 
     const closes = getCloses(candles);
 
@@ -611,19 +611,18 @@ export async function runRsi15mStrategy(
     const closedCloses     = closes.slice(0, -1);
     const prevClosedCloses = closes.slice(0, -2);
 
-    const rsi     = calculateRSI(closedCloses,    period);
-    const prevRsi = calculateRSI(prevClosedCloses, period);
-    const ma200   = calculateSMA(closedCloses, maPeriod);
-    if (rsi === null || prevRsi === null || ma200 === null) return null;
+    const rsi     = calculateRSI(closedCloses,     period);
+    const prevRsi = calculateRSI(prevClosedCloses,  period);
+    if (rsi === null || prevRsi === null) return null;
 
     const currentPrice = candles[candles.length - 2].close; // último candle fechado
 
-    // BUY: RSI cruza de baixo para cima 62 E preço acima MA200
-    if (prevRsi <= buyThreshold && rsi > buyThreshold && currentPrice > ma200) {
+    // BUY: RSI cruza de baixo para cima 62 (sem filtro MA200)
+    if (prevRsi <= buyThreshold && rsi > buyThreshold) {
       return {
         direction: 'BUY',
         entryPrice: currentPrice,
-        stopLoss: currentPrice * 0.95,   // SL -5%
+        stopLoss: currentPrice * 0.96,   // SL -4%
         target1:  currentPrice * 1.05,   // TP1 +5%  — 35% posição
         target2:  currentPrice * 1.11,   // TP2 +11% — 35% posição (30% fecha às 24h)
         target3:  undefined,
@@ -632,20 +631,19 @@ export async function runRsi15mStrategy(
           rsi: rsi.toFixed(2),
           prevRsi: prevRsi.toFixed(2),
           buyThreshold,
-          ma200: ma200.toFixed(4),
-          sl: 5, tp1Percent: 5, tp1Position: 35,
+          sl: 4, tp1Percent: 5, tp1Position: 35,
           tp2Percent: 11, tp2Position: 35,
           tp3: '30% às 24h',
         }),
       };
     }
 
-    // SELL: RSI cruza de cima para baixo 38 E preço abaixo MA200
-    if (prevRsi >= sellThreshold && rsi < sellThreshold && currentPrice < ma200) {
+    // SELL: RSI cruza de cima para baixo 38 (sem filtro MA200)
+    if (prevRsi >= sellThreshold && rsi < sellThreshold) {
       return {
         direction: 'SELL',
         entryPrice: currentPrice,
-        stopLoss: currentPrice * 1.05,   // SL +5%
+        stopLoss: currentPrice * 1.04,   // SL +4%
         target1:  currentPrice * 0.95,   // TP1 -5%  — 30% posição
         target2:  currentPrice * 0.89,   // TP2 -11% — 35% posição (35% fecha às 24h)
         target3:  undefined,
@@ -654,8 +652,7 @@ export async function runRsi15mStrategy(
           rsi: rsi.toFixed(2),
           prevRsi: prevRsi.toFixed(2),
           sellThreshold,
-          ma200: ma200.toFixed(4),
-          sl: 5, tp1Percent: 5, tp1Position: 30,
+          sl: 4, tp1Percent: 5, tp1Position: 30,
           tp2Percent: 11, tp2Position: 35,
           tp3: '35% às 24h',
         }),
