@@ -583,7 +583,7 @@ export async function runRsiStrategy(
 
 /**
  * Estratégia RSI 15m — Top Volatilidade (sem filtro MA200):
- * BUY  quando RSI cruza de baixo para cima 62  → SL -4% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h
+ * BUY  quando RSI cruza de baixo para cima 62  → SL -4% | TP1 +5% (35%) | TP2 +14% (30%) | 35% às 24h
  * SELL quando RSI cruza de cima para baixo 38  → SL +4% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h
  * Usa sempre o candle fechado (não o em formação).
  * Sem filtro MA200 para sinal mais rápido.
@@ -624,7 +624,7 @@ export async function runRsi15mStrategy(
         entryPrice: currentPrice,
         stopLoss: currentPrice * 0.96,   // SL -4%
         target1:  currentPrice * 1.05,   // TP1 +5%  — 35% posição
-        target2:  currentPrice * 1.11,   // TP2 +11% — 35% posição (30% fecha às 24h)
+        target2:  currentPrice * 1.14,   // TP2 +14% — 30% posição (35% fecha às 24h)
         target3:  undefined,
         strength: Math.min(100, Math.max(60, Math.round(60 + (rsi - buyThreshold) * 2))),
         extraInfo: JSON.stringify({
@@ -632,8 +632,8 @@ export async function runRsi15mStrategy(
           prevRsi: prevRsi.toFixed(2),
           buyThreshold,
           sl: 4, tp1Percent: 5, tp1Position: 35,
-          tp2Percent: 11, tp2Position: 35,
-          tp3: '30% às 24h',
+          tp2Percent: 14, tp2Position: 30,
+          tp3: '35% às 24h',
         }),
       };
     }
