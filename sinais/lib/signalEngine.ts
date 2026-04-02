@@ -134,7 +134,9 @@ export async function runVolumeSpikeStrategy(
 }
 
 /**
- * Estratégia Volume Spike 15m: igual ao Volume Spike 1h mas em 15m com 15 períodos
+ * Estratégia Volume Spike 15m (15 períodos):
+ * BUY  (candle verde + vol >20x + vol >2M)  → SL -8% | TP1 +11% (30%) | TP2 +23% (40%) | 30% às 24h
+ * SELL (candle vermelho + vol >20x)          → SL +7% | TP1 -10% (60%) | TP2 -11% (30%)
  */
 export async function runVolumeSpike15mStrategy(
   symbol: string,
@@ -191,19 +193,14 @@ export async function runVolumeSpike15mStrategy(
         return null;
       }
 
-      // Só inverte para SELL se o preço estiver 8%+ acima da MA200 (15m)
-      if (ma200 === null || currentPrice < ma200 * (1 + buyMa200PctAbove / 100)) {
-        return null;
-      }
-
-      const stopLoss = currentPrice * 1.07;
-      const target1  = currentPrice * 0.90;
-      const target2  = currentPrice * 0.89;
+      const stopLoss = currentPrice * 0.92;   // SL -8%
+      const target1  = currentPrice * 1.11;   // TP1 +11% — 30% posição
+      const target2  = currentPrice * 1.23;   // TP2 +23% — 40% posição (30% fecha às 24h)
       const target3: number | undefined = undefined;
       const strength = Math.min(100, Math.max(60, Math.round(60 + (volumeRatio - volumeMultiplier) * 5)));
 
       return {
-        direction: 'SELL',
+        direction: 'BUY',
         entryPrice: currentPrice,
         stopLoss,
         target1,
@@ -216,13 +213,12 @@ export async function runVolumeSpike15mStrategy(
           volumeRatio: volumeRatio.toFixed(2),
           volumeMultiplier,
           lookbackPeriods,
-          ma200: ma200?.toFixed(4),
-          pctAboveMa200: (((currentPrice / ma200!) - 1) * 100).toFixed(2),
-          buyMa200PctAbove,
           priceChange: priceChange.toFixed(4),
           priceChangePercent: ((priceChange / prevPrice) * 100).toFixed(2),
-          executionProfile: `BUY signal inverted to SELL (price ${buyMa200PctAbove}%+ above MA200) | SL 7% | TP1 10% | TP2 11%`,
-          originalDirection: 'BUY',
+          executionProfile: 'BUY signal | SL -8% | TP1 +11% (30%) | TP2 +23% (40%) | 30% às 24h',
+          sl: 8, tp1Percent: 11, tp1Position: 30,
+          tp2Percent: 23, tp2Position: 40,
+          tp3: '30% às 24h',
         }),
       };
     } else {
