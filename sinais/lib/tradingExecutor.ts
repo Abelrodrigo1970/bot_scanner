@@ -75,9 +75,9 @@ function isRsiStrategy(strategyName: string): boolean {
 }
 
 /**
- * Regra operacional validada em backtests:
- * - Volume Spike 15m executa sempre como SELL (inclui sinais BUY invertidos)
- * - SL 7%, TP1 10%, TP2 11%
+ * Perfil de execução Volume Spike 15m:
+ * - BUY  (candle verde): SL -8% | TP1 +11% (30%) | TP2 +23% (40%) | 30% às 24h
+ * - SELL (candle vermelho): SL +7% | TP1 -10% | TP2 -11%
  */
 function applyVolumeSpike15mExecutionProfile(signal: SignalForTrading): SignalForTrading {
   if (!isVolumeSpike15m(signal.strategyName)) {
@@ -85,13 +85,25 @@ function applyVolumeSpike15mExecutionProfile(signal: SignalForTrading): SignalFo
   }
 
   const entry = signal.entryPrice;
+
+  if (signal.direction === 'BUY') {
+    return {
+      ...signal,
+      direction: 'BUY',
+      stopLoss: entry * 0.92,   // SL -8%
+      target1:  entry * 1.11,  // TP1 +11%
+      target2:  entry * 1.23,  // TP2 +23%
+      target3:  null,
+    };
+  }
+
   return {
     ...signal,
     direction: 'SELL',
-    stopLoss: entry * 1.07,
-    target1: entry * 0.90,
-    target2: entry * 0.89,
-    target3: null,
+    stopLoss: entry * 1.07,   // SL +7%
+    target1:  entry * 0.90,  // TP1 -10%
+    target2:  entry * 0.89,  // TP2 -11%
+    target3:  null,
   };
 }
 
