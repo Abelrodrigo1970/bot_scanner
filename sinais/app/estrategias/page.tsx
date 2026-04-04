@@ -188,169 +188,97 @@ export default function EstrategiasPage() {
     }
   };
 
-  const getDefaultParams = (strategyName: string) => {
-    switch (strategyName) {
-      case 'RSI':
-        return { period: 14, buyThreshold: 69, sellThreshold: 29 };
-      case 'MA_CROSSOVER':
-        return { fastPeriod: 9, slowPeriod: 21 };
-      case 'MACD':
-        return { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 };
-      default:
-        return {};
-    }
-  };
+  const numField = (
+    label: string,
+    value: number,
+    onSave: (v: number) => void,
+    step = 1,
+  ) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+      <input
+        type="number"
+        step={step}
+        defaultValue={value}
+        key={value}
+        onBlur={(e) => {
+          const v = parseFloat(e.target.value);
+          if (!isNaN(v)) onSave(v);
+        }}
+        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+      />
+    </div>
+  );
 
   const renderStrategyParams = (strategy: Strategy) => {
-    const params = JSON.parse(strategy.params || '{}');
-    const defaults = getDefaultParams(strategy.name);
+    const p = JSON.parse(strategy.params || '{}');
+    const upd = (patch: object) => handleUpdateParams(strategy, { ...p, ...patch });
 
     switch (strategy.name) {
       case 'RSI':
         return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Período
-              </label>
-              <input
-                type="number"
-                defaultValue={params.period || defaults.period}
-                onBlur={(e) =>
-                  handleUpdateParams(strategy, {
-                    ...params,
-                    period: parseInt(e.target.value) || defaults.period,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Compra quando RSI sobe acima de
-              </label>
-              <input
-                type="number"
-                defaultValue={params.buyThreshold ?? defaults.buyThreshold}
-                onBlur={(e) =>
-                  handleUpdateParams(strategy, {
-                    ...params,
-                    buyThreshold: parseInt(e.target.value) || defaults.buyThreshold,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Venda quando RSI desce abaixo de
-              </label>
-              <input
-                type="number"
-                defaultValue={params.sellThreshold ?? defaults.sellThreshold}
-                onBlur={(e) =>
-                  handleUpdateParams(strategy, {
-                    ...params,
-                    sellThreshold: parseInt(e.target.value) || defaults.sellThreshold,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
+            {numField('BUY — RSI sobe acima de', p.buyThreshold ?? 60, (v) => upd({ buyThreshold: v }))}
+            {numField('SELL — RSI desce abaixo de', p.sellThreshold ?? 40, (v) => upd({ sellThreshold: v }))}
           </div>
         );
 
-      case 'MA_CROSSOVER':
+      case 'RSI_15M':
         return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                MA Curta
-              </label>
-              <input
-                type="number"
-                defaultValue={params.fastPeriod || defaults.fastPeriod}
-                onBlur={(e) =>
-                  handleUpdateParams(strategy, {
-                    ...params,
-                    fastPeriod: parseInt(e.target.value) || defaults.fastPeriod,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                MA Longa
-              </label>
-              <input
-                type="number"
-                defaultValue={params.slowPeriod || defaults.slowPeriod}
-                onBlur={(e) =>
-                  handleUpdateParams(strategy, {
-                    ...params,
-                    slowPeriod: parseInt(e.target.value) || defaults.slowPeriod,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
+            {numField('BUY — RSI sobe acima de', p.buyThreshold ?? 62, (v) => upd({ buyThreshold: v }))}
+            {numField('SELL — RSI desce abaixo de', p.sellThreshold ?? 38, (v) => upd({ sellThreshold: v }))}
           </div>
         );
 
-      case 'MACD':
+      case 'VOLUME_SPIKE':
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {numField('Multiplicador de volume (×)', p.volumeMultiplier ?? 20, (v) => upd({ volumeMultiplier: v }))}
+            {numField('Lookback (horas)', p.lookbackHours ?? 20, (v) => upd({ lookbackHours: v }))}
+          </div>
+        );
+
+      case 'VOLUME_SPIKE_15M':
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {numField('Multiplicador de volume (×)', p.volumeMultiplier ?? 20, (v) => upd({ volumeMultiplier: v }))}
+            {numField('Lookback (períodos 15m)', p.lookbackPeriods ?? 15, (v) => upd({ lookbackPeriods: v }))}
+          </div>
+        );
+
+      case 'MA_VOLATILE':
+      case 'MA200_VOLATILE': {
+        const isMa60 = strategy.name === 'MA_VOLATILE';
         return (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Fast Period
-              </label>
-              <input
-                type="number"
-                defaultValue={params.fastPeriod || defaults.fastPeriod}
-                onBlur={(e) =>
-                  handleUpdateParams(strategy, {
-                    ...params,
-                    fastPeriod: parseInt(e.target.value) || defaults.fastPeriod,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {numField('Confirmação (%)', p.confirmationPct ?? 2, (v) => upd({ confirmationPct: v }), 0.5)}
+              {isMa60
+                ? numField('Período MA', p.ma60Period ?? 60, (v) => upd({ ma60Period: v }))
+                : numField('Período MA', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Slow Period
-              </label>
-              <input
-                type="number"
-                defaultValue={params.slowPeriod || defaults.slowPeriod}
-                onBlur={(e) =>
-                  handleUpdateParams(strategy, {
-                    ...params,
-                    slowPeriod: parseInt(e.target.value) || defaults.slowPeriod,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
+            <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">BUY</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {numField('SL (%)', p.buyStopPercent ?? 8, (v) => upd({ buyStopPercent: v }), 0.5)}
+              {numField('TP1 (%) | Posição (%)', p.buyTp1Percent ?? 8, (v) => upd({ buyTp1Percent: v }), 0.5)}
+              {numField('TP1 Posição (%)', p.buyTp1Position ?? 40, (v) => upd({ buyTp1Position: v }))}
+              {numField('TP2 (%)', p.buyTp2Percent ?? 15, (v) => upd({ buyTp2Percent: v }), 0.5)}
+              {numField('TP2 Posição (%)', p.buyTp2Position ?? 30, (v) => upd({ buyTp2Position: v }))}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Signal Period
-              </label>
-              <input
-                type="number"
-                defaultValue={params.signalPeriod || defaults.signalPeriod}
-                onBlur={(e) =>
-                  handleUpdateParams(strategy, {
-                    ...params,
-                    signalPeriod: parseInt(e.target.value) || defaults.signalPeriod,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
+            <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">SELL</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {numField('SL (%)', p.sellStopPercent ?? 8, (v) => upd({ sellStopPercent: v }), 0.5)}
+              {numField('TP1 (%)', p.sellTp1Percent ?? 9, (v) => upd({ sellTp1Percent: v }), 0.5)}
+              {numField('TP1 Posição (%)', p.sellTp1Position ?? 40, (v) => upd({ sellTp1Position: v }))}
+              {numField('TP2 (%)', p.sellTp2Percent ?? 17, (v) => upd({ sellTp2Percent: v }), 0.5)}
+              {numField('TP2 Posição (%)', p.sellTp2Position ?? 30, (v) => upd({ sellTp2Position: v }))}
             </div>
           </div>
         );
+      }
 
       default:
         return <p className="text-sm text-gray-500 dark:text-gray-400">Sem parâmetros configuráveis</p>;
