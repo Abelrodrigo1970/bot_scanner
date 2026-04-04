@@ -30,28 +30,31 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const strategy = await prisma.strategy.findUnique({ where: { name: 'RSI' } });
+    const existing = await prisma.strategy.findUnique({ where: { name: 'RSI' } });
+    const before = existing ? JSON.parse(existing.params || '{}') : null;
 
-    if (!strategy) {
-      return NextResponse.json({ error: 'Estratégia RSI não encontrada na BD' }, { status: 404 });
-    }
-
-    const before = JSON.parse(strategy.params || '{}');
-
-    const updated = await prisma.strategy.update({
+    const upserted = await prisma.strategy.upsert({
       where: { name: 'RSI' },
-      data: {
+      update: {
         displayName: NEW_DISPLAY_NAME,
         description: NEW_DESCRIPTION,
+        params: JSON.stringify(NEW_PARAMS),
+        isActive: true,
+      },
+      create: {
+        name: 'RSI',
+        displayName: NEW_DISPLAY_NAME,
+        description: NEW_DESCRIPTION,
+        isActive: true,
         params: JSON.stringify(NEW_PARAMS),
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Params RSI actualizados com sucesso.',
-      before: { displayName: strategy.displayName, params: before },
-      after:  { displayName: updated.displayName,  params: NEW_PARAMS },
+      message: existing ? 'Estratégia RSI atualizada.' : 'Estratégia RSI criada (não existia na BD).',
+      before: before ? { displayName: existing!.displayName, params: before } : null,
+      after:  { displayName: upserted.displayName, params: NEW_PARAMS },
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Erro desconhecido';
