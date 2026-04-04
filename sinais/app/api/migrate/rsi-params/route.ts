@@ -8,17 +8,17 @@ const NEW_PARAMS = {
   maPeriod: 200,
   allowBuy: true,
   allowSell: true,
-  exchange: 'bybit',
+  exchange: 'binance',
 };
 
 const NEW_DISPLAY_NAME = 'RSI Top Volatilidade (60/40)';
 
 const NEW_DESCRIPTION =
-  'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h.';
+  'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -5% | TP1 +8% (25%) | TP2 +15% (35%) | 40% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +5% | TP1 -9% (25%) | TP2 -15% (35%) | 40% às 24h.';
 
 /**
  * GET /api/migrate/rsi-params
- * Actualiza os params da estratégia RSI para os novos valores (60/40, SL 5%, TP 5%/11%).
+ * Actualiza os params da estratégia RSI para Binance + novos TP (8%/15%).
  * Protegido por CRON_SECRET. Executar uma só vez.
  */
 export async function GET(request: NextRequest) {

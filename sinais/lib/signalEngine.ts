@@ -491,8 +491,8 @@ export async function runMa200VolatileStrategy(
 
 /**
  * Estratégia RSI — Top Volatilidade 1h:
- * BUY  quando RSI cruza de baixo para cima 60  → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h
- * SELL quando RSI cruza de cima para baixo 40  → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h
+ * BUY  quando RSI cruza de baixo para cima 60  → SL -5% | TP1 +8% (25%) | TP2 +15% (35%) | 40% às 24h
+ * SELL quando RSI cruza de cima para baixo 40  → SL +5% | TP1 -9% (25%) | TP2 -15% (35%) | 40% às 24h
  * Usa sempre o candle fechado (não o em formação).
  * Corre apenas em símbolos Top Volatilidade (filtrado em runAllStrategies).
  */
@@ -532,8 +532,8 @@ export async function runRsiStrategy(
         direction: 'BUY',
         entryPrice: currentPrice,
         stopLoss: currentPrice * 0.95,   // SL -5%
-        target1:  currentPrice * 1.05,   // TP1 +5%  — 35% posição
-        target2:  currentPrice * 1.11,   // TP2 +11% — 35% posição (30% fecha às 24h)
+        target1:  currentPrice * 1.08,   // TP1 +8%  — 25% posição
+        target2:  currentPrice * 1.15,   // TP2 +15% — 35% posição (40% fecha às 24h)
         target3:  undefined,
         strength: Math.min(100, Math.max(60, Math.round(60 + (rsi - buyThreshold) * 2))),
         extraInfo: JSON.stringify({
@@ -541,9 +541,9 @@ export async function runRsiStrategy(
           prevRsi: prevRsi.toFixed(2),
           buyThreshold,
           ma200: ma200.toFixed(4),
-          sl: 5, tp1Percent: 5, tp1Position: 35,
-          tp2Percent: 11, tp2Position: 35,
-          tp3: '30% às 24h',
+          sl: 5, tp1Percent: 8, tp1Position: 25,
+          tp2Percent: 15, tp2Position: 35,
+          tp3: '40% às 24h',
         }),
       };
     }
@@ -554,8 +554,8 @@ export async function runRsiStrategy(
         direction: 'SELL',
         entryPrice: currentPrice,
         stopLoss: currentPrice * 1.05,   // SL +5%
-        target1:  currentPrice * 0.95,   // TP1 -5%  — 30% posição
-        target2:  currentPrice * 0.89,   // TP2 -11% — 35% posição (35% fecha às 24h)
+        target1:  currentPrice * 0.91,   // TP1 -9%  — 25% posição
+        target2:  currentPrice * 0.85,   // TP2 -15% — 35% posição (40% fecha às 24h)
         target3:  undefined,
         strength: Math.min(100, Math.max(60, Math.round(60 + (sellThreshold - rsi) * 2))),
         extraInfo: JSON.stringify({
@@ -563,9 +563,9 @@ export async function runRsiStrategy(
           prevRsi: prevRsi.toFixed(2),
           sellThreshold,
           ma200: ma200.toFixed(4),
-          sl: 5, tp1Percent: 5, tp1Position: 30,
-          tp2Percent: 11, tp2Position: 35,
-          tp3: '35% às 24h',
+          sl: 5, tp1Percent: 9, tp1Position: 25,
+          tp2Percent: 15, tp2Position: 35,
+          tp3: '40% às 24h',
         }),
       };
     }

@@ -11,7 +11,7 @@ async function main() {
     update: {
       displayName: 'RSI Top Volatilidade (60/40)',
       description:
-        'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h.',
+        'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -5% | TP1 +8% (25%) | TP2 +15% (35%) | 40% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +5% | TP1 -9% (25%) | TP2 -15% (35%) | 40% às 24h.',
       params: JSON.stringify({
         period: 14,
         buyThreshold: 60,
@@ -19,14 +19,14 @@ async function main() {
         maPeriod: 200,
         allowBuy: true,
         allowSell: true,
-        exchange: 'bybit',
+        exchange: 'binance',
       }),
     },
     create: {
       name: 'RSI',
       displayName: 'RSI Top Volatilidade (60/40)',
       description:
-        'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h.',
+        'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -5% | TP1 +8% (25%) | TP2 +15% (35%) | 40% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +5% | TP1 -9% (25%) | TP2 -15% (35%) | 40% às 24h.',
       isActive: true,
       params: JSON.stringify({
         period: 14,
@@ -35,7 +35,7 @@ async function main() {
         maPeriod: 200,
         allowBuy: true,
         allowSell: true,
-        exchange: 'bybit',
+        exchange: 'binance',
       }),
     },
   });

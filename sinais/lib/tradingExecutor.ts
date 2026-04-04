@@ -227,8 +227,7 @@ async function executeSignalBinance(
     const totalQty  = qty;
     const tpPercents =
       isMa200Volatile(signal.strategyName) ? [0.40, 0.30] :
-      isRsiStrategy(signal.strategyName) && signal.direction === 'BUY'  ? [0.35, 0.35] :
-      isRsiStrategy(signal.strategyName) && signal.direction === 'SELL' ? [0.30, 0.35] :
+      isRsiStrategy(signal.strategyName) ? [0.25, 0.35] :
       [0.60, 0.30];
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
@@ -329,8 +328,7 @@ async function executeSignalBybit(
     const totalQty   = qty;
     const tpPercents =
       isMa200Volatile(signal.strategyName) ? [0.40, 0.30] :
-      isRsiStrategy(signal.strategyName) && signal.direction === 'BUY'  ? [0.35, 0.35] :
-      isRsiStrategy(signal.strategyName) && signal.direction === 'SELL' ? [0.30, 0.35] :
+      isRsiStrategy(signal.strategyName) ? [0.25, 0.35] :
       [0.60, 0.30];
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
