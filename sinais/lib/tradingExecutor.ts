@@ -341,13 +341,16 @@ async function executeSignalBybit(
       const tpTrigger = roundPrice(tp.price, tick);
       try {
         const tpOrder = await createBybitOrder({
-          symbol:         executionSignal.symbol,
-          side:           bybitSlSide,
-          qty:            tpQtyStr,
-          stopOrderType:  'TakeProfit',
-          triggerPrice:   tpTrigger,
-          triggerBy:      'MarkPrice',
-          reduceOnly:     true,
+          symbol:           executionSignal.symbol,
+          side:             bybitSlSide,
+          qty:              tpQtyStr,
+          stopOrderType:    'TakeProfit',
+          triggerPrice:     tpTrigger,
+          triggerBy:        'MarkPrice',
+          // BUY position: TP dispara quando preço SOBE até ao alvo (1)
+          // SELL position: TP dispara quando preço DESCE até ao alvo (2)
+          triggerDirection: executionSignal.direction === 'BUY' ? 1 : 2,
+          reduceOnly:       true,
         });
         console.log(`[Bybit] TP${i + 1}: ${tpQtyStr} @ ${tpTrigger} | order: ${tpOrder.orderId}`);
       } catch (tpErr) {

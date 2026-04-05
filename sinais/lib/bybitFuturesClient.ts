@@ -107,16 +107,18 @@ export async function getBybitPositionRisk(symbol?: string): Promise<Array<{
 // Criar ordem (entrada MARKET ou conditional TP/SL)
 // ---------------------------------------------------------------------------
 export async function createBybitOrder(params: {
-  symbol:          string;
-  side:            'Buy' | 'Sell';
-  qty:             string;
-  stopLoss?:       string;
-  slTriggerBy?:    'MarkPrice' | 'LastPrice';
+  symbol:           string;
+  side:             'Buy' | 'Sell';
+  qty:              string;
+  stopLoss?:        string;
+  slTriggerBy?:     'MarkPrice' | 'LastPrice';
   // Para ordens condicionais (TP / SL separados):
-  stopOrderType?:  'TakeProfit' | 'StopLoss';
-  triggerPrice?:   string;
-  triggerBy?:      'MarkPrice' | 'LastPrice';
-  reduceOnly?:     boolean;
+  stopOrderType?:   'TakeProfit' | 'StopLoss';
+  triggerPrice?:    string;
+  triggerBy?:       'MarkPrice' | 'LastPrice';
+  /** 1 = preço sobe até ao trigger (TP de BUY) | 2 = preço desce até ao trigger (TP de SELL) */
+  triggerDirection?: 1 | 2;
+  reduceOnly?:      boolean;
 }): Promise<{ orderId: string; symbol: string; orderStatus: string }> {
   const body: Record<string, unknown> = {
     category:  'linear',
@@ -127,12 +129,13 @@ export async function createBybitOrder(params: {
     timeInForce: 'IOC',
   };
 
-  if (params.stopLoss)      body.stopLoss      = params.stopLoss;
-  if (params.slTriggerBy)   body.slTriggerBy   = params.slTriggerBy;
-  if (params.stopOrderType) body.stopOrderType = params.stopOrderType;
-  if (params.triggerPrice)  body.triggerPrice  = params.triggerPrice;
-  if (params.triggerBy)     body.triggerBy     = params.triggerBy;
-  if (params.reduceOnly)    body.reduceOnly    = true;
+  if (params.stopLoss)           body.stopLoss        = params.stopLoss;
+  if (params.slTriggerBy)        body.slTriggerBy     = params.slTriggerBy;
+  if (params.stopOrderType)      body.stopOrderType   = params.stopOrderType;
+  if (params.triggerPrice)       body.triggerPrice    = params.triggerPrice;
+  if (params.triggerBy)          body.triggerBy       = params.triggerBy;
+  if (params.triggerDirection)   body.triggerDirection = params.triggerDirection;
+  if (params.reduceOnly)         body.reduceOnly      = true;
 
   return signedPost<{ orderId: string; symbol: string; orderStatus: string }>('/v5/order/create', body);
 }
