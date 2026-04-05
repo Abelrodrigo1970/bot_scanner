@@ -14,7 +14,7 @@ const NEW_PARAMS = {
 const NEW_DISPLAY_NAME = 'RSI Top Volatilidade (60/40)';
 
 const NEW_DESCRIPTION =
-  'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -5% | TP1 +8% (25%) | TP2 +15% (35%) | 40% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +5% | TP1 -9% (25%) | TP2 -15% (35%) | 40% às 24h.';
+  'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -9% | TP1 +8% (25%) | TP2 +21% (35%) | 40% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +5% | TP1 -9% (25%) | TP2 -15% (35%) | 40% às 24h.';
 
 /**
  * GET /api/migrate/rsi-params

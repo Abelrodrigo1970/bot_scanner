@@ -491,7 +491,7 @@ export async function runMa200VolatileStrategy(
 
 /**
  * Estratégia RSI — Top Volatilidade 1h:
- * BUY  quando RSI cruza de baixo para cima 60  → SL -5% | TP1 +8% (25%) | TP2 +15% (35%) | 40% às 24h
+ * BUY  quando RSI cruza de baixo para cima 60  → SL -9% | TP1 +8% (25%) | TP2 +21% (35%) | 40% às 24h
  * SELL quando RSI cruza de cima para baixo 40  → SL +5% | TP1 -9% (25%) | TP2 -15% (35%) | 40% às 24h
  * Usa sempre o candle fechado (não o em formação).
  * Corre apenas em símbolos Top Volatilidade (filtrado em runAllStrategies).
@@ -531,9 +531,9 @@ export async function runRsiStrategy(
       return {
         direction: 'BUY',
         entryPrice: currentPrice,
-        stopLoss: currentPrice * 0.95,   // SL -5%
+        stopLoss: currentPrice * 0.91,   // SL -9%
         target1:  currentPrice * 1.08,   // TP1 +8%  — 25% posição
-        target2:  currentPrice * 1.15,   // TP2 +15% — 35% posição (40% fecha às 24h)
+        target2:  currentPrice * 1.21,   // TP2 +21% — 35% posição (40% fecha às 24h)
         target3:  undefined,
         strength: Math.min(100, Math.max(60, Math.round(60 + (rsi - buyThreshold) * 2))),
         extraInfo: JSON.stringify({
@@ -541,8 +541,8 @@ export async function runRsiStrategy(
           prevRsi: prevRsi.toFixed(2),
           buyThreshold,
           ma200: ma200.toFixed(4),
-          sl: 5, tp1Percent: 8, tp1Position: 25,
-          tp2Percent: 15, tp2Position: 35,
+          sl: 9, tp1Percent: 8, tp1Position: 25,
+          tp2Percent: 21, tp2Position: 35,
           tp3: '40% às 24h',
         }),
       };
