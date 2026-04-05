@@ -30,10 +30,14 @@ const ALLOWED_STRATEGIES = [
   'MA200 Top Voláteis',
   'MA_VOLATILE',
   'MA200_VOLATILE',
+  'RSI Top Volatilidade',
+  'RSI 15m Top Volatilidade',
+  'RSI_15M',
+  'RSI',
 ];
 
-/** Força mínima para executar (70) */
-const MIN_STRENGTH = 70;
+/** Força mínima para executar */
+const MIN_STRENGTH = 60;
 
 /** Status que permite execução */
 const EXECUTABLE_STATUS = 'NEW';

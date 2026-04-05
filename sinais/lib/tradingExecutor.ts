@@ -361,8 +361,9 @@ async function executeSignalBybit(
     }
 
     const tpWarning = tpErrors.length > 0 ? ` (TPs não colocados: ${tpErrors.join('; ')})` : '';
-    // Converter orderId string -> number para compatibilidade com ExecuteResult
-    const orderIdNum = parseInt(entryOrder.orderId, 10) || 0;
+    // Bybit usa UUIDs — parseInt daria NaN → 0 (falsy). Usa 1 como fallback não-zero.
+    const parsedId = parseInt(entryOrder.orderId, 10);
+    const orderIdNum = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : 1;
     return {
       success: true,
       dryRun:  false,
