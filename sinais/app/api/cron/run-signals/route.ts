@@ -41,9 +41,22 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
 
       for (const sig of newSignals) {
         try {
+          // Proteção: não abrir nova posição se já existe IN_PROGRESS no mesmo símbolo
+          const existingActive = await prisma.signal.findFirst({
+            where: {
+              symbol: sig.symbol,
+              status: 'IN_PROGRESS',
+              strategyId: ma200Strategy.id,
+            },
+          });
+          if (existingActive) {
+            console.log(`[Run-Signals BG] ⏭️ Já existe posição ativa em ${sig.symbol} (${existingActive.direction}) — sinal ignorado`);
+            continue;
+          }
+
           const closeResult = await closeActivePositionForSymbol(sig.symbol, ma200Exchange);
           if (closeResult.closed) {
-            console.log(`[Run-Signals BG] 🔄 Posição anterior fechada em ${sig.symbol}: ${closeResult.message}`);
+            console.log(`[Run-Signals BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
           }
 
           const execResult = await executeSignalReal({

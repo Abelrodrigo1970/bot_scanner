@@ -38,9 +38,23 @@ async function runRsi15mInBackground(): Promise<void> {
 
       for (const sig of newSignals) {
         try {
+          // Proteção: não abrir nova posição se já existe IN_PROGRESS no mesmo símbolo
+          const existingActive = await prisma.signal.findFirst({
+            where: {
+              symbol: sig.symbol,
+              status: 'IN_PROGRESS',
+              strategyId: rsi15mStrategy.id,
+            },
+          });
+          if (existingActive) {
+            console.log(`[Run-RSI-15m BG] ⏭️ Já existe posição ativa em ${sig.symbol} (${existingActive.direction}) — sinal ignorado`);
+            continue;
+          }
+
+          // Fecha posição oposta se existir (reversão de direção)
           const closeResult = await closeActivePositionForSymbol(sig.symbol, rsiExchange);
           if (closeResult.closed) {
-            console.log(`[Run-RSI-15m BG] 🔄 Posição anterior fechada em ${sig.symbol}: ${closeResult.message}`);
+            console.log(`[Run-RSI-15m BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
           }
 
           const execResult = await executeSignalReal({

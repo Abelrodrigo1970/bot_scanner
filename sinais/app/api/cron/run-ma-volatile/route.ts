@@ -38,9 +38,22 @@ async function runMaVolatileInBackground(): Promise<void> {
 
       for (const sig of newSignals) {
         try {
+          // Proteção: não abrir nova posição se já existe IN_PROGRESS no mesmo símbolo
+          const existingActive = await prisma.signal.findFirst({
+            where: {
+              symbol: sig.symbol,
+              status: 'IN_PROGRESS',
+              strategyId: maVolatileStrategy.id,
+            },
+          });
+          if (existingActive) {
+            console.log(`[Run-MA_VOLATILE BG] ⏭️ Já existe posição ativa em ${sig.symbol} (${existingActive.direction}) — sinal ignorado`);
+            continue;
+          }
+
           const closeResult = await closeActivePositionForSymbol(sig.symbol, maExchange);
           if (closeResult.closed) {
-            console.log(`[Run-MA_VOLATILE BG] 🔄 Posição anterior fechada em ${sig.symbol}: ${closeResult.message}`);
+            console.log(`[Run-MA_VOLATILE BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
           }
 
           const execResult = await executeSignalReal({
