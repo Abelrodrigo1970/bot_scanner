@@ -16,10 +16,26 @@ interface Signal {
   strength: number;
   status: string;
   generatedAt: string;
+  strategy?: { params: string } | null;
 }
 
 interface SignalCardProps {
   signal: Signal;
+}
+
+function ExchangeBadge({ exchange }: { exchange: string }) {
+  if (exchange === 'bybit') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700">
+        🟡 Bybit
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+      🔵 Binance
+    </span>
+  );
 }
 
 export default function SignalCard({ signal }: SignalCardProps) {
@@ -32,7 +48,6 @@ export default function SignalCard({ signal }: SignalCardProps) {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    // Formatar com fuso horário local
     return date.toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -43,6 +58,15 @@ export default function SignalCard({ signal }: SignalCardProps) {
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   };
+
+  const exchange = (() => {
+    try {
+      const p = JSON.parse(signal.strategy?.params || '{}');
+      return (p.exchange as string) || 'binance';
+    } catch {
+      return 'binance';
+    }
+  })();
 
   return (
     <Link href={`/sinais/${signal.id}`}>
@@ -58,7 +82,10 @@ export default function SignalCard({ signal }: SignalCardProps) {
           </div>
           <div className="flex flex-col items-end space-y-2">
             <DirectionTag direction={signal.direction} />
-            <StatusTag status={signal.status} />
+            {signal.status === 'IN_PROGRESS'
+              ? <ExchangeBadge exchange={exchange} />
+              : <StatusTag status={signal.status} />
+            }
           </div>
         </div>
 
