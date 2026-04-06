@@ -39,7 +39,7 @@ export default function DashboardPage() {
     direction: '',
     timeframe: '',
     strategy: '',
-    minStrength: '70',
+    minStrength: '60',
   });
 
   const fetchSignals = async () => {

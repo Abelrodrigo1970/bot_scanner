@@ -10,7 +10,7 @@ import { executeSignalReal, closeActivePositionForSymbol } from '@/lib/tradingEx
 async function runMaVolatileInBackground(): Promise<void> {
   try {
     console.log('[Run-MA_VOLATILE BG] Iniciando MA_VOLATILE...');
-    const startedAt = new Date();
+    const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
       exclude: ['RSI', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA200_VOLATILE'],

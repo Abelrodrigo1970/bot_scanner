@@ -55,10 +55,10 @@ export async function GET(request: NextRequest) {
         where.strategyName = { contains: strategy };
       }
     }
-    // Filtro de força: padrão 70 (apenas sinais com força >= 70). Passar minStrength=0 para ver todos.
+    // Filtro de força: padrão 60 (execução automática começa em 60). Passar minStrength=0 para ver todos.
     const minStrengthValue = minStrengthParam !== null && minStrengthParam !== ''
       ? parseInt(minStrengthParam, 10)
-      : 70;
+      : 60;
     if (!isNaN(minStrengthValue)) {
       where.strength = { gte: minStrengthValue };
     }

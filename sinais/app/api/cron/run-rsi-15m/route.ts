@@ -10,7 +10,8 @@ import { executeSignalReal, closeActivePositionForSymbol } from '@/lib/tradingEx
 async function runRsi15mInBackground(): Promise<void> {
   try {
     console.log('[Run-RSI-15m BG] Iniciando RSI 15m...');
-    const startedAt = new Date();
+    // Buffer de 5 min para garantir que sinais criados no início do runAllStrategies são capturados
+    const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
       exclude: ['RSI', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA200_VOLATILE', 'MA_VOLATILE'],

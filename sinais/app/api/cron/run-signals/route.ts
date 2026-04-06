@@ -13,7 +13,7 @@ import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 async function runSignalsInBackground(hour: number, minute: number): Promise<void> {
   try {
     console.log('[Run-Signals BG] Iniciando estratégias 1h (RSI + MA200)...');
-    const startedAt = new Date();
+    const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
       exclude: ['VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA_VOLATILE'],
