@@ -19,6 +19,72 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
       exclude: ['VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA_VOLATILE'],
     });
 
+    // Auto-exec RSI 1h — força mínima 60
+    const rsiStrategy = await prisma.strategy.findFirst({
+      where: { name: 'RSI', isActive: true },
+    });
+
+    if (rsiStrategy) {
+      const RSI_MIN_STRENGTH = 60;
+      const rsiParams = JSON.parse(rsiStrategy.params || '{}');
+      const rsiExchange = (rsiParams.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+
+      const rsiSignals = await prisma.signal.findMany({
+        where: {
+          strategyId: rsiStrategy.id,
+          status: 'NEW',
+          generatedAt: { gte: startedAt },
+          strength: { gte: RSI_MIN_STRENGTH },
+        },
+        orderBy: { generatedAt: 'asc' },
+      });
+
+      for (const sig of rsiSignals) {
+        try {
+          const existingActive = await prisma.signal.findFirst({
+            where: {
+              symbol: sig.symbol,
+              status: 'IN_PROGRESS',
+              strategyId: rsiStrategy.id,
+            },
+          });
+          if (existingActive) {
+            console.log(`[Run-Signals BG] ⏭️ RSI: já existe posição ativa em ${sig.symbol} (${existingActive.direction}) — sinal ignorado`);
+            continue;
+          }
+
+          const closeResult = await closeActivePositionForSymbol(sig.symbol, rsiExchange);
+          if (closeResult.closed) {
+            console.log(`[Run-Signals BG] 🔄 RSI: posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
+          }
+
+          const execResult = await executeSignalReal({
+            id: sig.id,
+            symbol: sig.symbol,
+            direction: sig.direction as 'BUY' | 'SELL',
+            entryPrice: sig.entryPrice,
+            stopLoss: sig.stopLoss,
+            target1: sig.target1,
+            target2: sig.target2,
+            target3: sig.target3 ?? null,
+            strength: sig.strength,
+            strategyName: sig.strategyName,
+            status: sig.status,
+            exchange: rsiExchange,
+          });
+
+          if (execResult.success && execResult.orderId) {
+            await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${sig.id}`;
+            console.log(`[Run-Signals BG] ✅ RSI: auto-executado ${sig.symbol} ${sig.direction} order ${execResult.orderId}`);
+          } else {
+            console.warn(`[Run-Signals BG] ⚠️ RSI: auto-exec falhou ${sig.symbol}: ${execResult.message}`);
+          }
+        } catch (err) {
+          console.error(`[Run-Signals BG] ❌ RSI: erro auto-exec ${sig.symbol}:`, err);
+        }
+      }
+    }
+
     // Auto-exec MA200_VOLATILE — força mínima 70 (igual à força fixa dos sinais MA200)
     const ma200Strategy = await prisma.strategy.findFirst({
       where: { name: 'MA200_VOLATILE', isActive: true },
