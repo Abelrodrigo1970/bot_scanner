@@ -118,6 +118,8 @@ export default function EstatisticasPage() {
   const [stats, setStats] = useState<Statistics | null>(null);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('');
   const [selectedDirection, setSelectedDirection] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   
   // Estados para simulação
   const [useSimulation, setUseSimulation] = useState(false);
@@ -145,9 +147,12 @@ export default function EstatisticasPage() {
     return signals.filter((s) => {
       const matchesStrategy = !selectedStrategy || s.strategyName === selectedStrategy;
       const matchesDirection = !selectedDirection || s.direction === selectedDirection;
-      return matchesStrategy && matchesDirection;
+      const signalDate = new Date(s.generatedAt);
+      const matchesStart = !startDate || signalDate >= new Date(startDate + 'T00:00:00');
+      const matchesEnd = !endDate || signalDate <= new Date(endDate + 'T23:59:59');
+      return matchesStrategy && matchesDirection && matchesStart && matchesEnd;
     });
-  }, [signals, selectedStrategy, selectedDirection]);
+  }, [signals, selectedStrategy, selectedDirection, startDate, endDate]);
 
   useEffect(() => {
     fetchSignals();
@@ -605,7 +610,7 @@ export default function EstatisticasPage() {
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mb-6 border border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Filtro</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Estratégia
@@ -637,7 +642,42 @@ export default function EstatisticasPage() {
                 <option value="SELL">SELL</option>
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Data início
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Data fim
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
           </div>
+          {(startDate || endDate) && (
+            <div className="mt-3 flex items-center gap-3">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {filteredSignals.length} sinais no período
+              </span>
+              <button
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Limpar datas
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Painel de Simulação */}
