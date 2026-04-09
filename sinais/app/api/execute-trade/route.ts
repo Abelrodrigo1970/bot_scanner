@@ -3,7 +3,12 @@ import { isAuthenticated } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 import { prisma } from '@/lib/db';
-import { executeSignalReal, getExecutorStatus } from '@/lib/tradingExecutor';
+import {
+  executeSignalReal,
+  getExecutorStatus,
+  closeActivePositionForSymbol,
+  inspectActivePositionForSymbol,
+} from '@/lib/tradingExecutor';
 
 /**
  * GET: Retorna status do executor (se pode executar trades).
@@ -73,17 +78,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Sinal não encontrado' }, { status: 404 });
     }
 
-    if (signal.status === 'IN_PROGRESS') {
-      return NextResponse.json(
-        { success: false, error: 'Sinal já executado' },
-        { status: 400 }
-      );
-    }
-
     const stratParams = JSON.parse(signal.strategy?.params || '{}');
     const strategyExchange = (stratParams.exchange === 'bybit' ? 'bybit' : 'binance') as
       | 'binance'
       | 'bybit';
+
+    const positionState = await inspectActivePositionForSymbol(signal.symbol, strategyExchange);
+    if (signal.status === 'IN_PROGRESS' && positionState.hasPosition && positionState.direction === signal.direction) {
+      return NextResponse.json(
+        { success: false, error: 'Sinal já executado e posição ainda está aberta na exchange' },
+        { status: 400 }
+      );
+    }
+
+    if (positionState.inspectable && !positionState.hasPosition && signal.status === 'IN_PROGRESS') {
+      await prisma.$executeRaw`
+        UPDATE "Signal"
+        SET status = 'EXPIRED'
+        WHERE id = ${signalId}
+      `;
+    }
+
+    if (positionState.hasPosition && positionState.direction !== signal.direction) {
+      const closeResult = await closeActivePositionForSymbol(signal.symbol, strategyExchange);
+      if (!closeResult.closed) {
+        return NextResponse.json(
+          { success: false, error: closeResult.message },
+          { status: 400 }
+        );
+      }
+
+      await prisma.$executeRaw`
+        UPDATE "Signal"
+        SET status = 'EXPIRED'
+        WHERE symbol = ${signal.symbol}
+          AND status = 'IN_PROGRESS'
+      `;
+    }
 
     const result = await executeSignalReal({
       id: signal.id,

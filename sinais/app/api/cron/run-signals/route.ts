@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runAllStrategies } from '@/lib/signalEngine';
 import { update24hResults, updateMissingHighLow24h } from '@/lib/update24hResults';
 import { prisma } from '@/lib/db';
-import { executeSignalReal, closeActivePositionForSymbol } from '@/lib/tradingExecutor';
+import {
+  executeSignalReal,
+  closeActivePositionForSymbol,
+  inspectActivePositionForSymbol,
+} from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 
 /**
@@ -41,20 +45,45 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
 
       for (const sig of rsiSignals) {
         try {
-          const existingActive = await prisma.signal.findFirst({
-            where: {
-              symbol: sig.symbol,
-              status: 'IN_PROGRESS',
-              strategyId: rsiStrategy.id,
-            },
-          });
-          if (existingActive) {
-            console.log(`[Run-Signals BG] ⏭️ RSI: já existe posição ativa em ${sig.symbol} (${existingActive.direction}) — sinal ignorado`);
+          const positionState = await inspectActivePositionForSymbol(sig.symbol, rsiExchange);
+          if (!positionState.inspectable) {
+            console.warn(`[Run-Signals BG] ⚠️ RSI: não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
+          }
+
+          if (positionState.inspectable && !positionState.hasPosition) {
+            const cleared = Number(
+              await prisma.$executeRaw`
+                UPDATE "Signal"
+                SET status = 'EXPIRED'
+                WHERE symbol = ${sig.symbol}
+                  AND strategyId = ${rsiStrategy.id}
+                  AND status = 'IN_PROGRESS'
+              `
+            );
+            if (cleared > 0) {
+              console.log(`[Run-Signals BG] 🧹 RSI: ${sig.symbol} limpou ${cleared} IN_PROGRESS sem posição real`);
+            }
+          }
+
+          if (positionState.hasPosition && positionState.direction === sig.direction) {
+            console.log(`[Run-Signals BG] ⏭️ RSI: já existe posição real em ${sig.symbol} (${positionState.direction}) — sinal ignorado`);
             continue;
           }
 
-          const closeResult = await closeActivePositionForSymbol(sig.symbol, rsiExchange);
-          if (closeResult.closed) {
+          if (positionState.hasPosition && positionState.direction !== sig.direction) {
+            const closeResult = await closeActivePositionForSymbol(sig.symbol, rsiExchange);
+            if (!closeResult.closed) {
+              console.warn(`[Run-Signals BG] ⚠️ RSI: não foi possível fechar posição oposta em ${sig.symbol}: ${closeResult.message}`);
+              continue;
+            }
+
+            await prisma.$executeRaw`
+              UPDATE "Signal"
+              SET status = 'EXPIRED'
+              WHERE symbol = ${sig.symbol}
+                AND strategyId = ${rsiStrategy.id}
+                AND status = 'IN_PROGRESS'
+            `;
             console.log(`[Run-Signals BG] 🔄 RSI: posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
           }
 
@@ -107,21 +136,45 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
 
       for (const sig of newSignals) {
         try {
-          // Proteção: não abrir nova posição se já existe IN_PROGRESS no mesmo símbolo
-          const existingActive = await prisma.signal.findFirst({
-            where: {
-              symbol: sig.symbol,
-              status: 'IN_PROGRESS',
-              strategyId: ma200Strategy.id,
-            },
-          });
-          if (existingActive) {
-            console.log(`[Run-Signals BG] ⏭️ Já existe posição ativa em ${sig.symbol} (${existingActive.direction}) — sinal ignorado`);
+          const positionState = await inspectActivePositionForSymbol(sig.symbol, ma200Exchange);
+          if (!positionState.inspectable) {
+            console.warn(`[Run-Signals BG] ⚠️ MA200: não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
+          }
+
+          if (positionState.inspectable && !positionState.hasPosition) {
+            const cleared = Number(
+              await prisma.$executeRaw`
+                UPDATE "Signal"
+                SET status = 'EXPIRED'
+                WHERE symbol = ${sig.symbol}
+                  AND strategyId = ${ma200Strategy.id}
+                  AND status = 'IN_PROGRESS'
+              `
+            );
+            if (cleared > 0) {
+              console.log(`[Run-Signals BG] 🧹 MA200: ${sig.symbol} limpou ${cleared} IN_PROGRESS sem posição real`);
+            }
+          }
+
+          if (positionState.hasPosition && positionState.direction === sig.direction) {
+            console.log(`[Run-Signals BG] ⏭️ Já existe posição real em ${sig.symbol} (${positionState.direction}) — sinal ignorado`);
             continue;
           }
 
-          const closeResult = await closeActivePositionForSymbol(sig.symbol, ma200Exchange);
-          if (closeResult.closed) {
+          if (positionState.hasPosition && positionState.direction !== sig.direction) {
+            const closeResult = await closeActivePositionForSymbol(sig.symbol, ma200Exchange);
+            if (!closeResult.closed) {
+              console.warn(`[Run-Signals BG] ⚠️ MA200: não foi possível fechar posição oposta em ${sig.symbol}: ${closeResult.message}`);
+              continue;
+            }
+
+            await prisma.$executeRaw`
+              UPDATE "Signal"
+              SET status = 'EXPIRED'
+              WHERE symbol = ${sig.symbol}
+                AND strategyId = ${ma200Strategy.id}
+                AND status = 'IN_PROGRESS'
+            `;
             console.log(`[Run-Signals BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
           }
 

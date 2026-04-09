@@ -55,6 +55,14 @@ export interface ClosePositionResult {
   orderId?: number;
 }
 
+export interface ActivePositionState {
+  inspectable: boolean;
+  hasPosition: boolean;
+  direction?: 'BUY' | 'SELL';
+  quantity?: string;
+  message: string;
+}
+
 function isVolumeSpike15m(strategyName: string): boolean {
   return strategyName.toLowerCase().includes('volume spike 15m');
 }
@@ -72,6 +80,29 @@ function isMa200Volatile(strategyName: string): boolean {
 /** Cobre RSI 1h e RSI 15m (displayName contém "rsi") */
 function isRsiStrategy(strategyName: string): boolean {
   return strategyName.toLowerCase().includes('rsi');
+}
+
+function isMaxPositionError(message: string): boolean {
+  return message.toLowerCase().includes('exceeded the maximum allowable position');
+}
+
+function reduceQuantityForRetry(quantity: string, step: number): string | null {
+  const currentQty = parseFloat(quantity);
+  if (!Number.isFinite(currentQty) || currentQty <= 0) {
+    return null;
+  }
+
+  const halved = roundQuantity(Math.max(currentQty / 2, step), step);
+  if (parseFloat(halved) > 0 && halved !== quantity) {
+    return halved;
+  }
+
+  const oneStepLower = roundQuantity(Math.max(currentQty - step, 0), step);
+  if (parseFloat(oneStepLower) > 0 && oneStepLower !== quantity) {
+    return oneStepLower;
+  }
+
+  return null;
 }
 
 /**
@@ -195,12 +226,41 @@ async function executeSignalBinance(
       console.log(`[Binance] Perfil VS15m: ${signal.symbol} ${signal.direction} -> ${executionSignal.direction}`);
     }
 
-    const entryOrder = await createOrder({
-      symbol: executionSignal.symbol,
-      side:   executionSignal.direction,
-      type:   'MARKET',
-      quantity: qtyStr,
-    });
+    let entryOrder: { orderId: number; symbol: string; status: string } | null = null;
+    let executedQtyStr = qtyStr;
+    let maxPositionAdjustments = 0;
+
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        entryOrder = await createOrder({
+          symbol: executionSignal.symbol,
+          side:   executionSignal.direction,
+          type:   'MARKET',
+          quantity: executedQtyStr,
+        });
+        break;
+      } catch (entryError: unknown) {
+        const msg = entryError instanceof Error ? entryError.message : String(entryError);
+        if (!isMaxPositionError(msg)) {
+          throw entryError;
+        }
+
+        const reducedQty = reduceQuantityForRetry(executedQtyStr, step);
+        if (!reducedQty) {
+          throw new Error(`${msg} | qty mínima após ajuste: ${executedQtyStr}`);
+        }
+
+        maxPositionAdjustments++;
+        console.warn(
+          `[Binance] Limite de posição em ${executionSignal.symbol}. Tentando novamente com qty ${reducedQty} (antes ${executedQtyStr})`
+        );
+        executedQtyStr = reducedQty;
+      }
+    }
+
+    if (!entryOrder) {
+      throw new Error(`Não foi possível criar ordem de entrada para ${executionSignal.symbol}`);
+    }
 
     const slSide = executionSignal.direction === 'BUY' ? 'SELL' : 'BUY';
     let stopOrderId: number | undefined;
@@ -224,7 +284,7 @@ async function executeSignalBinance(
     }
 
     const tps       = params.takeProfits ?? [];
-    const totalQty  = qty;
+    const totalQty  = parseFloat(executedQtyStr);
     const tpPercents =
       isMa200Volatile(signal.strategyName) ? [0.40, 0.30] :
       isRsiStrategy(signal.strategyName) ? [0.25, 0.35] :
@@ -256,12 +316,13 @@ async function executeSignalBinance(
     }
 
     const tpWarning = tpErrors.length > 0 ? ` (TPs não colocados: ${tpErrors.join('; ')})` : '';
+    const qtyWarning = maxPositionAdjustments > 0 ? ` (qty ajustada para ${executedQtyStr})` : '';
     return {
       success:     true,
       dryRun:      false,
       message:     (stopOrderId
         ? `[Binance] Trade: ${executionSignal.symbol} ${executionSignal.direction} order ${entryOrder.orderId}`
-        : `[Binance] Entrada: ${executionSignal.symbol}. SL já existia.`) + tpWarning,
+        : `[Binance] Entrada: ${executionSignal.symbol}. SL já existia.`) + qtyWarning + tpWarning,
       params,
       orderId:     entryOrder.orderId,
       stopOrderId,
@@ -405,6 +466,93 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
     return executeSignalBybit(signal, executionSignal, params);
   }
   return executeSignalBinance(signal, executionSignal, params);
+}
+
+export async function inspectActivePositionForSymbol(
+  symbol: string,
+  exchange?: 'binance' | 'bybit'
+): Promise<ActivePositionState> {
+  const useBybit = exchange === 'bybit' || (exchange !== 'binance' && isBybitEnabled());
+
+  if (useBybit) {
+    if (!hasBybitCredentials()) {
+      return {
+        inspectable: false,
+        hasPosition: false,
+        message: 'Credenciais Bybit não configuradas',
+      };
+    }
+    if (!isBybitPaperTrading()) {
+      return {
+        inspectable: false,
+        hasPosition: false,
+        message: 'Bybit: só Demo ou Testnet',
+      };
+    }
+
+    try {
+      const positions = await getBybitPositionRisk(symbol);
+      const active = positions.find((p) => p.symbol === symbol && parseFloat(p.size) > 0 && p.side !== 'None');
+      if (!active) {
+        return {
+          inspectable: true,
+          hasPosition: false,
+          message: `Sem posição ativa em ${symbol} (Bybit)`,
+        };
+      }
+
+      return {
+        inspectable: true,
+        hasPosition: true,
+        direction: active.side === 'Buy' ? 'BUY' : 'SELL',
+        quantity: active.size,
+        message: `Posição ativa em ${symbol} (Bybit)`,
+      };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return {
+        inspectable: false,
+        hasPosition: false,
+        message: `Erro ao inspecionar ${symbol} na Bybit: ${msg}`,
+      };
+    }
+  }
+
+  if (!hasTradingCredentials()) {
+    return {
+      inspectable: false,
+      hasPosition: false,
+      message: 'Credenciais Binance não configuradas',
+    };
+  }
+
+  try {
+    const positions = await getPositionRisk();
+    const active = positions.find((p) => p.symbol === symbol && Math.abs(parseFloat(p.positionAmt)) > 0);
+    if (!active) {
+      return {
+        inspectable: true,
+        hasPosition: false,
+        message: `Sem posição ativa em ${symbol}`,
+      };
+    }
+
+    const amt = parseFloat(active.positionAmt);
+    return {
+      inspectable: true,
+      hasPosition: true,
+      direction: amt > 0 ? 'BUY' : 'SELL',
+      quantity: String(Math.abs(amt)),
+      message: `Posição ativa em ${symbol} (Binance)`,
+    };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return {
+      inspectable: false,
+      hasPosition: false,
+      message: `Erro ao inspecionar ${symbol} na Binance: ${msg}`,
+    };
+  }
 }
 
 /**

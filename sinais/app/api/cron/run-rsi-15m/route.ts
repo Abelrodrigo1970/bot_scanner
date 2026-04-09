@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runAllStrategies } from '@/lib/signalEngine';
 import { prisma } from '@/lib/db';
-import { executeSignalReal, closeActivePositionForSymbol } from '@/lib/tradingExecutor';
+import {
+  executeSignalReal,
+  closeActivePositionForSymbol,
+  inspectActivePositionForSymbol,
+} from '@/lib/tradingExecutor';
 
 /**
  * Cron dedicado para RSI_15M (RSI 15m, Top Volatilidade).
@@ -38,22 +42,45 @@ async function runRsi15mInBackground(): Promise<void> {
 
       for (const sig of newSignals) {
         try {
-          // Proteção: não abrir nova posição se já existe IN_PROGRESS no mesmo símbolo
-          const existingActive = await prisma.signal.findFirst({
-            where: {
-              symbol: sig.symbol,
-              status: 'IN_PROGRESS',
-              strategyId: rsi15mStrategy.id,
-            },
-          });
-          if (existingActive) {
-            console.log(`[Run-RSI-15m BG] ⏭️ Já existe posição ativa em ${sig.symbol} (${existingActive.direction}) — sinal ignorado`);
+          const positionState = await inspectActivePositionForSymbol(sig.symbol, rsiExchange);
+          if (!positionState.inspectable) {
+            console.warn(`[Run-RSI-15m BG] ⚠️ Não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
+          }
+
+          if (positionState.inspectable && !positionState.hasPosition) {
+            const cleared = Number(
+              await prisma.$executeRaw`
+                UPDATE "Signal"
+                SET status = 'EXPIRED'
+                WHERE symbol = ${sig.symbol}
+                  AND strategyId = ${rsi15mStrategy.id}
+                  AND status = 'IN_PROGRESS'
+              `
+            );
+            if (cleared > 0) {
+              console.log(`[Run-RSI-15m BG] 🧹 ${sig.symbol}: ${cleared} IN_PROGRESS sem posição real foram limpos`);
+            }
+          }
+
+          if (positionState.hasPosition && positionState.direction === sig.direction) {
+            console.log(`[Run-RSI-15m BG] ⏭️ Já existe posição real em ${sig.symbol} (${positionState.direction}) — sinal ignorado`);
             continue;
           }
 
-          // Fecha posição oposta se existir (reversão de direção)
-          const closeResult = await closeActivePositionForSymbol(sig.symbol, rsiExchange);
-          if (closeResult.closed) {
+          if (positionState.hasPosition && positionState.direction !== sig.direction) {
+            const closeResult = await closeActivePositionForSymbol(sig.symbol, rsiExchange);
+            if (!closeResult.closed) {
+              console.warn(`[Run-RSI-15m BG] ⚠️ Não foi possível fechar posição oposta em ${sig.symbol}: ${closeResult.message}`);
+              continue;
+            }
+
+            await prisma.$executeRaw`
+              UPDATE "Signal"
+              SET status = 'EXPIRED'
+              WHERE symbol = ${sig.symbol}
+                AND strategyId = ${rsi15mStrategy.id}
+                AND status = 'IN_PROGRESS'
+            `;
             console.log(`[Run-RSI-15m BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
           }
 
