@@ -146,22 +146,27 @@ export function getStopLossOrderParams(signal: SignalForTrading) {
 }
 
 /**
- * TP1 = 35% da posição, TP2 = 35% da posição, 30% restante às 24h (sem ordem).
- * Preços vêm do sinal (target1, target2).
+ * Retorna os níveis de TP definidos no sinal.
+ * Quando a estratégia não define TP intermédio, não criamos ordens TP.
  */
 export function getTakeProfitLevels(signal: SignalForTrading): Array<{
   price: number;
   percentOfPosition: number;
   label: string;
 }> {
-  const tp1 = signal.target1 ?? signal.entryPrice;
-  const tp2 = signal.target2 ?? signal.entryPrice;
+  if (signal.target1 == null && signal.target2 == null) {
+    return [];
+  }
 
-  const levels = [
-    { price: tp1, percentOfPosition: 60, label: 'TP1' },
-    { price: tp2, percentOfPosition: 30, label: 'TP2' },
-  ];
-  // 10% restante = fechar às 24h (preço de mercado), não colocamos ordem
+  const levels: Array<{ price: number; percentOfPosition: number; label: string }> = [];
+
+  if (signal.target1 != null) {
+    levels.push({ price: signal.target1, percentOfPosition: 60, label: 'TP1' });
+  }
+  if (signal.target2 != null) {
+    levels.push({ price: signal.target2, percentOfPosition: 30, label: 'TP2' });
+  }
+
   return levels;
 }
 

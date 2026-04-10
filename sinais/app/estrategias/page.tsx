@@ -226,10 +226,12 @@ export default function EstrategiasPage() {
 
       case 'RSI_15M':
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
-            {numField('BUY — RSI sobe acima de', p.buyThreshold ?? 62, (v) => upd({ buyThreshold: v }))}
-            {numField('SELL — RSI desce abaixo de', p.sellThreshold ?? 38, (v) => upd({ sellThreshold: v }))}
+            {numField('RSI vela anterior abaixo de', p.previousBelowThreshold ?? 28, (v) => upd({ previousBelowThreshold: v }))}
+            {numField('RSI atual fecha acima de', p.buyThreshold ?? 32, (v) => upd({ buyThreshold: v }))}
+            {numField('SL (%)', p.stopPercent ?? 3, (v) => upd({ stopPercent: v }), 0.5)}
+            {numField('Máx. símbolos', p.symbolLimit ?? 400, (v) => upd({ symbolLimit: v }))}
           </div>
         );
 
@@ -252,29 +254,41 @@ export default function EstrategiasPage() {
       case 'MA_VOLATILE':
       case 'MA200_VOLATILE': {
         const isMa60 = strategy.name === 'MA_VOLATILE';
+        const defaultBuyStop = isMa60 ? 8 : 11;
+        const defaultSellStop = isMa60 ? 8 : 11;
+        const defaultBuyTp1 = isMa60 ? 8 : 0;
+        const defaultBuyTp1Position = isMa60 ? 40 : 0;
+        const defaultBuyTp2 = isMa60 ? 15 : 0;
+        const defaultBuyTp2Position = isMa60 ? 30 : 0;
+        const defaultSellTp1 = isMa60 ? 9 : 0;
+        const defaultSellTp1Position = isMa60 ? 40 : 0;
+        const defaultSellTp2 = isMa60 ? 17 : 0;
+        const defaultSellTp2Position = isMa60 ? 30 : 0;
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Confirmação (%)', p.confirmationPct ?? 2, (v) => upd({ confirmationPct: v }), 0.5)}
               {isMa60
                 ? numField('Período MA', p.ma60Period ?? 60, (v) => upd({ ma60Period: v }))
                 : numField('Período MA', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
+              {!isMa60 && numField('Máx. símbolos', p.symbolLimit ?? 500, (v) => upd({ symbolLimit: v }))}
+              {!isMa60 && numField('Volume mínimo', p.minQuoteVolume ?? 100000, (v) => upd({ minQuoteVolume: v }))}
             </div>
             <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">BUY</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {numField('SL (%)', p.buyStopPercent ?? 8, (v) => upd({ buyStopPercent: v }), 0.5)}
-              {numField('TP1 (%) | Posição (%)', p.buyTp1Percent ?? 8, (v) => upd({ buyTp1Percent: v }), 0.5)}
-              {numField('TP1 Posição (%)', p.buyTp1Position ?? 40, (v) => upd({ buyTp1Position: v }))}
-              {numField('TP2 (%)', p.buyTp2Percent ?? 15, (v) => upd({ buyTp2Percent: v }), 0.5)}
-              {numField('TP2 Posição (%)', p.buyTp2Position ?? 30, (v) => upd({ buyTp2Position: v }))}
+              {numField('SL (%)', p.buyStopPercent ?? defaultBuyStop, (v) => upd({ buyStopPercent: v }), 0.5)}
+              {numField('TP1 (%) | Posição (%)', p.buyTp1Percent ?? defaultBuyTp1, (v) => upd({ buyTp1Percent: v }), 0.5)}
+              {numField('TP1 Posição (%)', p.buyTp1Position ?? defaultBuyTp1Position, (v) => upd({ buyTp1Position: v }))}
+              {numField('TP2 (%)', p.buyTp2Percent ?? defaultBuyTp2, (v) => upd({ buyTp2Percent: v }), 0.5)}
+              {numField('TP2 Posição (%)', p.buyTp2Position ?? defaultBuyTp2Position, (v) => upd({ buyTp2Position: v }))}
             </div>
             <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">SELL</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {numField('SL (%)', p.sellStopPercent ?? 8, (v) => upd({ sellStopPercent: v }), 0.5)}
-              {numField('TP1 (%)', p.sellTp1Percent ?? 9, (v) => upd({ sellTp1Percent: v }), 0.5)}
-              {numField('TP1 Posição (%)', p.sellTp1Position ?? 40, (v) => upd({ sellTp1Position: v }))}
-              {numField('TP2 (%)', p.sellTp2Percent ?? 17, (v) => upd({ sellTp2Percent: v }), 0.5)}
-              {numField('TP2 Posição (%)', p.sellTp2Position ?? 30, (v) => upd({ sellTp2Position: v }))}
+              {numField('SL (%)', p.sellStopPercent ?? defaultSellStop, (v) => upd({ sellStopPercent: v }), 0.5)}
+              {numField('TP1 (%)', p.sellTp1Percent ?? defaultSellTp1, (v) => upd({ sellTp1Percent: v }), 0.5)}
+              {numField('TP1 Posição (%)', p.sellTp1Position ?? defaultSellTp1Position, (v) => upd({ sellTp1Position: v }))}
+              {numField('TP2 (%)', p.sellTp2Percent ?? defaultSellTp2, (v) => upd({ sellTp2Percent: v }), 0.5)}
+              {numField('TP2 Posição (%)', p.sellTp2Position ?? defaultSellTp2Position, (v) => upd({ sellTp2Position: v }))}
             </div>
           </div>
         );

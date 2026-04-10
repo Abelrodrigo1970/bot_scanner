@@ -3,11 +3,13 @@ import { prisma } from '@/lib/db';
 
 const PARAMS = {
   period: 14,
-  buyThreshold: 62,
-  sellThreshold: 38,
-  maPeriod: 200,
+  previousBelowThreshold: 28,
+  buyThreshold: 32,
+  stopPercent: 3,
+  symbolLimit: 400,
+  minQuoteVolume: 500000,
   allowBuy: true,
-  allowSell: true,
+  allowSell: false,
   exchange: 'bybit',
 };
 
@@ -28,17 +30,17 @@ export async function GET(request: NextRequest) {
     const strategy = await prisma.strategy.upsert({
       where: { name: 'RSI_15M' },
       update: {
-        displayName: 'RSI 15m Top Volatilidade (62/38)',
+        displayName: 'RSI 15m Reversal (28->32)',
         description:
-          'Só Top Voláteis 15m. BUY quando RSI cruza acima de 62 E preço > MA200 → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h. SELL quando RSI cruza abaixo de 38 E preço < MA200 → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h.',
+          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo alargado de símbolos líquidos.',
         isActive: true,
         params: JSON.stringify(PARAMS),
       },
       create: {
         name: 'RSI_15M',
-        displayName: 'RSI 15m Top Volatilidade (62/38)',
+        displayName: 'RSI 15m Reversal (28->32)',
         description:
-          'Só Top Voláteis 15m. BUY quando RSI cruza acima de 62 E preço > MA200 → SL -5% | TP1 +5% (35%) | TP2 +11% (35%) | 30% às 24h. SELL quando RSI cruza abaixo de 38 E preço < MA200 → SL +5% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h.',
+          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo alargado de símbolos líquidos.',
         isActive: true,
         params: JSON.stringify(PARAMS),
       },

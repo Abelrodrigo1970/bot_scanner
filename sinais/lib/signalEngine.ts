@@ -3,7 +3,7 @@
  */
 
 import { prisma } from './db';
-import { fetchCandles, fetchTopSymbolsBy1hPriceChange, fetchTopSymbolsBy24hPriceChange, type Timeframe } from './marketData';
+import { fetchCandles, fetchTopSymbolsBy1hPriceChange, fetchTopSymbolsBy24hPriceChange, fetchTopSymbolsByVolume, type Timeframe } from './marketData';
 import {
   calculateRSI,
   calculateSMA,
@@ -16,7 +16,7 @@ export interface SignalResult {
   direction: 'BUY' | 'SELL';
   entryPrice: number;
   stopLoss: number;
-  target1: number;
+  target1?: number;
   target2?: number;
   target3?: number;
   strength: number;
@@ -370,11 +370,11 @@ export async function runMa60VolatileStrategy(
 
 /**
  * Estratégia MA Cross Top Voláteis (somente MA200):
- * - Análise só nos Top Voláteis da BD
+ * - Analisa um universo alargado de símbolos líquidos
  * - BUY : preço fecha 2%+ ACIMA da MA200 (cruzamento confirmado)
- *         SL -8% | TP1 +8% (40% posição) | TP2 +15% (40% posição) | 20% restante sai na reversão
+ *         SL -11% | sem TP intermédio | saída na reversão
  * - SELL: preço fecha 2%+ ABAIXO da MA200 (cruzamento confirmado)
- *         SL +8% | TP1 -9% (40% posição) | TP2 -17% (40% posição) | 20% restante sai na reversão
+ *         SL +11% | sem TP intermédio | saída na reversão
  * Reversão: novo sinal oposto gerado quando preço cruza MA200 com confirmação de 2%.
  */
 export async function runMa200VolatileStrategy(
@@ -382,24 +382,16 @@ export async function runMa200VolatileStrategy(
   timeframe: Timeframe,
   params: StrategyParams
 ): Promise<SignalResult | null> {
-  if (timeframe !== '1h') return null;
+  if (timeframe !== '4h') return null;
 
   const ma200Period       = params.ma200Period       ?? 200;
   const confirmationPct   = params.confirmationPct   ?? 2;   // % além da MA200 para confirmar entrada/reversão
 
   // Parâmetros COMPRA
-  const buyStopPercent    = params.buyStopPercent    ?? 8;
-  const buyTp1Percent     = params.buyTp1Percent     ?? 8;
-  const buyTp1Position    = params.buyTp1Position    ?? 40;  // % da posição saída no TP1
-  const buyTp2Percent     = params.buyTp2Percent     ?? 15;
-  const buyTp2Position    = params.buyTp2Position    ?? 30;  // % da posição saída no TP2
+  const buyStopPercent    = params.buyStopPercent    ?? 11;
 
   // Parâmetros VENDA
-  const sellStopPercent   = params.sellStopPercent   ?? 8;
-  const sellTp1Percent    = params.sellTp1Percent    ?? 9;
-  const sellTp1Position   = params.sellTp1Position   ?? 40;
-  const sellTp2Percent    = params.sellTp2Percent    ?? 17;
-  const sellTp2Position   = params.sellTp2Position   ?? 30;
+  const sellStopPercent   = params.sellStopPercent   ?? 11;
 
   try {
     const candlesNeeded = ma200Period + 5;
@@ -427,16 +419,14 @@ export async function runMa200VolatileStrategy(
     // COMPRA: vela fechada cruza MA200 para cima E fecha 2%+ acima (reversão confirmada de SELL → BUY)
     if (prevPrice <= prevMa200 && currentPrice > confirmUp) {
       const stopLoss = currentPrice * (1 - buyStopPercent / 100);
-      const target1  = currentPrice * (1 + buyTp1Percent  / 100);
-      const target2  = currentPrice * (1 + buyTp2Percent  / 100);
       const distPct  = ((currentPrice - ma200) / ma200 * 100).toFixed(2);
 
       return {
         direction: 'BUY',
         entryPrice: currentPrice,
         stopLoss,
-        target1,
-        target2,
+        target1: undefined,
+        target2: undefined,
         target3: undefined,
         strength: 70,
         extraInfo: JSON.stringify({
@@ -444,11 +434,7 @@ export async function runMa200VolatileStrategy(
           distFromMA200: `+${distPct}%`,
           crossover: `closed candle crosses +${confirmationPct}% above MA200 (reversal BUY)`,
           stopPercent: buyStopPercent,
-          tp1Percent: buyTp1Percent,
-          tp1Position: `${buyTp1Position}%`,
-          tp2Percent: buyTp2Percent,
-          tp2Position: `${buyTp2Position}%`,
-          remainingPosition: `${100 - buyTp1Position - buyTp2Position}% — exit on reversal`,
+          executionProfile: `SL -${buyStopPercent}% | sem TP intermédio | saída na reversão`,
         }),
       };
     }
@@ -456,16 +442,14 @@ export async function runMa200VolatileStrategy(
     // VENDA: vela fechada cruza MA200 para baixo E fecha 2%+ abaixo (reversão confirmada de BUY → SELL)
     if (prevPrice >= prevMa200 && currentPrice < confirmDown) {
       const stopLoss = currentPrice * (1 + sellStopPercent / 100);
-      const target1  = currentPrice * (1 - sellTp1Percent  / 100);
-      const target2  = currentPrice * (1 - sellTp2Percent  / 100);
       const distPct  = ((ma200 - currentPrice) / ma200 * 100).toFixed(2);
 
       return {
         direction: 'SELL',
         entryPrice: currentPrice,
         stopLoss,
-        target1,
-        target2,
+        target1: undefined,
+        target2: undefined,
         target3: undefined,
         strength: 70,
         extraInfo: JSON.stringify({
@@ -473,11 +457,7 @@ export async function runMa200VolatileStrategy(
           distFromMA200: `-${distPct}%`,
           crossover: `closed candle crosses -${confirmationPct}% below MA200 (reversal SELL)`,
           stopPercent: sellStopPercent,
-          tp1Percent: sellTp1Percent,
-          tp1Position: `${sellTp1Position}%`,
-          tp2Percent: sellTp2Percent,
-          tp2Position: `${sellTp2Position}%`,
-          remainingPosition: `${100 - sellTp1Position - sellTp2Position}% — exit on reversal`,
+          executionProfile: `SL +${sellStopPercent}% | sem TP intermédio | saída na reversão`,
         }),
       };
     }
@@ -491,8 +471,8 @@ export async function runMa200VolatileStrategy(
 
 /**
  * Estratégia RSI — Top Volatilidade 1h:
- * BUY  quando RSI cruza de baixo para cima 60  → SL -9% | TP1 +8% (25%) | TP2 +21% (35%) | 40% às 24h
- * SELL quando RSI cruza de cima para baixo 40  → SL +5% | TP1 -9% (25%) | TP2 -15% (35%) | 40% às 24h
+ * BUY  quando RSI cruza de baixo para cima 60  → SL -3% | sem TP intermédio | saída às 24h
+ * SELL quando RSI cruza de cima para baixo 40  → SL +3% | sem TP intermédio | saída às 24h
  * Usa sempre o candle fechado (não o em formação).
  * Corre apenas em símbolos Top Volatilidade (filtrado em runAllStrategies).
  */
@@ -507,6 +487,9 @@ export async function runRsiStrategy(
   const buyThreshold  = params.buyThreshold  ?? 60;
   const sellThreshold = params.sellThreshold ?? 40;
   const maPeriod      = params.maPeriod      ?? 200;
+  const buyStopPercent = params.buyStopPercent ?? 3;
+  const sellStopPercent = params.sellStopPercent ?? 3;
+  const closeAfterHours = params.closeAfterHours ?? 24;
 
   try {
     const candlesNeeded = Math.max(period + 25, maPeriod + 5);
@@ -531,9 +514,9 @@ export async function runRsiStrategy(
       return {
         direction: 'BUY',
         entryPrice: currentPrice,
-        stopLoss: currentPrice * 0.91,   // SL -9%
-        target1:  currentPrice * 1.08,   // TP1 +8%  — 25% posição
-        target2:  currentPrice * 1.21,   // TP2 +21% — 35% posição (40% fecha às 24h)
+        stopLoss: currentPrice * (1 - buyStopPercent / 100),
+        target1:  undefined,
+        target2:  undefined,
         target3:  undefined,
         strength: Math.min(100, Math.max(60, Math.round(60 + (rsi - buyThreshold) * 2))),
         extraInfo: JSON.stringify({
@@ -541,9 +524,9 @@ export async function runRsiStrategy(
           prevRsi: prevRsi.toFixed(2),
           buyThreshold,
           ma200: ma200.toFixed(4),
-          sl: 9, tp1Percent: 8, tp1Position: 25,
-          tp2Percent: 21, tp2Position: 35,
-          tp3: '40% às 24h',
+          stopPercent: buyStopPercent,
+          executionProfile: `SL -${buyStopPercent}% | sem TP intermédio | saída às ${closeAfterHours}h`,
+          timeExit: `100% às ${closeAfterHours}h`,
         }),
       };
     }
@@ -553,9 +536,9 @@ export async function runRsiStrategy(
       return {
         direction: 'SELL',
         entryPrice: currentPrice,
-        stopLoss: currentPrice * 1.05,   // SL +5%
-        target1:  currentPrice * 0.91,   // TP1 -9%  — 25% posição
-        target2:  currentPrice * 0.85,   // TP2 -15% — 35% posição (40% fecha às 24h)
+        stopLoss: currentPrice * (1 + sellStopPercent / 100),
+        target1:  undefined,
+        target2:  undefined,
         target3:  undefined,
         strength: Math.min(100, Math.max(60, Math.round(60 + (sellThreshold - rsi) * 2))),
         extraInfo: JSON.stringify({
@@ -563,9 +546,9 @@ export async function runRsiStrategy(
           prevRsi: prevRsi.toFixed(2),
           sellThreshold,
           ma200: ma200.toFixed(4),
-          sl: 5, tp1Percent: 9, tp1Position: 25,
-          tp2Percent: 15, tp2Position: 35,
-          tp3: '40% às 24h',
+          stopPercent: sellStopPercent,
+          executionProfile: `SL +${sellStopPercent}% | sem TP intermédio | saída às ${closeAfterHours}h`,
+          timeExit: `100% às ${closeAfterHours}h`,
         }),
       };
     }
@@ -578,12 +561,12 @@ export async function runRsiStrategy(
 }
 
 /**
- * Estratégia RSI 15m — Top Volatilidade (sem filtro MA200):
- * BUY  quando RSI cruza de baixo para cima 62  → SL -4% | TP1 +5% (35%) | TP2 +14% (30%) | 35% às 24h
- * SELL quando RSI cruza de cima para baixo 38  → SL +4% | TP1 -5% (30%) | TP2 -11% (35%) | 35% às 24h
+ * Estratégia RSI 15m — Reversal oversold:
+ * BUY quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32
+ * Apenas BUY | SL -3% | TP1 +5% | TP2 +14%
  * Usa sempre o candle fechado (não o em formação).
  * Sem filtro MA200 para sinal mais rápido.
- * Corre apenas em símbolos Top Volatilidade (filtrado em runAllStrategies).
+ * Corre num universo alargado de símbolos líquidos (filtrado em runAllStrategies).
  */
 export async function runRsi15mStrategy(
   symbol: string,
@@ -592,9 +575,10 @@ export async function runRsi15mStrategy(
 ): Promise<SignalResult | null> {
   if (timeframe !== '15m') return null;
 
-  const period        = params.period        ?? 14;
-  const buyThreshold  = params.buyThreshold  ?? 62;
-  const sellThreshold = params.sellThreshold ?? 38;
+  const period = params.period ?? 14;
+  const previousBelowThreshold = params.previousBelowThreshold ?? 28;
+  const buyThreshold = params.buyThreshold ?? 32;
+  const stopPercent = params.stopPercent ?? 3;
 
   try {
     const candlesNeeded = period + 30;
@@ -613,12 +597,12 @@ export async function runRsi15mStrategy(
 
     const currentPrice = candles[candles.length - 2].close; // último candle fechado
 
-    // BUY: RSI cruza de baixo para cima 62 (sem filtro MA200)
-    if (prevRsi <= buyThreshold && rsi > buyThreshold) {
+    // BUY: RSI anterior abaixo de 28 e RSI actual fecha acima de 32
+    if (prevRsi < previousBelowThreshold && rsi > buyThreshold) {
       return {
         direction: 'BUY',
         entryPrice: currentPrice,
-        stopLoss: currentPrice * 0.96,   // SL -4%
+        stopLoss: currentPrice * (1 - stopPercent / 100),
         target1:  currentPrice * 1.05,   // TP1 +5%  — 35% posição
         target2:  currentPrice * 1.14,   // TP2 +14% — 30% posição (35% fecha às 24h)
         target3:  undefined,
@@ -626,30 +610,12 @@ export async function runRsi15mStrategy(
         extraInfo: JSON.stringify({
           rsi: rsi.toFixed(2),
           prevRsi: prevRsi.toFixed(2),
+          previousBelowThreshold,
           buyThreshold,
-          sl: 4, tp1Percent: 5, tp1Position: 35,
+          stopPercent,
+          executionProfile: `BUY only | RSI prev < ${previousBelowThreshold} and current > ${buyThreshold} | SL -${stopPercent}%`,
+          tp1Percent: 5, tp1Position: 35,
           tp2Percent: 14, tp2Position: 30,
-          tp3: '35% às 24h',
-        }),
-      };
-    }
-
-    // SELL: RSI cruza de cima para baixo 38 (sem filtro MA200)
-    if (prevRsi >= sellThreshold && rsi < sellThreshold) {
-      return {
-        direction: 'SELL',
-        entryPrice: currentPrice,
-        stopLoss: currentPrice * 1.04,   // SL +4%
-        target1:  currentPrice * 0.95,   // TP1 -5%  — 30% posição
-        target2:  currentPrice * 0.89,   // TP2 -11% — 35% posição (35% fecha às 24h)
-        target3:  undefined,
-        strength: Math.min(100, Math.max(60, Math.round(60 + (sellThreshold - rsi) * 2))),
-        extraInfo: JSON.stringify({
-          rsi: rsi.toFixed(2),
-          prevRsi: prevRsi.toFixed(2),
-          sellThreshold,
-          sl: 4, tp1Percent: 5, tp1Position: 30,
-          tp2Percent: 11, tp2Position: 35,
           tp3: '35% às 24h',
         }),
       };
@@ -708,7 +674,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         strategy.name === 'VOLUME_SPIKE_15M' ? ['15m'] :
         strategy.name === 'MA_VOLATILE'      ? ['1h'] :
         strategy.name === 'RSI_15M'          ? ['15m'] :
-        strategy.name === 'MA200_VOLATILE'   ? ['1h'] :
+        strategy.name === 'MA200_VOLATILE'   ? ['4h'] :
         strategy.name === 'RSI'              ? ['1h'] : timeframes;
 
       let symbolsToAnalyze = symbols;
@@ -721,11 +687,35 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           symbolsToAnalyze = volumeSymbols;
           console.log(`✅ Encontrados ${volumeSymbols.length} símbolos`);
         }
+      } else if (strategy.name === 'RSI_15M') {
+        const maxSymbols = params.symbolLimit ?? 400;
+        const minQuoteVolume = params.minQuoteVolume ?? 500000;
+        console.log(`🔍 Buscando universo alargado para ${strategy.name} (${maxSymbols} símbolos)...`);
+        try {
+          const broadSymbols = await fetchTopSymbolsByVolume(maxSymbols, minQuoteVolume);
+          if (broadSymbols.length > 0) {
+            symbolsToAnalyze = broadSymbols;
+            console.log(`✅ Encontrados ${broadSymbols.length} símbolos líquidos`);
+          }
+        } catch (err) {
+          console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando lista base:`, err);
+        }
+      } else if (strategy.name === 'MA200_VOLATILE') {
+        const maxSymbols = params.symbolLimit ?? 500;
+        const minQuoteVolume = params.minQuoteVolume ?? 100000;
+        console.log(`🔍 Buscando universo alargado para ${strategy.name} (${maxSymbols} símbolos)...`);
+        try {
+          const broadSymbols = await fetchTopSymbolsByVolume(maxSymbols, minQuoteVolume);
+          if (broadSymbols.length > 0) {
+            symbolsToAnalyze = broadSymbols;
+            console.log(`✅ Encontrados ${broadSymbols.length} símbolos líquidos`);
+          }
+        } catch (err) {
+          console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top Voláteis:`, err);
+        }
       } else if (
         strategy.name === 'MA_VOLATILE' ||
-        strategy.name === 'MA200_VOLATILE' ||
-        strategy.name === 'RSI' ||
-        strategy.name === 'RSI_15M'
+        strategy.name === 'RSI'
       ) {
         console.log(`🔍 Buscando Top Voláteis na BD para ${strategy.name}...`);
         const topVolatile = await prisma.topVolatile.findMany({ orderBy: { rank: 'asc' } });
