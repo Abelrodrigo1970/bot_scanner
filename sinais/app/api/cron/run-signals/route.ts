@@ -20,7 +20,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
-      exclude: ['VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA_VOLATILE'],
+      exclude: ['RSI_15M', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA_VOLATILE'],
     });
 
     // Auto-exec RSI 1h — força mínima 60
