@@ -372,9 +372,9 @@ export async function runMa60VolatileStrategy(
  * Estratégia MA Cross Top Voláteis (somente MA200):
  * - Analisa um universo alargado de símbolos líquidos
  * - BUY : preço fecha 2%+ ACIMA da MA200 (cruzamento confirmado)
- *         SL -11% | sem TP intermédio | saída na reversão
+ *         SL -11% | sem TP intermédio | entrada só se distância à MA200 < 10% | saída na reversão
  * - SELL: preço fecha 2%+ ABAIXO da MA200 (cruzamento confirmado)
- *         SL +11% | sem TP intermédio | saída na reversão
+ *         SL +11% | sem TP intermédio | entrada só se distância à MA200 < 10% | saída na reversão
  * Reversão: novo sinal oposto gerado quando preço cruza MA200 com confirmação de 2%.
  */
 export async function runMa200VolatileStrategy(
@@ -386,6 +386,7 @@ export async function runMa200VolatileStrategy(
 
   const ma200Period       = params.ma200Period       ?? 200;
   const confirmationPct   = params.confirmationPct   ?? 2;   // % além da MA200 para confirmar entrada/reversão
+  const maxDistancePct    = params.maxDistancePct    ?? 10;
 
   // Parâmetros COMPRA
   const buyStopPercent    = params.buyStopPercent    ?? 11;
@@ -415,6 +416,11 @@ export async function runMa200VolatileStrategy(
     // Limites de confirmação: o fecho deve estar 2%+ além da MA200
     const confirmUp   = ma200 * (1 + confirmationPct / 100);  // ex: MA200 + 2%
     const confirmDown = ma200 * (1 - confirmationPct / 100);  // ex: MA200 - 2%
+    const distancePct = Math.abs((currentPrice - ma200) / ma200) * 100;
+
+    if (distancePct >= maxDistancePct) {
+      return null;
+    }
 
     // COMPRA: vela fechada cruza MA200 para cima E fecha 2%+ acima (reversão confirmada de SELL → BUY)
     if (prevPrice <= prevMa200 && currentPrice > confirmUp) {
@@ -434,7 +440,8 @@ export async function runMa200VolatileStrategy(
           distFromMA200: `+${distPct}%`,
           crossover: `closed candle crosses +${confirmationPct}% above MA200 (reversal BUY)`,
           stopPercent: buyStopPercent,
-          executionProfile: `SL -${buyStopPercent}% | sem TP intermédio | saída na reversão`,
+          maxDistancePct,
+          executionProfile: `SL -${buyStopPercent}% | sem TP intermédio | entrada só se distância < ${maxDistancePct}% | saída na reversão`,
         }),
       };
     }
@@ -457,7 +464,8 @@ export async function runMa200VolatileStrategy(
           distFromMA200: `-${distPct}%`,
           crossover: `closed candle crosses -${confirmationPct}% below MA200 (reversal SELL)`,
           stopPercent: sellStopPercent,
-          executionProfile: `SL +${sellStopPercent}% | sem TP intermédio | saída na reversão`,
+          maxDistancePct,
+          executionProfile: `SL +${sellStopPercent}% | sem TP intermédio | entrada só se distância < ${maxDistancePct}% | saída na reversão`,
         }),
       };
     }

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Cron agregado 1h:
  * - RSI
  * - VOLUME_SPIKE (1h)
- * - MA200_VOLATILE (1h)
+ * - MA200_VOLATILE (4h, verificado neste agregado)
  * - MA_VOLATILE (MA60 1h)
  *
  * Dispara os crons dedicados em background para manter a mesma lógica já existente.
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento agregado 1h iniciado em background (RSI + MA200 + MA60 + Volume Spike 1h)',
+      message: 'Processamento agregado 1h iniciado em background (RSI 1h + MA200 4h + MA60 1h + Volume Spike 1h)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

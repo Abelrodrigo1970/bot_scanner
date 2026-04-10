@@ -271,6 +271,7 @@ export default function EstrategiasPage() {
               {isMa60
                 ? numField('Período MA', p.ma60Period ?? 60, (v) => upd({ ma60Period: v }))
                 : numField('Período MA', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
+              {!isMa60 && numField('Distância máx. à MA (%)', p.maxDistancePct ?? 10, (v) => upd({ maxDistancePct: v }), 0.5)}
               {!isMa60 && numField('Máx. símbolos', p.symbolLimit ?? 500, (v) => upd({ symbolLimit: v }))}
               {!isMa60 && numField('Volume mínimo', p.minQuoteVolume ?? 100000, (v) => upd({ minQuoteVolume: v }))}
             </div>
