@@ -48,6 +48,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
           const positionState = await inspectActivePositionForSymbol(sig.symbol, rsiExchange);
           if (!positionState.inspectable) {
             console.warn(`[Run-Signals BG] ⚠️ RSI: não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
+            continue;
           }
 
           if (positionState.inspectable && !positionState.hasPosition) {
@@ -56,7 +57,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
                 UPDATE "Signal"
                 SET status = 'EXPIRED'
                 WHERE symbol = ${sig.symbol}
-                  AND strategyId = ${rsiStrategy.id}
+                  AND "strategyId" = ${rsiStrategy.id}
                   AND status = 'IN_PROGRESS'
               `
             );
@@ -81,7 +82,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
               UPDATE "Signal"
               SET status = 'EXPIRED'
               WHERE symbol = ${sig.symbol}
-                AND strategyId = ${rsiStrategy.id}
+                AND "strategyId" = ${rsiStrategy.id}
                 AND status = 'IN_PROGRESS'
             `;
             console.log(`[Run-Signals BG] 🔄 RSI: posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
@@ -139,6 +140,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
           const positionState = await inspectActivePositionForSymbol(sig.symbol, ma200Exchange);
           if (!positionState.inspectable) {
             console.warn(`[Run-Signals BG] ⚠️ MA200: não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
+            continue;
           }
 
           if (positionState.inspectable && !positionState.hasPosition) {
@@ -147,7 +149,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
                 UPDATE "Signal"
                 SET status = 'EXPIRED'
                 WHERE symbol = ${sig.symbol}
-                  AND strategyId = ${ma200Strategy.id}
+                  AND "strategyId" = ${ma200Strategy.id}
                   AND status = 'IN_PROGRESS'
               `
             );
@@ -172,7 +174,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
               UPDATE "Signal"
               SET status = 'EXPIRED'
               WHERE symbol = ${sig.symbol}
-                AND strategyId = ${ma200Strategy.id}
+                AND "strategyId" = ${ma200Strategy.id}
                 AND status = 'IN_PROGRESS'
             `;
             console.log(`[Run-Signals BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);

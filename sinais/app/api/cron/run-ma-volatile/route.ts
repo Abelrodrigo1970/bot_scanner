@@ -8,7 +8,7 @@ import {
 } from '@/lib/tradingExecutor';
 
 /**
- * Cron dedicado para MA_VOLATILE (MA60 15m).
+ * Cron dedicado para MA_VOLATILE (MA60 1h).
  * Gera sinais e auto-executa com reversal close (igual à lógica MA200_VOLATILE).
  */
 async function runMaVolatileInBackground(): Promise<void> {
@@ -17,7 +17,7 @@ async function runMaVolatileInBackground(): Promise<void> {
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
-      exclude: ['RSI', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA200_VOLATILE'],
+      exclude: ['RSI', 'RSI_15M', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA200_VOLATILE'],
     });
 
     // Auto-exec MA_VOLATILE — força fixa 70
@@ -45,6 +45,7 @@ async function runMaVolatileInBackground(): Promise<void> {
           const positionState = await inspectActivePositionForSymbol(sig.symbol, maExchange);
           if (!positionState.inspectable) {
             console.warn(`[Run-MA_VOLATILE BG] ⚠️ Não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
+            continue;
           }
 
           if (positionState.inspectable && !positionState.hasPosition) {
@@ -53,7 +54,7 @@ async function runMaVolatileInBackground(): Promise<void> {
                 UPDATE "Signal"
                 SET status = 'EXPIRED'
                 WHERE symbol = ${sig.symbol}
-                  AND strategyId = ${maVolatileStrategy.id}
+                  AND "strategyId" = ${maVolatileStrategy.id}
                   AND status = 'IN_PROGRESS'
               `
             );
@@ -78,7 +79,7 @@ async function runMaVolatileInBackground(): Promise<void> {
               UPDATE "Signal"
               SET status = 'EXPIRED'
               WHERE symbol = ${sig.symbol}
-                AND strategyId = ${maVolatileStrategy.id}
+                AND "strategyId" = ${maVolatileStrategy.id}
                 AND status = 'IN_PROGRESS'
             `;
             console.log(`[Run-MA_VOLATILE BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);

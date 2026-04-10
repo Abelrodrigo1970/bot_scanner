@@ -45,6 +45,7 @@ async function runRsi15mInBackground(): Promise<void> {
           const positionState = await inspectActivePositionForSymbol(sig.symbol, rsiExchange);
           if (!positionState.inspectable) {
             console.warn(`[Run-RSI-15m BG] ⚠️ Não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
+            continue;
           }
 
           if (positionState.inspectable && !positionState.hasPosition) {
@@ -53,7 +54,7 @@ async function runRsi15mInBackground(): Promise<void> {
                 UPDATE "Signal"
                 SET status = 'EXPIRED'
                 WHERE symbol = ${sig.symbol}
-                  AND strategyId = ${rsi15mStrategy.id}
+                  AND "strategyId" = ${rsi15mStrategy.id}
                   AND status = 'IN_PROGRESS'
               `
             );
@@ -78,7 +79,7 @@ async function runRsi15mInBackground(): Promise<void> {
               UPDATE "Signal"
               SET status = 'EXPIRED'
               WHERE symbol = ${sig.symbol}
-                AND strategyId = ${rsi15mStrategy.id}
+                AND "strategyId" = ${rsi15mStrategy.id}
                 AND status = 'IN_PROGRESS'
             `;
             console.log(`[Run-RSI-15m BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);

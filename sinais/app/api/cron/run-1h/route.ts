@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * - RSI
  * - VOLUME_SPIKE (1h)
  * - MA200_VOLATILE (1h)
+ * - MA_VOLATILE (MA60 1h)
  *
  * Dispara os crons dedicados em background para manter a mesma lógica já existente.
  */
@@ -18,6 +19,7 @@ async function run1hInBackground(origin: string, authHeader: string): Promise<vo
     const calls = [
       `${origin}/api/cron/run-signals`,
       `${origin}/api/cron/run-volume-spike`,
+      `${origin}/api/cron/run-ma-volatile`,
     ];
 
     const results = await Promise.allSettled(
@@ -75,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento agregado 1h iniciado em background (RSI + MA200 + Volume Spike 1h)',
+      message: 'Processamento agregado 1h iniciado em background (RSI + MA200 + MA60 + Volume Spike 1h)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

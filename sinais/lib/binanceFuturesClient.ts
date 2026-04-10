@@ -45,11 +45,21 @@ async function signedRequest<T>(
       'Content-Type': 'application/x-www-form-urlencoded',
     },
   });
-
-  const data = await response.json();
+  const rawBody = await response.text();
+  let data: unknown;
+  try {
+    data = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    const preview = rawBody.slice(0, 120).replace(/\s+/g, ' ').trim();
+    throw new Error(
+      `Resposta não-JSON da Binance em ${path}: HTTP ${response.status}${preview ? ` | ${preview}` : ''}`
+    );
+  }
 
   if (!response.ok) {
-    const msg = typeof data === 'object' && data.msg ? data.msg : response.statusText;
+    const msg = typeof data === 'object' && data !== null && 'msg' in data
+      ? String((data as { msg?: string }).msg || response.statusText)
+      : response.statusText;
     throw new Error(`Binance API: ${msg} (${response.status})`);
   }
 

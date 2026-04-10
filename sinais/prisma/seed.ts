@@ -75,7 +75,7 @@ async function main() {
     where: { name: 'MA_VOLATILE' },
     update: {
       description:
-        'Top Voláteis 15m. COMPRA: fecha 2%+ acima MA60 → SL -8% | TP1 +8% (40%) | TP2 +15% (30%) | 30% na reversão. VENDA: fecha 2%+ abaixo MA60 → SL +8% | TP1 -9% (40%) | TP2 -17% (30%) | 30% na reversão.',
+        'Top Voláteis 1h. COMPRA: fecha 2%+ acima MA60 → SL -8% | TP1 +8% (40%) | TP2 +15% (30%) | 30% na reversão. VENDA: fecha 2%+ abaixo MA60 → SL +8% | TP1 -9% (40%) | TP2 -17% (30%) | 30% na reversão.',
       params: JSON.stringify({
         ma60Period: 60,
         ma200Period: 200,
@@ -99,7 +99,7 @@ async function main() {
       name: 'MA_VOLATILE',
       displayName: 'MA Cross Top Voláteis',
       description:
-        'Top Voláteis 15m. COMPRA: fecha 2%+ acima MA60 → SL -8% | TP1 +8% (40%) | TP2 +15% (30%) | 30% na reversão. VENDA: fecha 2%+ abaixo MA60 → SL +8% | TP1 -9% (40%) | TP2 -17% (30%) | 30% na reversão.',
+        'Top Voláteis 1h. COMPRA: fecha 2%+ acima MA60 → SL -8% | TP1 +8% (40%) | TP2 +15% (30%) | 30% na reversão. VENDA: fecha 2%+ abaixo MA60 → SL +8% | TP1 -9% (40%) | TP2 -17% (30%) | 30% na reversão.',
       isActive: true,
       params: JSON.stringify({
         ma60Period: 60,

@@ -6,8 +6,8 @@ Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
 
 | Endpoint | Estratégias | Tempo estimado |
 |----------|-------------|----------------|
-| `/api/cron/run-15m` | Volume Spike 15m + MA_VOLATILE (MA60 15m) | Resposta imediata |
-| `/api/cron/run-1h` | RSI + MA200_VOLATILE + Volume Spike 1h | Resposta imediata |
+| `/api/cron/run-15m` | Volume Spike 15m + RSI_15M | Resposta imediata |
+| `/api/cron/run-1h` | RSI + MA200_VOLATILE + MA_VOLATILE (MA60 1h) + Volume Spike 1h | Resposta imediata |
 
 **Configuração:** Crie 2 cron jobs no cron-job.org.
 
@@ -30,14 +30,14 @@ Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
 ### Passo 2: Criar os 2 Cron Jobs
 
 **Cron Job 1 – Agregado 15m:**
-- **Title:** Sinais 15m (Volume + MA60)
+- **Title:** Sinais 15m (Volume + RSI)
 - **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-15m`
 - **Schedule:** `*/15 8-23 * * *` (a cada 15 min, 8h–23h)
 - **Method:** GET
 - **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
 
 **Cron Job 2 – Agregado 1h:**
-- **Title:** Sinais 1h (RSI + MA200 + Volume)
+- **Title:** Sinais 1h (RSI + MA200 + MA60 + Volume)
 - **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-1h`
 - **Schedule:** `0 8-23 * * *` (hora a hora 8h–23h)
 - **Method:** GET

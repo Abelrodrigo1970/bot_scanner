@@ -256,7 +256,7 @@ export async function runVolumeSpike15mStrategy(
 }
 
 /**
- * Estratégia MA Cross Top Voláteis (mesma lógica da MA200_VOLATILE, usando MA60 em 15m):
+ * Estratégia MA Cross Top Voláteis (mesma lógica da MA200_VOLATILE, usando MA60 em 1h):
  * - BUY : fecha 2%+ ACIMA da MA60  → SL -8% | TP1 +8% (40%) | TP2 +15% (30%) | 30% fecha na reversão
  * - SELL: fecha 2%+ ABAIXO da MA60 → SL +8% | TP1 -9% (40%) | TP2 -17% (30%) | 30% fecha na reversão
  */
@@ -265,7 +265,7 @@ export async function runMa60VolatileStrategy(
   timeframe: Timeframe,
   params: StrategyParams
 ): Promise<SignalResult | null> {
-  if (timeframe !== '15m') return null;
+  if (timeframe !== '1h') return null;
 
   const ma60Period        = params.ma60Period        ?? 60;
   const ma200Period       = params.ma200Period       ?? 200;
@@ -706,7 +706,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
       const timeframesToUse: Timeframe[] =
         strategy.name === 'VOLUME_SPIKE_15M' ? ['15m'] :
-        strategy.name === 'MA_VOLATILE'      ? ['15m'] :
+        strategy.name === 'MA_VOLATILE'      ? ['1h'] :
         strategy.name === 'RSI_15M'          ? ['15m'] :
         strategy.name === 'MA200_VOLATILE'   ? ['1h'] :
         strategy.name === 'RSI'              ? ['1h'] : timeframes;

@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Cron agregado 15m:
  * - VOLUME_SPIKE_15M
- * - MA_VOLATILE (MA60 15m)
  * - RSI_15M (RSI 15m Top Volatilidade)
  *
  * Dispara os crons dedicados em background para manter a mesma lógica já existente.
@@ -17,7 +16,6 @@ async function run15mInBackground(origin: string, authHeader: string): Promise<v
 
     const calls = [
       `${origin}/api/cron/run-volume-spike-15m`,
-      `${origin}/api/cron/run-ma-volatile`,
       `${origin}/api/cron/run-rsi-15m`,
     ];
 
@@ -76,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento agregado 15m iniciado em background (Volume Spike 15m + MA60 + RSI 15m)',
+      message: 'Processamento agregado 15m iniciado em background (Volume Spike 15m + RSI 15m)',
       executedAt: now.toISOString(),
     });
   } catch (error) {
