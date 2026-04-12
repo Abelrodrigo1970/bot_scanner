@@ -163,13 +163,13 @@ async function main() {
     where: { name: 'MA200_VOLATILE' },
     update: {
       description:
-        'MA200 4h. Universo alargado de símbolos líquidos. COMPRA: fecha 2%+ acima MA200, só se a distância à média for inferior a 10% → SL -11% | sem TP intermédio | saída na reversão. VENDA: fecha 2%+ abaixo MA200, só se a distância à média for inferior a 10% → SL +11% | sem TP intermédio | saída na reversão.',
+        'MA200 4h. Universo alargado de símbolos líquidos. COMPRA: fecha 2%+ acima MA200, só se a distância à média for inferior a 10% → SL -5% | sem TP intermédio | saída na reversão. VENDA: fecha 2%+ abaixo MA200, só se a distância à média for inferior a 10% → SL +5% | sem TP intermédio | saída na reversão.',
       params: JSON.stringify({
         ma200Period: 200,
         confirmationPct: 2,
         maxDistancePct: 10,
-        buyStopPercent: 11,
-        sellStopPercent: 11,
+        buyStopPercent: 5,
+        sellStopPercent: 5,
         symbolLimit: 500,
         minQuoteVolume: 100000,
         allowBuy: true,
@@ -181,14 +181,14 @@ async function main() {
       name: 'MA200_VOLATILE',
       displayName: 'MA200 Top Voláteis',
       description:
-        'MA200 4h. Universo alargado de símbolos líquidos. COMPRA: fecha 2%+ acima MA200, só se a distância à média for inferior a 10% → SL -11% | sem TP intermédio | saída na reversão. VENDA: fecha 2%+ abaixo MA200, só se a distância à média for inferior a 10% → SL +11% | sem TP intermédio | saída na reversão.',
+        'MA200 4h. Universo alargado de símbolos líquidos. COMPRA: fecha 2%+ acima MA200, só se a distância à média for inferior a 10% → SL -5% | sem TP intermédio | saída na reversão. VENDA: fecha 2%+ abaixo MA200, só se a distância à média for inferior a 10% → SL +5% | sem TP intermédio | saída na reversão.',
       isActive: true,
       params: JSON.stringify({
         ma200Period: 200,
         confirmationPct: 2,
         maxDistancePct: 10,
-        buyStopPercent: 11,
-        sellStopPercent: 11,
+        buyStopPercent: 5,
+        sellStopPercent: 5,
         symbolLimit: 500,
         minQuoteVolume: 100000,
         allowBuy: true,

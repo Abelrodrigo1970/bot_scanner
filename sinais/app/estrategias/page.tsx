@@ -254,8 +254,8 @@ export default function EstrategiasPage() {
       case 'MA_VOLATILE':
       case 'MA200_VOLATILE': {
         const isMa60 = strategy.name === 'MA_VOLATILE';
-        const defaultBuyStop = isMa60 ? 8 : 11;
-        const defaultSellStop = isMa60 ? 8 : 11;
+        const defaultBuyStop = isMa60 ? 8 : 5;
+        const defaultSellStop = isMa60 ? 8 : 5;
         const defaultBuyTp1 = isMa60 ? 8 : 0;
         const defaultBuyTp1Position = isMa60 ? 40 : 0;
         const defaultBuyTp2 = isMa60 ? 15 : 0;

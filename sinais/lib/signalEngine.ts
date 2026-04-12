@@ -372,9 +372,9 @@ export async function runMa60VolatileStrategy(
  * Estratégia MA Cross Top Voláteis (somente MA200):
  * - Analisa um universo alargado de símbolos líquidos
  * - BUY : preço fecha 2%+ ACIMA da MA200 (cruzamento confirmado)
- *         SL -11% | sem TP intermédio | entrada só se distância à MA200 < 10% | saída na reversão
+ *         SL -5% | sem TP intermédio | entrada só se distância à MA200 < 10% | saída na reversão
  * - SELL: preço fecha 2%+ ABAIXO da MA200 (cruzamento confirmado)
- *         SL +11% | sem TP intermédio | entrada só se distância à MA200 < 10% | saída na reversão
+ *         SL +5% | sem TP intermédio | entrada só se distância à MA200 < 10% | saída na reversão
  * Reversão: novo sinal oposto gerado quando preço cruza MA200 com confirmação de 2%.
  */
 export async function runMa200VolatileStrategy(
@@ -389,10 +389,10 @@ export async function runMa200VolatileStrategy(
   const maxDistancePct    = params.maxDistancePct    ?? 10;
 
   // Parâmetros COMPRA
-  const buyStopPercent    = params.buyStopPercent    ?? 11;
+  const buyStopPercent    = params.buyStopPercent    ?? 5;
 
   // Parâmetros VENDA
-  const sellStopPercent   = params.sellStopPercent   ?? 11;
+  const sellStopPercent   = params.sellStopPercent   ?? 5;
 
   try {
     const candlesNeeded = ma200Period + 5;
