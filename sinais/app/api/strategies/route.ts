@@ -3,6 +3,38 @@ import { isAuthenticated } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
 
+const RSI_15M_DEFAULT_PARAMS = {
+  period: 14,
+  previousBelowThreshold: 28,
+  buyThreshold: 32,
+  stopPercent: 3,
+  symbolLimit: 400,
+  minQuoteVolume: 500000,
+  allowBuy: true,
+  allowSell: false,
+  exchange: 'bybit',
+};
+
+async function ensureMissingStrategies() {
+  const existingRsi15m = await prisma.strategy.findUnique({
+    where: { name: 'RSI_15M' },
+    select: { id: true },
+  });
+
+  if (!existingRsi15m) {
+    await prisma.strategy.create({
+      data: {
+        name: 'RSI_15M',
+        displayName: 'RSI 15m Reversal (28->32)',
+        description:
+          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo alargado de símbolos líquidos.',
+        isActive: true,
+        params: JSON.stringify(RSI_15M_DEFAULT_PARAMS),
+      },
+    });
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Garantir que o banco está inicializado antes de consultar
@@ -29,6 +61,8 @@ export async function GET(request: NextRequest) {
         { status: 503 }
       );
     }
+
+    await ensureMissingStrategies();
 
     // Listagem pública - necessário para o dropdown de filtros no dashboard
     const strategies = await prisma.strategy.findMany({
