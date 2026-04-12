@@ -257,8 +257,8 @@ export async function runVolumeSpike15mStrategy(
 
 /**
  * Estratégia MA Cross Top Voláteis (mesma lógica da MA200_VOLATILE, usando MA60 em 1h):
- * - BUY : fecha 2%+ ACIMA da MA60  → SL -8% | TP1 +8% (40%) | TP2 +15% (30%) | 30% fecha na reversão
- * - SELL: fecha 2%+ ABAIXO da MA60 → SL +8% | TP1 -9% (40%) | TP2 -17% (30%) | 30% fecha na reversão
+ * - BUY : fecha 2%+ ACIMA da MA60  → SL -15% | TP1 +30% (40%) | TP2 +60% (30%) | 30% fecha na reversão
+ * - SELL: fecha 2%+ ABAIXO da MA60 → SL +15% | TP1 -30% (40%) | TP2 -60% (30%) | 30% fecha na reversão
  */
 export async function runMa60VolatileStrategy(
   symbol: string,
@@ -270,15 +270,15 @@ export async function runMa60VolatileStrategy(
   const ma60Period        = params.ma60Period        ?? 60;
   const ma200Period       = params.ma200Period       ?? 200;
   const confirmationPct   = params.confirmationPct   ?? 2;
-  const buyStopPercent    = params.buyStopPercent    ?? 8;
-  const buyTp1Percent     = params.buyTp1Percent     ?? 8;
+  const buyStopPercent    = params.buyStopPercent    ?? 15;
+  const buyTp1Percent     = params.buyTp1Percent     ?? 30;
   const buyTp1Position    = params.buyTp1Position    ?? 40;
-  const buyTp2Percent     = params.buyTp2Percent     ?? 15;
+  const buyTp2Percent     = params.buyTp2Percent     ?? 60;
   const buyTp2Position    = params.buyTp2Position    ?? 30;
-  const sellStopPercent   = params.sellStopPercent   ?? 8;
-  const sellTp1Percent    = params.sellTp1Percent    ?? 9;
+  const sellStopPercent   = params.sellStopPercent   ?? 15;
+  const sellTp1Percent    = params.sellTp1Percent    ?? 30;
   const sellTp1Position   = params.sellTp1Position   ?? 40;
-  const sellTp2Percent    = params.sellTp2Percent    ?? 17;
+  const sellTp2Percent    = params.sellTp2Percent    ?? 60;
   const sellTp2Position   = params.sellTp2Position   ?? 30;
 
   try {
