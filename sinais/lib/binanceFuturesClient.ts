@@ -68,7 +68,8 @@ async function signedRequest<T>(
 
 /**
  * Lista posições abertas (Futures USDⓈ-M).
- * Posições com positionAmt = 0 também aparecem; filtrar por positionAmt != 0 para ativas.
+ * A Binance retirou /fapi/v1/positionRisk; usamos v3 e fallback para v2.
+ * Posições com positionAmt = 0 também podem aparecer; filtrar por positionAmt != 0 para ativas.
  */
 export async function getPositionRisk(): Promise<Array<{
   symbol: string;
@@ -78,7 +79,19 @@ export async function getPositionRisk(): Promise<Array<{
   unRealizedProfit: string;
   leverage: string;
 }>> {
-  return signedRequest('GET', '/fapi/v1/positionRisk');
+  try {
+    return await signedRequest('GET', '/fapi/v3/positionRisk');
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (
+      msg.includes('/fapi/v3/positionRisk') ||
+      msg.includes('404') ||
+      msg.includes('retired')
+    ) {
+      return signedRequest('GET', '/fapi/v2/positionRisk');
+    }
+    throw error;
+  }
 }
 
 /**
