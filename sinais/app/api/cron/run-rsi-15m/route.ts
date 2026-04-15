@@ -97,6 +97,7 @@ async function runRsi15mInBackground(): Promise<void> {
             strength: sig.strength,
             strategyName: sig.strategyName,
             status: sig.status,
+            extraInfo: sig.extraInfo,
             exchange: rsiExchange,
           });
 

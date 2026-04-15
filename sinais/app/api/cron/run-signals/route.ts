@@ -100,6 +100,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
             strength: sig.strength,
             strategyName: sig.strategyName,
             status: sig.status,
+            extraInfo: sig.extraInfo,
             exchange: rsiExchange,
           });
 
@@ -124,6 +125,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
       const MA200_MIN_STRENGTH = 70;
       const ma200Params = JSON.parse(ma200Strategy.params || '{}');
       const ma200Exchange = (ma200Params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+      const ma200CloseAfterHours = Number(ma200Params.closeAfterHours ?? 24);
 
       const newSignals = await prisma.signal.findMany({
         where: {
@@ -192,6 +194,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
             strength: sig.strength,
             strategyName: sig.strategyName,
             status: sig.status,
+            extraInfo: sig.extraInfo,
             exchange: ma200Exchange,
           });
 
@@ -203,6 +206,43 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
           }
         } catch (err) {
           console.error(`[Run-Signals BG] ❌ Erro auto-exec ${sig.symbol}:`, err);
+        }
+      }
+
+      const ma200Cutoff = new Date(Date.now() - ma200CloseAfterHours * 60 * 60 * 1000);
+      const expiringSignals = await prisma.signal.findMany({
+        where: {
+          strategyId: ma200Strategy.id,
+          status: 'IN_PROGRESS',
+          generatedAt: { lte: ma200Cutoff },
+        },
+        orderBy: { generatedAt: 'asc' },
+      });
+
+      for (const sig of expiringSignals) {
+        try {
+          const positionState = await inspectActivePositionForSymbol(sig.symbol, ma200Exchange);
+          if (!positionState.inspectable) {
+            console.warn(`[Run-Signals BG] ⚠️ MA200 24h: não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
+            continue;
+          }
+
+          if (!positionState.hasPosition) {
+            await prisma.$executeRaw`UPDATE "Signal" SET status = 'EXPIRED' WHERE id = ${sig.id}`;
+            console.log(`[Run-Signals BG] 🧹 MA200 24h: ${sig.symbol} sem posição real, sinal expirado`);
+            continue;
+          }
+
+          const closeResult = await closeActivePositionForSymbol(sig.symbol, ma200Exchange);
+          if (!closeResult.closed) {
+            console.warn(`[Run-Signals BG] ⚠️ MA200 24h: não foi possível fechar ${sig.symbol}: ${closeResult.message}`);
+            continue;
+          }
+
+          await prisma.$executeRaw`UPDATE "Signal" SET status = 'EXPIRED' WHERE id = ${sig.id}`;
+          console.log(`[Run-Signals BG] ⏰ MA200 24h: posição fechada em ${sig.symbol}`);
+        } catch (err) {
+          console.error(`[Run-Signals BG] ❌ MA200 24h: erro ao fechar ${sig.symbol}:`, err);
         }
       }
     }

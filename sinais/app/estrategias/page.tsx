@@ -13,6 +13,18 @@ interface Strategy {
   params: string;
 }
 
+function parseStrategyParams(params: string | null | undefined): Record<string, any> {
+  if (!params) return {};
+
+  try {
+    const parsed = JSON.parse(params);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (error) {
+    console.error('Erro ao parsear params da estratégia:', error, params);
+    return {};
+  }
+}
+
 export default function EstrategiasPage() {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,7 +152,7 @@ export default function EstrategiasPage() {
   };
 
   const handleSetExchange = async (strategy: Strategy, ex: 'binance' | 'bybit') => {
-    const params = JSON.parse(strategy.params || '{}');
+    const params = parseStrategyParams(strategy.params);
     if (params.exchange === ex) return;
     try {
       setSaving(strategy.id + 'exchange');
@@ -164,7 +176,7 @@ export default function EstrategiasPage() {
   };
 
   const handleToggleDirection = async (strategy: Strategy, direction: 'BUY' | 'SELL') => {
-    const params = JSON.parse(strategy.params || '{}');
+    const params = parseStrategyParams(strategy.params);
     const field = direction === 'BUY' ? 'allowBuy' : 'allowSell';
     const current = params[field] !== false; // default true
     try {
@@ -211,7 +223,7 @@ export default function EstrategiasPage() {
   );
 
   const renderStrategyParams = (strategy: Strategy) => {
-    const p = JSON.parse(strategy.params || '{}');
+    const p = parseStrategyParams(strategy.params);
     const upd = (patch: object) => handleUpdateParams(strategy, { ...p, ...patch });
 
     switch (strategy.name) {
@@ -254,14 +266,14 @@ export default function EstrategiasPage() {
       case 'MA_VOLATILE':
       case 'MA200_VOLATILE': {
         const isMa60 = strategy.name === 'MA_VOLATILE';
-        const defaultBuyStop = isMa60 ? 15 : 5;
-        const defaultSellStop = isMa60 ? 15 : 5;
-        const defaultBuyTp1 = isMa60 ? 30 : 0;
-        const defaultBuyTp1Position = isMa60 ? 40 : 0;
+        const defaultBuyStop = isMa60 ? 15 : 4;
+        const defaultSellStop = isMa60 ? 15 : 4;
+        const defaultBuyTp1 = isMa60 ? 30 : 80;
+        const defaultBuyTp1Position = isMa60 ? 40 : 70;
         const defaultBuyTp2 = isMa60 ? 60 : 0;
         const defaultBuyTp2Position = isMa60 ? 30 : 0;
-        const defaultSellTp1 = isMa60 ? 30 : 0;
-        const defaultSellTp1Position = isMa60 ? 40 : 0;
+        const defaultSellTp1 = isMa60 ? 30 : 80;
+        const defaultSellTp1Position = isMa60 ? 40 : 70;
         const defaultSellTp2 = isMa60 ? 60 : 0;
         const defaultSellTp2Position = isMa60 ? 30 : 0;
         return (
@@ -413,7 +425,7 @@ export default function EstrategiasPage() {
 
                 {/* Selector Exchange */}
                 {(() => {
-                  const params = JSON.parse(strategy.params || '{}');
+                  const params = parseStrategyParams(strategy.params);
                   const currentEx = params.exchange || 'binance';
                   return (
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -447,7 +459,7 @@ export default function EstrategiasPage() {
                   </h3>
                   <div className="flex gap-3">
                     {(['BUY', 'SELL'] as const).map((dir) => {
-                      const params   = JSON.parse(strategy.params || '{}');
+                      const params   = parseStrategyParams(strategy.params);
                       const field    = dir === 'BUY' ? 'allowBuy' : 'allowSell';
                       const enabled  = params[field] !== false;
                       const isSaving = saving === strategy.id + dir;

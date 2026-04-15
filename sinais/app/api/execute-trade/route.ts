@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
         strength: true,
         strategyName: true,
         status: true,
+        extraInfo: true,
         strategy: { select: { params: true } },
       },
     });
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
       strength: signal.strength,
       strategyName: signal.strategyName,
       status: signal.status,
+      extraInfo: signal.extraInfo,
       exchange: strategyExchange,
     });
 

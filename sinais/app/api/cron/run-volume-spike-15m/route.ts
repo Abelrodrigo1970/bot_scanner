@@ -81,6 +81,7 @@ async function runVolumeSpike15mInBackground(
                   strength: created.strength,
                   strategyName: created.strategyName,
                   status: created.status,
+                  extraInfo: created.extraInfo,
                   exchange: vsExchange,
                 });
                 if (result.success && result.orderId) {

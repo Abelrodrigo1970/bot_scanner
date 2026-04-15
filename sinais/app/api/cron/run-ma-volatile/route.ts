@@ -97,6 +97,7 @@ async function runMaVolatileInBackground(): Promise<void> {
             strength: sig.strength,
             strategyName: sig.strategyName,
             status: sig.status,
+            extraInfo: sig.extraInfo,
             exchange: maExchange,
           });
 

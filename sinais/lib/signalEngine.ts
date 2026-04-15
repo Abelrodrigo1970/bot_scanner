@@ -372,9 +372,9 @@ export async function runMa60VolatileStrategy(
  * Estratégia MA Cross Top Voláteis (somente MA200):
  * - Analisa um universo alargado de símbolos líquidos
  * - BUY : preço fecha 2%+ ACIMA da MA200 (cruzamento confirmado)
- *         SL -5% | sem TP intermédio | entrada só se distância à MA200 < 10% | saída na reversão
+ *         SL -4% | TP1 +80% (70%) | restante às 24h | entrada só se distância à MA200 < 10%
  * - SELL: preço fecha 2%+ ABAIXO da MA200 (cruzamento confirmado)
- *         SL +5% | sem TP intermédio | entrada só se distância à MA200 < 10% | saída na reversão
+ *         SL +4% | TP1 -80% (70%) | restante às 24h | entrada só se distância à MA200 < 10%
  * Reversão: novo sinal oposto gerado quando preço cruza MA200 com confirmação de 2%.
  */
 export async function runMa200VolatileStrategy(
@@ -389,10 +389,15 @@ export async function runMa200VolatileStrategy(
   const maxDistancePct    = params.maxDistancePct    ?? 10;
 
   // Parâmetros COMPRA
-  const buyStopPercent    = params.buyStopPercent    ?? 5;
+  const buyStopPercent    = params.buyStopPercent    ?? 4;
+  const buyTp1Percent     = params.buyTp1Percent     ?? 80;
+  const buyTp1Position    = params.buyTp1Position    ?? 70;
 
   // Parâmetros VENDA
-  const sellStopPercent   = params.sellStopPercent   ?? 5;
+  const sellStopPercent   = params.sellStopPercent   ?? 4;
+  const sellTp1Percent    = params.sellTp1Percent    ?? 80;
+  const sellTp1Position   = params.sellTp1Position   ?? 70;
+  const closeAfterHours   = params.closeAfterHours   ?? 24;
 
   try {
     const candlesNeeded = ma200Period + 5;
@@ -425,13 +430,14 @@ export async function runMa200VolatileStrategy(
     // COMPRA: vela fechada cruza MA200 para cima E fecha 2%+ acima (reversão confirmada de SELL → BUY)
     if (prevPrice <= prevMa200 && currentPrice > confirmUp) {
       const stopLoss = currentPrice * (1 - buyStopPercent / 100);
+      const target1  = currentPrice * (1 + buyTp1Percent / 100);
       const distPct  = ((currentPrice - ma200) / ma200 * 100).toFixed(2);
 
       return {
         direction: 'BUY',
         entryPrice: currentPrice,
         stopLoss,
-        target1: undefined,
+        target1,
         target2: undefined,
         target3: undefined,
         strength: 70,
@@ -440,8 +446,11 @@ export async function runMa200VolatileStrategy(
           distFromMA200: `+${distPct}%`,
           crossover: `closed candle crosses +${confirmationPct}% above MA200 (reversal BUY)`,
           stopPercent: buyStopPercent,
+          tp1Percent: buyTp1Percent,
+          tp1Position: `${buyTp1Position}%`,
           maxDistancePct,
-          executionProfile: `SL -${buyStopPercent}% | sem TP intermédio | entrada só se distância < ${maxDistancePct}% | saída na reversão`,
+          executionProfile: `SL -${buyStopPercent}% | TP1 +${buyTp1Percent}% (${buyTp1Position}%) | restante às ${closeAfterHours}h | entrada só se distância < ${maxDistancePct}%`,
+          timeExit: `${Math.max(0, 100 - buyTp1Position)}% às ${closeAfterHours}h`,
         }),
       };
     }
@@ -449,13 +458,14 @@ export async function runMa200VolatileStrategy(
     // VENDA: vela fechada cruza MA200 para baixo E fecha 2%+ abaixo (reversão confirmada de BUY → SELL)
     if (prevPrice >= prevMa200 && currentPrice < confirmDown) {
       const stopLoss = currentPrice * (1 + sellStopPercent / 100);
+      const target1  = currentPrice * (1 - sellTp1Percent / 100);
       const distPct  = ((ma200 - currentPrice) / ma200 * 100).toFixed(2);
 
       return {
         direction: 'SELL',
         entryPrice: currentPrice,
         stopLoss,
-        target1: undefined,
+        target1,
         target2: undefined,
         target3: undefined,
         strength: 70,
@@ -464,8 +474,11 @@ export async function runMa200VolatileStrategy(
           distFromMA200: `-${distPct}%`,
           crossover: `closed candle crosses -${confirmationPct}% below MA200 (reversal SELL)`,
           stopPercent: sellStopPercent,
+          tp1Percent: sellTp1Percent,
+          tp1Position: `${sellTp1Position}%`,
           maxDistancePct,
-          executionProfile: `SL +${sellStopPercent}% | sem TP intermédio | entrada só se distância < ${maxDistancePct}% | saída na reversão`,
+          executionProfile: `SL +${sellStopPercent}% | TP1 -${sellTp1Percent}% (${sellTp1Position}%) | restante às ${closeAfterHours}h | entrada só se distância < ${maxDistancePct}%`,
+          timeExit: `${Math.max(0, 100 - sellTp1Position)}% às ${closeAfterHours}h`,
         }),
       };
     }

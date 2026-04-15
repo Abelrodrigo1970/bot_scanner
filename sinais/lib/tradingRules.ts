@@ -19,6 +19,8 @@ export interface SignalForTrading {
   status: string;
   /** Exchange onde executar: 'binance' | 'bybit'. Sobrepõe a variável EXCHANGE global. */
   exchange?: 'binance' | 'bybit';
+  /** JSON string com detalhes de execução do sinal. */
+  extraInfo?: string | null;
 }
 
 /** Estratégias permitidas para trading automático */
@@ -159,15 +161,42 @@ export function getTakeProfitLevels(signal: SignalForTrading): Array<{
   }
 
   const levels: Array<{ price: number; percentOfPosition: number; label: string }> = [];
+  let tp1Position = 60;
+  let tp2Position = 30;
+
+  if (signal.extraInfo) {
+    try {
+      const extra = JSON.parse(signal.extraInfo);
+      const parsedTp1 = parsePercentValue(extra?.tp1Position);
+      const parsedTp2 = parsePercentValue(extra?.tp2Position);
+      if (parsedTp1 !== null) tp1Position = parsedTp1;
+      if (parsedTp2 !== null) tp2Position = parsedTp2;
+    } catch {
+      // Ignora extraInfo inválido e mantém os defaults históricos.
+    }
+  }
 
   if (signal.target1 != null) {
-    levels.push({ price: signal.target1, percentOfPosition: 60, label: 'TP1' });
+    levels.push({ price: signal.target1, percentOfPosition: tp1Position, label: 'TP1' });
   }
   if (signal.target2 != null) {
-    levels.push({ price: signal.target2, percentOfPosition: 30, label: 'TP2' });
+    levels.push({ price: signal.target2, percentOfPosition: tp2Position, label: 'TP2' });
   }
 
   return levels;
+}
+
+function parsePercentValue(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value.replace('%', '').trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
 }
 
 /**

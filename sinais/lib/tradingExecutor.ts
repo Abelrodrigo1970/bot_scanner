@@ -151,6 +151,7 @@ function toSignalForRules(signal: SignalForTrading): SignalForTrading {
     strength: signal.strength,
     strategyName: signal.strategyName,
     status: signal.status,
+    extraInfo: signal.extraInfo,
   };
 }
 
@@ -283,17 +284,13 @@ async function executeSignalBinance(
       }
     }
 
-    const tps       = params.takeProfits ?? [];
-    const totalQty  = parseFloat(executedQtyStr);
-    const tpPercents =
-      isMa200Volatile(signal.strategyName) ? [0.40, 0.30] :
-      isRsiStrategy(signal.strategyName) ? [0.25, 0.35] :
-      [0.60, 0.30];
+    const tps      = params.takeProfits ?? [];
+    const totalQty = parseFloat(executedQtyStr);
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
       const tp = tps[i];
       if (!tp || tp.price === executionSignal.entryPrice) continue;
-      const tpQty    = totalQty * tpPercents[i];
+      const tpQty    = totalQty * (tp.percentOfPosition / 100);
       if (tpQty <= 0) continue;
       const tpQtyStr = roundQuantity(tpQty, step);
       if (parseFloat(tpQtyStr) <= 0) continue;
@@ -385,17 +382,13 @@ async function executeSignalBybit(
     console.log(`[Bybit] Entrada: ${entryOrder.orderId} | SL @ ${slPriceStr}`);
 
     // Ordens de Take Profit separadas
-    const tps        = params.takeProfits ?? [];
-    const totalQty   = qty;
-    const tpPercents =
-      isMa200Volatile(signal.strategyName) ? [0.40, 0.30] :
-      isRsiStrategy(signal.strategyName) ? [0.25, 0.35] :
-      [0.60, 0.30];
+    const tps      = params.takeProfits ?? [];
+    const totalQty = qty;
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
       const tp = tps[i];
       if (!tp || tp.price === executionSignal.entryPrice) continue;
-      const tpQty    = totalQty * tpPercents[i];
+      const tpQty    = totalQty * (tp.percentOfPosition / 100);
       if (tpQty <= 0) continue;
       const tpQtyStr  = roundQuantity(tpQty, step);
       if (parseFloat(tpQtyStr) <= 0) continue;
