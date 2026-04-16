@@ -649,6 +649,99 @@ export async function runRsi15mStrategy(
   }
 }
 
+/**
+ * Estratégia MA Cross 15m — Cruzamento MA30/MA200 no timeframe de 15m:
+ * - BUY : MA30 cruza MA200 para cima com folga de confirmationPct%+ → SL -stopPercent%
+ * - SELL: MA30 cruza MA200 para baixo com folga de confirmationPct%+ → SL +stopPercent%
+ * Usa sempre o candle fechado (não o em formação).
+ */
+export async function runMaCross15mStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  if (timeframe !== '15m') return null;
+
+  const ma30Period      = params.ma30Period      ?? 30;
+  const ma200Period     = params.ma200Period     ?? 200;
+  const confirmationPct = params.confirmationPct ?? 2;
+  const stopPercent     = params.stopPercent     ?? 8;
+
+  try {
+    const candlesNeeded = ma200Period + 5;
+    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    if (candles.length < ma200Period + 3) return null;
+
+    const closes = getCloses(candles);
+    const closedCloses     = closes.slice(0, -1);
+    const prevClosedCloses = closes.slice(0, -2);
+
+    const ma30  = calculateSMA(closedCloses, ma30Period);
+    const ma200 = calculateSMA(closedCloses, ma200Period);
+    if (ma30 === null || ma200 === null) return null;
+
+    const prevMa30  = calculateSMA(prevClosedCloses, ma30Period);
+    const prevMa200 = calculateSMA(prevClosedCloses, ma200Period);
+    if (prevMa30 === null || prevMa200 === null) return null;
+
+    const currentPrice = candles[candles.length - 2].close;
+
+    const confirmUp   = ma200 * (1 + confirmationPct / 100);
+    const confirmDown = ma200 * (1 - confirmationPct / 100);
+
+    // BUY: MA30 cruzou MA200 para cima com folga de confirmationPct%
+    if (prevMa30 <= prevMa200 && ma30 > confirmUp) {
+      const stopLoss = currentPrice * (1 - stopPercent / 100);
+
+      return {
+        direction: 'BUY',
+        entryPrice: currentPrice,
+        stopLoss,
+        target1: undefined,
+        target2: undefined,
+        target3: undefined,
+        strength: 70,
+        extraInfo: JSON.stringify({
+          ma30: ma30.toFixed(4),
+          ma200: ma200.toFixed(4),
+          confirmationPct,
+          crossover: `MA30 crosses +${confirmationPct}% above MA200 (BUY)`,
+          stopPercent,
+          executionProfile: `SL -${stopPercent}% | folga ${confirmationPct}%`,
+        }),
+      };
+    }
+
+    // SELL: MA30 cruzou MA200 para baixo com folga de confirmationPct%
+    if (prevMa30 >= prevMa200 && ma30 < confirmDown) {
+      const stopLoss = currentPrice * (1 + stopPercent / 100);
+
+      return {
+        direction: 'SELL',
+        entryPrice: currentPrice,
+        stopLoss,
+        target1: undefined,
+        target2: undefined,
+        target3: undefined,
+        strength: 70,
+        extraInfo: JSON.stringify({
+          ma30: ma30.toFixed(4),
+          ma200: ma200.toFixed(4),
+          confirmationPct,
+          crossover: `MA30 crosses -${confirmationPct}% below MA200 (SELL)`,
+          stopPercent,
+          executionProfile: `SL +${stopPercent}% | folga ${confirmationPct}%`,
+        }),
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error(`Erro na estratégia MA Cross 15m para ${symbol}:`, error);
+    return null;
+  }
+}
+
 export interface RunAllStrategiesOptions {
   /** Estratégias a excluir (ex: ['VOLUME_SPIKE'] para cron separado) */
   exclude?: string[];
@@ -696,7 +789,8 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         strategy.name === 'MA_VOLATILE'      ? ['1h'] :
         strategy.name === 'RSI_15M'          ? ['15m'] :
         strategy.name === 'MA200_VOLATILE'   ? ['4h'] :
-        strategy.name === 'RSI'              ? ['1h'] : timeframes;
+        strategy.name === 'RSI'              ? ['1h'] :
+        strategy.name === 'MA_CROSS_15M'     ? ['15m'] : timeframes;
 
       let symbolsToAnalyze = symbols;
       if (strategy.name === 'VOLUME_SPIKE' || strategy.name === 'VOLUME_SPIKE_15M') {
@@ -733,6 +827,19 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           }
         } catch (err) {
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top Voláteis:`, err);
+        }
+      } else if (strategy.name === 'MA_CROSS_15M') {
+        const maxSymbols = params.symbolLimit ?? 500;
+        const minQuoteVolume = params.minQuoteVolume ?? 100000;
+        console.log(`🔍 Buscando universo alargado para ${strategy.name} (${maxSymbols} símbolos)...`);
+        try {
+          const broadSymbols = await fetchTopSymbolsByVolume(maxSymbols, minQuoteVolume);
+          if (broadSymbols.length > 0) {
+            symbolsToAnalyze = broadSymbols;
+            console.log(`✅ Encontrados ${broadSymbols.length} símbolos líquidos`);
+          }
+        } catch (err) {
+          console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando lista base:`, err);
         }
       } else if (
         strategy.name === 'MA_VOLATILE' ||
@@ -789,6 +896,12 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 signalResult = await runMa200VolatileStrategy(symbol, timeframe, params);
                 if (signalResult) {
                   console.log(`✅ MA200 Voláteis: ${symbol} ${signalResult.direction} (${timeframe})`);
+                }
+                break;
+              case 'MA_CROSS_15M':
+                signalResult = await runMaCross15mStrategy(symbol, timeframe, params);
+                if (signalResult) {
+                  console.log(`✅ MA Cross 15m: ${symbol} ${signalResult.direction} (${timeframe})`);
                 }
                 break;
               default:

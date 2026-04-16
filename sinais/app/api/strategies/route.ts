@@ -15,6 +15,18 @@ const RSI_15M_DEFAULT_PARAMS = {
   exchange: 'bybit',
 };
 
+const MA_CROSS_15M_DEFAULT_PARAMS = {
+  ma30Period: 30,
+  ma200Period: 200,
+  confirmationPct: 2,
+  stopPercent: 8,
+  symbolLimit: 500,
+  minQuoteVolume: 100000,
+  allowBuy: true,
+  allowSell: true,
+  exchange: 'bybit',
+};
+
 async function ensureMissingStrategies() {
   const existingRsi15m = await prisma.strategy.findUnique({
     where: { name: 'RSI_15M' },
@@ -30,6 +42,24 @@ async function ensureMissingStrategies() {
           'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo alargado de símbolos líquidos.',
         isActive: true,
         params: JSON.stringify(RSI_15M_DEFAULT_PARAMS),
+      },
+    });
+  }
+
+  const existingMaCross15m = await prisma.strategy.findUnique({
+    where: { name: 'MA_CROSS_15M' },
+    select: { id: true },
+  });
+
+  if (!existingMaCross15m) {
+    await prisma.strategy.create({
+      data: {
+        name: 'MA_CROSS_15M',
+        displayName: 'MA Cross 15m (MA30/MA200)',
+        description:
+          'Cruzamento da MA30 com a MA200 no timeframe de 15m. Sinal de BUY quando MA30 cruza MA200 para cima com folga de 2%. Sinal de SELL quando MA30 cruza MA200 para baixo com folga de 2%. SL de 8%.',
+        isActive: false,
+        params: JSON.stringify(MA_CROSS_15M_DEFAULT_PARAMS),
       },
     });
   }
