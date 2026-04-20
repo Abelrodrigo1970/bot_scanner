@@ -247,6 +247,45 @@ async function main() {
     },
   });
 
+  // Estratégia MA Cross 15m (Golden Cross / Death Cross MA30/MA200)
+  await prisma.strategy.upsert({
+    where: { name: 'MA_CROSS_15M' },
+    update: {
+      displayName: 'MA Cross 15m (MA30/MA200)',
+      description:
+        'Golden Cross / Death Cross 15m. BUY quando MA30 cruza MA200 para cima. SELL quando MA30 cruza MA200 para baixo. SL 8%. Universo alargado de símbolos líquidos.',
+      params: JSON.stringify({
+        ma30Period: 30,
+        ma200Period: 200,
+        confirmationPct: 0,
+        stopPercent: 8,
+        symbolLimit: 500,
+        minQuoteVolume: 100000,
+        allowBuy: true,
+        allowSell: true,
+        exchange: 'bybit',
+      }),
+    },
+    create: {
+      name: 'MA_CROSS_15M',
+      displayName: 'MA Cross 15m (MA30/MA200)',
+      description:
+        'Golden Cross / Death Cross 15m. BUY quando MA30 cruza MA200 para cima. SELL quando MA30 cruza MA200 para baixo. SL 8%. Universo alargado de símbolos líquidos.',
+      isActive: false,
+      params: JSON.stringify({
+        ma30Period: 30,
+        ma200Period: 200,
+        confirmationPct: 0,
+        stopPercent: 8,
+        symbolLimit: 500,
+        minQuoteVolume: 100000,
+        allowBuy: true,
+        allowSell: true,
+        exchange: 'bybit',
+      }),
+    },
+  });
+
   // Remover estratégias que não usamos (caso existam de import anterior)
   const removed = await prisma.strategy.deleteMany({
     where: {

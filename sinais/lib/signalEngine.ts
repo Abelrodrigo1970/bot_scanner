@@ -664,7 +664,7 @@ export async function runMaCross15mStrategy(
 
   const ma30Period      = params.ma30Period      ?? 30;
   const ma200Period     = params.ma200Period     ?? 200;
-  const confirmationPct = params.confirmationPct ?? 2;
+  const confirmationPct = params.confirmationPct ?? 0;
   const stopPercent     = params.stopPercent     ?? 8;
 
   try {

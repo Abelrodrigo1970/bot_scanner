@@ -313,7 +313,7 @@ export default function EstrategiasPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período MA rápida', p.ma30Period ?? 30, (v) => upd({ ma30Period: v }))}
               {numField('Período MA lenta', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
-              {numField('Folga (%)', p.confirmationPct ?? 2, (v) => upd({ confirmationPct: v }), 0.5)}
+              {numField('Folga (%)', p.confirmationPct ?? 0, (v) => upd({ confirmationPct: v }), 0.5)}
               {numField('SL (%)', p.stopPercent ?? 8, (v) => upd({ stopPercent: v }), 0.5)}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

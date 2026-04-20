@@ -18,7 +18,7 @@ const RSI_15M_DEFAULT_PARAMS = {
 const MA_CROSS_15M_DEFAULT_PARAMS = {
   ma30Period: 30,
   ma200Period: 200,
-  confirmationPct: 2,
+  confirmationPct: 0,
   stopPercent: 8,
   symbolLimit: 500,
   minQuoteVolume: 100000,
@@ -48,7 +48,7 @@ async function ensureMissingStrategies() {
 
   const existingMaCross15m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_15M' },
-    select: { id: true },
+    select: { id: true, params: true },
   });
 
   if (!existingMaCross15m) {
@@ -57,11 +57,26 @@ async function ensureMissingStrategies() {
         name: 'MA_CROSS_15M',
         displayName: 'MA Cross 15m (MA30/MA200)',
         description:
-          'Cruzamento da MA30 com a MA200 no timeframe de 15m. Sinal de BUY quando MA30 cruza MA200 para cima com folga de 2%. Sinal de SELL quando MA30 cruza MA200 para baixo com folga de 2%. SL de 8%.',
+          'Cruzamento da MA30 com a MA200 no timeframe de 15m. Golden Cross/Death Cross 15m. BUY quando MA30 cruza MA200 para cima. SELL quando MA30 cruza MA200 para baixo. SL de 8%.',
         isActive: false,
         params: JSON.stringify(MA_CROSS_15M_DEFAULT_PARAMS),
       },
     });
+  } else {
+    // Migração: confirmationPct=2 impede qualquer sinal (fisicamente impossível num único candle).
+    // Corrigir automaticamente para 0 (cruzamento simples).
+    try {
+      const p = existingMaCross15m.params ? JSON.parse(existingMaCross15m.params) : {};
+      if (Number(p.confirmationPct) >= 1) {
+        await prisma.strategy.update({
+          where: { name: 'MA_CROSS_15M' },
+          data: { params: JSON.stringify({ ...p, confirmationPct: 0 }) },
+        });
+        console.log('✅ MA_CROSS_15M: confirmationPct migrado de', p.confirmationPct, '→ 0');
+      }
+    } catch (e) {
+      console.warn('⚠️ MA_CROSS_15M: falha ao migrar confirmationPct:', e);
+    }
   }
 }
 
