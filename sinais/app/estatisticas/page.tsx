@@ -253,32 +253,39 @@ export default function EstatisticasPage() {
       if (signal.low24h !== null && signal.low24h <= stopLossPrice) {
         grossPercentResult = -stopLossPercent;
       } else if (signal.high24h !== null && signal.high24h >= takeProfit2Price) {
-        // TP2 atingido -> assume TP1 + TP2 + restante no fechamento final
+        // TP2 atingido -> assume TP1 + TP2 + restante no fechamento final (SL limita restante)
+        const cappedFinal = Math.max(finalResultPercent, -stopLossPercent);
         grossPercentResult =
           tp1Weight * tp1Percent +
           tp2Weight * tp2Percent +
-          finalWeight * finalResultPercent;
+          finalWeight * cappedFinal;
       } else if (signal.high24h !== null && signal.high24h >= takeProfit1Price) {
-        // Apenas TP1 atingido -> restante no fechamento final
+        // Apenas TP1 atingido -> restante no fechamento final (SL limita restante)
         const remainingWeight = Math.max(0, 1 - tp1Weight);
-        grossPercentResult = tp1Weight * tp1Percent + remainingWeight * finalResultPercent;
+        const cappedFinal = Math.max(finalResultPercent, -stopLossPercent);
+        grossPercentResult = tp1Weight * tp1Percent + remainingWeight * cappedFinal;
       } else {
-        // Nenhum TP/SL -> fechamento final
-        grossPercentResult = finalResultPercent;
+        // Nenhum TP/SL detectado nas extremas → fechamento final, mas SL ainda limita a perda
+        grossPercentResult = Math.max(finalResultPercent, -stopLossPercent);
       }
     } else {
       if (signal.high24h !== null && signal.high24h >= stopLossPrice) {
         grossPercentResult = -stopLossPercent;
       } else if (signal.low24h !== null && signal.low24h <= takeProfit2Price) {
+        // TP2 atingido -> restante no fechamento final (SL limita restante)
+        const cappedFinal = Math.max(finalResultPercent, -stopLossPercent);
         grossPercentResult =
           tp1Weight * tp1Percent +
           tp2Weight * tp2Percent +
-          finalWeight * finalResultPercent;
+          finalWeight * cappedFinal;
       } else if (signal.low24h !== null && signal.low24h <= takeProfit1Price) {
+        // Apenas TP1 atingido -> restante no fechamento final (SL limita restante)
         const remainingWeight = Math.max(0, 1 - tp1Weight);
-        grossPercentResult = tp1Weight * tp1Percent + remainingWeight * finalResultPercent;
+        const cappedFinal = Math.max(finalResultPercent, -stopLossPercent);
+        grossPercentResult = tp1Weight * tp1Percent + remainingWeight * cappedFinal;
       } else {
-        grossPercentResult = finalResultPercent;
+        // Nenhum TP/SL detectado nas extremas → fechamento final, mas SL ainda limita a perda
+        grossPercentResult = Math.max(finalResultPercent, -stopLossPercent);
       }
     }
 
