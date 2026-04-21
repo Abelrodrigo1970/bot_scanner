@@ -651,8 +651,8 @@ export async function runRsi15mStrategy(
 
 /**
  * Estratégia MA Cross 15m — Cruzamento MA30/MA200 no timeframe de 15m:
- * - BUY : MA30 cruza MA200 para cima com folga de confirmationPct%+ → SL -stopPercent%
- * - SELL: MA30 cruza MA200 para baixo com folga de confirmationPct%+ → SL +stopPercent%
+ * - BUY : MA30 cruza MA200 para cima com folga de confirmationPct%+ → SL -stopPercent% | TP1 +85% (60% posição)
+ * - SELL: MA30 cruza MA200 para baixo com folga de confirmationPct%+ → SL +stopPercent% | TP1 -85% (60% posição)
  * Usa sempre o candle fechado (não o em formação).
  */
 export async function runMaCross15mStrategy(
@@ -666,6 +666,8 @@ export async function runMaCross15mStrategy(
   const ma200Period     = params.ma200Period     ?? 200;
   const confirmationPct = params.confirmationPct ?? 0;
   const stopPercent     = params.stopPercent     ?? 8;
+  const tp1Percent      = params.tp1Percent      ?? 85;
+  const tp1Position     = params.tp1Position     ?? 60;
 
   try {
     const candlesNeeded = ma200Period + 5;
@@ -692,12 +694,13 @@ export async function runMaCross15mStrategy(
     // BUY: MA30 cruzou MA200 para cima com folga de confirmationPct%
     if (prevMa30 <= prevMa200 && ma30 > confirmUp) {
       const stopLoss = currentPrice * (1 - stopPercent / 100);
+      const target1  = currentPrice * (1 + tp1Percent  / 100);
 
       return {
         direction: 'BUY',
         entryPrice: currentPrice,
         stopLoss,
-        target1: undefined,
+        target1,
         target2: undefined,
         target3: undefined,
         strength: 70,
@@ -707,7 +710,9 @@ export async function runMaCross15mStrategy(
           confirmationPct,
           crossover: `MA30 crosses +${confirmationPct}% above MA200 (BUY)`,
           stopPercent,
-          executionProfile: `SL -${stopPercent}% | folga ${confirmationPct}%`,
+          tp1Percent,
+          tp1Position: `${tp1Position}%`,
+          executionProfile: `SL -${stopPercent}% | TP1 +${tp1Percent}% (${tp1Position}% posição)`,
         }),
       };
     }
@@ -715,12 +720,13 @@ export async function runMaCross15mStrategy(
     // SELL: MA30 cruzou MA200 para baixo com folga de confirmationPct%
     if (prevMa30 >= prevMa200 && ma30 < confirmDown) {
       const stopLoss = currentPrice * (1 + stopPercent / 100);
+      const target1  = currentPrice * (1 - tp1Percent  / 100);
 
       return {
         direction: 'SELL',
         entryPrice: currentPrice,
         stopLoss,
-        target1: undefined,
+        target1,
         target2: undefined,
         target3: undefined,
         strength: 70,
@@ -730,7 +736,9 @@ export async function runMaCross15mStrategy(
           confirmationPct,
           crossover: `MA30 crosses -${confirmationPct}% below MA200 (SELL)`,
           stopPercent,
-          executionProfile: `SL +${stopPercent}% | folga ${confirmationPct}%`,
+          tp1Percent,
+          tp1Position: `${tp1Position}%`,
+          executionProfile: `SL +${stopPercent}% | TP1 -${tp1Percent}% (${tp1Position}% posição)`,
         }),
       };
     }

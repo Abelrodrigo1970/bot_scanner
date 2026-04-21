@@ -253,12 +253,14 @@ async function main() {
     update: {
       displayName: 'MA Cross 15m (MA30/MA200)',
       description:
-        'Golden Cross / Death Cross 15m. BUY quando MA30 cruza MA200 para cima. SELL quando MA30 cruza MA200 para baixo. SL 8%. Universo alargado de símbolos líquidos.',
+        'Golden Cross / Death Cross 15m. BUY quando MA30 cruza MA200 para cima. SELL quando MA30 cruza MA200 para baixo. SL 8%. TP1 +85% (60% posição). Top Voláteis.',
       params: JSON.stringify({
         ma30Period: 30,
         ma200Period: 200,
         confirmationPct: 0,
         stopPercent: 8,
+        tp1Percent: 85,
+        tp1Position: 60,
         symbolLimit: 500,
         minQuoteVolume: 100000,
         allowBuy: true,
@@ -270,13 +272,15 @@ async function main() {
       name: 'MA_CROSS_15M',
       displayName: 'MA Cross 15m (MA30/MA200)',
       description:
-        'Golden Cross / Death Cross 15m. BUY quando MA30 cruza MA200 para cima. SELL quando MA30 cruza MA200 para baixo. SL 8%. Universo alargado de símbolos líquidos.',
+        'Golden Cross / Death Cross 15m. BUY quando MA30 cruza MA200 para cima. SELL quando MA30 cruza MA200 para baixo. SL 8%. TP1 +85% (60% posição). Top Voláteis.',
       isActive: false,
       params: JSON.stringify({
         ma30Period: 30,
         ma200Period: 200,
         confirmationPct: 0,
         stopPercent: 8,
+        tp1Percent: 85,
+        tp1Position: 60,
         symbolLimit: 500,
         minQuoteVolume: 100000,
         allowBuy: true,
