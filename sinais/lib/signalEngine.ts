@@ -828,20 +828,8 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         } catch (err) {
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top Voláteis:`, err);
         }
-      } else if (strategy.name === 'MA_CROSS_15M') {
-        const maxSymbols = params.symbolLimit ?? 500;
-        const minQuoteVolume = params.minQuoteVolume ?? 100000;
-        console.log(`🔍 Buscando universo alargado para ${strategy.name} (${maxSymbols} símbolos)...`);
-        try {
-          const broadSymbols = await fetchTopSymbolsByVolume(maxSymbols, minQuoteVolume);
-          if (broadSymbols.length > 0) {
-            symbolsToAnalyze = broadSymbols;
-            console.log(`✅ Encontrados ${broadSymbols.length} símbolos líquidos`);
-          }
-        } catch (err) {
-          console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando lista base:`, err);
-        }
       } else if (
+        strategy.name === 'MA_CROSS_15M' ||
         strategy.name === 'MA_VOLATILE' ||
         strategy.name === 'RSI'
       ) {
