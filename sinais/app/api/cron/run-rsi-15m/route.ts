@@ -113,6 +113,99 @@ async function runRsi15mInBackground(): Promise<void> {
       }
     }
 
+    // Auto-exec MA_CROSS_15M — força mínima 70
+    const maCross15mStrategy = await prisma.strategy.findFirst({
+      where: { name: 'MA_CROSS_15M', isActive: true },
+    });
+
+    if (maCross15mStrategy) {
+      const MA_CROSS_MIN_STRENGTH = 70;
+      const maCrossParams   = JSON.parse(maCross15mStrategy.params || '{}');
+      const maCrossExchange = (maCrossParams.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+
+      const maCrossSignals = await prisma.signal.findMany({
+        where: {
+          strategyId: maCross15mStrategy.id,
+          status: 'NEW',
+          generatedAt: { gte: startedAt },
+          strength: { gte: MA_CROSS_MIN_STRENGTH },
+        },
+        orderBy: { generatedAt: 'asc' },
+      });
+
+      for (const sig of maCrossSignals) {
+        try {
+          const positionState = await inspectActivePositionForSymbol(sig.symbol, maCrossExchange);
+          if (!positionState.inspectable) {
+            console.warn(`[Run-RSI-15m BG] ⚠️ MA_CROSS: não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
+            continue;
+          }
+
+          if (positionState.inspectable && !positionState.hasPosition) {
+            const cleared = Number(
+              await prisma.$executeRaw`
+                UPDATE "Signal"
+                SET status = 'EXPIRED'
+                WHERE symbol = ${sig.symbol}
+                  AND "strategyId" = ${maCross15mStrategy.id}
+                  AND status = 'IN_PROGRESS'
+              `
+            );
+            if (cleared > 0) {
+              console.log(`[Run-RSI-15m BG] 🧹 MA_CROSS: ${sig.symbol} limpou ${cleared} IN_PROGRESS sem posição real`);
+            }
+          }
+
+          if (positionState.hasPosition && positionState.direction === sig.direction) {
+            console.log(`[Run-RSI-15m BG] ⏭️ MA_CROSS: já existe posição real em ${sig.symbol} (${positionState.direction}) — sinal ignorado`);
+            continue;
+          }
+
+          if (positionState.hasPosition && positionState.direction !== sig.direction) {
+            const closeResult = await closeActivePositionForSymbol(sig.symbol, maCrossExchange);
+            if (!closeResult.closed) {
+              console.warn(`[Run-RSI-15m BG] ⚠️ MA_CROSS: não foi possível fechar posição oposta em ${sig.symbol}: ${closeResult.message}`);
+              continue;
+            }
+
+            await prisma.$executeRaw`
+              UPDATE "Signal"
+              SET status = 'EXPIRED'
+              WHERE symbol = ${sig.symbol}
+                AND "strategyId" = ${maCross15mStrategy.id}
+                AND status = 'IN_PROGRESS'
+            `;
+            console.log(`[Run-RSI-15m BG] 🔄 MA_CROSS: posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
+          }
+
+          const execResult = await executeSignalReal({
+            id: sig.id,
+            symbol: sig.symbol,
+            direction: sig.direction as 'BUY' | 'SELL',
+            entryPrice: sig.entryPrice,
+            stopLoss: sig.stopLoss,
+            target1: sig.target1,
+            target2: sig.target2,
+            target3: sig.target3 ?? null,
+            strength: sig.strength,
+            strategyName: sig.strategyName,
+            status: sig.status,
+            extraInfo: sig.extraInfo,
+            exchange: maCrossExchange,
+          });
+
+          if (execResult.success && execResult.orderId) {
+            await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${sig.id}`;
+            console.log(`[Run-RSI-15m BG] ✅ MA_CROSS: auto-executado ${sig.symbol} ${sig.direction} order ${execResult.orderId}`);
+          } else {
+            console.warn(`[Run-RSI-15m BG] ⚠️ MA_CROSS: auto-exec falhou ${sig.symbol}: ${execResult.message}`);
+          }
+        } catch (err) {
+          console.error(`[Run-RSI-15m BG] ❌ MA_CROSS: erro auto-exec ${sig.symbol}:`, err);
+        }
+      }
+    }
+
     console.log(`[Run-RSI-15m BG] Concluído: ${signalsCreated} sinais criados`);
   } catch (error) {
     console.error('[Run-RSI-15m BG] Erro fatal:', error);
