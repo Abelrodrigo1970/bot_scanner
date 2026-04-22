@@ -74,6 +74,21 @@ model TopVolatile {
   @@index([rank])
 }
 
+// Criptos com Preço < MA200 e MA30 > MA200 (potencial setup de retorno bullish)
+model MaCrossBelow {
+  id             String   @id @default(cuid())
+  symbol         String
+  lastPrice      Float    // Preço atual
+  ma30           Float    // Média móvel de 30 períodos (diária)
+  ma200          Float    // Média móvel de 200 períodos (diária)
+  distPriceMa200 Float    // % que o preço está abaixo da MA200 (negativo)
+  distMa30Ma200  Float    // % que a MA30 está acima da MA200 (positivo)
+  rank           Int      // Ordenado por distMa30Ma200 desc
+  updatedAt      DateTime @default(now())
+
+  @@index([rank])
+}
+
 
 
 
