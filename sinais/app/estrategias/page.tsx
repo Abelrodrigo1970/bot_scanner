@@ -316,7 +316,9 @@ export default function EstrategiasPage() {
               {numField('Folga (%)', p.confirmationPct ?? 0, (v) => upd({ confirmationPct: v }), 0.5)}
               {numField('SL (%)', p.stopPercent ?? 8, (v) => upd({ stopPercent: v }), 0.5)}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('TP1 (%)', p.tp1Percent ?? 85, (v) => upd({ tp1Percent: v }), 1)}
+              {numField('TP1 Posição (%)', p.tp1Position ?? 60, (v) => upd({ tp1Position: v }))}
               {numField('Máx. símbolos', p.symbolLimit ?? 500, (v) => upd({ symbolLimit: v }))}
               {numField('Volume mínimo', p.minQuoteVolume ?? 100000, (v) => upd({ minQuoteVolume: v }))}
             </div>
