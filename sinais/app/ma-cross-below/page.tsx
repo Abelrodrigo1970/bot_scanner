@@ -80,7 +80,7 @@ export default function MaCrossBelowPage() {
               MA Cross Below
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Criptos onde o Preço está abaixo da MA200 mas a MA30 está acima da MA200 — pullback com tendência bullish
+              Criptos onde o Preço está abaixo da MA200 mas a MA30 está acima da MA200 — timeframe 15m (igual à estratégia MA Cross)
             </p>
           </div>
           <button
@@ -111,9 +111,9 @@ export default function MaCrossBelowPage() {
         <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
           <h2 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Como funciona o scan</h2>
           <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1 list-disc list-inside">
-            <li>Analisa as top 300 criptos por volume na Binance Futures (timeframe diário)</li>
-            <li>Filtra as que têm <strong>Preço abaixo da MA200</strong> — o ativo está em pullback</li>
-            <li>E simultaneamente <strong>MA30 acima da MA200</strong> — a tendência das médias ainda é bullish</li>
+            <li>Analisa as top 300 criptos por volume na Binance Futures — <strong>timeframe 15m</strong> (igual à estratégia MA Cross)</li>
+            <li>Filtra as que têm <strong>Preço abaixo da MA200 (15m)</strong> — o ativo está em pullback</li>
+            <li>E simultaneamente <strong>MA30 (15m) acima da MA200 (15m)</strong> — a tendência das médias ainda é bullish</li>
             <li>Ordenado pelo maior afastamento MA30 acima da MA200 (tendência mais forte)</li>
             <li>Esta lista pode ser usada por estratégias como universo de símbolos a analisar</li>
           </ul>

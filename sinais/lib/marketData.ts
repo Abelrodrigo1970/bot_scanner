@@ -407,19 +407,20 @@ export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBel
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
       try {
-        // Precisamos de 205 velas diárias para calcular MA200 com margem
+        // Buscar 205 velas de 15m (igual ao timeframe da estratégia MA_CROSS_15M)
+        // 205 velas × 15min = ~51 horas de dados
         const klinesRes = await fetch(
-          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1d&limit=205`
+          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=15m&limit=205`
         );
         if (!klinesRes.ok) continue;
         const klines = await klinesRes.json();
         if (klines.length < 202) continue;
 
-        // Closes (excluindo a vela actual em formação)
+        // Closes excluindo a vela em formação (último candle ainda não fechado)
         const closes: number[] = klines.slice(0, -1).map((k: any) => parseFloat(k[4]));
         const lastPrice = closes[closes.length - 1];
 
-        // MA200 e MA30 sobre o conjunto fechado
+        // MA200 e MA30 sobre candles fechados — igual ao signalEngine
         const ma200Vals = closes.slice(-200);
         const ma30Vals  = closes.slice(-30);
 
