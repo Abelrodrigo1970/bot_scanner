@@ -429,12 +429,11 @@ export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBel
         const ma200 = ma200Vals.reduce((s, v) => s + v, 0) / 200;
         const ma30  = ma30Vals.reduce((s, v) => s + v, 0) / 30;
 
-        // Condições: preço abaixo MA200 E MA30 acima MA200
-        if (lastPrice >= ma200) continue;
-        if (ma30 <= ma200) continue;
+        // Condição: MA30 a uma distância entre -4% e +4% da MA200
+        const distMa30Ma200  = ((ma30 - ma200) / ma200) * 100;
+        if (distMa30Ma200 < -4 || distMa30Ma200 > 4) continue;
 
-        const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100; // negativo
-        const distMa30Ma200  = ((ma30 - ma200) / ma200) * 100;      // positivo
+        const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
 
         results.push({ symbol, lastPrice, ma30, ma200, distPriceMa200, distMa30Ma200 });
       } catch {
@@ -443,8 +442,8 @@ export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBel
       await delay(i % 5 === 4 ? 150 : 80);
     }
 
-    // Ordenar: maior afastamento MA30 acima MA200 primeiro
-    results.sort((a, b) => b.distMa30Ma200 - a.distMa30Ma200);
+    // Ordenar: menor distância absoluta primeiro (mais próximos de cruzar)
+    results.sort((a, b) => Math.abs(a.distMa30Ma200) - Math.abs(b.distMa30Ma200));
 
     return results.slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
   } catch (error) {
