@@ -836,8 +836,17 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         } catch (err) {
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top Voláteis:`, err);
         }
+      } else if (strategy.name === 'MA_CROSS_15M') {
+        console.log(`🔍 Buscando MA Cross Below na BD para ${strategy.name}...`);
+        const maCrossBelow = await (prisma as any).maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
+        if (maCrossBelow.length > 0) {
+          symbolsToAnalyze = maCrossBelow.map((t: { symbol: string }) => t.symbol);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos MA Cross Below`);
+        } else {
+          console.warn(`⚠️ Nenhum símbolo MA Cross Below na BD. Execute "Atualizar Scan" antes. Ignorando ${strategy.name}.`);
+          continue;
+        }
       } else if (
-        strategy.name === 'MA_CROSS_15M' ||
         strategy.name === 'MA_VOLATILE' ||
         strategy.name === 'RSI'
       ) {
