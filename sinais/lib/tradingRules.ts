@@ -36,6 +36,8 @@ const ALLOWED_STRATEGIES = [
   'RSI 15m Top Volatilidade',
   'RSI_15M',
   'RSI',
+  'MA Cross 15m',
+  'MA_CROSS_15M',
 ];
 
 /** Força mínima para executar */
