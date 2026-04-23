@@ -4,6 +4,7 @@
 
 import { prisma } from './db';
 import { fetchCurrentPrice, fetchCandles } from './marketData';
+import { closeActivePositionForSymbol } from './tradingExecutor';
 
 /**
  * Atualiza sinais já fechados que não têm high24h e low24h
@@ -128,6 +129,9 @@ export async function update24hResults(): Promise<{
         },
         status24h: null, // Apenas os que ainda não foram processados
       },
+      include: {
+        strategy: true,
+      },
     });
 
     console.log(`📊 Encontrados ${signalsToUpdate.length} sinais para atualizar (24h)`);
@@ -194,6 +198,24 @@ export async function update24hResults(): Promise<{
           result24h = signal.entryPrice - currentPrice;
         }
 
+        // Fechar posição na exchange se o sinal está IN_PROGRESS
+        let exchangeClosed = false;
+        if (signal.status === 'IN_PROGRESS') {
+          try {
+            const strategyParams = JSON.parse(signal.strategy?.params || '{}');
+            const exchange = (strategyParams.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+            const closeResult = await closeActivePositionForSymbol(signal.symbol, exchange);
+            if (closeResult.closed) {
+              exchangeClosed = true;
+              console.log(`🔒 24h: posição fechada em ${signal.symbol} (${exchange}): ${closeResult.message}`);
+            } else {
+              console.warn(`⚠️  24h: não foi possível fechar posição em ${signal.symbol}: ${closeResult.message}`);
+            }
+          } catch (err) {
+            console.warn(`⚠️  24h: erro ao fechar posição em ${signal.symbol}:`, err);
+          }
+        }
+
         // Atualizar sinal
         await prisma.signal.update({
           where: { id: signal.id },
@@ -203,12 +225,14 @@ export async function update24hResults(): Promise<{
             status24h: 'CLOSED',
             high24h,
             low24h,
+            ...(signal.status === 'IN_PROGRESS' ? { status: 'EXPIRED' } : {}),
           },
         });
 
         updated++;
+        const closedTag = signal.status === 'IN_PROGRESS' ? (exchangeClosed ? ' [posição fechada]' : ' [fechar falhou]') : '';
         console.log(
-          `✅ Sinal ${signal.symbol} ${signal.direction} atualizado: Entrada ${signal.entryPrice.toFixed(4)}, 24h ${currentPrice.toFixed(4)}, High ${high24h?.toFixed(4) || 'N/A'}, Low ${low24h?.toFixed(4) || 'N/A'}, Resultado ${result24h >= 0 ? '+' : ''}${result24h.toFixed(4)}`
+          `✅ Sinal ${signal.symbol} ${signal.direction} atualizado: Entrada ${signal.entryPrice.toFixed(4)}, 24h ${currentPrice.toFixed(4)}, High ${high24h?.toFixed(4) || 'N/A'}, Low ${low24h?.toFixed(4) || 'N/A'}, Resultado ${result24h >= 0 ? '+' : ''}${result24h.toFixed(4)}${closedTag}`
         );
 
         // Pequeno delay para não sobrecarregar API
