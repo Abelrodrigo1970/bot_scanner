@@ -80,7 +80,7 @@ export default function MaCrossBelowPage() {
               MA Cross Proximidade
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Criptos onde a MA30 está a uma distância de ±4% da MA200 — cruzamento iminente (15m)
+              Criptos onde a MA30 está a uma distância de ±3% da MA200 — cruzamento iminente (1h)
             </p>
           </div>
           <button
@@ -111,8 +111,8 @@ export default function MaCrossBelowPage() {
         <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
           <h2 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Como funciona o scan</h2>
           <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1 list-disc list-inside">
-            <li>Analisa as top 300 criptos por volume na Binance Futures — <strong>timeframe 15m</strong></li>
-            <li>Filtra as que têm a <strong>MA30 a uma distância entre -4% e +4% da MA200</strong> — cruzamento iminente</li>
+            <li>Analisa as top 300 criptos por volume na Binance Futures — <strong>timeframe 1h</strong></li>
+            <li>Filtra as que têm a <strong>MA30 a uma distância entre -3% e +3% da MA200</strong> — cruzamento iminente</li>
             <li>Distância positiva (MA30 acima MA200) → potencial Golden Cross · Negativa → potencial Death Cross</li>
             <li>Ordenado pela distância absoluta mais pequena (MA30 mais próxima de cruzar a MA200)</li>
             <li>Esta lista pode ser usada por estratégias como universo de símbolos a analisar</li>

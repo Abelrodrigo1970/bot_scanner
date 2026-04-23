@@ -385,9 +385,9 @@ export interface MaCrossBelowItem {
 }
 
 /**
- * Scan de criptos onde: Preço < MA200 E MA30 > MA200 (diário).
- * Indica ativo em pullback com tendência ainda bullish nas médias.
- * Ordenado pelo maior afastamento MA30 acima de MA200.
+ * Scan de criptos onde a MA30 está próxima de cruzar a MA200 (timeframe 1h).
+ * Distância entre -3% e +3% da MA200 — cruzamento iminente.
+ * Ordenado pela menor distância absoluta (mais próximos de cruzar).
  */
 export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBelowItem[]> {
   try {
@@ -407,10 +407,9 @@ export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBel
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
       try {
-        // Buscar 205 velas de 15m (igual ao timeframe da estratégia MA_CROSS_15M)
-        // 205 velas × 15min = ~51 horas de dados
+        // Buscar 205 velas de 1h — 205h ≈ 8,5 dias, suficiente para MA200 1h
         const klinesRes = await fetch(
-          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=15m&limit=205`
+          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=205`
         );
         if (!klinesRes.ok) continue;
         const klines = await klinesRes.json();
@@ -420,7 +419,7 @@ export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBel
         const closes: number[] = klines.slice(0, -1).map((k: any) => parseFloat(k[4]));
         const lastPrice = closes[closes.length - 1];
 
-        // MA200 e MA30 sobre candles fechados — igual ao signalEngine
+        // MA200 e MA30 sobre candles fechados
         const ma200Vals = closes.slice(-200);
         const ma30Vals  = closes.slice(-30);
 
@@ -429,9 +428,9 @@ export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBel
         const ma200 = ma200Vals.reduce((s, v) => s + v, 0) / 200;
         const ma30  = ma30Vals.reduce((s, v) => s + v, 0) / 30;
 
-        // Condição: MA30 a uma distância entre -4% e +4% da MA200
+        // Condição: MA30 a uma distância entre -3% e +3% da MA200
         const distMa30Ma200  = ((ma30 - ma200) / ma200) * 100;
-        if (distMa30Ma200 < -4 || distMa30Ma200 > 4) continue;
+        if (distMa30Ma200 < -3 || distMa30Ma200 > 3) continue;
 
         const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
 
