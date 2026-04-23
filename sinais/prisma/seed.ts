@@ -16,6 +16,9 @@ async function main() {
   if (mig.signalsReassigned != null) {
     console.log(`  sinais reatribuídos: ${mig.signalsReassigned}`);
   }
+  if (mig.signalsRelabeled != null && mig.signalsRelabeled > 0) {
+    console.log(`  strategyName em sinais (estatísticas): ${mig.signalsRelabeled} actualizados para "${MA_CROSS_5M_DISPLAY}"`);
+  }
 
   // Estratégia RSI (invertida / momentum) com filtro MA200
   const rsiStrategy = await prisma.strategy.upsert({
