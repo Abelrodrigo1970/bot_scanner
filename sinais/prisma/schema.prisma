@@ -89,6 +89,18 @@ model MaCrossBelow {
   @@index([rank])
 }
 
+// Criptos com MA30 a mais de 6% acima da MA200 (1h) — força de tendência
+model Ma30Above6Pct {
+  id             String   @id @default(cuid())
+  symbol         String
+  lastPrice      Float
+  ma30           Float
+  ma200          Float
+  distPriceMa200 Float
+  distMa30Ma200  Float
+  rank           Int
+  updatedAt      DateTime @default(now())
 
-
+  @@index([rank])
+}
 

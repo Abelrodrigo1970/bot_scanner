@@ -26,6 +26,7 @@ export default function Header() {
     { href: '/analise', label: 'Análise' },
     { href: '/top-movers', label: 'Top Voláteis' },
     { href: '/ma-cross-below', label: 'MA Cross Below' },
+    { href: '/ma-30-above-6pct', label: 'MA30 > 6% MA200' },
   ];
 
   return (

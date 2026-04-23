@@ -451,6 +451,67 @@ export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBel
   }
 }
 
+/**
+ * Scan de criptos na Binance Futures (top 300 por volume) com MA30 a **mais de 6%** acima
+ * da MA200 (timeframe 1h). Indica força de tendência — MA30 já alargada em relação à MA200.
+ * Ordenado por distância decrescente (maior distância primeiro).
+ */
+export async function fetchMa30Above6Pct(limit: number = 100): Promise<MaCrossBelowItem[]> {
+  try {
+    const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+    if (!tickerRes.ok) throw new Error('Erro ao buscar tickers');
+    const tickerData = await tickerRes.json();
+
+    const symbols: string[] = tickerData
+      .filter((t: any) => t.symbol?.endsWith('USDT') && !t.symbol?.includes('BUSD') && parseFloat(t.quoteVolume || '0') > 500000)
+      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .slice(0, 300)
+      .map((t: any) => t.symbol);
+
+    const results: Omit<MaCrossBelowItem, 'rank'>[] = [];
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      try {
+        const klinesRes = await fetch(
+          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=205`
+        );
+        if (!klinesRes.ok) continue;
+        const klines = await klinesRes.json();
+        if (klines.length < 202) continue;
+
+        const closes: number[] = klines.slice(0, -1).map((k: any) => parseFloat(k[4]));
+        const lastPrice = closes[closes.length - 1];
+
+        const ma200Vals = closes.slice(-200);
+        const ma30Vals = closes.slice(-30);
+
+        if (ma200Vals.length < 200 || ma30Vals.length < 30) continue;
+
+        const ma200 = ma200Vals.reduce((s, v) => s + v, 0) / 200;
+        const ma30 = ma30Vals.reduce((s, v) => s + v, 0) / 30;
+
+        const distMa30Ma200 = ((ma30 - ma200) / ma200) * 100;
+        if (distMa30Ma200 <= 6) continue;
+
+        const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
+
+        results.push({ symbol, lastPrice, ma30, ma200, distPriceMa200, distMa30Ma200 });
+      } catch {
+        // ignorar
+      }
+      await delay(i % 5 === 4 ? 150 : 80);
+    }
+
+    results.sort((a, b) => b.distMa30Ma200 - a.distMa30Ma200);
+
+    return results.slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
+  } catch (error) {
+    console.error('Erro ao buscar MA30 > 6% acima da MA200:', error);
+    throw error;
+  }
+}
+
 export async function fetchTopVolatile(limit: number = 25): Promise<TopVolatileItem[]> {
   try {
     const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
