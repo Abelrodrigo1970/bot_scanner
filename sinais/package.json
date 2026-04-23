@@ -16,6 +16,7 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:migrate-vol-15m": "tsx scripts/migrate-volume-spike-15m.ts",
     "db:init": "node scripts/init-db.js",
     "db:backup": "node scripts/backup-db.js",
     "db:restore": "node scripts/restore-db.js",
