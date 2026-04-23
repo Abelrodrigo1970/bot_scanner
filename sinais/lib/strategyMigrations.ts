@@ -14,7 +14,7 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 5m (MA30/MA200)';
 export const MA_CROSS_5M_DESC =
-  'Golden / Death Cross em 5m: MA30 cruza MA200. Universo = scan MA Cross Below. SL 8%. TP1 +85% (60%). Correr actualização do scan antes. Agendar cron 15m.';
+  'Golden / Death Cross em 5m: MA30 cruza MA200. Universo = scan MA30>6% MA200 (1h) no menu. SL 8%. TP1 +85% (60%). Atualizar esse scan; cron 15m.';
 
 /** Nomes que o front / estatísticas ainda mostram se não actualizarmos `Signal.strategyName` */
 const LEGACY_15M_STRATEGY_NAMES = ['Volume Spike 15m', 'Volume Spike 15M', '15MVolume'] as const;

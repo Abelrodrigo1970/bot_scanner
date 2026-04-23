@@ -16,7 +16,7 @@ const MA_CROSS_5M_MIN_STRENGTH = 70;
 /**
  * MA Cross 5m (MA30/MA200) em background.
  * Cálculo em velas 5m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
- * Universo: tabela `MaCrossBelow` (sincronizar com o menu MA Cross Below).
+ * Universo: tabela `Ma30Above6Pct` (menu MA30 > 6% MA200, velas 1h no scan).
  */
 async function runMaCross5mInBackground(
   strategy: StrategyData,
@@ -25,9 +25,11 @@ async function runMaCross5mInBackground(
   const DELAY_MS = 200;
 
   try {
-    const maRows = await prisma.maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
+    const maRows = await prisma.ma30Above6Pct.findMany({ orderBy: { rank: 'asc' } });
     if (maRows.length === 0) {
-      console.warn('[MA Cross 5m BG] Nenhum símbolo em maCrossBelow. Atualize o scan MA Cross no menu.');
+      console.warn(
+        '[MA Cross 5m BG] Nenhum símbolo no scan MA30>6% MA200. Atualize a página "MA30 > 6% MA200".'
+      );
     }
 
     const symbols = maRows.map((r) => r.symbol);
@@ -160,7 +162,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'MA Cross 5m (velas 5m) iniciado em background (universo MA Cross Below)',
+      message: 'MA Cross 5m iniciado em background (universo: scan MA30>6% MA200)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

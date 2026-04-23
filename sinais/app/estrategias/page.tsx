@@ -259,7 +259,9 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Velas <strong>5m</strong>; o cron chama a cada 15 min. Universo = tabela do scan <strong>MA Cross Below</strong>.
+              Velas <strong>5m</strong>; o cron a cada 15 min. Símbolos = resultados do scan <strong>MA30 &gt; 6% MA200</strong> (menu
+              homónimo) — criptos com MA30 a mais de 6% acima da MA200 em 1h; actualiza esse scan com &quot;Atualizar
+              Scan&quot; antes.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período MA rápida', p.ma30Period ?? 30, (v) => upd({ ma30Period: v }))}

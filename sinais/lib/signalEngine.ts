@@ -730,14 +730,26 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         } catch (err) {
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top Voláteis:`, err);
         }
-      } else if (strategy.name === 'MA_CROSS_15M' || strategy.name === 'MA_CROSS_5M') {
+      } else if (strategy.name === 'MA_CROSS_15M') {
         console.log(`🔍 Buscando MA Cross Below na BD para ${strategy.name}...`);
-        const maCrossBelow = await (prisma as any).maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
+        const maCrossBelow = await prisma.maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
         if (maCrossBelow.length > 0) {
-          symbolsToAnalyze = maCrossBelow.map((t: { symbol: string }) => t.symbol);
+          symbolsToAnalyze = maCrossBelow.map((t) => t.symbol);
           console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos MA Cross Below`);
         } else {
           console.warn(`⚠️ Nenhum símbolo MA Cross Below na BD. Execute "Atualizar Scan" antes. Ignorando ${strategy.name}.`);
+          continue;
+        }
+      } else if (strategy.name === 'MA_CROSS_5M') {
+        console.log(`🔍 Buscando MA30 > 6% MA200 (1h) na BD para ${strategy.name}...`);
+        const maAbove6 = await prisma.ma30Above6Pct.findMany({ orderBy: { rank: 'asc' } });
+        if (maAbove6.length > 0) {
+          symbolsToAnalyze = maAbove6.map((t) => t.symbol);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 > 6% MA200)`);
+        } else {
+          console.warn(
+            `⚠️ Nenhum símbolo em Ma30Above6Pct. Atualize o menu "MA30 > 6% MA200" antes. Ignorando ${strategy.name}.`
+          );
           continue;
         }
       } else if (
