@@ -198,9 +198,13 @@ export async function update24hResults(): Promise<{
           result24h = signal.entryPrice - currentPrice;
         }
 
-        // Fechar posição na exchange se o sinal está IN_PROGRESS
+        // MA Cross (MA30/MA200): não fechar automaticamente ao fim de 24h — a estratégia
+        // mantém posições até SL/TP serem atingidos, independentemente do tempo.
+        const isMaCross = signal.strategy?.name === 'MA_CROSS_15M';
+
+        // Fechar posição na exchange se o sinal está IN_PROGRESS (exceto MA Cross)
         let exchangeClosed = false;
-        if (signal.status === 'IN_PROGRESS') {
+        if (signal.status === 'IN_PROGRESS' && !isMaCross) {
           try {
             const strategyParams = JSON.parse(signal.strategy?.params || '{}');
             const exchange = (strategyParams.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
@@ -214,9 +218,12 @@ export async function update24hResults(): Promise<{
           } catch (err) {
             console.warn(`⚠️  24h: erro ao fechar posição em ${signal.symbol}:`, err);
           }
+        } else if (signal.status === 'IN_PROGRESS' && isMaCross) {
+          console.log(`⏭️  24h: ${signal.symbol} MA Cross — posição mantida (sem fecho automático por tempo)`);
         }
 
-        // Atualizar sinal
+        // Atualizar sinal — MA Cross IN_PROGRESS mantém status (não passa a EXPIRED)
+        const shouldExpire = signal.status === 'IN_PROGRESS' && !isMaCross;
         await prisma.signal.update({
           where: { id: signal.id },
           data: {
@@ -225,12 +232,12 @@ export async function update24hResults(): Promise<{
             status24h: 'CLOSED',
             high24h,
             low24h,
-            ...(signal.status === 'IN_PROGRESS' ? { status: 'EXPIRED' } : {}),
+            ...(shouldExpire ? { status: 'EXPIRED' } : {}),
           },
         });
 
         updated++;
-        const closedTag = signal.status === 'IN_PROGRESS' ? (exchangeClosed ? ' [posição fechada]' : ' [fechar falhou]') : '';
+        const closedTag = shouldExpire ? (exchangeClosed ? ' [posição fechada]' : ' [fechar falhou]') : (isMaCross && signal.status === 'IN_PROGRESS' ? ' [MA Cross: posição mantida]' : '');
         console.log(
           `✅ Sinal ${signal.symbol} ${signal.direction} atualizado: Entrada ${signal.entryPrice.toFixed(4)}, 24h ${currentPrice.toFixed(4)}, High ${high24h?.toFixed(4) || 'N/A'}, Low ${low24h?.toFixed(4) || 'N/A'}, Resultado ${result24h >= 0 ? '+' : ''}${result24h.toFixed(4)}${closedTag}`
         );
