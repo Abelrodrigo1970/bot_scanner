@@ -128,34 +128,48 @@ async function main() {
     },
   });
 
-  // Estratégia Volume Spike 15m (15 períodos)
-  const volumeSpike15mStrategy = await prisma.strategy.upsert({
-    where: { name: 'VOLUME_SPIKE_15M' },
+  // MA Cross 5m (MA30/MA200) — mesma lógica que MA Cross 15m; velas 5m; cron típico a cada 15 min
+  const maCross5mStrategy = await prisma.strategy.upsert({
+    where: { name: 'MA_CROSS_5M' },
     update: {
+      displayName: 'MA Cross 5m (MA30/MA200)',
       description:
-        'Igual ao Volume Spike 1h mas em timeframe 15m com 15 períodos. Volume do último candle 15m fechado > 20x a média dos últimos 15 candles. COMPRA: preço a subir. VENDA: preço a descer.',
+        'Golden / Death Cross em 5m: MA30 cruza MA200. Universo = scan MA Cross Below. SL 8%. TP1 +85% (60%). Correr actualização do scan antes. Agendar cron 15m.',
       params: JSON.stringify({
-        volumeMultiplier: 20,
-        lookbackPeriods: 15,
-        allowBuy: false,
+        ma30Period: 30,
+        ma200Period: 200,
+        confirmationPct: 0,
+        stopPercent: 8,
+        tp1Percent: 85,
+        tp1Position: 60,
+        allowBuy: true,
         allowSell: true,
         exchange: 'binance',
       }),
     },
     create: {
-      name: 'VOLUME_SPIKE_15M',
-      displayName: 'Volume Spike 15m',
+      name: 'MA_CROSS_5M',
+      displayName: 'MA Cross 5m (MA30/MA200)',
       description:
-        'Igual ao Volume Spike 1h mas em timeframe 15m com 15 períodos. Volume do último candle 15m fechado > 20x a média dos últimos 15 candles. COMPRA: preço a subir. VENDA: preço a descer.',
+        'Golden / Death Cross em 5m: MA30 cruza MA200. Universo = scan MA Cross Below. SL 8%. TP1 +85% (60%). Correr actualização do scan antes. Agendar cron 15m.',
       isActive: true,
       params: JSON.stringify({
-        volumeMultiplier: 20,
-        lookbackPeriods: 15,
-        allowBuy: false,
+        ma30Period: 30,
+        ma200Period: 200,
+        confirmationPct: 0,
+        stopPercent: 8,
+        tp1Percent: 85,
+        tp1Position: 60,
+        allowBuy: true,
         allowSell: true,
         exchange: 'binance',
       }),
     },
+  });
+
+  await prisma.strategy.updateMany({
+    where: { name: 'VOLUME_SPIKE_15M' },
+    data: { isActive: false },
   });
 
   // Estratégia MA (somente MA200) nos 20 Top Voláteis
@@ -320,10 +334,10 @@ async function main() {
   });
 
   console.log('Seed concluído!');
-  console.log('Estratégias ativas:', {
+  console.log('Estratégias (ids):', {
     rsi: rsiStrategy.id,
     volumeSpike: volumeSpikeStrategy.id,
-    volumeSpike15m: volumeSpike15mStrategy.id,
+    maCross5m: maCross5mStrategy.id,
     maVolatile: maVolatileStrategy.id,
     ma200Volatile: ma200VolatileStrategy.id,
   });

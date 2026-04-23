@@ -12,7 +12,7 @@ import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 /**
  * Executa sinais em background (fire-and-forget):
  * RSI 1h + MA200_VOLATILE 4h. Auto-executa ordens apenas para MA200_VOLATILE.
- * Volume Spike 1h tem cron separado: /api/cron/run-volume-spike
+ * Volume Spike 1h: /api/cron/run-volume-spike. MA Cross 5m: /api/cron/run-volume-spike-15m
  */
 async function runSignalsInBackground(hour: number, minute: number): Promise<void> {
   try {
@@ -20,7 +20,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
-      exclude: ['RSI_15M', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA_VOLATILE'],
+      exclude: ['RSI_15M', 'VOLUME_SPIKE', 'MA_CROSS_5M', 'MA_VOLATILE'],
     });
 
     // Auto-exec RSI 1h — força mínima 60
@@ -264,7 +264,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
 
 /**
  * Endpoint de cron para RSI 1h + MA200 4h.
- * Volume Spike tem cron separado (/api/cron/run-volume-spike).
+ * MA Cross 5m: cron dedicado (url legada /api/cron/run-volume-spike-15m, a cada 15 min).
  * Resposta imediata - processamento em background evita timeout 502
  */
 export async function GET(request: NextRequest) {

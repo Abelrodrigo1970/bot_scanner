@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { runVolumeSpike15mStrategy } from '@/lib/signalEngine';
-import { fetchTopSymbolsBy24hPriceChange } from '@/lib/marketData';
+import { runMaCross5mStrategy, type StrategyParams } from '@/lib/signalEngine';
 import { update24hResults } from '@/lib/update24hResults';
 import { executeSignalReal } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
@@ -11,34 +10,41 @@ interface StrategyData {
   displayName: string;
 }
 
+const TIMEFRAME_5M = '5m' as const;
+const MA_CROSS_5M_MIN_STRENGTH = 70;
+
 /**
- * Executa Volume Spike 15m em background.
- * 400 símbolos, timeframe 15m, 15 períodos. Sinais BUY e SELL com força >= 85.
+ * MA Cross 5m (MA30/MA200) em background.
+ * Cálculo em velas 5m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
+ * Universo: tabela `MaCrossBelow` (sincronizar com o menu MA Cross Below).
  */
-async function runVolumeSpike15mInBackground(
+async function runMaCross5mInBackground(
   strategy: StrategyData,
-  params: Record<string, unknown>
+  params: StrategyParams
 ): Promise<void> {
-  const SYMBOLS = 400;
   const DELAY_MS = 200;
-  const timeframe = '15m' as const;
 
   try {
-    console.log(`[Volume Spike 15m BG] Iniciando processamento de ${SYMBOLS} símbolos (15m)...`);
-    const symbols = await fetchTopSymbolsBy24hPriceChange(SYMBOLS, 100000);
+    const maRows = await prisma.maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
+    if (maRows.length === 0) {
+      console.warn('[MA Cross 5m BG] Nenhum símbolo em maCrossBelow. Atualize o scan MA Cross no menu.');
+    }
+
+    const symbols = maRows.map((r) => r.symbol);
+    console.log(`[MA Cross 5m BG] Iniciando ${symbols.length} símbolos (5m)…`);
     let signalsCreated = 0;
 
     for (const symbol of symbols) {
       try {
-        const signalResult = await runVolumeSpike15mStrategy(symbol, timeframe, params);
+        const signalResult = await runMaCross5mStrategy(symbol, TIMEFRAME_5M, params);
 
-        if (signalResult && signalResult.strength >= 85) {
+        if (signalResult && signalResult.strength >= MA_CROSS_5M_MIN_STRENGTH) {
           const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
           const existingSignal = await prisma.signal.findFirst({
             where: {
               symbol,
               strategyId: strategy.id,
-              timeframe,
+              timeframe: TIMEFRAME_5M,
               direction: signalResult.direction,
               generatedAt: { gte: twoHoursAgo },
             },
@@ -49,7 +55,7 @@ async function runVolumeSpike15mInBackground(
               data: {
                 symbol,
                 direction: signalResult.direction,
-                timeframe,
+                timeframe: TIMEFRAME_5M,
                 strategyId: strategy.id,
                 strategyName: strategy.displayName,
                 entryPrice: signalResult.entryPrice,
@@ -65,9 +71,9 @@ async function runVolumeSpike15mInBackground(
             signalsCreated++;
 
             const autoMinStrength = getAutoExecuteMinStrength();
-            const vsExchange = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+            const ex = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
             if (signalResult.strength >= autoMinStrength) {
-              console.log(`[Volume Spike 15m BG] 🚀 Auto-exec: ${symbol} força ${signalResult.strength} (>= ${autoMinStrength})`);
+              console.log(`[MA Cross 5m BG] Auto-exec: ${symbol} força ${signalResult.strength} (>= ${autoMinStrength})`);
               try {
                 const result = await executeSignalReal({
                   id: created.id,
@@ -82,16 +88,16 @@ async function runVolumeSpike15mInBackground(
                   strategyName: created.strategyName,
                   status: created.status,
                   extraInfo: created.extraInfo,
-                  exchange: vsExchange,
+                  exchange: ex,
                 });
                 if (result.success && result.orderId) {
                   await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${created.id}`;
-                  console.log(`[Volume Spike 15m BG] ✅ Auto-executado: ${created.symbol} order ${result.orderId}`);
+                  console.log(`[MA Cross 5m BG] Auto-executado: ${created.symbol} order ${result.orderId}`);
                 } else {
-                  console.warn(`[Volume Spike 15m BG] ⚠️ Auto-exec falhou ${created.symbol}: ${result.message}`);
+                  console.warn(`[MA Cross 5m BG] Auto-exec falhou ${created.symbol}: ${result.message}`);
                 }
               } catch (err) {
-                console.error(`[Volume Spike 15m BG] ❌ Erro auto-exec ${created.symbol}:`, err);
+                console.error(`[MA Cross 5m BG] Erro auto-exec ${created.symbol}:`, err);
               }
             }
           }
@@ -99,22 +105,22 @@ async function runVolumeSpike15mInBackground(
 
         await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
       } catch (error) {
-        console.error(`[Volume Spike 15m BG] Erro ${symbol}:`, error);
+        console.error(`[MA Cross 5m BG] Erro ${symbol}:`, error);
       }
     }
 
     const update24h = await update24hResults();
     console.log(
-      `[Volume Spike 15m BG] Concluído: ${signalsCreated} sinais, 24h atualizados: ${update24h.updated}`
+      `[MA Cross 5m BG] Concluído: ${signalsCreated} sinais, 24h atualizados: ${update24h.updated}`
     );
   } catch (error) {
-    console.error('[Volume Spike 15m BG] Erro fatal:', error);
+    console.error('[MA Cross 5m BG] Erro fatal:', error);
   }
 }
 
 /**
- * Endpoint de cron dedicado para Volume Spike 15m.
- * Agendar a cada 15 min (ex.: :00, :15, :30, :45) no cron-job.org.
+ * Endpoint agendado a cada 15 min.
+ * (URL legada `run-volume-spike-15m` mantida para o cron / run-15m agregado.)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -128,40 +134,40 @@ export async function GET(request: NextRequest) {
     const now = new Date();
 
     const strategy = await prisma.strategy.findFirst({
-      where: { name: 'VOLUME_SPIKE_15M' },
+      where: { name: 'MA_CROSS_5M' },
     });
 
     if (!strategy) {
       return NextResponse.json(
-        { error: 'Estratégia VOLUME_SPIKE_15M não encontrada. Execute o seed do banco.' },
+        { error: 'Estratégia MA_CROSS_5M não encontrada. Execute o seed do banco.' },
         { status: 404 }
       );
     }
 
     if (!strategy.isActive) {
       return NextResponse.json(
-        { success: false, message: 'Estratégia 15MVolume está inativa' },
+        { success: false, message: 'Estratégia MA Cross 5m está inactiva' },
         { status: 400 }
       );
     }
 
-    const params = JSON.parse(strategy.params || '{}') as Record<string, unknown>;
+    const params = JSON.parse(strategy.params || '{}') as StrategyParams;
 
-    runVolumeSpike15mInBackground(
+    runMaCross5mInBackground(
       { id: strategy.id, displayName: strategy.displayName },
       params
     );
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento Volume Spike 15m iniciado em background (400 símbolos, 15m)',
+      message: 'MA Cross 5m (velas 5m) iniciado em background (universo MA Cross Below)',
       executedAt: now.toISOString(),
     });
   } catch (error) {
-    console.error('Erro no cron Volume Spike 15m:', error);
+    console.error('Erro no cron MA Cross 5m:', error);
     return NextResponse.json(
       {
-        error: 'Erro ao executar cron Volume Spike 15m',
+        error: 'Erro ao executar cron MA Cross 5m',
         details: error instanceof Error ? error.message : 'Erro desconhecido',
       },
       { status: 500 }

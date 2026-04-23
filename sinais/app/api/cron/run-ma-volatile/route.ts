@@ -17,7 +17,7 @@ async function runMaVolatileInBackground(): Promise<void> {
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
-      exclude: ['RSI', 'RSI_15M', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA200_VOLATILE'],
+      exclude: ['RSI', 'RSI_15M', 'VOLUME_SPIKE', 'MA_CROSS_5M', 'MA200_VOLATILE'],
     });
 
     // Auto-exec MA_VOLATILE — força fixa 70

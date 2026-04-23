@@ -27,6 +27,13 @@ const MA_CROSS_15M_DEFAULT_PARAMS = {
   exchange: 'bybit',
 };
 
+const MA_CROSS_5M_DEFAULT_PARAMS = {
+  ...MA_CROSS_15M_DEFAULT_PARAMS,
+  exchange: 'binance' as const,
+  tp1Percent: 85,
+  tp1Position: 60,
+};
+
 async function ensureMissingStrategies() {
   const existingRsi15m = await prisma.strategy.findUnique({
     where: { name: 'RSI_15M' },
@@ -77,6 +84,24 @@ async function ensureMissingStrategies() {
     } catch (e) {
       console.warn('⚠️ MA_CROSS_15M: falha ao migrar confirmationPct:', e);
     }
+  }
+
+  const existingMaCross5m = await prisma.strategy.findUnique({
+    where: { name: 'MA_CROSS_5M' },
+    select: { id: true },
+  });
+
+  if (!existingMaCross5m) {
+    await prisma.strategy.create({
+      data: {
+        name: 'MA_CROSS_5M',
+        displayName: 'MA Cross 5m (MA30/MA200)',
+        description:
+          'Cruzamento MA30/MA200 em velas de 5m. Universo = scan MA Cross Below. Agendar cron a cada 15 min. SL 8% | TP1 +85%.',
+        isActive: true,
+        params: JSON.stringify(MA_CROSS_5M_DEFAULT_PARAMS),
+      },
+    });
   }
 }
 

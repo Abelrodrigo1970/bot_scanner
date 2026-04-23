@@ -134,128 +134,6 @@ export async function runVolumeSpikeStrategy(
 }
 
 /**
- * Estratégia Volume Spike 15m (15 períodos):
- * BUY  (candle verde + vol >20x + vol >2M)  → SL -8% | TP1 +11% (30%) | TP2 +23% (40%) | 30% às 24h
- * SELL (candle vermelho + vol >20x)          → SL +7% | TP1 -10% (60%) | TP2 -11% (30%)
- */
-export async function runVolumeSpike15mStrategy(
-  symbol: string,
-  timeframe: Timeframe,
-  params: StrategyParams
-): Promise<SignalResult | null> {
-  if (timeframe !== '15m') {
-    return null;
-  }
-
-  const configuredMultiplier = Number(params.volumeMultiplier ?? 20);
-  const volumeMultiplier = Number.isFinite(configuredMultiplier) && configuredMultiplier > 0
-    ? Math.max(20, configuredMultiplier)
-    : 20;
-  const lookbackPeriods  = params.lookbackPeriods  ?? 15;
-  const ma200Period      = params.ma200Period       ?? 200;
-  const buyMa200PctAbove = params.buyMa200PctAbove  ?? 8;  // % acima da MA200 para confirmar SELL invertido
-
-  try {
-    const candlesNeeded = Math.max(ma200Period + 5, lookbackPeriods + 5);
-    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
-
-    if (candles.length < ma200Period + 2) {
-      return null;
-    }
-
-    const volumes = getVolumes(candles);
-    const lastClosedIndex = volumes.length - 2;
-    const currentVolume = volumes[lastClosedIndex];
-
-    const volumesForAverage = volumes.slice(-lookbackPeriods - 2, -2);
-    const volumeAverage = calculateVolumeMA(volumesForAverage, lookbackPeriods);
-
-    if (volumeAverage === null || volumeAverage === 0) {
-      return null;
-    }
-
-    const volumeRatio = currentVolume / volumeAverage;
-    if (volumeRatio < volumeMultiplier) {
-      return null;
-    }
-
-    const closes      = getCloses(candles);
-    const closedCloses = closes.slice(0, -1);
-    const ma200        = calculateSMA(closedCloses, ma200Period);
-
-    const currentPrice = candles[lastClosedIndex].close;
-    const prevPrice    = candles[lastClosedIndex - 1].close;
-    const priceChange  = currentPrice - prevPrice;
-    const direction: 'BUY' | 'SELL' = priceChange >= 0 ? 'BUY' : 'SELL';
-
-    if (direction === 'BUY') {
-      if (currentVolume < 2_000_000) {
-        return null;
-      }
-
-      const stopLoss = currentPrice * 0.92;   // SL -8%
-      const target1  = currentPrice * 1.11;   // TP1 +11% — 30% posição
-      const target2  = currentPrice * 1.23;   // TP2 +23% — 40% posição (30% fecha às 24h)
-      const target3: number | undefined = undefined;
-      const strength = Math.min(100, Math.max(60, Math.round(60 + (volumeRatio - volumeMultiplier) * 5)));
-
-      return {
-        direction: 'BUY',
-        entryPrice: currentPrice,
-        stopLoss,
-        target1,
-        target2,
-        target3,
-        strength,
-        extraInfo: JSON.stringify({
-          currentVolume: currentVolume.toFixed(2),
-          volumeAverage: volumeAverage.toFixed(2),
-          volumeRatio: volumeRatio.toFixed(2),
-          volumeMultiplier,
-          lookbackPeriods,
-          priceChange: priceChange.toFixed(4),
-          priceChangePercent: ((priceChange / prevPrice) * 100).toFixed(2),
-          executionProfile: 'BUY signal | SL -8% | TP1 +11% (30%) | TP2 +23% (40%) | 30% às 24h',
-          sl: 8, tp1Percent: 11, tp1Position: 30,
-          tp2Percent: 23, tp2Position: 40,
-          tp3: '30% às 24h',
-        }),
-      };
-    } else {
-      const stopLoss = currentPrice * 1.07;
-      const target1 = currentPrice * 0.90;
-      const target2 = currentPrice * 0.89;
-      const target3: number | undefined = undefined;
-      const strength = Math.min(100, Math.max(60, Math.round(60 + (volumeRatio - volumeMultiplier) * 5)));
-
-      return {
-        direction: 'SELL',
-        entryPrice: currentPrice,
-        stopLoss,
-        target1,
-        target2,
-        target3,
-        strength,
-        extraInfo: JSON.stringify({
-          currentVolume: currentVolume.toFixed(2),
-          volumeAverage: volumeAverage.toFixed(2),
-          volumeRatio: volumeRatio.toFixed(2),
-          volumeMultiplier,
-          lookbackPeriods,
-          priceChange: priceChange.toFixed(4),
-          priceChangePercent: ((priceChange / prevPrice) * 100).toFixed(2),
-          executionProfile: 'SELL signal | SL 7% | TP1 10% | TP2 11%',
-          originalDirection: 'SELL',
-        }),
-      };
-    }
-  } catch (error) {
-    console.error(`Erro na estratégia Volume Spike 15m para ${symbol}:`, error);
-    return null;
-  }
-}
-
-/**
  * Estratégia MA Cross Top Voláteis (mesma lógica da MA200_VOLATILE, usando MA60 em 1h):
  * - BUY : fecha 2%+ ACIMA da MA60  → SL -15% | TP1 +30% (40%) | TP2 +60% (30%) | 30% fecha na reversão
  * - SELL: fecha 2%+ ABAIXO da MA60 → SL +15% | TP1 -30% (40%) | TP2 -60% (30%) | 30% fecha na reversão
@@ -650,17 +528,16 @@ export async function runRsi15mStrategy(
 }
 
 /**
- * Estratégia MA Cross 15m — Cruzamento MA30/MA200 no timeframe de 15m:
- * - BUY : MA30 cruza MA200 para cima com folga de confirmationPct%+ → SL -stopPercent% | TP1 +85% (60% posição)
- * - SELL: MA30 cruza MA200 para baixo com folga de confirmationPct%+ → SL +stopPercent% | TP1 -85% (60% posição)
- * Usa sempre o candle fechado (não o em formação).
+ * Cruzamento MA30/MA200 — mesma lógica em 5m ou 15m (candles fechados).
+ * O cron 15m chama a variante 5m noutro endpoint; a variante 15m corre no fluxo de estratégias 15m/RSI.
  */
-export async function runMaCross15mStrategy(
+async function runMaCrossM30M200OnTimeframe(
   symbol: string,
   timeframe: Timeframe,
-  params: StrategyParams
+  params: StrategyParams,
+  bar: '5m' | '15m'
 ): Promise<SignalResult | null> {
-  if (timeframe !== '15m') return null;
+  if (timeframe !== bar) return null;
 
   const ma30Period      = params.ma30Period      ?? 30;
   const ma200Period     = params.ma200Period     ?? 200;
@@ -691,7 +568,6 @@ export async function runMaCross15mStrategy(
     const confirmUp   = ma200 * (1 + confirmationPct / 100);
     const confirmDown = ma200 * (1 - confirmationPct / 100);
 
-    // BUY: MA30 cruzou MA200 para cima com folga de confirmationPct%
     if (prevMa30 <= prevMa200 && ma30 > confirmUp) {
       const stopLoss = currentPrice * (1 - stopPercent / 100);
       const target1  = currentPrice * (1 + tp1Percent  / 100);
@@ -705,6 +581,7 @@ export async function runMaCross15mStrategy(
         target3: undefined,
         strength: 70,
         extraInfo: JSON.stringify({
+          timeframe: bar,
           ma30: ma30.toFixed(4),
           ma200: ma200.toFixed(4),
           confirmationPct,
@@ -717,7 +594,6 @@ export async function runMaCross15mStrategy(
       };
     }
 
-    // SELL: MA30 cruzou MA200 para baixo com folga de confirmationPct%
     if (prevMa30 >= prevMa200 && ma30 < confirmDown) {
       const stopLoss = currentPrice * (1 + stopPercent / 100);
       const target1  = currentPrice * (1 - tp1Percent  / 100);
@@ -731,6 +607,7 @@ export async function runMaCross15mStrategy(
         target3: undefined,
         strength: 70,
         extraInfo: JSON.stringify({
+          timeframe: bar,
           ma30: ma30.toFixed(4),
           ma200: ma200.toFixed(4),
           confirmationPct,
@@ -745,9 +622,26 @@ export async function runMaCross15mStrategy(
 
     return null;
   } catch (error) {
-    console.error(`Erro na estratégia MA Cross 15m para ${symbol}:`, error);
+    console.error(`Erro na estratégia MA Cross ${bar} para ${symbol}:`, error);
     return null;
   }
+}
+
+export async function runMaCross15mStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  return runMaCrossM30M200OnTimeframe(symbol, timeframe, params, '15m');
+}
+
+/** MA30/MA200 em velas de 5m (cron 15m no endpoint dedicado). */
+export async function runMaCross5mStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  return runMaCrossM30M200OnTimeframe(symbol, timeframe, params, '5m');
 }
 
 export interface RunAllStrategiesOptions {
@@ -756,7 +650,7 @@ export interface RunAllStrategiesOptions {
 }
 
 /**
- * Executa todas as estratégias ativas (RSI, Volume Spike 1h, Volume Spike 15m)
+ * Executa todas as estratégias ativas (RSI, Volume Spike 1h, MA Cross 5m/15m, …)
  */
 export async function runAllStrategies(options?: RunAllStrategiesOptions): Promise<number> {
   let signalsCreated = 0;
@@ -793,15 +687,15 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
       const params = JSON.parse(strategy.params || '{}');
 
       const timeframesToUse: Timeframe[] =
-        strategy.name === 'VOLUME_SPIKE_15M' ? ['15m'] :
-        strategy.name === 'MA_VOLATILE'      ? ['1h'] :
-        strategy.name === 'RSI_15M'          ? ['15m'] :
-        strategy.name === 'MA200_VOLATILE'   ? ['4h'] :
-        strategy.name === 'RSI'              ? ['1h'] :
-        strategy.name === 'MA_CROSS_15M'     ? ['15m'] : timeframes;
+        strategy.name === 'MA_CROSS_5M'    ? ['5m'] :
+        strategy.name === 'MA_VOLATILE'    ? ['1h'] :
+        strategy.name === 'RSI_15M'        ? ['15m'] :
+        strategy.name === 'MA200_VOLATILE' ? ['4h'] :
+        strategy.name === 'RSI'            ? ['1h'] :
+        strategy.name === 'MA_CROSS_15M'   ? ['15m'] : timeframes;
 
       let symbolsToAnalyze = symbols;
-      if (strategy.name === 'VOLUME_SPIKE' || strategy.name === 'VOLUME_SPIKE_15M') {
+      if (strategy.name === 'VOLUME_SPIKE') {
         const maxSymbols = 500;
         const minQuoteVolume = 100000;
         console.log(`🔍 Buscando símbolos por % variação 24h para ${strategy.name}...`);
@@ -836,7 +730,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         } catch (err) {
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top Voláteis:`, err);
         }
-      } else if (strategy.name === 'MA_CROSS_15M') {
+      } else if (strategy.name === 'MA_CROSS_15M' || strategy.name === 'MA_CROSS_5M') {
         console.log(`🔍 Buscando MA Cross Below na BD para ${strategy.name}...`);
         const maCrossBelow = await (prisma as any).maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
         if (maCrossBelow.length > 0) {
@@ -873,10 +767,10 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                   console.log(`✅ Volume Spike: ${symbol} ${signalResult.direction} (${timeframe})`);
                 }
                 break;
-              case 'VOLUME_SPIKE_15M':
-                signalResult = await runVolumeSpike15mStrategy(symbol, timeframe, params);
+              case 'MA_CROSS_5M':
+                signalResult = await runMaCross5mStrategy(symbol, timeframe, params);
                 if (signalResult) {
-                  console.log(`✅ Volume Spike 15m: ${symbol} ${signalResult.direction} (${timeframe})`);
+                  console.log(`✅ MA Cross 5m: ${symbol} ${signalResult.direction} (${timeframe})`);
                 }
                 break;
               case 'RSI':

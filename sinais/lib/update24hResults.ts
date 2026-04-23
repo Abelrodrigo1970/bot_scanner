@@ -200,7 +200,8 @@ export async function update24hResults(): Promise<{
 
         // MA Cross (MA30/MA200): não fechar automaticamente ao fim de 24h — a estratégia
         // mantém posições até SL/TP serem atingidos, independentemente do tempo.
-        const isMaCross = signal.strategy?.name === 'MA_CROSS_15M';
+        const isMaCross =
+          signal.strategy?.name === 'MA_CROSS_15M' || signal.strategy?.name === 'MA_CROSS_5M';
 
         // Fechar posição na exchange se o sinal está IN_PROGRESS (exceto MA Cross)
         let exchangeClosed = false;

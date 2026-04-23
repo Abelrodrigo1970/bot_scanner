@@ -38,6 +38,8 @@ const ALLOWED_STRATEGIES = [
   'RSI',
   'MA Cross 15m',
   'MA_CROSS_15M',
+  'MA Cross 5m',
+  'MA_CROSS_5M',
 ];
 
 /** Força mínima para executar */

@@ -18,7 +18,7 @@ async function runRsi15mInBackground(): Promise<void> {
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
-      exclude: ['RSI', 'VOLUME_SPIKE', 'VOLUME_SPIKE_15M', 'MA200_VOLATILE', 'MA_VOLATILE'],
+      exclude: ['RSI', 'VOLUME_SPIKE', 'MA_CROSS_5M', 'MA200_VOLATILE', 'MA_VOLATILE'],
     });
 
     const rsi15mStrategy = await prisma.strategy.findFirst({

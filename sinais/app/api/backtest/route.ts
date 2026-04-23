@@ -173,7 +173,7 @@ function evalCombo(
  * GET /api/backtest
  * Analisa todos os sinais RSI históricos e testa múltiplas combinações de thresholds.
  * Parâmetros query:
- *   - strategy=RSI|MA_VOLATILE|VOLUME_SPIKE_15M|all (default: RSI)
+ *   - strategy=RSI|MA_VOLATILE|MA_CROSS_5M|all (default: RSI)
  *   - minSignals=5 (default: 3)
  */
 export async function GET(request: NextRequest) {
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
   try {
     // ── Buscar dados históricos ──────────────────────────────────────────────
     const strategyNames = strategyFilter === 'all'
-      ? ['RSI', 'MA_VOLATILE', 'MA200_VOLATILE', 'VOLUME_SPIKE_15M', 'VOLUME_SPIKE']
+      ? ['RSI', 'MA_VOLATILE', 'MA200_VOLATILE', 'MA_CROSS_5M', 'VOLUME_SPIKE']
       : [strategyFilter];
 
     const strategies = await prisma.strategy.findMany({

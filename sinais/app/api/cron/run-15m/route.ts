@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Cron agregado 15m:
- * - VOLUME_SPIKE_15M
+ * - MA_CROSS_5M (candles 5m, URL: /api/cron/run-volume-spike-15m)
  * - RSI_15M (RSI 15m Top Volatilidade)
  *
  * Dispara os crons dedicados em background para manter a mesma lógica já existente.
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento agregado 15m iniciado em background (Volume Spike 15m + RSI 15m)',
+      message: 'Processamento agregado 15m (MA Cross 5m + RSI 15m) iniciado em background',
       executedAt: now.toISOString(),
     });
   } catch (error) {

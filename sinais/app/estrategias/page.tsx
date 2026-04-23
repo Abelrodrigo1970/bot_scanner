@@ -255,11 +255,22 @@ export default function EstrategiasPage() {
           </div>
         );
 
-      case 'VOLUME_SPIKE_15M':
+      case 'MA_CROSS_5M':
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {numField('Multiplicador de volume (×)', p.volumeMultiplier ?? 20, (v) => upd({ volumeMultiplier: v }))}
-            {numField('Lookback (períodos 15m)', p.lookbackPeriods ?? 15, (v) => upd({ lookbackPeriods: v }))}
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Velas <strong>5m</strong>; o cron chama a cada 15 min. Universo = tabela do scan <strong>MA Cross Below</strong>.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Período MA rápida', p.ma30Period ?? 30, (v) => upd({ ma30Period: v }))}
+              {numField('Período MA lenta', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
+              {numField('Folga (%)', p.confirmationPct ?? 0, (v) => upd({ confirmationPct: v }), 0.5)}
+              {numField('SL (%)', p.stopPercent ?? 8, (v) => upd({ stopPercent: v }), 0.5)}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('TP1 (%)', p.tp1Percent ?? 85, (v) => upd({ tp1Percent: v }), 1)}
+              {numField('TP1 Posição (%)', p.tp1Position ?? 60, (v) => upd({ tp1Position: v }))}
+            </div>
           </div>
         );
 
