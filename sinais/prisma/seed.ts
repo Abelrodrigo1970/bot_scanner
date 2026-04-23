@@ -2,8 +2,53 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+/** Params da estratégia MA Cross 5m (30/200) — usado no upsert e na migração VOLUME_SPIKE_15M → MA_CROSS_5M */
+const MA_CROSS_5M_PARAMS = {
+  ma30Period: 30,
+  ma200Period: 200,
+  confirmationPct: 0,
+  stopPercent: 8,
+  tp1Percent: 85,
+  tp1Position: 60,
+  allowBuy: true,
+  allowSell: true,
+  exchange: 'binance',
+} as const;
+
+const MA_CROSS_5M_DISPLAY = 'MA Cross 5m (MA30/MA200)';
+const MA_CROSS_5M_DESC =
+  'Golden / Death Cross em 5m: MA30 cruza MA200. Universo = scan MA Cross Below. SL 8%. TP1 +85% (60%). Correr actualização do scan antes. Agendar cron 15m.';
+
 async function main() {
   console.log('Iniciando seed do banco de dados (RSI + Volume)...');
+
+  // --- Migração: bases antigas ainda têm a linha VOLUME_SPIKE_15M; fundir com MA_CROSS_5M
+  const legacy15m = await prisma.strategy.findFirst({ where: { name: 'VOLUME_SPIKE_15M' } });
+  const existing5m = await prisma.strategy.findFirst({ where: { name: 'MA_CROSS_5M' } });
+
+  if (legacy15m && existing5m) {
+    const n = await prisma.signal.updateMany({
+      where: { strategyId: legacy15m.id },
+      data: { strategyId: existing5m.id, strategyName: MA_CROSS_5M_DISPLAY },
+    });
+    if (n.count > 0) {
+      console.log(`Migrado: ${n.count} sinal(is) de VOLUME_SPIKE_15M → MA_CROSS_5M (strategyId)`);
+    }
+    await prisma.strategy.delete({ where: { id: legacy15m.id } });
+    console.log('Removida estratégia legada VOLUME_SPIKE_15M (já existia MA_CROSS_5M).');
+  } else if (legacy15m && !existing5m) {
+    await prisma.strategy.update({
+      where: { id: legacy15m.id },
+      data: {
+        name: 'MA_CROSS_5M',
+        displayName: MA_CROSS_5M_DISPLAY,
+        description: MA_CROSS_5M_DESC,
+        isActive: true,
+        params: JSON.stringify(MA_CROSS_5M_PARAMS),
+      },
+    });
+    console.log('Migrado: registo VOLUME_SPIKE_15M renomeado in-place para MA_CROSS_5M.');
+  }
 
   // Estratégia RSI (invertida / momentum) com filtro MA200
   const rsiStrategy = await prisma.strategy.upsert({
@@ -132,44 +177,17 @@ async function main() {
   const maCross5mStrategy = await prisma.strategy.upsert({
     where: { name: 'MA_CROSS_5M' },
     update: {
-      displayName: 'MA Cross 5m (MA30/MA200)',
-      description:
-        'Golden / Death Cross em 5m: MA30 cruza MA200. Universo = scan MA Cross Below. SL 8%. TP1 +85% (60%). Correr actualização do scan antes. Agendar cron 15m.',
-      params: JSON.stringify({
-        ma30Period: 30,
-        ma200Period: 200,
-        confirmationPct: 0,
-        stopPercent: 8,
-        tp1Percent: 85,
-        tp1Position: 60,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'binance',
-      }),
+      displayName: MA_CROSS_5M_DISPLAY,
+      description: MA_CROSS_5M_DESC,
+      params: JSON.stringify(MA_CROSS_5M_PARAMS),
     },
     create: {
       name: 'MA_CROSS_5M',
-      displayName: 'MA Cross 5m (MA30/MA200)',
-      description:
-        'Golden / Death Cross em 5m: MA30 cruza MA200. Universo = scan MA Cross Below. SL 8%. TP1 +85% (60%). Correr actualização do scan antes. Agendar cron 15m.',
+      displayName: MA_CROSS_5M_DISPLAY,
+      description: MA_CROSS_5M_DESC,
       isActive: true,
-      params: JSON.stringify({
-        ma30Period: 30,
-        ma200Period: 200,
-        confirmationPct: 0,
-        stopPercent: 8,
-        tp1Percent: 85,
-        tp1Position: 60,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'binance',
-      }),
+      params: JSON.stringify(MA_CROSS_5M_PARAMS),
     },
-  });
-
-  await prisma.strategy.updateMany({
-    where: { name: 'VOLUME_SPIKE_15M' },
-    data: { isActive: false },
   });
 
   // Estratégia MA (somente MA200) nos 20 Top Voláteis
