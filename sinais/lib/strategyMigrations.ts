@@ -2,7 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 
 export const MA_CROSS_5M_PARAMS = {
   ma30Period: 30,
-  ma200Period: 60,
+  ma200Period: 120,
   maType: 'EMA' as const,
   confirmationPct: 0,
   stopPercent: 8,
@@ -14,9 +14,9 @@ export const MA_CROSS_5M_PARAMS = {
   exchange: 'binance',
 } as const;
 
-export const MA_CROSS_5M_DISPLAY = 'MA Cross 5m (MA30/MA60)';
+export const MA_CROSS_5M_DISPLAY = 'MA Cross 5m (MA30/MA120)';
 export const MA_CROSS_5M_DESC =
-  'Golden / Death Cross em 5m: MA30 cruza MA60. Universo = scan MA30>6% MA200 (1h) no menu. SL 8%. TP1 +85% (60%). Atualizar esse scan; cron 15m.';
+  'Golden / Death Cross em 5m: MA30 cruza MA120. Universo = scan MA30>6% MA200 (1h) no menu. SL 8%. TP1 +85% (60%). Atualizar esse scan; cron 15m.';
 
 export interface MigrateVolumeSpike15mResult {
   action: 'none' | 'renamed' | 'merged' | 'already_ok';
@@ -28,7 +28,7 @@ export interface MigrateVolumeSpike15mResult {
 
 /**
  * Alinha `Signal.strategyName` com o display actual de MA_CROSS_5M (dashboard / resultados usam este campo).
- * Cobre: "Volume Spike 15m", "MA Cross 5m (MA30/MA200)", ou qualquer outro texto desactualizado.
+ * Cobre: "Volume Spike 15m", textos MA30/MA200 ou MA30/MA60 antigos, ou qualquer outro display desactualizado.
  */
 export async function backfillMaCross5mSignalNames(prisma: PrismaClient): Promise<number> {
   const mc = await prisma.strategy.findFirst({ where: { name: 'MA_CROSS_5M' } });

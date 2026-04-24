@@ -104,7 +104,7 @@ model Ma30Above6Pct {
   @@index([rank])
 }
 
-// MA30 a menos de 6pct (abs) da MA200 em 1h e preco entre as duas medias
+// Scan 1h SMA: MA30 entre −10% e −5% vs MA200 (tabela/nome legados Ma30Near6…)
 model Ma30Near6PriceBetween {
   id             String   @id @default(cuid())
   symbol         String

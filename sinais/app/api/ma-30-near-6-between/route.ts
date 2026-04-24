@@ -20,7 +20,7 @@ export async function GET() {
       fetchedAt: items[0]?.updatedAt?.toISOString() ?? null,
     });
   } catch (error: unknown) {
-    console.error('Erro ao buscar MA30 near 6% + preço entre MAs:', error);
+    console.error('Erro ao buscar scan MA30 vs MA200 (−5% a −10%):', error);
     return NextResponse.json(
       {
         success: false,
@@ -38,7 +38,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    const items = await fetchMa30Near6PriceBetween(100);
+    const items = await fetchMa30Near6PriceBetween(300);
 
     await prisma.ma30Near6PriceBetween.deleteMany({});
 
@@ -65,7 +65,7 @@ export async function POST() {
       message: 'Scan actualizado com sucesso',
     });
   } catch (error: unknown) {
-    console.error('Erro ao actualizar MA30 near 6% + preço entre MAs:', error);
+    console.error('Erro ao actualizar scan MA30 vs MA200 (−5% a −10%):', error);
     return NextResponse.json(
       {
         success: false,

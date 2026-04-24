@@ -76,9 +76,9 @@ export default function Ma30Near6BetweenPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">MA30 a &lt; 6% da MA200 + preço entre MAs</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">MA30 entre −5% e −10% abaixo da MA200 (1h)</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Símbolos em que as médias (1h) estão a menos de 6% uma da outra e o preço está entre MA30 e MA200
+              SMA 30 e SMA 200 na vela 1h fechada; MA30 abaixo da MA200 com separação relativa nesse intervalo
             </p>
           </div>
           <button
@@ -110,13 +110,14 @@ export default function Ma30Near6BetweenPage() {
           <ul className="text-xs text-violet-800 dark:text-violet-300 space-y-1 list-disc list-inside">
             <li>Top 300 criptos por volume na Binance Futures — <strong>timeframe 1h</strong> (SMA 30 e SMA 200, como os outros menus)</li>
             <li>
-              <strong>|MA30 − MA200| / MA200</strong> em valor absoluto <strong>inferior a 6%</strong> (médias ainda &quot;perto&quot; uma da outra)
+              <strong>(MA30 − MA200) / MA200 × 100</strong> entre <strong>−10%</strong> e <strong>−5%</strong> (MA30 abaixo da MA200, afastamento
+              moderado)
             </li>
             <li>
-              Último preço (fecho da vela 1h fechada) <strong>estritamente entre</strong> a MA30 e a MA200 (acima do mínimo e abaixo do máximo
-              das duas)
+              Ordenado do mais &quot;apertado&quot; para o mais largo: primeiro os mais próximos de <strong>−5%</strong>, depois até{' '}
+              <strong>−10%</strong>
             </li>
-            <li>Ordenado do <strong>mais &quot;apertado&quot;</strong> (menor |MA30/MA200|) para o mais largo</li>
+            <li>Guarda até <strong>300</strong> linhas após &quot;Atualizar Scan&quot;</li>
           </ul>
         </div>
 

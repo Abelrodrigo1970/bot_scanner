@@ -14,7 +14,7 @@ const TIMEFRAME_5M = '5m' as const;
 const MA_CROSS_5M_MIN_STRENGTH = 70;
 
 /**
- * MA Cross 5m (MA30/MA60) em background.
+ * MA Cross 5m (MA30/MA120) em background.
  * Cálculo em velas 5m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
  * Universo: tabela `Ma30Above6Pct` (menu MA30 > 6% MA200, velas 1h no scan).
  */

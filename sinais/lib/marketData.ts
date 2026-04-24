@@ -512,11 +512,16 @@ export async function fetchMa30Above6Pct(limit: number = 100): Promise<MaCrossBe
   }
 }
 
+/** MA30 entre −10% e −5% vs MA200 (inclusive): (MA30−MA200)/MA200×100 ∈ [−10, −5]. */
+const MA30_VS_MA200_BAND_MIN_PCT = -10;
+const MA30_VS_MA200_BAND_MAX_PCT = -5;
+
 /**
- * Scan: |MA30−MA200|/MA200 * 100 &lt; 6% (médias próximas) e último preço *estritamente* entre MA30 e MA200 (1h, SMA).
- * Ordenado por menor |distância MA30/MA200| (mais “apertado” primeiro).
+ * Scan: MA30 **abaixo** da MA200 em 1h (SMA), com separação relativa entre **−10%** e **−5%**
+ * ((MA30−MA200)/MA200×100). Top 300 por volume Binance Futures.
+ * Ordenado do mais “apertado” (mais perto de −5%) para o mais largo (mais perto de −10%).
  */
-export async function fetchMa30Near6PriceBetween(limit: number = 100): Promise<MaCrossBelowItem[]> {
+export async function fetchMa30Near6PriceBetween(limit: number = 300): Promise<MaCrossBelowItem[]> {
   try {
     const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
     if (!tickerRes.ok) throw new Error('Erro ao buscar tickers');
@@ -549,15 +554,12 @@ export async function fetchMa30Near6PriceBetween(limit: number = 100): Promise<M
 
         const ma200 = ma200Vals.reduce((s, v) => s + v, 0) / 200;
         const ma30 = ma30Vals.reduce((s, v) => s + v, 0) / 30;
-
-        if (ma30 === ma200) continue;
+        if (ma200 <= 0) continue;
 
         const distMa30Ma200 = ((ma30 - ma200) / ma200) * 100;
-        if (Math.abs(distMa30Ma200) >= 6) continue;
-
-        const lo = Math.min(ma30, ma200);
-        const hi = Math.max(ma30, ma200);
-        if (lastPrice <= lo || lastPrice >= hi) continue;
+        if (distMa30Ma200 < MA30_VS_MA200_BAND_MIN_PCT || distMa30Ma200 > MA30_VS_MA200_BAND_MAX_PCT) {
+          continue;
+        }
 
         const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
 
@@ -568,11 +570,11 @@ export async function fetchMa30Near6PriceBetween(limit: number = 100): Promise<M
       await delay(i % 5 === 4 ? 150 : 80);
     }
 
-    results.sort((a, b) => Math.abs(a.distMa30Ma200) - Math.abs(b.distMa30Ma200));
+    results.sort((a, b) => b.distMa30Ma200 - a.distMa30Ma200);
 
     return results.slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
   } catch (error) {
-    console.error('Erro ao buscar MA30 < 6% + preço entre MAs:', error);
+    console.error('Erro ao buscar MA30 −5% a −10% vs MA200 (1h):', error);
     throw error;
   }
 }

@@ -529,7 +529,7 @@ export async function runRsi15mStrategy(
 }
 
 /**
- * Cruzamento MA30 com MA lenta (5m: MA60 por defeito, 15m: MA200) — velas fechadas.
+ * Cruzamento MA30 com MA lenta (5m: MA120 por defeito, 15m: MA200) — velas fechadas.
  * `ma200Period` = período da média lenta (nome histórico); `maType` EMA (default) ou SMA.
  */
 async function runMaCrossM30M200OnTimeframe(
@@ -542,7 +542,7 @@ async function runMaCrossM30M200OnTimeframe(
 
   const ma30Period = params.ma30Period ?? 30;
   const maSlowPeriod = Number(
-    params.ma200Period ?? (bar === '5m' ? 60 : 200)
+    params.ma200Period ?? (bar === '5m' ? 120 : 200)
   );
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
@@ -677,7 +677,7 @@ export async function runMaCross15mStrategy(
   return runMaCrossM30M200OnTimeframe(symbol, timeframe, params, '15m');
 }
 
-/** MA30 / MA lenta (60 por defeito) em velas 5m — cron 15m no endpoint dedicado. */
+/** MA30 / MA lenta (120 por defeito) em velas 5m — cron 15m no endpoint dedicado. */
 export async function runMaCross5mStrategy(
   symbol: string,
   timeframe: Timeframe,
