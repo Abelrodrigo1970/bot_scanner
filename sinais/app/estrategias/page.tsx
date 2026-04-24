@@ -280,6 +280,18 @@ export default function EstrategiasPage() {
               {numField('Folga (%)', p.confirmationPct ?? 0, (v) => upd({ confirmationPct: v }), 0.5)}
               {numField('SL (%)', p.stopPercent ?? 8, (v) => upd({ stopPercent: v }), 0.5)}
             </div>
+            <div className="max-w-md">
+              {numField(
+                'SELL: máx. |preço−MA200| / MA200 (%)',
+                p.sellBlockAbsCloseDistanceFromMa200Pct ?? 6,
+                (v) => upd({ sellBlockAbsCloseDistanceFromMa200Pct: v }),
+                0.5
+              )}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-500">
+              Só VENDA: se a distância do fecho à MA200 (em valor absoluto, em %) for maior que este limite, não
+              gera sinal. 0 desactiva o filtro.
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('TP1 (%)', p.tp1Percent ?? 85, (v) => upd({ tp1Percent: v }), 1)}
               {numField('TP1 Posição (%)', p.tp1Position ?? 60, (v) => upd({ tp1Position: v }))}
@@ -351,6 +363,18 @@ export default function EstrategiasPage() {
               {numField('Folga (%)', p.confirmationPct ?? 0, (v) => upd({ confirmationPct: v }), 0.5)}
               {numField('SL (%)', p.stopPercent ?? 8, (v) => upd({ stopPercent: v }), 0.5)}
             </div>
+            <div className="max-w-md">
+              {numField(
+                'SELL: máx. |preço−MA200| / MA200 (%)',
+                p.sellBlockAbsCloseDistanceFromMa200Pct ?? 6,
+                (v) => upd({ sellBlockAbsCloseDistanceFromMa200Pct: v }),
+                0.5
+              )}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-500">
+              Só VENDA: se a distância do fecho à MA200 (em valor absoluto, em %) for maior que este limite, não
+              gera sinal. 0 desactiva o filtro.
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('TP1 (%)', p.tp1Percent ?? 85, (v) => upd({ tp1Percent: v }), 1)}
               {numField('TP1 Posição (%)', p.tp1Position ?? 60, (v) => upd({ tp1Position: v }))}

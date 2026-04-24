@@ -21,6 +21,8 @@ const MA_CROSS_15M_DEFAULT_PARAMS = {
   maType: 'EMA' as const,
   confirmationPct: 0,
   stopPercent: 8,
+  /** SELL: bloquear se |close−MA200|/MA200 (%) > este valor; 0 = sem filtro */
+  sellBlockAbsCloseDistanceFromMa200Pct: 6,
   symbolLimit: 500,
   minQuoteVolume: 100000,
   allowBuy: true,

@@ -547,12 +547,29 @@ async function runMaCrossM30M200OnTimeframe(
   const stopPercent     = params.stopPercent     ?? 8;
   const tp1Percent      = params.tp1Percent      ?? 85;
   const tp1Position     = params.tp1Position     ?? 60;
+  /**
+   * SELL: não emitir sinal se |close−MA200|/MA200*100 (distância do preço à MA200) for > N%.
+   * 0 = desactiva. Default 6.
+   */
+  const sellBlockAbsCloseDistanceFromMa200Pct = Number(
+    params.sellBlockAbsCloseDistanceFromMa200Pct ?? 6
+  );
 
   const ma = (arr: number[], p: number) =>
     maType === 'SMA' ? calculateSMA(arr, p) : calculateLastEMA(arr, p);
 
   try {
-    const candlesNeeded = ma200Period + 5;
+    // EMA: com ~1× a MA(200) a curva ainda difere muito do gráfico; ~3× a período costuma bastar
+    // (um único request de qualquer forma — não “1500 requests”). Compromisso: 600–1000 velas.
+    const emaCandles = Math.min(1000, Math.max(600, ma200Period * 3));
+    const requested =
+      params.emaCandleLookback != null && Number.isFinite(Number(params.emaCandleLookback))
+        ? Math.min(1500, Math.max(200, Math.floor(Number(params.emaCandleLookback))))
+        : null;
+    const candlesNeeded =
+      maType === 'SMA'
+        ? ma200Period + 5
+        : (requested ?? emaCandles);
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
     if (candles.length < ma200Period + 3) return null;
 
@@ -601,6 +618,14 @@ async function runMaCrossM30M200OnTimeframe(
     }
 
     if (prevMa30 >= prevMa200 && ma30 < confirmDown) {
+      if (sellBlockAbsCloseDistanceFromMa200Pct > 0) {
+        const distCloseMa200AbsPct =
+          Math.abs((currentPrice - ma200) / ma200) * 100;
+        if (distCloseMa200AbsPct > sellBlockAbsCloseDistanceFromMa200Pct) {
+          return null;
+        }
+      }
+
       const stopLoss = currentPrice * (1 + stopPercent / 100);
       const target1  = currentPrice * (1 - tp1Percent  / 100);
 
@@ -617,6 +642,11 @@ async function runMaCrossM30M200OnTimeframe(
           maType,
           ma30: ma30.toFixed(4),
           ma200: ma200.toFixed(4),
+          distCloseMa200AbsPct: (
+            Math.abs((currentPrice - ma200) / ma200) * 100
+          ).toFixed(2),
+          sellBlockAbsCloseDistanceFromMa200Pct:
+            sellBlockAbsCloseDistanceFromMa200Pct || 'off',
           confirmationPct,
           crossover: `MA30 crosses -${confirmationPct}% below MA200 (SELL)`,
           stopPercent,

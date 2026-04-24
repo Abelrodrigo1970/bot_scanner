@@ -6,6 +6,7 @@ export const MA_CROSS_5M_PARAMS = {
   maType: 'EMA' as const,
   confirmationPct: 0,
   stopPercent: 8,
+  sellBlockAbsCloseDistanceFromMa200Pct: 6,
   tp1Percent: 85,
   tp1Position: 60,
   allowBuy: true,
