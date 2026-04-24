@@ -32,6 +32,7 @@ const MA_CROSS_15M_DEFAULT_PARAMS = {
 
 const MA_CROSS_5M_DEFAULT_PARAMS = {
   ...MA_CROSS_15M_DEFAULT_PARAMS,
+  ma200Period: 60,
   exchange: 'binance' as const,
   tp1Percent: 85,
   tp1Position: 60,
@@ -99,16 +100,16 @@ async function ensureMissingStrategies() {
 
   const existingMaCross5m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_5M' },
-    select: { id: true, params: true },
+    select: { id: true, params: true, displayName: true, description: true },
   });
 
   if (!existingMaCross5m) {
     await prisma.strategy.create({
       data: {
         name: 'MA_CROSS_5M',
-        displayName: 'MA Cross 5m (MA30/MA200)',
+        displayName: 'MA Cross 5m (MA30/MA60)',
         description:
-          'Cruzamento MA30/MA200 em 5m. Universo = scan MA30>6% MA200 (1h) no menu. Agendar cron 15m. SL 8% | TP1 +85%.',
+          'Cruzamento MA30/MA60 em 5m. Universo = scan MA30>6% MA200 (1h) no menu. Agendar cron 15m. SL 8% | TP1 +85%.',
         isActive: true,
         params: JSON.stringify(MA_CROSS_5M_DEFAULT_PARAMS),
       },
@@ -116,16 +117,32 @@ async function ensureMissingStrategies() {
   } else {
     try {
       const p = existingMaCross5m.params ? JSON.parse(existingMaCross5m.params) : {};
+      const next: Record<string, unknown> = { ...p };
       if (p.maType !== 'SMA' && p.maType !== 'EMA') {
-        const next = { ...p, maType: 'EMA' as const };
-        await prisma.strategy.update({
-          where: { name: 'MA_CROSS_5M' },
-          data: { params: JSON.stringify(next) },
-        });
+        next.maType = 'EMA';
         console.log('✅ MA_CROSS_5M: maType predefinido → EMA (TradingView)');
       }
+      if (p.ma200Period === 200 || p.ma200Period == null) {
+        next.ma200Period = 60;
+        console.log('✅ MA_CROSS_5M: média lenta 200 → 60 (MA30/MA60)');
+      }
+      const newDesc =
+        'Cruzamento MA30/MA60 em 5m. Universo = scan MA30>6% MA200 (1h) no menu. Agendar cron 15m. SL 8% | TP1 +85%.';
+      const needParams = JSON.stringify(next) !== JSON.stringify(p);
+      const needMeta =
+        existingMaCross5m.displayName !== 'MA Cross 5m (MA30/MA60)' || existingMaCross5m.description !== newDesc;
+      if (needParams || needMeta) {
+        await prisma.strategy.update({
+          where: { name: 'MA_CROSS_5M' },
+          data: {
+            params: needParams ? JSON.stringify(next) : existingMaCross5m.params!,
+            displayName: 'MA Cross 5m (MA30/MA60)',
+            description: newDesc,
+          },
+        });
+      }
     } catch (e) {
-      console.warn('⚠️ MA_CROSS_5M: falha ao migrar maType:', e);
+      console.warn('⚠️ MA_CROSS_5M: falha ao migrar params:', e);
     }
   }
 }

@@ -529,8 +529,8 @@ export async function runRsi15mStrategy(
 }
 
 /**
- * Cruzamento MA30/MA200 — mesma lógica em 5m ou 15m (candles fechados).
- * `params.maType`: EMA (default, tipo TradingView) ou SMA. O cron 15m chama a variante 5m noutro endpoint.
+ * Cruzamento MA30 com MA lenta (5m: MA60 por defeito, 15m: MA200) — velas fechadas.
+ * `ma200Period` = período da média lenta (nome histórico); `maType` EMA (default) ou SMA.
  */
 async function runMaCrossM30M200OnTimeframe(
   symbol: string,
@@ -540,16 +540,19 @@ async function runMaCrossM30M200OnTimeframe(
 ): Promise<SignalResult | null> {
   if (timeframe !== bar) return null;
 
-  const ma30Period      = params.ma30Period      ?? 30;
-  const ma200Period     = params.ma200Period     ?? 200;
+  const ma30Period = params.ma30Period ?? 30;
+  const maSlowPeriod = Number(
+    params.ma200Period ?? (bar === '5m' ? 60 : 200)
+  );
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
   const stopPercent     = params.stopPercent     ?? 8;
   const tp1Percent      = params.tp1Percent      ?? 85;
   const tp1Position     = params.tp1Position     ?? 60;
+  const slowLabel = `MA${maSlowPeriod}`;
   /**
-   * SELL: não emitir sinal se |close−MA200|/MA200*100 (distância do preço à MA200) for > N%.
-   * 0 = desactiva. Default 6.
+   * SELL: não emitir se |close−MA lenta|/MA lenta*100 (%) for > N%. 0 = desactiva. Default 6.
+   * (o param chama-se sellBlockAbsCloseDistanceFromMa200Pct no JSON)
    */
   const sellBlockAbsCloseDistanceFromMa200Pct = Number(
     params.sellBlockAbsCloseDistanceFromMa200Pct ?? 6
@@ -559,38 +562,36 @@ async function runMaCrossM30M200OnTimeframe(
     maType === 'SMA' ? calculateSMA(arr, p) : calculateLastEMA(arr, p);
 
   try {
-    // EMA: com ~1× a MA(200) a curva ainda difere muito do gráfico; ~3× a período costuma bastar
-    // (um único request de qualquer forma — não “1500 requests”). Compromisso: 600–1000 velas.
-    const emaCandles = Math.min(1000, Math.max(600, ma200Period * 3));
+    const emaCandles = Math.min(1000, Math.max(600, maSlowPeriod * 3));
     const requested =
       params.emaCandleLookback != null && Number.isFinite(Number(params.emaCandleLookback))
         ? Math.min(1500, Math.max(200, Math.floor(Number(params.emaCandleLookback))))
         : null;
     const candlesNeeded =
       maType === 'SMA'
-        ? ma200Period + 5
+        ? maSlowPeriod + 5
         : (requested ?? emaCandles);
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
-    if (candles.length < ma200Period + 3) return null;
+    if (candles.length < maSlowPeriod + 3) return null;
 
     const closes = getCloses(candles);
     const closedCloses     = closes.slice(0, -1);
     const prevClosedCloses = closes.slice(0, -2);
 
     const ma30  = ma(closedCloses, ma30Period);
-    const ma200 = ma(closedCloses, ma200Period);
-    if (ma30 === null || ma200 === null) return null;
+    const maSlow = ma(closedCloses, maSlowPeriod);
+    if (ma30 === null || maSlow === null) return null;
 
     const prevMa30  = ma(prevClosedCloses, ma30Period);
-    const prevMa200 = ma(prevClosedCloses, ma200Period);
-    if (prevMa30 === null || prevMa200 === null) return null;
+    const prevMaSlow = ma(prevClosedCloses, maSlowPeriod);
+    if (prevMa30 === null || prevMaSlow === null) return null;
 
     const currentPrice = candles[candles.length - 2].close;
 
-    const confirmUp   = ma200 * (1 + confirmationPct / 100);
-    const confirmDown = ma200 * (1 - confirmationPct / 100);
+    const confirmUp   = maSlow * (1 + confirmationPct / 100);
+    const confirmDown = maSlow * (1 - confirmationPct / 100);
 
-    if (prevMa30 <= prevMa200 && ma30 > confirmUp) {
+    if (prevMa30 <= prevMaSlow && ma30 > confirmUp) {
       const stopLoss = currentPrice * (1 - stopPercent / 100);
       const target1  = currentPrice * (1 + tp1Percent  / 100);
 
@@ -606,9 +607,11 @@ async function runMaCrossM30M200OnTimeframe(
           timeframe: bar,
           maType,
           ma30: ma30.toFixed(4),
-          ma200: ma200.toFixed(4),
+          maSlow: maSlow.toFixed(4),
+          maSlowPeriod,
+          ma200: maSlow.toFixed(4),
           confirmationPct,
-          crossover: `MA30 crosses +${confirmationPct}% above MA200 (BUY)`,
+          crossover: `MA30 crosses +${confirmationPct}% above ${slowLabel} (BUY)`,
           stopPercent,
           tp1Percent,
           tp1Position: `${tp1Position}%`,
@@ -617,11 +620,11 @@ async function runMaCrossM30M200OnTimeframe(
       };
     }
 
-    if (prevMa30 >= prevMa200 && ma30 < confirmDown) {
+    if (prevMa30 >= prevMaSlow && ma30 < confirmDown) {
       if (sellBlockAbsCloseDistanceFromMa200Pct > 0) {
-        const distCloseMa200AbsPct =
-          Math.abs((currentPrice - ma200) / ma200) * 100;
-        if (distCloseMa200AbsPct > sellBlockAbsCloseDistanceFromMa200Pct) {
+        const distCloseSlowAbsPct =
+          Math.abs((currentPrice - maSlow) / maSlow) * 100;
+        if (distCloseSlowAbsPct > sellBlockAbsCloseDistanceFromMa200Pct) {
           return null;
         }
       }
@@ -641,14 +644,16 @@ async function runMaCrossM30M200OnTimeframe(
           timeframe: bar,
           maType,
           ma30: ma30.toFixed(4),
-          ma200: ma200.toFixed(4),
+          maSlow: maSlow.toFixed(4),
+          maSlowPeriod,
+          ma200: maSlow.toFixed(4),
           distCloseMa200AbsPct: (
-            Math.abs((currentPrice - ma200) / ma200) * 100
+            Math.abs((currentPrice - maSlow) / maSlow) * 100
           ).toFixed(2),
           sellBlockAbsCloseDistanceFromMa200Pct:
             sellBlockAbsCloseDistanceFromMa200Pct || 'off',
           confirmationPct,
-          crossover: `MA30 crosses -${confirmationPct}% below MA200 (SELL)`,
+          crossover: `MA30 crosses -${confirmationPct}% below ${slowLabel} (SELL)`,
           stopPercent,
           tp1Percent,
           tp1Position: `${tp1Position}%`,
@@ -672,7 +677,7 @@ export async function runMaCross15mStrategy(
   return runMaCrossM30M200OnTimeframe(symbol, timeframe, params, '15m');
 }
 
-/** MA30/MA200 em velas de 5m (cron 15m no endpoint dedicado). */
+/** MA30 / MA lenta (60 por defeito) em velas 5m — cron 15m no endpoint dedicado. */
 export async function runMaCross5mStrategy(
   symbol: string,
   timeframe: Timeframe,

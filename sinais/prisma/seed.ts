@@ -143,7 +143,7 @@ async function main() {
     },
   });
 
-  // MA Cross 5m (MA30/MA200) — mesma lógica que MA Cross 15m; velas 5m; cron típico a cada 15 min
+  // MA Cross 5m (MA30/MA60) — velas 5m; cron típico a cada 15 min
   const maCross5mStrategy = await prisma.strategy.upsert({
     where: { name: 'MA_CROSS_5M' },
     update: {
