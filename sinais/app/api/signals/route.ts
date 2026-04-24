@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
+import { backfillMaCross5mSignalNames } from '@/lib/strategyMigrations';
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,6 +25,8 @@ export async function GET(request: NextRequest) {
         { status: 503 }
       );
     }
+
+    await backfillMaCross5mSignalNames(prisma);
 
     const searchParams = request.nextUrl.searchParams;
     const symbol = searchParams.get('symbol');

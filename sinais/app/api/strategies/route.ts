@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
+import {
+  backfillMaCross5mSignalNames,
+  MA_CROSS_5M_DISPLAY,
+} from '@/lib/strategyMigrations';
 
 const RSI_15M_DEFAULT_PARAMS = {
   period: 14,
@@ -144,6 +148,13 @@ async function ensureMissingStrategies() {
     } catch (e) {
       console.warn('⚠️ MA_CROSS_5M: falha ao migrar params:', e);
     }
+  }
+
+  const relabeled = await backfillMaCross5mSignalNames(prisma);
+  if (relabeled > 0) {
+    console.log(
+      `✅ MA_CROSS_5M: ${relabeled} sinal(is) com strategyName actualizado → "${MA_CROSS_5M_DISPLAY}"`
+    );
   }
 }
 

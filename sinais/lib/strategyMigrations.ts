@@ -18,9 +18,6 @@ export const MA_CROSS_5M_DISPLAY = 'MA Cross 5m (MA30/MA60)';
 export const MA_CROSS_5M_DESC =
   'Golden / Death Cross em 5m: MA30 cruza MA60. Universo = scan MA30>6% MA200 (1h) no menu. SL 8%. TP1 +85% (60%). Atualizar esse scan; cron 15m.';
 
-/** Nomes que o front / estatísticas ainda mostram se não actualizarmos `Signal.strategyName` */
-const LEGACY_15M_STRATEGY_NAMES = ['Volume Spike 15m', 'Volume Spike 15M', '15MVolume'] as const;
-
 export interface MigrateVolumeSpike15mResult {
   action: 'none' | 'renamed' | 'merged' | 'already_ok';
   message: string;
@@ -30,8 +27,8 @@ export interface MigrateVolumeSpike15mResult {
 }
 
 /**
- * Sinais antigos podem ainda ter `strategyName` "Volume Spike 15m" após a Strategy já ser MA_CROSS_5M
- * (estatísticas agrupam por `strategyName`). Corrige todos os sinais dessa estratégia.
+ * Alinha `Signal.strategyName` com o display actual de MA_CROSS_5M (dashboard / resultados usam este campo).
+ * Cobre: "Volume Spike 15m", "MA Cross 5m (MA30/MA200)", ou qualquer outro texto desactualizado.
  */
 export async function backfillMaCross5mSignalNames(prisma: PrismaClient): Promise<number> {
   const mc = await prisma.strategy.findFirst({ where: { name: 'MA_CROSS_5M' } });
@@ -39,7 +36,7 @@ export async function backfillMaCross5mSignalNames(prisma: PrismaClient): Promis
   const n = await prisma.signal.updateMany({
     where: {
       strategyId: mc.id,
-      strategyName: { in: [...LEGACY_15M_STRATEGY_NAMES] },
+      strategyName: { not: MA_CROSS_5M_DISPLAY },
     },
     data: { strategyName: MA_CROSS_5M_DISPLAY },
   });
