@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 export const MA_CROSS_5M_PARAMS = {
   ma30Period: 30,
   ma200Period: 200,
+  maType: 'EMA' as const,
   confirmationPct: 0,
   stopPercent: 8,
   tp1Percent: 85,

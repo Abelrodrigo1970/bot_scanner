@@ -18,6 +18,7 @@ const RSI_15M_DEFAULT_PARAMS = {
 const MA_CROSS_15M_DEFAULT_PARAMS = {
   ma30Period: 30,
   ma200Period: 200,
+  maType: 'EMA' as const,
   confirmationPct: 0,
   stopPercent: 8,
   symbolLimit: 500,
@@ -74,21 +75,29 @@ async function ensureMissingStrategies() {
     // Corrigir automaticamente para 0 (cruzamento simples).
     try {
       const p = existingMaCross15m.params ? JSON.parse(existingMaCross15m.params) : {};
+      const next: Record<string, unknown> = { ...p };
       if (Number(p.confirmationPct) >= 1) {
-        await prisma.strategy.update({
-          where: { name: 'MA_CROSS_15M' },
-          data: { params: JSON.stringify({ ...p, confirmationPct: 0 }) },
-        });
+        next.confirmationPct = 0;
         console.log('✅ MA_CROSS_15M: confirmationPct migrado de', p.confirmationPct, '→ 0');
       }
+      if (p.maType !== 'SMA' && p.maType !== 'EMA') {
+        next.maType = 'EMA';
+        console.log('✅ MA_CROSS_15M: maType predefinido → EMA (TradingView)');
+      }
+      if (JSON.stringify(next) !== JSON.stringify(p)) {
+        await prisma.strategy.update({
+          where: { name: 'MA_CROSS_15M' },
+          data: { params: JSON.stringify(next) },
+        });
+      }
     } catch (e) {
-      console.warn('⚠️ MA_CROSS_15M: falha ao migrar confirmationPct:', e);
+      console.warn('⚠️ MA_CROSS_15M: falha ao migrar params (confirmationPct/maType):', e);
     }
   }
 
   const existingMaCross5m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_5M' },
-    select: { id: true },
+    select: { id: true, params: true },
   });
 
   if (!existingMaCross5m) {
@@ -102,6 +111,20 @@ async function ensureMissingStrategies() {
         params: JSON.stringify(MA_CROSS_5M_DEFAULT_PARAMS),
       },
     });
+  } else {
+    try {
+      const p = existingMaCross5m.params ? JSON.parse(existingMaCross5m.params) : {};
+      if (p.maType !== 'SMA' && p.maType !== 'EMA') {
+        const next = { ...p, maType: 'EMA' as const };
+        await prisma.strategy.update({
+          where: { name: 'MA_CROSS_5M' },
+          data: { params: JSON.stringify(next) },
+        });
+        console.log('✅ MA_CROSS_5M: maType predefinido → EMA (TradingView)');
+      }
+    } catch (e) {
+      console.warn('⚠️ MA_CROSS_5M: falha ao migrar maType:', e);
+    }
   }
 }
 

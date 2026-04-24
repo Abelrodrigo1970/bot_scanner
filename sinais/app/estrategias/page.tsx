@@ -263,6 +263,17 @@ export default function EstrategiasPage() {
               homónimo) — criptos com MA30 a mais de 6% acima da MA200 em 1h; actualiza esse scan com &quot;Atualizar
               Scan&quot; antes.
             </p>
+            <div className="max-w-md">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média (MA30 / MA200)</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                value={p.maType === 'SMA' ? 'SMA' : 'EMA'}
+                onChange={(e) => upd({ maType: e.target.value === 'SMA' ? 'SMA' : 'EMA' })}
+              >
+                <option value="EMA">EMA (alinhada com gráfico tipo TradingView)</option>
+                <option value="SMA">SMA (média simples)</option>
+              </select>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período MA rápida', p.ma30Period ?? 30, (v) => upd({ ma30Period: v }))}
               {numField('Período MA lenta', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
@@ -323,6 +334,17 @@ export default function EstrategiasPage() {
       case 'MA_CROSS_15M':
         return (
           <div className="space-y-4">
+            <div className="max-w-md">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média (MA30 / MA200)</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                value={p.maType === 'SMA' ? 'SMA' : 'EMA'}
+                onChange={(e) => upd({ maType: e.target.value === 'SMA' ? 'SMA' : 'EMA' })}
+              >
+                <option value="EMA">EMA (alinhada com gráfico tipo TradingView)</option>
+                <option value="SMA">SMA (média simples)</option>
+              </select>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período MA rápida', p.ma30Period ?? 30, (v) => upd({ ma30Period: v }))}
               {numField('Período MA lenta', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}

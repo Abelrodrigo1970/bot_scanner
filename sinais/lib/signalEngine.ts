@@ -7,6 +7,7 @@ import { fetchCandles, fetchTopSymbolsBy1hPriceChange, fetchTopSymbolsBy24hPrice
 import {
   calculateRSI,
   calculateSMA,
+  calculateLastEMA,
   getCloses,
   getVolumes,
   calculateVolumeMA,
@@ -529,7 +530,7 @@ export async function runRsi15mStrategy(
 
 /**
  * Cruzamento MA30/MA200 — mesma lógica em 5m ou 15m (candles fechados).
- * O cron 15m chama a variante 5m noutro endpoint; a variante 15m corre no fluxo de estratégias 15m/RSI.
+ * `params.maType`: EMA (default, tipo TradingView) ou SMA. O cron 15m chama a variante 5m noutro endpoint.
  */
 async function runMaCrossM30M200OnTimeframe(
   symbol: string,
@@ -541,10 +542,14 @@ async function runMaCrossM30M200OnTimeframe(
 
   const ma30Period      = params.ma30Period      ?? 30;
   const ma200Period     = params.ma200Period     ?? 200;
+  const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
   const stopPercent     = params.stopPercent     ?? 8;
   const tp1Percent      = params.tp1Percent      ?? 85;
   const tp1Position     = params.tp1Position     ?? 60;
+
+  const ma = (arr: number[], p: number) =>
+    maType === 'SMA' ? calculateSMA(arr, p) : calculateLastEMA(arr, p);
 
   try {
     const candlesNeeded = ma200Period + 5;
@@ -555,12 +560,12 @@ async function runMaCrossM30M200OnTimeframe(
     const closedCloses     = closes.slice(0, -1);
     const prevClosedCloses = closes.slice(0, -2);
 
-    const ma30  = calculateSMA(closedCloses, ma30Period);
-    const ma200 = calculateSMA(closedCloses, ma200Period);
+    const ma30  = ma(closedCloses, ma30Period);
+    const ma200 = ma(closedCloses, ma200Period);
     if (ma30 === null || ma200 === null) return null;
 
-    const prevMa30  = calculateSMA(prevClosedCloses, ma30Period);
-    const prevMa200 = calculateSMA(prevClosedCloses, ma200Period);
+    const prevMa30  = ma(prevClosedCloses, ma30Period);
+    const prevMa200 = ma(prevClosedCloses, ma200Period);
     if (prevMa30 === null || prevMa200 === null) return null;
 
     const currentPrice = candles[candles.length - 2].close;
@@ -582,6 +587,7 @@ async function runMaCrossM30M200OnTimeframe(
         strength: 70,
         extraInfo: JSON.stringify({
           timeframe: bar,
+          maType,
           ma30: ma30.toFixed(4),
           ma200: ma200.toFixed(4),
           confirmationPct,
@@ -608,6 +614,7 @@ async function runMaCrossM30M200OnTimeframe(
         strength: 70,
         extraInfo: JSON.stringify({
           timeframe: bar,
+          maType,
           ma30: ma30.toFixed(4),
           ma200: ma200.toFixed(4),
           confirmationPct,

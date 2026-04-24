@@ -39,6 +39,27 @@ export function calculateSMA(values: number[], period: number): number | null {
 }
 
 /**
+ * Último valor da EMA no fecho (alinhado com indicadores tipo TradingView para MA30/MA200).
+ */
+export function calculateLastEMA(values: number[], period: number): number | null {
+  if (values.length < period) {
+    return null;
+  }
+
+  const emaValues = EMA.calculate({
+    values,
+    period,
+  });
+
+  if (!emaValues || emaValues.length === 0) {
+    return null;
+  }
+
+  const last = emaValues[emaValues.length - 1];
+  return typeof last === 'number' && Number.isFinite(last) ? last : null;
+}
+
+/**
  * Calcula MACD
  */
 export function calculateMACD(

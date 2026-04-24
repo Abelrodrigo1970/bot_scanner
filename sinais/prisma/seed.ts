@@ -259,6 +259,7 @@ async function main() {
       params: JSON.stringify({
         ma30Period: 30,
         ma200Period: 200,
+        maType: 'EMA',
         confirmationPct: 0,
         stopPercent: 8,
         tp1Percent: 85,
@@ -279,6 +280,7 @@ async function main() {
       params: JSON.stringify({
         ma30Period: 30,
         ma200Period: 200,
+        maType: 'EMA',
         confirmationPct: 0,
         stopPercent: 8,
         tp1Percent: 85,
