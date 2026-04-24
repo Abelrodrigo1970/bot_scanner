@@ -104,3 +104,18 @@ model Ma30Above6Pct {
   @@index([rank])
 }
 
+// MA30 a menos de 6pct (abs) da MA200 em 1h e preco entre as duas medias
+model Ma30Near6PriceBetween {
+  id             String   @id @default(cuid())
+  symbol         String
+  lastPrice      Float
+  ma30           Float
+  ma200          Float
+  distPriceMa200 Float
+  distMa30Ma200  Float
+  rank           Int
+  updatedAt      DateTime @default(now())
+
+  @@index([rank])
+}
+
