@@ -8,6 +8,7 @@ const mainMenuItems = [
   { href: '/', label: 'Dashboard' },
   { href: '/estrategias', label: 'Estratégias' },
   { href: '/historico', label: 'Histórico' },
+  { href: '/relatorio', label: 'Relatório' },
   { href: '/resultados', label: 'Resultados' },
   { href: '/estatisticas', label: 'Estatísticas' },
   { href: '/analise', label: 'Análise' },
