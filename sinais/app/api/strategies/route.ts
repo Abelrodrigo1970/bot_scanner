@@ -36,7 +36,8 @@ const MA_CROSS_15M_DEFAULT_PARAMS = {
 
 const MA_CROSS_5M_DEFAULT_PARAMS = {
   ...MA_CROSS_15M_DEFAULT_PARAMS,
-  ma200Period: 120,
+  ma30Period: 12,
+  ma200Period: 30,
   exchange: 'binance' as const,
   tp1Percent: 85,
   tp1Position: 60,
@@ -54,7 +55,7 @@ async function ensureMissingStrategies() {
         name: 'RSI_15M',
         displayName: 'RSI 15m Reversal (28->32)',
         description:
-          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo alargado de símbolos líquidos.',
+          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 -5% a -10% vs MA200 (1h).',
         isActive: true,
         params: JSON.stringify(RSI_15M_DEFAULT_PARAMS),
       },
@@ -111,9 +112,9 @@ async function ensureMissingStrategies() {
     await prisma.strategy.create({
       data: {
         name: 'MA_CROSS_5M',
-        displayName: 'MA Cross 5m (MA30/MA120)',
+        displayName: 'MA Cross 5m (MA12/MA30)',
         description:
-          'Cruzamento MA30/MA120 em 5m. Universo = scan MA30>6% MA200 (1h) no menu. Agendar cron 15m. SL 8% | TP1 +85%.',
+          'Cruzamento MA12/MA30 em 5m. Universo = scan MA30>6% MA200 (1h) no menu. Agendar cron 15m. SL 8% | TP1 +85%.',
         isActive: true,
         params: JSON.stringify(MA_CROSS_5M_DEFAULT_PARAMS),
       },
@@ -126,21 +127,33 @@ async function ensureMissingStrategies() {
         next.maType = 'EMA';
         console.log('✅ MA_CROSS_5M: maType predefinido → EMA (TradingView)');
       }
-      if (p.ma200Period === 200 || p.ma200Period == null || p.ma200Period === 60) {
-        next.ma200Period = 120;
-        console.log('✅ MA_CROSS_5M: média lenta → 120 (MA30/MA120)');
+      if (p.ma200Period === 200 || p.ma200Period == null || p.ma200Period === 60 || p.ma200Period === 120) {
+        next.ma200Period = 30;
+      }
+      if (p.ma30Period == null || p.ma30Period === 30) {
+        next.ma30Period = 12;
+      }
+      if (
+        p.ma200Period === 200 ||
+        p.ma200Period == null ||
+        p.ma200Period === 60 ||
+        p.ma200Period === 120 ||
+        p.ma30Period == null ||
+        p.ma30Period === 30
+      ) {
+        console.log('✅ MA_CROSS_5M: parâmetros migrados para MA12/MA30');
       }
       const newDesc =
-        'Cruzamento MA30/MA120 em 5m. Universo = scan MA30>6% MA200 (1h) no menu. Agendar cron 15m. SL 8% | TP1 +85%.';
+        'Cruzamento MA12/MA30 em 5m. Universo = scan MA30>6% MA200 (1h) no menu. Agendar cron 15m. SL 8% | TP1 +85%.';
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
-        existingMaCross5m.displayName !== 'MA Cross 5m (MA30/MA120)' || existingMaCross5m.description !== newDesc;
+        existingMaCross5m.displayName !== 'MA Cross 5m (MA12/MA30)' || existingMaCross5m.description !== newDesc;
       if (needParams || needMeta) {
         await prisma.strategy.update({
           where: { name: 'MA_CROSS_5M' },
           data: {
             params: needParams ? JSON.stringify(next) : existingMaCross5m.params!,
-            displayName: 'MA Cross 5m (MA30/MA120)',
+            displayName: 'MA Cross 5m (MA12/MA30)',
             description: newDesc,
           },
         });

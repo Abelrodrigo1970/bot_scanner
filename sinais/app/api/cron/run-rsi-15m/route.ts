@@ -8,7 +8,7 @@ import {
 } from '@/lib/tradingExecutor';
 
 /**
- * Cron dedicado para RSI_15M (RSI 15m, Top Volatilidade).
+ * Cron dedicado para RSI_15M (RSI 15m, universo MA30 -5% a -10% vs MA200).
  * Gera sinais e auto-executa com reversal close (igual à lógica MA_VOLATILE).
  */
 async function runRsi15mInBackground(): Promise<void> {
@@ -226,7 +226,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     return NextResponse.json({
       success: true,
-      message: 'Processamento iniciado em background (RSI 15m Top Volatilidade)',
+      message: 'Processamento iniciado em background (RSI 15m MA30 -5% a -10% vs MA200)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

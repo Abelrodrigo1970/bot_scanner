@@ -198,7 +198,7 @@ export async function update24hResults(): Promise<{
           result24h = signal.entryPrice - currentPrice;
         }
 
-        // MA Cross (15m: 30/200, 5m: 30/120): não fechar automaticamente ao fim de 24h — a estratégia
+        // MA Cross (15m: 30/200, 5m: 12/30): não fechar automaticamente ao fim de 24h — a estratégia
         // mantém posições até SL/TP serem atingidos, independentemente do tempo.
         const isMaCross =
           signal.strategy?.name === 'MA_CROSS_15M' || signal.strategy?.name === 'MA_CROSS_5M';

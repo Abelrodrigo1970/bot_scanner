@@ -259,7 +259,7 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Velas <strong>5m</strong> — <strong>MA30 / MA120</strong> (cruzamento). O cron a cada 15 min. Símbolos = resultados do scan{' '}
+              Velas <strong>5m</strong> — <strong>MA12 / MA30</strong> (cruzamento). O cron a cada 15 min. Símbolos = resultados do scan{' '}
               <strong>MA30 &gt; 6% MA200</strong> (menu) em 1h; actualiza esse scan com &quot;Atualizar Scan&quot; antes.
             </p>
             <div className="max-w-md">
@@ -274,8 +274,8 @@ export default function EstrategiasPage() {
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Período MA rápida (ex. 30)', p.ma30Period ?? 30, (v) => upd({ ma30Period: v }))}
-              {numField('Período MA lenta (ex. 120)', p.ma200Period ?? 120, (v) => upd({ ma200Period: v }))}
+              {numField('Período MA rápida (ex. 12)', p.ma30Period ?? 12, (v) => upd({ ma30Period: v }))}
+              {numField('Período MA lenta (ex. 30)', p.ma200Period ?? 30, (v) => upd({ ma200Period: v }))}
               {numField('Folga (%)', p.confirmationPct ?? 0, (v) => upd({ confirmationPct: v }), 0.5)}
               {numField('SL (%)', p.stopPercent ?? 8, (v) => upd({ stopPercent: v }), 0.5)}
             </div>
@@ -288,7 +288,7 @@ export default function EstrategiasPage() {
               )}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-500">
-              Só VENDA: se a distância do fecho à média lenta (ex. MA120) em valor absoluto (%) for maior que este limite, não
+              Só VENDA: se a distância do fecho à média lenta (ex. MA30) em valor absoluto (%) for maior que este limite, não
               gera sinal. 0 desactiva o filtro.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

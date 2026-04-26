@@ -1,8 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 
 export const MA_CROSS_5M_PARAMS = {
-  ma30Period: 30,
-  ma200Period: 120,
+  ma30Period: 12,
+  ma200Period: 30,
   maType: 'EMA' as const,
   confirmationPct: 0,
   stopPercent: 8,
@@ -14,9 +14,9 @@ export const MA_CROSS_5M_PARAMS = {
   exchange: 'binance',
 } as const;
 
-export const MA_CROSS_5M_DISPLAY = 'MA Cross 5m (MA30/MA120)';
+export const MA_CROSS_5M_DISPLAY = 'MA Cross 5m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'Golden / Death Cross em 5m: MA30 cruza MA120. Universo = scan MA30>6% MA200 (1h) no menu. SL 8%. TP1 +85% (60%). Atualizar esse scan; cron 15m.';
+  'Golden / Death Cross em 5m: MA12 cruza MA30. Universo = scan MA30>6% MA200 (1h) no menu. SL 8%. TP1 +85% (60%). Atualizar esse scan; cron 15m.';
 
 export interface MigrateVolumeSpike15mResult {
   action: 'none' | 'renamed' | 'merged' | 'already_ok';

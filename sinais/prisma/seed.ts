@@ -143,7 +143,7 @@ async function main() {
     },
   });
 
-  // MA Cross 5m (MA30/MA120) — velas 5m; cron típico a cada 15 min
+  // MA Cross 5m (MA12/MA30) — velas 5m; cron típico a cada 15 min
   const maCross5mStrategy = await prisma.strategy.upsert({
     where: { name: 'MA_CROSS_5M' },
     update: {
@@ -216,7 +216,7 @@ async function main() {
     update: {
       displayName: 'RSI 15m Reversal (28->32)',
       description:
-        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo alargado de símbolos líquidos.',
+        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 -5% a -10% vs MA200 (1h).',
       params: JSON.stringify({
         period: 14,
         previousBelowThreshold: 28,
@@ -233,7 +233,7 @@ async function main() {
       name: 'RSI_15M',
       displayName: 'RSI 15m Reversal (28->32)',
       description:
-        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo alargado de símbolos líquidos.',
+        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 -5% a -10% vs MA200 (1h).',
       isActive: true,
       params: JSON.stringify({
         period: 14,

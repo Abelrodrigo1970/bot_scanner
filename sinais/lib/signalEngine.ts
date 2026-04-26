@@ -466,7 +466,7 @@ export async function runRsiStrategy(
  * Apenas BUY | SL -3% | TP1 +5% | TP2 +14%
  * Usa sempre o candle fechado (não o em formação).
  * Sem filtro MA200 para sinal mais rápido.
- * Corre num universo alargado de símbolos líquidos (filtrado em runAllStrategies).
+ * Corre no universo da BD Ma30Near6PriceBetween (scan MA30 entre -5% e -10% vs MA200).
  */
 export async function runRsi15mStrategy(
   symbol: string,
@@ -529,7 +529,7 @@ export async function runRsi15mStrategy(
 }
 
 /**
- * Cruzamento MA30 com MA lenta (5m: MA120 por defeito, 15m: MA200) — velas fechadas.
+ * Cruzamento MA rápida com MA lenta (5m: MA12/MA30 por defeito, 15m: MA30/MA200) — velas fechadas.
  * `ma200Period` = período da média lenta (nome histórico); `maType` EMA (default) ou SMA.
  */
 async function runMaCrossM30M200OnTimeframe(
@@ -540,9 +540,9 @@ async function runMaCrossM30M200OnTimeframe(
 ): Promise<SignalResult | null> {
   if (timeframe !== bar) return null;
 
-  const ma30Period = params.ma30Period ?? 30;
+  const ma30Period = params.ma30Period ?? (bar === '5m' ? 12 : 30);
   const maSlowPeriod = Number(
-    params.ma200Period ?? (bar === '5m' ? 120 : 200)
+    params.ma200Period ?? (bar === '5m' ? 30 : 200)
   );
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
@@ -677,7 +677,7 @@ export async function runMaCross15mStrategy(
   return runMaCrossM30M200OnTimeframe(symbol, timeframe, params, '15m');
 }
 
-/** MA30 / MA lenta (120 por defeito) em velas 5m — cron 15m no endpoint dedicado. */
+/** MA12 / MA30 por defeito em velas 5m — cron 15m no endpoint dedicado. */
 export async function runMaCross5mStrategy(
   symbol: string,
   timeframe: Timeframe,
@@ -747,17 +747,16 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.log(`✅ Encontrados ${volumeSymbols.length} símbolos`);
         }
       } else if (strategy.name === 'RSI_15M') {
-        const maxSymbols = params.symbolLimit ?? 400;
-        const minQuoteVolume = params.minQuoteVolume ?? 500000;
-        console.log(`🔍 Buscando universo alargado para ${strategy.name} (${maxSymbols} símbolos)...`);
-        try {
-          const broadSymbols = await fetchTopSymbolsByVolume(maxSymbols, minQuoteVolume);
-          if (broadSymbols.length > 0) {
-            symbolsToAnalyze = broadSymbols;
-            console.log(`✅ Encontrados ${broadSymbols.length} símbolos líquidos`);
-          }
-        } catch (err) {
-          console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando lista base:`, err);
+        console.log(`🔍 Buscando MA30 -5% a -10% vs MA200 (1h) na BD para ${strategy.name}...`);
+        const nearBand = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
+        if (nearBand.length > 0) {
+          symbolsToAnalyze = nearBand.map((t: { symbol: string }) => t.symbol);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 -5% a -10% vs MA200)`);
+        } else {
+          console.warn(
+            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 −5% a −10% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
+          );
+          continue;
         }
       } else if (strategy.name === 'MA200_VOLATILE') {
         const maxSymbols = params.symbolLimit ?? 500;
@@ -786,7 +785,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         console.log(`🔍 Buscando MA30 > 6% MA200 (1h) na BD para ${strategy.name}...`);
         const maAbove6 = await prisma.ma30Above6Pct.findMany({ orderBy: { rank: 'asc' } });
         if (maAbove6.length > 0) {
-          symbolsToAnalyze = maAbove6.map((t) => t.symbol);
+          symbolsToAnalyze = maAbove6.map((t: { symbol: string }) => t.symbol);
           console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 > 6% MA200)`);
         } else {
           console.warn(
