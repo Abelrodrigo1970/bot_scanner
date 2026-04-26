@@ -1,7 +1,7 @@
 /**
  * Executor de sinais — Binance Futures e Bybit Linear Futures.
  * executeSignal()     = simulação (logs, sem ordens).
- * executeSignalReal() = ordens reais quando TRADING_ENABLED (Binance/Bybit Testnet ou Mainnet).
+ * executeSignalReal() = ordens reais quando TRADING_ENABLED (Binance; Bybit demo/testnet ou mainnet com opt-in).
  * Define EXCHANGE=bybit para usar Bybit em vez de Binance.
  */
 
@@ -18,9 +18,9 @@ import {
   isTestnet,
 } from './binanceConfig';
 import {
+  canExecuteOnBybit,
   hasBybitCredentials,
   isBybitEnabled,
-  isBybitPaperTrading,
   isBybitTestnet,
 } from './bybitConfig';
 import { getTradingEnabled } from './settings';
@@ -332,7 +332,7 @@ async function executeSignalBinance(
 }
 
 /**
- * Execução na Bybit: só Demo Trading ou Testnet (sem Mainnet real).
+ * Execução na Bybit: Demo, Testnet, ou Mainnet real com `BYBIT_ALLOW_MAINNET=true`.
  * Cria ordem MARKET com SL embutido + ordens condicionais TP1/TP2.
  */
 async function executeSignalBybit(
@@ -343,12 +343,12 @@ async function executeSignalBybit(
   if (!hasBybitCredentials()) {
     return { success: false, dryRun: false, message: 'Credenciais Bybit não configuradas (BYBIT_API_KEY / BYBIT_API_SECRET)' };
   }
-  if (!isBybitPaperTrading()) {
+  if (!canExecuteOnBybit()) {
     return {
       success: false,
       dryRun: false,
       message:
-        'Bybit: só Demo Trading ou Testnet. Define BYBIT_BASE_URL=https://api-demo.bybit.com (API keys criadas no modo Demo em bybit.com) ou https://api-testnet.bybit.com. A Mainnet real (dinheiro) está desactivada.',
+        'Bybit: usa Demo/Testnet (BYBIT_BASE_URL=api-demo ou api-testnet) ou, para dinheiro real, BYBIT_BASE_URL=https://api.bybit.com com chaves da conta real e BYBIT_ALLOW_MAINNET=true.',
     };
   }
 
@@ -475,11 +475,12 @@ export async function inspectActivePositionForSymbol(
         message: 'Credenciais Bybit não configuradas',
       };
     }
-    if (!isBybitPaperTrading()) {
+    if (!canExecuteOnBybit()) {
       return {
         inspectable: false,
         hasPosition: false,
-        message: 'Bybit: só Demo ou Testnet',
+        message:
+          'Bybit: ambiente não permitido para leitura de posição (Demo/Testnet ou mainnet com BYBIT_ALLOW_MAINNET=true)',
       };
     }
 
@@ -564,11 +565,11 @@ export async function closeActivePositionForSymbol(
   if (useBybit) {
     // --- Bybit ---
     if (!hasBybitCredentials()) return { closed: false, message: 'Credenciais Bybit não configuradas' };
-    if (!isBybitPaperTrading()) {
+    if (!canExecuteOnBybit()) {
       return {
         closed: false,
         message:
-          'Bybit: só Demo ou Testnet. BYBIT_BASE_URL deve ser api-demo.bybit.com ou api-testnet.bybit.com',
+          'Bybit: Demo/Testnet ou mainnet com BYBIT_BASE_URL=https://api.bybit.com e BYBIT_ALLOW_MAINNET=true',
       };
     }
 
@@ -650,9 +651,9 @@ export async function getExecutorStatus(): Promise<{
   const bybitTestnet     = isBybitTestnet();
   const binanceTestnet   = isTestnet();
 
-  const paperBybit   = isBybitPaperTrading();
+  const bybitOk      = canExecuteOnBybit();
   const readyBinance = hasBinance;
-  const readyBybit   = hasBybit && paperBybit;
+  const readyBybit   = hasBybit && bybitOk;
   const ready        = tradingEnabled && (readyBinance || readyBybit);
 
   let reason: string | undefined;
@@ -661,9 +662,9 @@ export async function getExecutorStatus(): Promise<{
   } else if (!readyBinance && !readyBybit) {
     if (!hasBinance && !hasBybit) {
       reason = 'Configure BINANCE_API_KEY/SECRET e/ou BYBIT_API_KEY/SECRET';
-    } else if (hasBybit && !paperBybit) {
+    } else if (hasBybit && !bybitOk) {
       reason =
-        'Bybit: BYBIT_BASE_URL deve ser https://api-demo.bybit.com (Demo) ou https://api-testnet.bybit.com — não uses api.bybit.com (real)';
+        'Bybit: define Demo/Testnet (BYBIT_BASE_URL) ou, para real, https://api.bybit.com + BYBIT_ALLOW_MAINNET=true';
     } else {
       reason = 'Credenciais incompletas para executar';
     }

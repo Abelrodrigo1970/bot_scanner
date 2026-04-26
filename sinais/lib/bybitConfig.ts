@@ -1,6 +1,7 @@
 /**
  * Configuração da Bybit para o bot de trading.
- * Só ambientes sem dinheiro real: Demo Trading ou Testnet.
+ * Por defeito: Demo Trading ou Testnet (sem dinheiro real).
+ * Mainnet (dinheiro real): `BYBIT_BASE_URL=https://api.bybit.com` + `BYBIT_ALLOW_MAINNET=true`.
  * Docs Demo: https://bybit-exchange.github.io/docs/v5/demo
  */
 
@@ -13,6 +14,14 @@ export function getBybitBaseUrl(): string {
   return BYBIT_DEMO_DEFAULT;
 }
 
+function bybitBaseHostname(): string {
+  try {
+    return new URL(getBybitBaseUrl()).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
 export function isBybitTestnet(): boolean {
   return getBybitBaseUrl().toLowerCase().includes('testnet');
 }
@@ -22,9 +31,31 @@ export function isBybitDemo(): boolean {
   return getBybitBaseUrl().toLowerCase().includes('api-demo');
 }
 
-/** Ambiente permitido pelo bot: Testnet ou Demo (nunca Mainnet real). */
+/** Mainnet global V5 (dinheiro real). Só usar com chaves de conta real e opt-in explícito. */
+export function isBybitMainnet(): boolean {
+  const host = bybitBaseHostname();
+  if (!host) return false;
+  if (host.includes('testnet') || host.includes('demo')) return false;
+  return host === 'api.bybit.com';
+}
+
+function isBybitAllowMainnetEnv(): boolean {
+  const v = (process.env.BYBIT_ALLOW_MAINNET || '').toLowerCase().trim();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
+/** Demo ou Testnet (sem conta real). */
 export function isBybitPaperTrading(): boolean {
   return isBybitTestnet() || isBybitDemo();
+}
+
+/**
+ * O executor pode enviar ordens nesta configuração de URL?
+ * Paper (demo/testnet) sempre; mainnet só com `BYBIT_ALLOW_MAINNET=true`.
+ */
+export function canExecuteOnBybit(): boolean {
+  if (isBybitPaperTrading()) return true;
+  return isBybitMainnet() && isBybitAllowMainnetEnv();
 }
 
 export function hasBybitCredentials(): boolean {
