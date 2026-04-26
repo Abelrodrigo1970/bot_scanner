@@ -13,7 +13,6 @@ interface DirectionStats {
   losses: number;
   breakeven: number;
   sum24h: number;
-  avg24h: number | null;
   winRate: number | null;
 }
 
@@ -21,6 +20,7 @@ interface SignalLite {
   strategyName: string | null;
   direction: string;
   result24h: number | null;
+  generatedAt: Date;
 }
 
 function computeDirectionStats(rows: SignalLite[]): DirectionStats {
@@ -32,7 +32,6 @@ function computeDirectionStats(rows: SignalLite[]): DirectionStats {
   const losses = closedRows.filter((r) => (r.result24h ?? 0) < 0).length;
   const breakeven = closedRows.filter((r) => (r.result24h ?? 0) === 0).length;
   const sum24h = closedRows.reduce((acc, row) => acc + (row.result24h ?? 0), 0);
-  const avg24h = closed > 0 ? sum24h / closed : null;
   const winRate = closed > 0 ? (wins / closed) * 100 : null;
 
   return {
@@ -43,7 +42,6 @@ function computeDirectionStats(rows: SignalLite[]): DirectionStats {
     losses,
     breakeven,
     sum24h,
-    avg24h,
     winRate,
   };
 }
@@ -105,38 +103,48 @@ export async function GET(request: NextRequest) {
         strategyName: true,
         direction: true,
         result24h: true,
+        generatedAt: true,
       },
     });
 
-    const grouped = new Map<
-      string,
-      {
-        BUY: SignalLite[];
-        SELL: SignalLite[];
-      }
-    >();
-
+    const grouped = new Map<string, SignalLite[]>();
     for (const row of rows) {
+      const day = row.generatedAt.toISOString().slice(0, 10);
       const strategy = row.strategyName || 'Sem nome';
-      if (!grouped.has(strategy)) {
-        grouped.set(strategy, { BUY: [], SELL: [] });
-      }
       const dir: Direction = row.direction === 'SELL' ? 'SELL' : 'BUY';
-      grouped.get(strategy)![dir].push(row);
+      const key = `${day}__${strategy}__${dir}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(row);
     }
 
-    const strategies = Array.from(grouped.entries())
-      .map(([strategyName, dirs]) => ({
-        strategyName,
-        BUY: computeDirectionStats(dirs.BUY),
-        SELL: computeDirectionStats(dirs.SELL),
-      }))
-      .sort((a, b) => a.strategyName.localeCompare(b.strategyName));
+    const reportRows = Array.from(grouped.entries())
+      .map(([key, values]) => {
+        const [day, strategyName, direction] = key.split('__');
+        const stats = computeDirectionStats(values);
+        return {
+          day,
+          strategyName,
+          direction,
+          nr: stats.total,
+          winRate: stats.winRate,
+          lucro: stats.sum24h,
+          wins: stats.wins,
+          losses: stats.losses,
+          breakeven: stats.breakeven,
+          closed: stats.closed,
+          open: stats.open,
+        };
+      })
+      .sort((a, b) => {
+        if (a.day !== b.day) return a.day.localeCompare(b.day);
+        if (a.strategyName !== b.strategyName) return a.strategyName.localeCompare(b.strategyName);
+        return a.direction.localeCompare(b.direction);
+      });
 
     return NextResponse.json({
       range: { dateFrom, dateTo },
       totalSignals: rows.length,
-      strategies,
+      rows: reportRows,
     });
   } catch (error) {
     console.error('Erro ao gerar relatório por intervalo:', error);

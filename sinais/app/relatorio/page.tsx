@@ -4,27 +4,23 @@ import { useMemo, useState } from 'react';
 import Header from '@/components/Header';
 import Disclaimer from '@/components/Disclaimer';
 
-interface DirectionStats {
-  total: number;
-  closed: number;
-  open: number;
+interface ReportRow {
+  day: string;
+  strategyName: string;
+  direction: 'BUY' | 'SELL';
+  nr: number;
+  winRate: number | null;
+  lucro: number;
   wins: number;
   losses: number;
   breakeven: number;
-  sum24h: number;
-  avg24h: number | null;
-  winRate: number | null;
-}
-
-interface StrategyReportItem {
-  strategyName: string;
-  BUY: DirectionStats;
-  SELL: DirectionStats;
+  closed: number;
+  open: number;
 }
 
 interface ReportResponse {
   totalSignals: number;
-  strategies: StrategyReportItem[];
+  rows: ReportRow[];
 }
 
 const todayInputValue = new Date().toISOString().slice(0, 10);
@@ -50,18 +46,17 @@ export default function RelatorioPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [totalSignals, setTotalSignals] = useState(0);
-  const [rows, setRows] = useState<Array<StrategyReportItem & { direction: 'BUY' | 'SELL' }>>([]);
+  const [rows, setRows] = useState<ReportRow[]>([]);
 
   const hasRows = rows.length > 0;
 
   const totals = useMemo(() => {
     return rows.reduce(
       (acc, row) => {
-        const stats = row.direction === 'BUY' ? row.BUY : row.SELL;
-        acc.total += stats.total;
-        acc.closed += stats.closed;
-        acc.open += stats.open;
-        acc.sum24h += stats.sum24h;
+        acc.total += row.nr;
+        acc.closed += row.closed;
+        acc.open += row.open;
+        acc.sum24h += row.lucro;
         return acc;
       },
       { total: 0, closed: 0, open: 0, sum24h: 0 }
@@ -83,14 +78,8 @@ export default function RelatorioPage() {
         return;
       }
 
-      const flattened: Array<StrategyReportItem & { direction: 'BUY' | 'SELL' }> = [];
-      for (const item of data.strategies || []) {
-        flattened.push({ ...item, direction: 'BUY' });
-        flattened.push({ ...item, direction: 'SELL' });
-      }
-
       setTotalSignals(data.totalSignals || 0);
-      setRows(flattened);
+      setRows(data.rows || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro inesperado ao carregar relatório.');
     } finally {
@@ -104,7 +93,7 @@ export default function RelatorioPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Relatório por intervalo</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-          Consolida histórico por estratégia e direção (Compra/Venda) no intervalo escolhido.
+          Formato diário por estratégia: BUY/SELL, nº sinais, win rate, lucro, wins e losses.
         </p>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mb-6 border border-gray-200 dark:border-gray-700">
@@ -147,8 +136,9 @@ export default function RelatorioPage() {
 
         {hasRows && (
           <div className="mb-4 text-sm text-gray-700 dark:text-gray-300">
-            <strong>Total de sinais no intervalo:</strong> {totalSignals} | <strong>Linhas (estratégia x direção):</strong> {rows.length} |{' '}
-            <strong>Fechados:</strong> {totals.closed} | <strong>Abertos:</strong> {totals.open}
+            <strong>Total de sinais no intervalo:</strong> {totalSignals} | <strong>Linhas (dia x estratégia x direção):</strong> {rows.length} |{' '}
+            <strong>Fechados:</strong> {totals.closed} | <strong>Abertos:</strong> {totals.open} | <strong>Lucro total:</strong>{' '}
+            {fmtNumber(totals.sum24h, 6)}
           </div>
         )}
 
@@ -158,35 +148,30 @@ export default function RelatorioPage() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Dia</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Estratégia</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Direção</th>
-                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Total</th>
-                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Fechados</th>
-                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Abertos</th>
+                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Nr.</th>
                     <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Wins</th>
                     <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Losses</th>
                     <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Win rate</th>
-                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Soma 24h</th>
-                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Média 24h</th>
+                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Lucro</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {rows.map((row) => {
-                    const stats = row.direction === 'BUY' ? row.BUY : row.SELL;
                     return (
-                      <tr key={`${row.strategyName}-${row.direction}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <tr key={`${row.day}-${row.strategyName}-${row.direction}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-3 py-3 text-sm text-gray-900 dark:text-white">{row.day}</td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{row.strategyName}</td>
                         <td className="px-3 py-3 text-sm">
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold ${directionBadge(row.direction)}`}>{row.direction}</span>
                         </td>
-                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{stats.total}</td>
-                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{stats.closed}</td>
-                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{stats.open}</td>
-                        <td className="px-3 py-3 text-sm text-right text-green-600 dark:text-green-400">{stats.wins}</td>
-                        <td className="px-3 py-3 text-sm text-right text-red-600 dark:text-red-400">{stats.losses}</td>
-                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{fmtNumber(stats.winRate, 2)}%</td>
-                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{fmtNumber(stats.sum24h, 6)}</td>
-                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{fmtNumber(stats.avg24h, 6)}</td>
+                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{row.nr}</td>
+                        <td className="px-3 py-3 text-sm text-right text-green-600 dark:text-green-400">{row.wins}</td>
+                        <td className="px-3 py-3 text-sm text-right text-red-600 dark:text-red-400">{row.losses}</td>
+                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{fmtNumber(row.winRate, 2)}%</td>
+                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{fmtNumber(row.lucro, 6)}</td>
                       </tr>
                     );
                   })}
