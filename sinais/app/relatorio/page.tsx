@@ -106,7 +106,7 @@ export default function RelatorioPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Relatório por intervalo</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-          Formato diário por estratégia (lógica de execução): só sinais fechados, força &gt;= 70 e lucro líquido com fees.
+          Formato diário por estratégia (lógica de execução): só sinais fechados, força &gt;= 70 e lucro líquido em USD ($) com fees.
         </p>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mb-6 border border-gray-200 dark:border-gray-700">
@@ -167,7 +167,7 @@ export default function RelatorioPage() {
             <strong>Total de sinais no intervalo:</strong> {totalSignals} | <strong>Estratégia:</strong> {strategyFilter || 'Todas'} |{' '}
             <strong>Linhas (dia x estratégia x direção):</strong> {rows.length} |{' '}
             <strong>Fechados:</strong> {totals.closed} | <strong>Abertos:</strong> {totals.open} | <strong>Lucro total:</strong>{' '}
-            {fmtNumber(totals.sum24h, 2)}%
+            ${fmtNumber(totals.sum24h, 2)}
           </div>
         )}
 
@@ -200,7 +200,7 @@ export default function RelatorioPage() {
                         <td className="px-3 py-3 text-sm text-right text-green-600 dark:text-green-400">{row.wins}</td>
                         <td className="px-3 py-3 text-sm text-right text-red-600 dark:text-red-400">{row.losses}</td>
                         <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{fmtNumber(row.winRate, 2)}%</td>
-                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">{fmtNumber(row.lucro, 2)}%</td>
+                        <td className="px-3 py-3 text-sm text-right text-gray-700 dark:text-gray-300">${fmtNumber(row.lucro, 2)}</td>
                       </tr>
                     );
                   })}

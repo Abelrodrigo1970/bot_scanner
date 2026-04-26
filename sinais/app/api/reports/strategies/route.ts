@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
+import { getPositionSizeUsdt } from '@/lib/binanceConfig';
 
 type Direction = 'BUY' | 'SELL';
 
@@ -31,12 +32,17 @@ function computeDirectionStats(rows: SignalLite[]): DirectionStats {
   const closedRows = rows;
   const closed = closedRows.length;
   const open = total - closed;
-  const feePct = 0.1; // 0.05% entrada + 0.05% saída
-  const netResults = closedRows.map((row) => ((row.result24h ?? 0) / row.entryPrice) * 100 - feePct);
-  const wins = netResults.filter((v) => v >= 0).length;
-  const losses = netResults.filter((v) => v < 0).length;
+  const positionSizeUsdt = getPositionSizeUsdt();
+  const feeAmountUsdt = positionSizeUsdt * 0.001; // 0.05% entrada + 0.05% saída
+  const netResultsUsd = closedRows.map((row) => {
+    const grossPct = (row.result24h ?? 0) / row.entryPrice;
+    const grossUsd = grossPct * positionSizeUsdt;
+    return grossUsd - feeAmountUsdt;
+  });
+  const wins = netResultsUsd.filter((v) => v >= 0).length;
+  const losses = netResultsUsd.filter((v) => v < 0).length;
   const breakeven = 0;
-  const sum24h = netResults.reduce((acc, v) => acc + v, 0);
+  const sum24h = netResultsUsd.reduce((acc, v) => acc + v, 0);
   const winRate = closed > 0 ? (wins / closed) * 100 : null;
 
   return {
