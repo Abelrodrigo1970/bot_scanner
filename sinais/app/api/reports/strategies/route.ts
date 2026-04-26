@@ -20,18 +20,23 @@ interface SignalLite {
   strategyName: string | null;
   direction: string;
   result24h: number | null;
+  entryPrice: number;
+  strength: number;
+  status24h: string | null;
   generatedAt: Date;
 }
 
 function computeDirectionStats(rows: SignalLite[]): DirectionStats {
   const total = rows.length;
-  const closedRows = rows.filter((r) => r.result24h !== null);
+  const closedRows = rows;
   const closed = closedRows.length;
   const open = total - closed;
-  const wins = closedRows.filter((r) => (r.result24h ?? 0) > 0).length;
-  const losses = closedRows.filter((r) => (r.result24h ?? 0) < 0).length;
-  const breakeven = closedRows.filter((r) => (r.result24h ?? 0) === 0).length;
-  const sum24h = closedRows.reduce((acc, row) => acc + (row.result24h ?? 0), 0);
+  const feePct = 0.1; // 0.05% entrada + 0.05% saída
+  const netResults = closedRows.map((row) => ((row.result24h ?? 0) / row.entryPrice) * 100 - feePct);
+  const wins = netResults.filter((v) => v >= 0).length;
+  const losses = netResults.filter((v) => v < 0).length;
+  const breakeven = 0;
+  const sum24h = netResults.reduce((acc, v) => acc + v, 0);
   const winRate = closed > 0 ? (wins / closed) * 100 : null;
 
   return {
@@ -66,6 +71,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
+    const strategy = (searchParams.get('strategy') || '').trim();
 
     if (!dateFrom || !dateTo) {
       return NextResponse.json(
@@ -98,11 +104,24 @@ export async function GET(request: NextRequest) {
           gte: from,
           lte: to,
         },
+        status24h: 'CLOSED',
+        result24h: { not: null },
+        strength: { gte: 70 },
+        ...(strategy
+          ? {
+              strategyName: {
+                contains: strategy,
+              },
+            }
+          : {}),
       },
       select: {
         strategyName: true,
         direction: true,
         result24h: true,
+        entryPrice: true,
+        strength: true,
+        status24h: true,
         generatedAt: true,
       },
     });
