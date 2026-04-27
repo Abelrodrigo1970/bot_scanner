@@ -150,6 +150,11 @@ async function ensureMissingStrategies() {
       next.sellTp1Position = 30;
       next.sellTp2Percent = 15;
       next.sellTp2Position = 30;
+      // Limpar campos legados de TP único para evitar confusão na UI/params.
+      delete next.tp1Percent;
+      delete next.tp1Position;
+      delete next.tp2Percent;
+      delete next.tp2Position;
       if (
         p.ma200Period === 200 ||
         p.ma200Period == null ||
@@ -219,6 +224,10 @@ export async function GET(request: NextRequest) {
 
     // Listagem pública - necessário para o dropdown de filtros no dashboard
     const strategies = await prisma.strategy.findMany({
+      where: {
+        // Oculta estratégia legada para não confundir com MA_CROSS_5M.
+        name: { not: 'VOLUME_SPIKE_15M' },
+      },
       orderBy: { name: 'asc' },
     });
 
