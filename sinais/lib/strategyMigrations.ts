@@ -5,18 +5,24 @@ export const MA_CROSS_5M_PARAMS = {
   ma200Period: 30,
   maType: 'EMA' as const,
   confirmationPct: 0,
-  stopPercent: 8,
+  stopPercent: 4,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
-  tp1Percent: 85,
-  tp1Position: 60,
+  buyTp1Percent: 18,
+  buyTp1Position: 30,
+  buyTp2Percent: 40,
+  buyTp2Position: 30,
+  sellTp1Percent: 7,
+  sellTp1Position: 30,
+  sellTp2Percent: 15,
+  sellTp2Position: 30,
   allowBuy: true,
   allowSell: true,
   exchange: 'binance',
 } as const;
 
-export const MA_CROSS_5M_DISPLAY = 'MA Cross 5m (MA12/MA30)';
+export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'Golden / Death Cross em 5m: MA12 cruza MA30. Universo = scan MA30>6% MA200 (1h) no menu. SL 8%. TP1 +85% (60%). Atualizar esse scan; cron 15m.';
+  'Golden / Death Cross em 15m: MA12 cruza MA30. Universo = scan MA30>9% MA200 (1h) no menu. SL 4%. BUY: TP1 +18% (30%) | TP2 +40% (30%). SELL: TP1 -7% (30%) | TP2 -15% (30%). Reversão: fecha posição oposta e abre nova no sinal contrário. Atualizar scan; cron 15m.';
 
 export interface MigrateVolumeSpike15mResult {
   action: 'none' | 'renamed' | 'merged' | 'already_ok';

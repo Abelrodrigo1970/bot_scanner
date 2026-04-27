@@ -39,8 +39,15 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   ma30Period: 12,
   ma200Period: 30,
   exchange: 'binance' as const,
-  tp1Percent: 85,
-  tp1Position: 60,
+  stopPercent: 4,
+  buyTp1Percent: 18,
+  buyTp1Position: 30,
+  buyTp2Percent: 40,
+  buyTp2Position: 30,
+  sellTp1Percent: 7,
+  sellTp1Position: 30,
+  sellTp2Percent: 15,
+  sellTp2Position: 30,
 };
 
 async function ensureMissingStrategies() {
@@ -112,9 +119,9 @@ async function ensureMissingStrategies() {
     await prisma.strategy.create({
       data: {
         name: 'MA_CROSS_5M',
-        displayName: 'MA Cross 5m (MA12/MA30)',
+        displayName: 'MA Cross 15m (MA12/MA30)',
         description:
-          'Cruzamento MA12/MA30 em 5m. Universo = scan MA30>6% MA200 (1h) no menu. Agendar cron 15m. SL 8% | TP1 +85%.',
+          'Cruzamento MA12/MA30 em 15m. Universo = scan MA30>9% MA200 (1h) no menu. Agendar cron 15m. SL 4%. BUY: TP1 +18% (30%) | TP2 +40% (30%). SELL: TP1 -7% (30%) | TP2 -15% (30%). Reversão: fecha posição oposta e abre nova no sinal contrário.',
         isActive: true,
         params: JSON.stringify(MA_CROSS_5M_DEFAULT_PARAMS),
       },
@@ -133,6 +140,16 @@ async function ensureMissingStrategies() {
       if (p.ma30Period == null || p.ma30Period === 30) {
         next.ma30Period = 12;
       }
+      // Nova configuração MA_CROSS_5M solicitada: 15m, SL 4%, TPs distintos por direção.
+      next.stopPercent = 4;
+      next.buyTp1Percent = 18;
+      next.buyTp1Position = 30;
+      next.buyTp2Percent = 40;
+      next.buyTp2Position = 30;
+      next.sellTp1Percent = 7;
+      next.sellTp1Position = 30;
+      next.sellTp2Percent = 15;
+      next.sellTp2Position = 30;
       if (
         p.ma200Period === 200 ||
         p.ma200Period == null ||
@@ -144,16 +161,16 @@ async function ensureMissingStrategies() {
         console.log('✅ MA_CROSS_5M: parâmetros migrados para MA12/MA30');
       }
       const newDesc =
-        'Cruzamento MA12/MA30 em 5m. Universo = scan MA30>6% MA200 (1h) no menu. Agendar cron 15m. SL 8% | TP1 +85%.';
+        'Cruzamento MA12/MA30 em 15m. Universo = scan MA30>9% MA200 (1h) no menu. Agendar cron 15m. SL 4%. BUY: TP1 +18% (30%) | TP2 +40% (30%). SELL: TP1 -7% (30%) | TP2 -15% (30%). Reversão: fecha posição oposta e abre nova no sinal contrário.';
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
-        existingMaCross5m.displayName !== 'MA Cross 5m (MA12/MA30)' || existingMaCross5m.description !== newDesc;
+        existingMaCross5m.displayName !== 'MA Cross 15m (MA12/MA30)' || existingMaCross5m.description !== newDesc;
       if (needParams || needMeta) {
         await prisma.strategy.update({
           where: { name: 'MA_CROSS_5M' },
           data: {
             params: needParams ? JSON.stringify(next) : existingMaCross5m.params!,
-            displayName: 'MA Cross 5m (MA12/MA30)',
+            displayName: 'MA Cross 15m (MA12/MA30)',
             description: newDesc,
           },
         });

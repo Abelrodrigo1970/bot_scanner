@@ -452,7 +452,7 @@ export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBel
 }
 
 /**
- * Scan de criptos na Binance Futures (top 300 por volume) com MA30 a **mais de 6%** acima
+ * Scan de criptos na Binance Futures (top 300 por volume) com MA30 a **mais de 9%** acima
  * da MA200 (timeframe 1h). Indica força de tendência — MA30 já alargada em relação à MA200.
  * Ordenado por distância decrescente (maior distância primeiro).
  */
@@ -492,7 +492,7 @@ export async function fetchMa30Above6Pct(limit: number = 100): Promise<MaCrossBe
         const ma30 = ma30Vals.reduce((s, v) => s + v, 0) / 30;
 
         const distMa30Ma200 = ((ma30 - ma200) / ma200) * 100;
-        if (distMa30Ma200 <= 6) continue;
+        if (distMa30Ma200 <= 9) continue;
 
         const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
 
@@ -507,7 +507,7 @@ export async function fetchMa30Above6Pct(limit: number = 100): Promise<MaCrossBe
 
     return results.slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
   } catch (error) {
-    console.error('Erro ao buscar MA30 > 6% acima da MA200:', error);
+    console.error('Erro ao buscar MA30 > 9% acima da MA200:', error);
     throw error;
   }
 }

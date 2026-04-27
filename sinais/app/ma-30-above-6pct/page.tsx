@@ -76,9 +76,9 @@ export default function Ma30Above6PctPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">MA30 &gt; 6% da MA200</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">MA30 &gt; 9% da MA200</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Criptos com a MA30 a mais de 6% acima da MA200 (timeframe 1h) — força de tendência
+              Criptos com a MA30 a mais de 9% acima da MA200 (timeframe 1h) — força de tendência
             </p>
           </div>
           <button
@@ -109,7 +109,7 @@ export default function Ma30Above6PctPage() {
           <h2 className="text-sm font-semibold text-emerald-800 dark:text-emerald-300 mb-1">Como funciona o scan</h2>
           <ul className="text-xs text-emerald-800 dark:text-emerald-300 space-y-1 list-disc list-inside">
             <li>Top 300 criptos por volume na Binance Futures — <strong>timeframe 1h</strong> (igual à base do menu MA Cross)</li>
-            <li>Mantém apenas pares em que a <strong>MA30 está mais de 6% acima da MA200</strong> (afastamento forte)</li>
+            <li>Mantém apenas pares em que a <strong>MA30 está mais de 9% acima da MA200</strong> (afastamento forte)</li>
             <li>Ordenado pela <strong>maior distância</strong> MA30/MA200 primeiro (símbolos mais &quot;esticados&quot; no bullish)</li>
             <li>Complementa o scan de proximidade (±3%): aqui a média de 30 já se afastou claramente da 200</li>
           </ul>

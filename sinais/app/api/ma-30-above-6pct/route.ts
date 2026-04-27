@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { fetchMa30Above6Pct } from '@/lib/marketData';
 
 /**
- * GET: Lista MA30 > 6% acima da MA200 (1h) guardada na base de dados.
+ * GET: Lista MA30 > 9% acima da MA200 (1h) guardada na base de dados.
  */
 export async function GET() {
   try {
@@ -23,7 +23,7 @@ export async function GET() {
       fetchedAt: items[0]?.updatedAt?.toISOString() ?? null,
     });
   } catch (error: any) {
-    console.error('Erro ao buscar MA30 > 6% MA200:', error);
+    console.error('Erro ao buscar MA30 > 9% MA200:', error);
     return NextResponse.json(
       {
         success: false,
@@ -68,10 +68,10 @@ export async function POST() {
       success: true,
       items: saved,
       count: saved.length,
-      message: 'MA30 > 6% MA200 atualizado com sucesso',
+      message: 'MA30 > 9% MA200 atualizado com sucesso',
     });
   } catch (error: any) {
-    console.error('Erro ao atualizar MA30 > 6% MA200:', error);
+    console.error('Erro ao atualizar MA30 > 9% MA200:', error);
     return NextResponse.json(
       {
         success: false,

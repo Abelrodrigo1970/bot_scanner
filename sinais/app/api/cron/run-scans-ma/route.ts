@@ -4,7 +4,7 @@ import { fetchMa30Above6Pct, fetchMa30Near6PriceBetween } from '@/lib/marketData
 
 /**
  * Cron dedicado para atualizar os scans de médias:
- * - MA30 > 6% MA200 (1h)
+ * - MA30 > 9% MA200 (1h)
  * - MA30 entre -5% e -10% vs MA200 (1h)
  *
  * O trabalho pesado corre em background para evitar timeout do cliente/cron HTTP.

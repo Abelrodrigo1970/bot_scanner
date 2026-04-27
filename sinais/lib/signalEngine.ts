@@ -547,8 +547,14 @@ async function runMaCrossM30M200OnTimeframe(
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
   const stopPercent     = params.stopPercent     ?? 8;
-  const tp1Percent      = params.tp1Percent      ?? 85;
-  const tp1Position     = params.tp1Position     ?? 60;
+  const buyTp1Percent   = params.buyTp1Percent   ?? params.tp1Percent ?? (bar === '5m' ? 18 : 85);
+  const buyTp1Position  = params.buyTp1Position  ?? params.tp1Position ?? (bar === '5m' ? 30 : 60);
+  const buyTp2Percent   = params.buyTp2Percent   ?? params.tp2Percent ?? (bar === '5m' ? 40 : 0);
+  const buyTp2Position  = params.buyTp2Position  ?? params.tp2Position ?? (bar === '5m' ? 30 : 0);
+  const sellTp1Percent  = params.sellTp1Percent  ?? params.tp1Percent ?? (bar === '5m' ? 7 : 85);
+  const sellTp1Position = params.sellTp1Position ?? params.tp1Position ?? (bar === '5m' ? 30 : 60);
+  const sellTp2Percent  = params.sellTp2Percent  ?? params.tp2Percent ?? (bar === '5m' ? 15 : 0);
+  const sellTp2Position = params.sellTp2Position ?? params.tp2Position ?? (bar === '5m' ? 30 : 0);
   const slowLabel = `MA${maSlowPeriod}`;
   /**
    * SELL: não emitir se |close−MA lenta|/MA lenta*100 (%) for > N%. 0 = desactiva. Default 6.
@@ -593,14 +599,15 @@ async function runMaCrossM30M200OnTimeframe(
 
     if (prevMa30 <= prevMaSlow && ma30 > confirmUp) {
       const stopLoss = currentPrice * (1 - stopPercent / 100);
-      const target1  = currentPrice * (1 + tp1Percent  / 100);
+      const target1  = currentPrice * (1 + buyTp1Percent  / 100);
+      const target2  = buyTp2Percent > 0 ? currentPrice * (1 + buyTp2Percent  / 100) : undefined;
 
       return {
         direction: 'BUY',
         entryPrice: currentPrice,
         stopLoss,
         target1,
-        target2: undefined,
+        target2,
         target3: undefined,
         strength: 70,
         extraInfo: JSON.stringify({
@@ -613,9 +620,11 @@ async function runMaCrossM30M200OnTimeframe(
           confirmationPct,
           crossover: `MA30 crosses +${confirmationPct}% above ${slowLabel} (BUY)`,
           stopPercent,
-          tp1Percent,
-          tp1Position: `${tp1Position}%`,
-          executionProfile: `SL -${stopPercent}% | TP1 +${tp1Percent}% (${tp1Position}% posição)`,
+          tp1Percent: buyTp1Percent,
+          tp1Position: `${buyTp1Position}%`,
+          tp2Percent: buyTp2Percent,
+          tp2Position: `${buyTp2Position}%`,
+          executionProfile: `SL -${stopPercent}% | TP1 +${buyTp1Percent}% (${buyTp1Position}% posição) | TP2 +${buyTp2Percent}% (${buyTp2Position}% posição) | restante aberto`,
         }),
       };
     }
@@ -630,14 +639,15 @@ async function runMaCrossM30M200OnTimeframe(
       }
 
       const stopLoss = currentPrice * (1 + stopPercent / 100);
-      const target1  = currentPrice * (1 - tp1Percent  / 100);
+      const target1  = currentPrice * (1 - sellTp1Percent  / 100);
+      const target2  = sellTp2Percent > 0 ? currentPrice * (1 - sellTp2Percent  / 100) : undefined;
 
       return {
         direction: 'SELL',
         entryPrice: currentPrice,
         stopLoss,
         target1,
-        target2: undefined,
+        target2,
         target3: undefined,
         strength: 70,
         extraInfo: JSON.stringify({
@@ -655,9 +665,11 @@ async function runMaCrossM30M200OnTimeframe(
           confirmationPct,
           crossover: `MA30 crosses -${confirmationPct}% below ${slowLabel} (SELL)`,
           stopPercent,
-          tp1Percent,
-          tp1Position: `${tp1Position}%`,
-          executionProfile: `SL +${stopPercent}% | TP1 -${tp1Percent}% (${tp1Position}% posição)`,
+          tp1Percent: sellTp1Percent,
+          tp1Position: `${sellTp1Position}%`,
+          tp2Percent: sellTp2Percent,
+          tp2Position: `${sellTp2Position}%`,
+          executionProfile: `SL +${stopPercent}% | TP1 -${sellTp1Percent}% (${sellTp1Position}% posição) | TP2 -${sellTp2Percent}% (${sellTp2Position}% posição) | restante aberto`,
         }),
       };
     }
@@ -692,7 +704,7 @@ export interface RunAllStrategiesOptions {
 }
 
 /**
- * Executa todas as estratégias ativas (RSI, Volume Spike 1h, MA Cross 5m/15m, …)
+ * Executa todas as estratégias ativas (RSI, Volume Spike 1h, MA Cross 15m, …)
  */
 export async function runAllStrategies(options?: RunAllStrategiesOptions): Promise<number> {
   let signalsCreated = 0;
@@ -729,7 +741,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
       const params = JSON.parse(strategy.params || '{}');
 
       const timeframesToUse: Timeframe[] =
-        strategy.name === 'MA_CROSS_5M'    ? ['5m'] :
+        strategy.name === 'MA_CROSS_5M'    ? ['15m'] :
         strategy.name === 'MA_VOLATILE'    ? ['1h'] :
         strategy.name === 'RSI_15M'        ? ['15m'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
@@ -782,14 +794,14 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'MA_CROSS_5M') {
-        console.log(`🔍 Buscando MA30 > 6% MA200 (1h) na BD para ${strategy.name}...`);
+        console.log(`🔍 Buscando MA30 > 9% MA200 (1h) na BD para ${strategy.name}...`);
         const maAbove6 = await prisma.ma30Above6Pct.findMany({ orderBy: { rank: 'asc' } });
         if (maAbove6.length > 0) {
           symbolsToAnalyze = maAbove6.map((t: { symbol: string }) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 > 6% MA200)`);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 > 9% MA200)`);
         } else {
           console.warn(
-            `⚠️ Nenhum símbolo em Ma30Above6Pct. Atualize o menu "MA30 > 6% MA200" antes. Ignorando ${strategy.name}.`
+            `⚠️ Nenhum símbolo em Ma30Above6Pct. Atualize o menu "MA30 > 9% MA200" antes. Ignorando ${strategy.name}.`
           );
           continue;
         }
@@ -821,9 +833,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 }
                 break;
               case 'MA_CROSS_5M':
-                signalResult = await runMaCross5mStrategy(symbol, timeframe, params);
+                signalResult = await runMaCross15mStrategy(symbol, timeframe, params);
                 if (signalResult) {
-                  console.log(`✅ MA Cross 5m: ${symbol} ${signalResult.direction} (${timeframe})`);
+                  console.log(`✅ MA Cross 15m: ${symbol} ${signalResult.direction} (${timeframe})`);
                 }
                 break;
               case 'RSI':
