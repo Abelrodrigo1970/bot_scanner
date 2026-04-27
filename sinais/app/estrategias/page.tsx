@@ -229,10 +229,15 @@ export default function EstrategiasPage() {
     switch (strategy.name) {
       case 'RSI':
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
-            {numField('BUY — RSI sobe acima de', p.buyThreshold ?? 60, (v) => upd({ buyThreshold: v }))}
-            {numField('SELL — RSI desce abaixo de', p.sellThreshold ?? 40, (v) => upd({ sellThreshold: v }))}
+          <div className="space-y-3">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Universo = resultados do scan <strong>MA30 &lt; −5% vs MA200 (1h)</strong> (menu). Actualiza esse scan antes de gerar sinais.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
+              {numField('BUY — RSI sobe acima de', p.buyThreshold ?? 60, (v) => upd({ buyThreshold: v }))}
+              {numField('SELL — RSI desce abaixo de', p.sellThreshold ?? 40, (v) => upd({ sellThreshold: v }))}
+            </div>
           </div>
         );
 
@@ -323,6 +328,11 @@ export default function EstrategiasPage() {
         const defaultSellTp2Position = isMa60 ? 30 : 0;
         return (
           <div className="space-y-4">
+            {isMa60 && (
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Universo = resultados do scan <strong>MA30 &lt; −5% vs MA200 (1h)</strong> (menu). Actualiza esse scan antes de gerar sinais.
+              </p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Confirmação (%)', p.confirmationPct ?? 2, (v) => upd({ confirmationPct: v }), 0.5)}
               {isMa60

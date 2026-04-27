@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { RSI_MA30_SCAN_UNIVERSE_DESCRIPTION } from '@/lib/strategyMigrations';
 
 const NEW_PARAMS = {
   period: 14,
@@ -16,8 +17,7 @@ const NEW_PARAMS = {
 
 const NEW_DISPLAY_NAME = 'RSI Top Volatilidade (60/40)';
 
-const NEW_DESCRIPTION =
-  'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -3% | sem TP intermédio | 100% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +3% | sem TP intermédio | 100% às 24h.';
+const NEW_DESCRIPTION = RSI_MA30_SCAN_UNIVERSE_DESCRIPTION;
 
 /**
  * GET /api/migrate/rsi-params

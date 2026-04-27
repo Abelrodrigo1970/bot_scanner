@@ -3,7 +3,9 @@ import {
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_5M_PARAMS,
+  MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION,
   migrateVolumeSpike15mToMaCross5m,
+  RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
 } from '../lib/strategyMigrations';
 
 const prisma = new PrismaClient();
@@ -25,8 +27,7 @@ async function main() {
     where: { name: 'RSI' },
     update: {
       displayName: 'RSI Top Volatilidade (60/40)',
-      description:
-        'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -3% | sem TP intermédio | 100% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +3% | sem TP intermédio | 100% às 24h.',
+      description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
       params: JSON.stringify({
         period: 14,
         buyThreshold: 60,
@@ -43,8 +44,7 @@ async function main() {
     create: {
       name: 'RSI',
       displayName: 'RSI Top Volatilidade (60/40)',
-      description:
-        'Só Top Voláteis 1h. BUY quando RSI cruza acima de 60 E preço > MA200 → SL -3% | sem TP intermédio | 100% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +3% | sem TP intermédio | 100% às 24h.',
+      description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
       isActive: true,
       params: JSON.stringify({
         period: 14,
@@ -91,12 +91,11 @@ async function main() {
     },
   });
 
-  // Estratégia MA Cross Voláteis (apenas nos 20 top voláteis)
+  // Estratégia MA Cross Top Voláteis (universo = scan MA30 < -5% vs MA200 1h na BD)
   const maVolatileStrategy = await prisma.strategy.upsert({
     where: { name: 'MA_VOLATILE' },
     update: {
-      description:
-        'Top Voláteis 1h. COMPRA: fecha 2%+ acima MA60 → SL -15% | TP1 +30% (40%) | TP2 +60% (30%) | 30% na reversão. VENDA: fecha 2%+ abaixo MA60 → SL +15% | TP1 -30% (40%) | TP2 -60% (30%) | 30% na reversão.',
+      description: MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION,
       params: JSON.stringify({
         ma60Period: 60,
         ma200Period: 200,
@@ -119,8 +118,7 @@ async function main() {
     create: {
       name: 'MA_VOLATILE',
       displayName: 'MA Cross Top Voláteis',
-      description:
-        'Top Voláteis 1h. COMPRA: fecha 2%+ acima MA60 → SL -15% | TP1 +30% (40%) | TP2 +60% (30%) | 30% na reversão. VENDA: fecha 2%+ abaixo MA60 → SL +15% | TP1 -30% (40%) | TP2 -60% (30%) | 30% na reversão.',
+      description: MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION,
       isActive: true,
       params: JSON.stringify({
         ma60Period: 60,
@@ -216,7 +214,7 @@ async function main() {
     update: {
       displayName: 'RSI 15m Reversal (28->32)',
       description:
-        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 -5% a -10% vs MA200 (1h).',
+        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 < -5% vs MA200 (1h).',
       params: JSON.stringify({
         period: 14,
         previousBelowThreshold: 28,
@@ -233,7 +231,7 @@ async function main() {
       name: 'RSI_15M',
       displayName: 'RSI 15m Reversal (28->32)',
       description:
-        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 -5% a -10% vs MA200 (1h).',
+        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 < -5% vs MA200 (1h).',
       isActive: true,
       params: JSON.stringify({
         period: 14,

@@ -135,7 +135,7 @@ export async function runVolumeSpikeStrategy(
 }
 
 /**
- * Estratégia MA Cross Top Voláteis (mesma lógica da MA200_VOLATILE, usando MA60 em 1h):
+ * Estratégia MA Cross Top Voláteis (MA60 em 1h; universo = scan MA30 < −5% vs MA200 na BD):
  * - BUY : fecha 2%+ ACIMA da MA60  → SL -15% | TP1 +30% (40%) | TP2 +60% (30%) | 30% fecha na reversão
  * - SELL: fecha 2%+ ABAIXO da MA60 → SL +15% | TP1 -30% (40%) | TP2 -60% (30%) | 30% fecha na reversão
  */
@@ -466,7 +466,7 @@ export async function runRsiStrategy(
  * Apenas BUY | SL -3% | TP1 +5% | TP2 +14%
  * Usa sempre o candle fechado (não o em formação).
  * Sem filtro MA200 para sinal mais rápido.
- * Corre no universo da BD Ma30Near6PriceBetween (scan MA30 entre -5% e -10% vs MA200).
+ * Corre no universo da BD Ma30Near6PriceBetween (scan MA30 < -5% vs MA200).
  */
 export async function runRsi15mStrategy(
   symbol: string,
@@ -704,7 +704,7 @@ export interface RunAllStrategiesOptions {
 }
 
 /**
- * Executa todas as estratégias ativas (RSI, Volume Spike 1h, MA Cross 15m, …)
+ * Executa todas as estratégias ativas (RSI e MA_VOLATILE usam o scan MA30 < −5% vs MA200 na BD, …)
  */
 export async function runAllStrategies(options?: RunAllStrategiesOptions): Promise<number> {
   let signalsCreated = 0;
@@ -759,14 +759,14 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.log(`✅ Encontrados ${volumeSymbols.length} símbolos`);
         }
       } else if (strategy.name === 'RSI_15M') {
-        console.log(`🔍 Buscando MA30 -5% a -10% vs MA200 (1h) na BD para ${strategy.name}...`);
+        console.log(`🔍 Buscando MA30 < -5% vs MA200 (1h) na BD para ${strategy.name}...`);
         const nearBand = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
         if (nearBand.length > 0) {
           symbolsToAnalyze = nearBand.map((t: { symbol: string }) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 -5% a -10% vs MA200)`);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 < -5% vs MA200)`);
         } else {
           console.warn(
-            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 −5% a −10% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
+            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 < −5% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
           );
           continue;
         }
@@ -809,13 +809,15 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         strategy.name === 'MA_VOLATILE' ||
         strategy.name === 'RSI'
       ) {
-        console.log(`🔍 Buscando Top Voláteis na BD para ${strategy.name}...`);
-        const topVolatile = await prisma.topVolatile.findMany({ orderBy: { rank: 'asc' } });
-        if (topVolatile.length > 0) {
-          symbolsToAnalyze = topVolatile.map((t) => t.symbol);
-          console.log(`✅ Encontradas ${symbolsToAnalyze.length} Top Voláteis`);
+        console.log(`🔍 Buscando scan MA30 < −5% vs MA200 (1h) na BD para ${strategy.name}...`);
+        const ma30Below = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
+        if (ma30Below.length > 0) {
+          symbolsToAnalyze = ma30Below.map((t: { symbol: string }) => t.symbol);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (Ma30Near6PriceBetween)`);
         } else {
-          console.warn(`⚠️ Nenhuma Top Volátil na BD. Execute "Atualizar Top Volatilidade" antes. Ignorando ${strategy.name}.`);
+          console.warn(
+            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 < −5% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
+          );
           continue;
         }
       }

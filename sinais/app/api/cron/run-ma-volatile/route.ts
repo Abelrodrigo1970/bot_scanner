@@ -9,6 +9,7 @@ import {
 
 /**
  * Cron dedicado para MA_VOLATILE (MA60 1h).
+ * Universo de símbolos = tabela do scan MA30 < −5% vs MA200 (1h).
  * Gera sinais e auto-executa com reversal close (igual à lógica MA200_VOLATILE).
  */
 async function runMaVolatileInBackground(): Promise<void> {

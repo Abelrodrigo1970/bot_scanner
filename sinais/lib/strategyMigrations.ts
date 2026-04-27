@@ -24,6 +24,49 @@ export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
   'Golden / Death Cross em 15m: MA12 cruza MA30. Universo = scan MA30>9% MA200 (1h) no menu. SL 4%. BUY: TP1 +18% (30%) | TP2 +40% (30%). SELL: TP1 -7% (30%) | TP2 -15% (30%). Reversão: fecha posição oposta e abre nova no sinal contrário. Atualizar scan; cron 15m.';
 
+/** Texto canónico da descrição (universo = tabela Ma30Near6PriceBetween / scan MA30 < -5%). */
+export const RSI_MA30_SCAN_UNIVERSE_DESCRIPTION =
+  'Universo = scan MA30 < -5% vs MA200 (1h). BUY quando RSI cruza acima de 60 E preço > MA200 → SL -3% | sem TP intermédio | 100% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +3% | sem TP intermédio | 100% às 24h.';
+
+export const MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION =
+  'Universo = scan MA30 < -5% vs MA200 (1h). COMPRA: fecha 2%+ acima MA60 → SL -15% | TP1 +30% (40%) | TP2 +60% (30%) | 30% na reversão. VENDA: fecha 2%+ abaixo MA60 → SL +15% | TP1 -30% (40%) | TP2 -60% (30%) | 30% na reversão.';
+
+/**
+ * Actualiza descrições em BD se ainda mencionarem Top Voláteis como universo (legado).
+ * Idempotente; chamado em GET /api/strategies.
+ */
+export async function syncRsiMaVolatileUniverseDescriptions(
+  prisma: PrismaClient
+): Promise<{ updated: string[] }> {
+  const updated: string[] = [];
+
+  const rsi = await prisma.strategy.findUnique({
+    where: { name: 'RSI' },
+    select: { description: true },
+  });
+  if (rsi?.description?.includes('Top Voláteis')) {
+    await prisma.strategy.update({
+      where: { name: 'RSI' },
+      data: { description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION },
+    });
+    updated.push('RSI');
+  }
+
+  const maV = await prisma.strategy.findUnique({
+    where: { name: 'MA_VOLATILE' },
+    select: { description: true },
+  });
+  if (maV?.description?.includes('Top Voláteis')) {
+    await prisma.strategy.update({
+      where: { name: 'MA_VOLATILE' },
+      data: { description: MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION },
+    });
+    updated.push('MA_VOLATILE');
+  }
+
+  return { updated };
+}
+
 export interface MigrateVolumeSpike15mResult {
   action: 'none' | 'renamed' | 'merged' | 'already_ok';
   message: string;

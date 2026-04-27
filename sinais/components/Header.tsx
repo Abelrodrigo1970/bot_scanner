@@ -18,7 +18,7 @@ const dataSourceItems = [
   { href: '/top-movers', label: 'Top Voláteis' },
   { href: '/ma-cross-below', label: 'MA Cross Below' },
   { href: '/ma-30-above-6pct', label: 'MA30 > 9% MA200' },
-  { href: '/ma-30-near-6-between', label: 'MA30 −5% a −10% vs MA200 (1h)' },
+  { href: '/ma-30-near-6-between', label: 'MA30 < −5% vs MA200 (1h)' },
 ];
 
 export default function Header() {

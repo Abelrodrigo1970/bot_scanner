@@ -5,6 +5,7 @@ import { ensureDatabase } from '@/lib/db-init';
 import {
   backfillMaCross5mSignalNames,
   MA_CROSS_5M_DISPLAY,
+  syncRsiMaVolatileUniverseDescriptions,
 } from '@/lib/strategyMigrations';
 
 const RSI_15M_DEFAULT_PARAMS = {
@@ -62,7 +63,7 @@ async function ensureMissingStrategies() {
         name: 'RSI_15M',
         displayName: 'RSI 15m Reversal (28->32)',
         description:
-          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 -5% a -10% vs MA200 (1h).',
+          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 < -5% vs MA200 (1h).',
         isActive: true,
         params: JSON.stringify(RSI_15M_DEFAULT_PARAMS),
       },
@@ -221,6 +222,7 @@ export async function GET(request: NextRequest) {
     }
 
     await ensureMissingStrategies();
+    await syncRsiMaVolatileUniverseDescriptions(prisma);
 
     // Listagem pública - necessário para o dropdown de filtros no dashboard
     const strategies = await prisma.strategy.findMany({

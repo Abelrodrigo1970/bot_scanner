@@ -11,7 +11,7 @@ import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 
 /**
  * Executa sinais em background (fire-and-forget):
- * RSI 1h + MA200_VOLATILE 4h. Auto-executa ordens apenas para MA200_VOLATILE.
+ * RSI 1h (símbolos = scan MA30 < −5% vs MA200) + MA200_VOLATILE 4h. Auto-executa ordens apenas para MA200_VOLATILE.
  * Volume Spike 1h: /api/cron/run-volume-spike. MA Cross 5m: /api/cron/run-volume-spike-15m
  */
 async function runSignalsInBackground(hour: number, minute: number): Promise<void> {

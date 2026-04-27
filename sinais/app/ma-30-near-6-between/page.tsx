@@ -76,9 +76,9 @@ export default function Ma30Near6BetweenPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">MA30 entre −5% e −10% abaixo da MA200 (1h)</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">MA30 mais de 5% abaixo da MA200 (1h)</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              SMA 30 e SMA 200 na vela 1h fechada; MA30 abaixo da MA200 com separação relativa nesse intervalo
+              SMA 30 e SMA 200 na vela 1h fechada; MA30 abaixo da MA200 com (MA30 − MA200) / MA200 × 100 inferior a −5%
             </p>
           </div>
           <button
@@ -110,14 +110,17 @@ export default function Ma30Near6BetweenPage() {
           <ul className="text-xs text-violet-800 dark:text-violet-300 space-y-1 list-disc list-inside">
             <li>Top 300 criptos por volume na Binance Futures — <strong>timeframe 1h</strong> (SMA 30 e SMA 200, como os outros menus)</li>
             <li>
-              <strong>(MA30 − MA200) / MA200 × 100</strong> entre <strong>−10%</strong> e <strong>−5%</strong> (MA30 abaixo da MA200, afastamento
-              moderado)
+              <strong>(MA30 − MA200) / MA200 × 100</strong> <strong>&lt; −5%</strong> (MA30 mais de 5% abaixo da MA200; sem limite inferior)
             </li>
             <li>
-              Ordenado do mais &quot;apertado&quot; para o mais largo: primeiro os mais próximos de <strong>−5%</strong>, depois até{' '}
-              <strong>−10%</strong>
+              Ordenado do mais próximo de <strong>−5%</strong> para o mais afastado (valores mais negativos)
             </li>
             <li>Guarda até <strong>300</strong> linhas após &quot;Atualizar Scan&quot;</li>
+            <li>
+              Esta lista alimenta o universo de símbolos das estratégias <strong>RSI</strong> (1h),{' '}
+              <strong>RSI 15m</strong> e <strong>MA Cross Top Voláteis</strong> — sem dados aqui, esses crons não
+              analisam pares.
+            </li>
           </ul>
         </div>
 
