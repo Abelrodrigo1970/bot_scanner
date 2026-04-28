@@ -330,7 +330,7 @@ export default function EstrategiasPage() {
           <div className="space-y-4">
             {isMa60 && (
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                Universo = resultados do scan <strong>MA30 &lt; −5% vs MA200 (1h)</strong> (menu). Actualiza esse scan antes de gerar sinais.
+                Universo = resultados do scan <strong>MA Cross Proximidade</strong> (menu). Actualiza esse scan antes de gerar sinais.
               </p>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

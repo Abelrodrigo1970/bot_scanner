@@ -115,7 +115,10 @@ export default function MaCrossBelowPage() {
             <li>Filtra as que têm a <strong>MA30 a uma distância entre -3% e +3% da MA200</strong> — cruzamento iminente</li>
             <li>Distância positiva (MA30 acima MA200) → potencial Golden Cross · Negativa → potencial Death Cross</li>
             <li>Ordenado pela distância absoluta mais pequena (MA30 mais próxima de cruzar a MA200)</li>
-            <li>Esta lista pode ser usada por estratégias como universo de símbolos a analisar</li>
+            <li>
+              Alimenta o universo de <strong>MA Cross Top Voláteis</strong> (MA60 1h) e{' '}
+              <strong>MA Cross 15m</strong> — actualiza o scan antes dos crons correspondentes.
+            </li>
           </ul>
         </div>
 

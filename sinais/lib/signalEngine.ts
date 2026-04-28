@@ -135,7 +135,7 @@ export async function runVolumeSpikeStrategy(
 }
 
 /**
- * Estratégia MA Cross Top Voláteis (MA60 em 1h; universo = scan MA30 < −5% vs MA200 na BD):
+ * Estratégia MA Cross Top Voláteis (MA60 em 1h; universo = scan MA Cross Proximidade `MaCrossBelow` na BD):
  * - BUY : fecha 2%+ ACIMA da MA60  → SL -15% | TP1 +30% (40%) | TP2 +60% (30%) | 30% fecha na reversão
  * - SELL: fecha 2%+ ABAIXO da MA60 → SL +15% | TP1 -30% (40%) | TP2 -60% (30%) | 30% fecha na reversão
  */
@@ -704,7 +704,7 @@ export interface RunAllStrategiesOptions {
 }
 
 /**
- * Executa todas as estratégias ativas (RSI e MA_VOLATILE usam o scan MA30 < −5% vs MA200 na BD, …)
+ * Executa todas as estratégias ativas (RSI usa Ma30Near6PriceBetween; MA_VOLATILE usa MaCrossBelow / MA Cross Proximidade, …)
  */
 export async function runAllStrategies(options?: RunAllStrategiesOptions): Promise<number> {
   let signalsCreated = 0;
@@ -805,10 +805,19 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           );
           continue;
         }
-      } else if (
-        strategy.name === 'MA_VOLATILE' ||
-        strategy.name === 'RSI'
-      ) {
+      } else if (strategy.name === 'MA_VOLATILE') {
+        console.log(`🔍 Buscando MA Cross Proximidade (MaCrossBelow) na BD para ${strategy.name}...`);
+        const maCrossProximity = await prisma.maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
+        if (maCrossProximity.length > 0) {
+          symbolsToAnalyze = maCrossProximity.map((t) => t.symbol);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (MA Cross Proximidade)`);
+        } else {
+          console.warn(
+            `⚠️ Nenhum símbolo em MaCrossBelow. Atualize o menu "MA Cross Proximidade" antes. Ignorando ${strategy.name}.`
+          );
+          continue;
+        }
+      } else if (strategy.name === 'RSI') {
         console.log(`🔍 Buscando scan MA30 < −5% vs MA200 (1h) na BD para ${strategy.name}...`);
         const ma30Below = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
         if (ma30Below.length > 0) {

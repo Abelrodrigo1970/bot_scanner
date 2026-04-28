@@ -28,8 +28,9 @@ export const MA_CROSS_5M_DESC =
 export const RSI_MA30_SCAN_UNIVERSE_DESCRIPTION =
   'Universo = scan MA30 < -5% vs MA200 (1h). BUY quando RSI cruza acima de 60 E preço > MA200 → SL -3% | sem TP intermédio | 100% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +3% | sem TP intermédio | 100% às 24h.';
 
+/** Universo = tabela MaCrossBelow (menu MA Cross Proximidade): MA30 entre −3% e +3% vs MA200 em 1h. */
 export const MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION =
-  'Universo = scan MA30 < -5% vs MA200 (1h). COMPRA: fecha 2%+ acima MA60 → SL -15% | TP1 +30% (40%) | TP2 +60% (30%) | 30% na reversão. VENDA: fecha 2%+ abaixo MA60 → SL +15% | TP1 -30% (40%) | TP2 -60% (30%) | 30% na reversão.';
+  'Universo = scan MA Cross Proximidade (MaCrossBelow): MA30 entre −3% e +3% vs MA200 (1h). COMPRA: fecha 2%+ acima MA60 → SL -15% | TP1 +30% (40%) | TP2 +60% (30%) | 30% na reversão. VENDA: fecha 2%+ abaixo MA60 → SL +15% | TP1 -30% (40%) | TP2 -60% (30%) | 30% na reversão.';
 
 /**
  * Actualiza descrições em BD se ainda mencionarem Top Voláteis como universo (legado).
@@ -56,7 +57,11 @@ export async function syncRsiMaVolatileUniverseDescriptions(
     where: { name: 'MA_VOLATILE' },
     select: { description: true },
   });
-  if (maV?.description?.includes('Top Voláteis')) {
+  const maVNeedsLegacyTopVolatile = maV?.description?.includes('Top Voláteis');
+  const maVNeedsMa30ScanUniverse =
+    maV?.description?.includes('COMPRA: fecha 2%+') &&
+    maV?.description?.includes('scan MA30 < -5% vs MA200');
+  if (maV && (maVNeedsLegacyTopVolatile || maVNeedsMa30ScanUniverse)) {
     await prisma.strategy.update({
       where: { name: 'MA_VOLATILE' },
       data: { description: MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION },

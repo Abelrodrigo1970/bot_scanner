@@ -117,9 +117,8 @@ export default function Ma30Near6BetweenPage() {
             </li>
             <li>Guarda até <strong>300</strong> linhas após &quot;Atualizar Scan&quot;</li>
             <li>
-              Esta lista alimenta o universo de símbolos das estratégias <strong>RSI</strong> (1h),{' '}
-              <strong>RSI 15m</strong> e <strong>MA Cross Top Voláteis</strong> — sem dados aqui, esses crons não
-              analisam pares.
+              Esta lista alimenta o universo de símbolos das estratégias <strong>RSI</strong> (1h) e{' '}
+              <strong>RSI 15m</strong> — sem dados aqui, esses crons não analisam pares para essas estratégias.
             </li>
           </ul>
         </div>

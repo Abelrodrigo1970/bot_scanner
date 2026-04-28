@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * - RSI (universo: scan MA30 < −5% vs MA200 na BD)
  * - VOLUME_SPIKE (1h)
  * - MA200_VOLATILE (4h, verificado neste agregado)
- * - MA_VOLATILE (MA60 1h; mesmo universo MA30 < −5%)
+ * - MA_VOLATILE (MA60 1h; universo MA Cross Proximidade / MaCrossBelow)
  *
  * Dispara os crons dedicados em background para manter a mesma lógica já existente.
  */

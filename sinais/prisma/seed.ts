@@ -91,7 +91,7 @@ async function main() {
     },
   });
 
-  // Estratégia MA Cross Top Voláteis (universo = scan MA30 < -5% vs MA200 1h na BD)
+  // Estratégia MA Cross Top Voláteis (universo = MA Cross Proximidade / MaCrossBelow na BD)
   const maVolatileStrategy = await prisma.strategy.upsert({
     where: { name: 'MA_VOLATILE' },
     update: {
