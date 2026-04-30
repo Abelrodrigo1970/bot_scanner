@@ -830,10 +830,13 @@ export async function fetchBybitTradfiAboveMa2004h(
       if (closes.length < 202) continue;
 
       const closedCloses = closes.slice(0, -1);
-      const ma200Vals = closedCloses.slice(-200);
-      if (ma200Vals.length < 200) continue;
+      if (closedCloses.length < 20) continue;
+      // TradFi stocks foram listados recentemente; usa MA adaptativa para não ficar sem universo.
+      const maPeriod = Math.min(200, closedCloses.length);
+      const maVals = closedCloses.slice(-maPeriod);
+      if (maVals.length < 20) continue;
 
-      const ma200 = ma200Vals.reduce((sum, v) => sum + v, 0) / 200;
+      const ma200 = maVals.reduce((sum, v) => sum + v, 0) / maPeriod;
       const lastPrice = closedCloses[closedCloses.length - 1];
       if (!Number.isFinite(ma200) || ma200 <= 0 || !Number.isFinite(lastPrice) || lastPrice <= 0) continue;
       if (lastPrice <= ma200) continue;

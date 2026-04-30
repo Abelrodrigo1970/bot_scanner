@@ -77,7 +77,7 @@ export default function BybitTradfiMa2004hPage() {
               Bybit TradFi Stocks + MA200 (4h)
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Ativos TradFi (stock) da Bybit acima da MA200 no timeframe 4h, sem filtro de volume
+              Ativos TradFi (stock) da Bybit acima da MA no timeframe 4h (MA até 200, conforme histórico disponível), sem filtro de volume
             </p>
           </div>
           <button
@@ -94,7 +94,7 @@ export default function BybitTradfiMa2004hPage() {
           <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1 list-disc list-inside">
             <li>Universo: Bybit linear com symbolType stock (ex.: AAPLUSDT, TSLAUSDT)</li>
             <li>Sem filtro de volume/turnover</li>
-            <li>Técnico: preço de fecho acima da MA200 no timeframe 4h (vela fechada)</li>
+            <li>Técnico: preço de fecho acima da MA no timeframe 4h (vela fechada, período até 200)</li>
             <li>Ordenação: maior distância percentual acima da MA200</li>
           </ul>
         </div>
