@@ -5,6 +5,7 @@
  */
 
 import crypto from 'crypto';
+import type { BybitInstrumentPublicRow } from './marketData';
 import { getBybitBaseUrl, hasBybitCredentials } from './bybitConfig';
 
 const RECV_WINDOW = '5000';
@@ -171,4 +172,44 @@ export async function getBybitTickSize(symbol: string): Promise<number> {
   const info = await getInstrumentInfo(symbol);
   const tick = info?.priceFilter?.tickSize ?? '0.01';
   return parseFloat(tick);
+}
+
+type AccountInstrumentsPage = {
+  list?: BybitInstrumentPublicRow[];
+  nextPageCursor?: string;
+};
+
+/**
+ * GET /v5/account/instruments-info — pares que a **tua conta** pode negociar (requer API key).
+ * Linear: pagina com `cursor` (máx. 200 por página na doc oficial).
+ * Spot: um pedido — a Bybit indica que spot neste endpoint não usa paginação.
+ * Docs: https://bybit-exchange.github.io/docs/v5/account/instrument
+ */
+export async function fetchBybitAccountInstrumentsInfoAllPages(
+  category: 'linear' | 'spot'
+): Promise<BybitInstrumentPublicRow[]> {
+  if (!hasBybitCredentials()) {
+    throw new Error('BYBIT_API_KEY e BYBIT_API_SECRET são obrigatórios');
+  }
+
+  if (category === 'spot') {
+    const result = await signedGet<AccountInstrumentsPage>('/v5/account/instruments-info', {
+      category: 'spot',
+    });
+    return result?.list ?? [];
+  }
+
+  const all: BybitInstrumentPublicRow[] = [];
+  let cursor: string | undefined;
+  for (;;) {
+    const params: Record<string, string> = { category: 'linear', limit: '200' };
+    if (cursor) params.cursor = cursor;
+    const result = await signedGet<AccountInstrumentsPage>('/v5/account/instruments-info', params);
+    const list = result?.list ?? [];
+    all.push(...list);
+    const next = result?.nextPageCursor;
+    if (next == null || String(next).trim() === '') break;
+    cursor = String(next);
+  }
+  return all;
 }

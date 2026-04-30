@@ -74,10 +74,10 @@ export default function BybitTradfiMa2004hPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Bybit TradFi Stocks + MA200 (4h)
+              Bybit TradFi Stocks (todos) + MA200 (4h)
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Ativos TradFi (stock) da Bybit acima da MA no timeframe 4h (MA até 200, conforme histórico disponível), sem filtro de volume
+              Universo máximo da API: linear stock + spot xstocks (USDT/USDC), Trading e PreLaunch; MA em 4h para todos com histórico suficiente
             </p>
           </div>
           <button
@@ -92,10 +92,11 @@ export default function BybitTradfiMa2004hPage() {
         <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
           <h2 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Como funciona o scan</h2>
           <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1 list-disc list-inside">
-            <li>Universo: Bybit linear com symbolType stock (ex.: AAPLUSDT, TSLAUSDT)</li>
-            <li>Sem filtro de volume/turnover</li>
-            <li>Técnico: preço de fecho acima da MA no timeframe 4h (vela fechada, período até 200)</li>
-            <li>Ordenação: maior distância percentual acima da MA200</li>
+            <li>Universo: linear symbolType stock + spot symbolType xstocks; pares USDT ou USDC; estados Trading e PreLaunch</li>
+            <li>Símbolos duplicados entre linear e spot contam uma vez (prioridade linear)</li>
+            <li>Sem filtro de volume; sem filtro por MA na entrada</li>
+            <li>Métricas: preço de fecho e MA no 4h (período adaptativo até 200 velas fechadas)</li>
+            <li>Ordenação: maior distância percentual vs essa MA</li>
           </ul>
         </div>
 

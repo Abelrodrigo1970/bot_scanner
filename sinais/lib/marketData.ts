@@ -772,59 +772,164 @@ export async function fetchBybitAboveMa2004hVol(
   return results.slice(0, limit).map((item, idx) => ({ ...item, rank: idx + 1 }));
 }
 
+export type BybitInstrumentPublicRow = {
+  symbol?: string;
+  status?: string;
+  quoteCoin?: string;
+  symbolType?: string;
+  baseCoin?: string;
+};
+
+export type BybitTradfiSymbolEntry = {
+  symbol: string;
+  baseAsset: string;
+  category: 'linear' | 'spot';
+  status: string;
+  symbolType: string;
+};
+
 /**
- * Scan Bybit TradFi Stocks 4h (via category=linear + symbolType=stock):
- * - símbolos stock em estado Trading
- * - preço (close 4h fechado) acima da MA200 (4h)
- * - sem filtro de volume/turnover
+ * Percorre /v5/market/instruments-info com cursor até esgotar (API pública).
  */
-export async function fetchBybitTradfiAboveMa2004h(
-  limit: number = 300
-): Promise<BybitTradfiAboveMa2004hItem[]> {
-  type BybitInstrument = {
-    symbol?: string;
-    status?: string;
-    quoteCoin?: string;
-    symbolType?: string;
-    baseCoin?: string;
-  };
-
-  const bybitSymbolsRes = await fetch(
-    'https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000'
-  );
-  if (!bybitSymbolsRes.ok) {
-    throw new Error(`Erro ao buscar instrumentos Bybit TradFi (4h): ${bybitSymbolsRes.statusText}`);
+export async function fetchBybitInstrumentsInfoAllPages(
+  category: 'linear' | 'spot'
+): Promise<BybitInstrumentPublicRow[]> {
+  const all: BybitInstrumentPublicRow[] = [];
+  let cursor: string | undefined;
+  for (;;) {
+    const url = new URL('https://api.bybit.com/v5/market/instruments-info');
+    url.searchParams.set('category', category);
+    url.searchParams.set('limit', '1000');
+    if (cursor) url.searchParams.set('cursor', cursor);
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      throw new Error(`instruments-info ${category}: ${res.status} ${res.statusText}`);
+    }
+    const json = await res.json();
+    if (typeof json?.retCode === 'number' && json.retCode !== 0) {
+      throw new Error(json.retMsg ?? `instruments-info ${category} retCode=${json.retCode}`);
+    }
+    const list: BybitInstrumentPublicRow[] = json?.result?.list ?? [];
+    all.push(...list);
+    const next = json?.result?.nextPageCursor;
+    if (next == null || String(next).trim() === '') break;
+    cursor = String(next);
   }
+  return all;
+}
 
-  const bybitSymbolsJson = await bybitSymbolsRes.json();
-  const bybitList: BybitInstrument[] = bybitSymbolsJson?.result?.list ?? [];
-  console.log(`[TradFi Scan 4h] instrumentos recebidos: ${bybitList.length}`);
-  const bybitTradfiSymbols = bybitList
+const TRADFI_SCAN_STATUSES = new Set(['Trading', 'PreLaunch']);
+
+function isUsdtOrUsdcStockPair(item: BybitInstrumentPublicRow): boolean {
+  const sym = item.symbol?.toUpperCase() ?? '';
+  const q = item.quoteCoin?.toUpperCase();
+  if (q === 'USDT') return sym.endsWith('USDT');
+  if (q === 'USDC') return sym.endsWith('USDC');
+  return sym.endsWith('USDT') || sym.endsWith('USDC');
+}
+
+function baseAssetFromSymbol(item: BybitInstrumentPublicRow): string {
+  const sym = String(item.symbol ?? '');
+  if (item.baseCoin) return String(item.baseCoin);
+  return sym.replace(/(USDT|USDC)$/, '') || sym;
+}
+
+/**
+ * Máximo de TradFi que a API pública lista: linear `stock` + spot `xstocks`,
+ * USDT/USDC, estados Trading e PreLaunch (pre-listing continua a ter klines na maior parte dos casos).
+ */
+export function parseBybitTradfiSymbolUniverse(
+  linearList: BybitInstrumentPublicRow[],
+  spotList: BybitInstrumentPublicRow[]
+): { linearStocks: BybitTradfiSymbolEntry[]; spotXstocks: BybitTradfiSymbolEntry[] } {
+  const linearStocks: BybitTradfiSymbolEntry[] = linearList
     .filter(
       (item) =>
-        item.status === 'Trading' &&
-        item.quoteCoin === 'USDT' &&
+        item.symbol &&
+        TRADFI_SCAN_STATUSES.has(String(item.status ?? '')) &&
+        (item.quoteCoin === 'USDT' || item.quoteCoin === 'USDC') &&
         item.symbolType === 'stock' &&
-        item.symbol?.endsWith('USDT')
+        isUsdtOrUsdcStockPair(item)
     )
     .map((item) => ({
       symbol: String(item.symbol),
-      baseAsset: String(item.baseCoin ?? item.symbol?.replace(/USDT$/, '') ?? ''),
+      baseAsset: baseAssetFromSymbol(item),
+      category: 'linear' as const,
+      status: String(item.status ?? ''),
+      symbolType: 'stock',
     }));
 
-  console.log(`[TradFi Scan 4h] símbolos stock elegíveis (Trading/USDT): ${bybitTradfiSymbols.length}`);
+  const spotXstocks: BybitTradfiSymbolEntry[] = spotList
+    .filter(
+      (item) =>
+        item.symbol &&
+        TRADFI_SCAN_STATUSES.has(String(item.status ?? '')) &&
+        (item.quoteCoin === 'USDT' || item.quoteCoin === 'USDC') &&
+        item.symbolType === 'xstocks' &&
+        isUsdtOrUsdcStockPair(item)
+    )
+    .map((item) => ({
+      symbol: String(item.symbol),
+      baseAsset: baseAssetFromSymbol(item),
+      category: 'spot' as const,
+      status: String(item.status ?? ''),
+      symbolType: 'xstocks',
+    }));
+
+  return { linearStocks, spotXstocks };
+}
+
+/** Lista única para o scan: linear primeiro, depois spot (evita klines duplicados se o símbolo repetir). */
+export function mergeTradfiSymbolEntriesForScan(
+  linearStocks: BybitTradfiSymbolEntry[],
+  spotXstocks: BybitTradfiSymbolEntry[]
+): Array<{ symbol: string; baseAsset: string; category: 'linear' | 'spot' }> {
+  const seen = new Set<string>();
+  const out: Array<{ symbol: string; baseAsset: string; category: 'linear' | 'spot' }> = [];
+  for (const e of linearStocks) {
+    if (seen.has(e.symbol)) continue;
+    seen.add(e.symbol);
+    out.push({ symbol: e.symbol, baseAsset: e.baseAsset, category: e.category });
+  }
+  for (const e of spotXstocks) {
+    if (seen.has(e.symbol)) continue;
+    seen.add(e.symbol);
+    out.push({ symbol: e.symbol, baseAsset: e.baseAsset, category: e.category });
+  }
+  return out;
+}
+
+/**
+ * Scan Bybit TradFi Stocks 4h (linear `stock` + spot `xstocks`, USDT/USDC, Trading e PreLaunch):
+ * - sem filtro de volume/turnover
+ * - sem filtro por MA (lista todos com histórico mínimo de velas fechadas)
+ * @param limit máximo de linhas no resultado; `0` = sem limite (todos os que passarem o scan)
+ */
+export async function fetchBybitTradfiAboveMa2004h(
+  limit: number = 0
+): Promise<BybitTradfiAboveMa2004hItem[]> {
+  const [linearList, spotList] = await Promise.all([
+    fetchBybitInstrumentsInfoAllPages('linear'),
+    fetchBybitInstrumentsInfoAllPages('spot'),
+  ]);
+  console.log(`[TradFi Scan 4h] instrumentos recebidos: linear=${linearList.length} spot=${spotList.length}`);
+
+  const { linearStocks, spotXstocks } = parseBybitTradfiSymbolUniverse(linearList, spotList);
+  const bybitTradfiSymbols = mergeTradfiSymbolEntriesForScan(linearStocks, spotXstocks);
+  console.log(
+    `[TradFi Scan 4h] símbolos elegíveis: linear_stock=${linearStocks.length} spot_xstocks=${spotXstocks.length} unicos=${bybitTradfiSymbols.length}`
+  );
   if (bybitTradfiSymbols.length === 0) return [];
 
   const results: Omit<BybitTradfiAboveMa2004hItem, 'rank'>[] = [];
   let klineFetchFail = 0;
   let noClosedCandles = 0;
   let insufficientClosedCandles = 0;
-  let belowMa = 0;
   for (let i = 0; i < bybitTradfiSymbols.length; i++) {
-    const { symbol, baseAsset } = bybitTradfiSymbols[i];
+    const { symbol, baseAsset, category } = bybitTradfiSymbols[i];
     try {
       const klineRes = await fetch(
-        `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=240&limit=210`
+        `https://api.bybit.com/v5/market/kline?category=${category}&symbol=${encodeURIComponent(symbol)}&interval=240&limit=1000`
       );
       if (!klineRes.ok) {
         klineFetchFail++;
@@ -856,10 +961,6 @@ export async function fetchBybitTradfiAboveMa2004h(
       const ma200 = maVals.reduce((sum, v) => sum + v, 0) / maPeriod;
       const lastPrice = closedCloses[closedCloses.length - 1];
       if (!Number.isFinite(ma200) || ma200 <= 0 || !Number.isFinite(lastPrice) || lastPrice <= 0) continue;
-      if (lastPrice <= ma200) {
-        belowMa++;
-        continue;
-      }
 
       const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
       results.push({
@@ -878,9 +979,10 @@ export async function fetchBybitTradfiAboveMa2004h(
 
   results.sort((a, b) => b.distPriceMa200 - a.distPriceMa200);
   console.log(
-    `[TradFi Scan 4h] resumo: total=${bybitTradfiSymbols.length} | semKline=${klineFetchFail} | semFecho=${noClosedCandles} | historico<20=${insufficientClosedCandles} | abaixoMA=${belowMa} | acimaMA=${results.length}`
+    `[TradFi Scan 4h] resumo: total=${bybitTradfiSymbols.length} | semKline=${klineFetchFail} | semFecho=${noClosedCandles} | historico<20=${insufficientClosedCandles} | listados=${results.length}`
   );
-  return results.slice(0, limit).map((item, idx) => ({ ...item, rank: idx + 1 }));
+  const cap = limit > 0 ? limit : results.length;
+  return results.slice(0, cap).map((item, idx) => ({ ...item, rank: idx + 1 }));
 }
 
 export async function fetchTopVolatile(limit: number = 25): Promise<TopVolatileItem[]> {

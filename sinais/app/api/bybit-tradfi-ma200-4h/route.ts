@@ -112,7 +112,7 @@ export async function POST() {
     }
 
     console.log('[bybit-tradfi-ma200-4h][POST] iniciar refresh do scan');
-    const items = await fetchBybitTradfiAboveMa2004h(300);
+    const items = await fetchBybitTradfiAboveMa2004h(0);
     console.log(`[bybit-tradfi-ma200-4h][POST] itens calculados: ${items.length}`);
 
     await prisma.$executeRaw`DELETE FROM "BybitTradfiAboveMa2004h"`;
