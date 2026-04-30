@@ -116,7 +116,7 @@ async function ensureMissingStrategies() {
         name: 'MA_CROSS_5M',
         displayName: 'MA Cross 15m (MA12/MA30)',
         description:
-          'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume >20M e MA200 (1h).',
+          'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume >15M e MA200 (1h).',
         isActive: true,
         params: JSON.stringify(MA_CROSS_5M_DEFAULT_PARAMS),
       },
@@ -163,7 +163,7 @@ async function ensureMissingStrategies() {
         console.log('✅ MA_CROSS_5M: parâmetros migrados para MA12/MA30');
       }
       const newDesc =
-        'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume >20M e MA200 (1h).';
+        'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume >15M e MA200 (1h).';
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
         existingMaCross5m.displayName !== 'MA Cross 15m (MA12/MA30)' || existingMaCross5m.description !== newDesc;

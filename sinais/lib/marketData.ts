@@ -596,7 +596,7 @@ export interface BybitAboveMa200Mc20mItem {
  */
 export async function fetchBybitAboveMa200Mc20m(
   limit: number = 300,
-  minTurnover24hUsd: number = 20_000_000
+  minTurnover24hUsd: number = 15_000_000
 ): Promise<BybitAboveMa200Mc20mItem[]> {
   type BybitInstrument = {
     symbol?: string;

@@ -85,7 +85,7 @@ export async function GET() {
       warning: ensureError || readError || null,
     });
   } catch (error: unknown) {
-    console.error('Erro ao buscar scan Bybit MA200 + MC20M:', error);
+    console.error('Erro ao buscar scan Bybit MA200 + Volume15M:', error);
     return NextResponse.json(
       {
         success: false,
@@ -116,7 +116,7 @@ export async function POST() {
       );
     }
 
-    const items = await fetchBybitAboveMa200Mc20m(300, 20_000_000);
+    const items = await fetchBybitAboveMa200Mc20m(300, 15_000_000);
 
     await prisma.$executeRaw`DELETE FROM "BybitAboveMa200Mc20m"`;
     if (items.length > 0) {
@@ -151,10 +151,10 @@ export async function POST() {
       success: true,
       items: saved,
       count: saved.length,
-      message: 'Scan Bybit MA200 + MC20M atualizado com sucesso',
+      message: 'Scan Bybit MA200 + Volume15M atualizado com sucesso',
     });
   } catch (error: unknown) {
-    console.error('Erro ao atualizar scan Bybit MA200 + MC20M:', error);
+    console.error('Erro ao atualizar scan Bybit MA200 + Volume15M:', error);
     return NextResponse.json(
       {
         success: false,

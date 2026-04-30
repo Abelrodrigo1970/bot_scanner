@@ -1,4 +1,4 @@
--- Criar tabela do scan Bybit: market cap >= 20M e preço acima da MA200 (1h)
+-- Criar tabela do scan Bybit: turnover 24h >= 15M USDT e preço acima da MA200 (1h)
 CREATE TABLE IF NOT EXISTS public."BybitAboveMa200Mc20m" (
   "id" TEXT NOT NULL,
   "symbol" TEXT NOT NULL,

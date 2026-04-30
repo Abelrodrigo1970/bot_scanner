@@ -15,7 +15,7 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume >20M e MA200 (1h).';
+  'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume >15M e MA200 (1h).';
 
 /** Texto canónico da descrição (universo = tabela Ma30Near6PriceBetween / scan MA30 < -5%). */
 export const RSI_MA30_SCAN_UNIVERSE_DESCRIPTION =
