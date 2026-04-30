@@ -135,3 +135,19 @@ model BybitAboveMa200Mc20m {
   @@index([marketCap])
 }
 
+// Scan Bybit 4h: turnover 4h >= 2M USDT e preço acima da MA200 (4h)
+model BybitAboveMa2004hVol {
+  id             String   @id @default(cuid())
+  symbol         String
+  baseAsset      String
+  turnover4h     Float
+  lastPrice      Float
+  ma200          Float
+  distPriceMa200 Float
+  rank           Int
+  updatedAt      DateTime @default(now())
+
+  @@index([rank])
+  @@index([turnover4h])
+}
+

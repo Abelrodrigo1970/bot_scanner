@@ -672,6 +672,97 @@ export async function fetchBybitAboveMa200Mc20m(
   return results.slice(0, limit).map((item, idx) => ({ ...item, rank: idx + 1 }));
 }
 
+export interface BybitAboveMa2004hVolItem {
+  symbol: string;
+  baseAsset: string;
+  turnover4h: number;
+  lastPrice: number;
+  ma200: number;
+  distPriceMa200: number;
+  rank: number;
+}
+
+/**
+ * Scan Bybit 4h (USDT Perpetual):
+ * - símbolos listados/trading na Bybit
+ * - turnover da última vela 4h fechada >= minTurnover4hUsd
+ * - preço (close 4h fechado) acima da MA200 (4h)
+ */
+export async function fetchBybitAboveMa2004hVol(
+  limit: number = 300,
+  minTurnover4hUsd: number = 2_000_000
+): Promise<BybitAboveMa2004hVolItem[]> {
+  type BybitInstrument = {
+    symbol?: string;
+    status?: string;
+    quoteCoin?: string;
+  };
+
+  const bybitSymbolsRes = await fetch(
+    'https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000'
+  );
+  if (!bybitSymbolsRes.ok) {
+    throw new Error(`Erro ao buscar instrumentos Bybit (4h): ${bybitSymbolsRes.statusText}`);
+  }
+
+  const bybitSymbolsJson = await bybitSymbolsRes.json();
+  const bybitList: BybitInstrument[] = bybitSymbolsJson?.result?.list ?? [];
+  const bybitUsdtSymbols = bybitList
+    .filter((item) => item.status === 'Trading' && item.quoteCoin === 'USDT' && item.symbol?.endsWith('USDT'))
+    .map((item) => String(item.symbol));
+
+  if (bybitUsdtSymbols.length === 0) return [];
+
+  const results: Omit<BybitAboveMa2004hVolItem, 'rank'>[] = [];
+  for (let i = 0; i < bybitUsdtSymbols.length; i++) {
+    const symbol = bybitUsdtSymbols[i];
+    const baseAsset = symbol.replace(/USDT$/, '');
+    try {
+      const klineRes = await fetch(
+        `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=240&limit=210`
+      );
+      if (!klineRes.ok) continue;
+      const klineJson = await klineRes.json();
+      const rawList: string[][] = klineJson?.result?.list ?? [];
+      if (rawList.length < 202) continue;
+
+      const ascending = rawList.slice().reverse();
+      const closes = ascending.map((k) => parseFloat(k[4])).filter((n) => Number.isFinite(n) && n > 0);
+      if (closes.length < 202) continue;
+
+      const lastClosed = ascending[ascending.length - 2];
+      if (!lastClosed) continue;
+      const turnover4h = Number(lastClosed[6] || 0);
+      if (!Number.isFinite(turnover4h) || turnover4h < minTurnover4hUsd) continue;
+
+      const closedCloses = closes.slice(0, -1);
+      const ma200Vals = closedCloses.slice(-200);
+      if (ma200Vals.length < 200) continue;
+
+      const ma200 = ma200Vals.reduce((sum, v) => sum + v, 0) / 200;
+      const lastPrice = closedCloses[closedCloses.length - 1];
+      if (!Number.isFinite(ma200) || ma200 <= 0 || !Number.isFinite(lastPrice) || lastPrice <= 0) continue;
+      if (lastPrice <= ma200) continue;
+
+      const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
+      results.push({
+        symbol,
+        baseAsset,
+        turnover4h,
+        lastPrice,
+        ma200,
+        distPriceMa200,
+      });
+    } catch {
+      // ignora falha pontual por símbolo
+    }
+    await delay(i % 5 === 4 ? 180 : 100);
+  }
+
+  results.sort((a, b) => b.turnover4h - a.turnover4h);
+  return results.slice(0, limit).map((item, idx) => ({ ...item, rank: idx + 1 }));
+}
+
 export async function fetchTopVolatile(limit: number = 25): Promise<TopVolatileItem[]> {
   try {
     const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');

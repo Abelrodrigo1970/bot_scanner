@@ -158,6 +158,48 @@ async function main() {
     },
   });
 
+  const maCross1hStrategy = await prisma.strategy.upsert({
+    where: { name: 'MA_CROSS_1H' },
+    update: {
+      displayName: 'MA Cross 1h (MA12/MA30)',
+      description:
+        'MA12/MA30 em 1h com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 1.8% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 7%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+      params: JSON.stringify({
+        ma30Period: 12,
+        ma200Period: 30,
+        maType: 'EMA',
+        useDiffMode: true,
+        entryDiffPct: 1.8,
+        exitDiffPct: 0.7,
+        stopPercent: 7,
+        sellBlockAbsCloseDistanceFromMa200Pct: 6,
+        allowBuy: true,
+        allowSell: true,
+        exchange: 'bybit',
+      }),
+    },
+    create: {
+      name: 'MA_CROSS_1H',
+      displayName: 'MA Cross 1h (MA12/MA30)',
+      description:
+        'MA12/MA30 em 1h com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 1.8% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 7%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+      isActive: false,
+      params: JSON.stringify({
+        ma30Period: 12,
+        ma200Period: 30,
+        maType: 'EMA',
+        useDiffMode: true,
+        entryDiffPct: 1.8,
+        exitDiffPct: 0.7,
+        stopPercent: 7,
+        sellBlockAbsCloseDistanceFromMa200Pct: 6,
+        allowBuy: true,
+        allowSell: true,
+        exchange: 'bybit',
+      }),
+    },
+  });
+
   // Estratégia MA (somente MA200) nos 20 Top Voláteis
   const ma200VolatileStrategy = await prisma.strategy.upsert({
     where: { name: 'MA200_VOLATILE' },
@@ -328,6 +370,7 @@ async function main() {
     rsi: rsiStrategy.id,
     volumeSpike: volumeSpikeStrategy.id,
     maCross5m: maCross5mStrategy.id,
+    maCross1h: maCross1hStrategy.id,
     maVolatile: maVolatileStrategy.id,
     ma200Volatile: ma200VolatileStrategy.id,
   });

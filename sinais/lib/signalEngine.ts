@@ -536,7 +536,7 @@ async function runMaCrossM30M200OnTimeframe(
   symbol: string,
   timeframe: Timeframe,
   params: StrategyParams,
-  bar: '5m' | '15m'
+  bar: '5m' | '15m' | '1h'
 ): Promise<SignalResult | null> {
   if (timeframe !== bar) return null;
 
@@ -546,7 +546,9 @@ async function runMaCrossM30M200OnTimeframe(
   );
   // Modo MA12xMA30: no projeto corre em velas 15m (estratégia MA_CROSS_5M legada),
   // identificado pelos períodos 12/30 em vez do "bar" histórico.
-  const isMa12x30Mode = timeframe === '15m' && ma30Period === 12 && maSlowPeriod === 30;
+  const isMa12x30Mode = Boolean(
+    params.useDiffMode === true || (timeframe === '15m' && ma30Period === 12 && maSlowPeriod === 30)
+  );
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
   const entryDiffPct = Number(params.entryDiffPct ?? 0.9);
@@ -726,6 +728,15 @@ export async function runMaCross15mStrategy(
   return runMaCrossM30M200OnTimeframe(symbol, timeframe, params, '15m');
 }
 
+/** MA12 / MA30 em 1h (modo spread por diferença entre médias). */
+export async function runMaCross1hStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  return runMaCrossM30M200OnTimeframe(symbol, timeframe, params, '1h');
+}
+
 /** MA12 / MA30 por defeito em velas 5m — cron 15m no endpoint dedicado. */
 export async function runMaCross5mStrategy(
   symbol: string,
@@ -820,6 +831,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
       const timeframesToUse: Timeframe[] =
         strategy.name === 'MA_CROSS_5M'    ? ['15m'] :
+        strategy.name === 'MA_CROSS_1H'    ? ['1h'] :
         strategy.name === 'MA_VOLATILE'    ? ['1h'] :
         strategy.name === 'RSI_15M'        ? ['15m'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
@@ -871,7 +883,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.warn(`⚠️ Nenhum símbolo MA Cross Below na BD. Execute "Atualizar Scan" antes. Ignorando ${strategy.name}.`);
           continue;
         }
-      } else if (strategy.name === 'MA_CROSS_5M') {
+      } else if (strategy.name === 'MA_CROSS_5M' || strategy.name === 'MA_CROSS_1H') {
         console.log(`🔍 Buscando scan Bybit Volume 1h>500k e MA200 1h na BD para ${strategy.name}...`);
         const bybitScan = await prisma.$queryRaw<Array<{ symbol: string }>>`
           SELECT symbol
@@ -929,6 +941,12 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 signalResult = await runMaCross15mStrategy(symbol, timeframe, params);
                 if (signalResult) {
                   console.log(`✅ MA Cross 15m: ${symbol} ${signalResult.direction} (${timeframe})`);
+                }
+                break;
+              case 'MA_CROSS_1H':
+                signalResult = await runMaCross1hStrategy(symbol, timeframe, params);
+                if (signalResult) {
+                  console.log(`✅ MA Cross 1h: ${symbol} ${signalResult.direction} (${timeframe})`);
                 }
                 break;
               case 'RSI':

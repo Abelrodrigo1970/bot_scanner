@@ -45,6 +45,14 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   stopPercent: 5,
 };
 
+const MA_CROSS_1H_DEFAULT_PARAMS = {
+  ...MA_CROSS_5M_DEFAULT_PARAMS,
+  useDiffMode: true,
+  entryDiffPct: 1.8,
+  stopPercent: 7,
+  exchange: 'bybit' as const,
+};
+
 async function ensureMissingStrategies() {
   const existingRsi15m = await prisma.strategy.findUnique({
     where: { name: 'RSI_15M' },
@@ -187,6 +195,64 @@ async function ensureMissingStrategies() {
     console.log(
       `✅ MA_CROSS_5M: ${relabeled} sinal(is) com strategyName actualizado → "${MA_CROSS_5M_DISPLAY}"`
     );
+  }
+
+  const existingMaCross1h = await prisma.strategy.findUnique({
+    where: { name: 'MA_CROSS_1H' },
+    select: { id: true, params: true, displayName: true, description: true },
+  });
+
+  if (!existingMaCross1h) {
+    await prisma.strategy.create({
+      data: {
+        name: 'MA_CROSS_1H',
+        displayName: 'MA Cross 1h (MA12/MA30)',
+        description:
+          'MA12/MA30 em 1h com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 1.8% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 7%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+        isActive: false,
+        params: JSON.stringify(MA_CROSS_1H_DEFAULT_PARAMS),
+      },
+    });
+  } else {
+    try {
+      const p = existingMaCross1h.params ? JSON.parse(existingMaCross1h.params) : {};
+      const next: Record<string, unknown> = { ...p };
+      if (p.maType !== 'SMA' && p.maType !== 'EMA') {
+        next.maType = 'EMA';
+      }
+      next.useDiffMode = true;
+      next.ma30Period = 12;
+      next.ma200Period = 30;
+      next.entryDiffPct = 1.8;
+      next.exitDiffPct = 0.7;
+      next.stopPercent = 7;
+      delete next.entryDiffPctBuy;
+      delete next.entryDiffPctSell;
+      delete next.buyStopPercent;
+      delete next.sellStopPercent;
+      delete next.sellTp1Percent;
+      delete next.sellTp1Position;
+      delete next.sellTp2Percent;
+      delete next.sellTp2Position;
+      next.exchange = p.exchange === 'binance' ? 'binance' : 'bybit';
+      const newDesc =
+        'MA12/MA30 em 1h com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 1.8% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 7%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
+      const needParams = JSON.stringify(next) !== JSON.stringify(p);
+      const needMeta =
+        existingMaCross1h.displayName !== 'MA Cross 1h (MA12/MA30)' || existingMaCross1h.description !== newDesc;
+      if (needParams || needMeta) {
+        await prisma.strategy.update({
+          where: { name: 'MA_CROSS_1H' },
+          data: {
+            params: needParams ? JSON.stringify(next) : existingMaCross1h.params!,
+            displayName: 'MA Cross 1h (MA12/MA30)',
+            description: newDesc,
+          },
+        });
+      }
+    } catch (e) {
+      console.warn('⚠️ MA_CROSS_1H: falha ao migrar params:', e);
+    }
   }
 }
 

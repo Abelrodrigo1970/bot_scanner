@@ -261,11 +261,13 @@ export default function EstrategiasPage() {
         );
 
       case 'MA_CROSS_5M':
+      case 'MA_CROSS_1H': {
+        const is1h = strategy.name === 'MA_CROSS_1H';
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Velas <strong>15m</strong> — <strong>MA12 / MA30</strong>. Entrada quando a diferença entre médias supera o limiar de entrada e saída (TP) quando comprime abaixo do limiar de saída.
-              O cron corre a cada 15 min. Símbolos = resultados do scan{' '}
+              Velas <strong>{is1h ? '1h' : '15m'}</strong> — <strong>MA12 / MA30</strong>. Entrada quando a diferença entre médias supera o limiar de entrada e saída (TP) quando comprime abaixo do limiar de saída.
+              {!is1h && ' O cron corre a cada 15 min.'} Símbolos = resultados do scan{' '}
               <strong>Bybit Volume 1h &gt;500k e MA200 1h</strong> (menu); actualiza esse scan com &quot;Atualizar Scan&quot; antes.
             </p>
             <div className="max-w-md">
@@ -282,9 +284,9 @@ export default function EstrategiasPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período MA rápida (ex. 12)', p.ma30Period ?? 12, (v) => upd({ ma30Period: v }))}
               {numField('Período MA lenta (ex. 30)', p.ma200Period ?? 30, (v) => upd({ ma200Period: v }))}
-              {numField('Entrada: dif. MA12/MA30 (%)', p.entryDiffPct ?? 0.9, (v) => upd({ entryDiffPct: v }), 0.1)}
+              {numField('Entrada: dif. MA12/MA30 (%)', p.entryDiffPct ?? (is1h ? 1.8 : 0.9), (v) => upd({ entryDiffPct: v }), 0.1)}
               {numField('Saída/TP: dif. MA12/MA30 (%)', p.exitDiffPct ?? 0.7, (v) => upd({ exitDiffPct: v }), 0.1)}
-              {numField('SL (%)', p.stopPercent ?? 5, (v) => upd({ stopPercent: v }), 0.5)}
+              {numField('SL (%)', p.stopPercent ?? (is1h ? 7 : 5), (v) => upd({ stopPercent: v }), 0.5)}
             </div>
             <div className="max-w-md">
               {numField(
@@ -303,6 +305,7 @@ export default function EstrategiasPage() {
             </p>
           </div>
         );
+      }
 
       case 'MA_VOLATILE':
       case 'MA200_VOLATILE': {
