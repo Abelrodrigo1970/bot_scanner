@@ -870,7 +870,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'MA_CROSS_5M') {
-        console.log(`🔍 Buscando scan Bybit MC>20M e MA200 1h na BD para ${strategy.name}...`);
+        console.log(`🔍 Buscando scan Bybit Volume>20M e MA200 1h na BD para ${strategy.name}...`);
         const bybitScan = await prisma.$queryRaw<Array<{ symbol: string }>>`
           SELECT symbol
           FROM "BybitAboveMa200Mc20m"
@@ -878,10 +878,10 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         `;
         if (bybitScan.length > 0) {
           symbolsToAnalyze = bybitScan.map((t: { symbol: string }) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (Bybit MC > 20M & MA200 1h)`);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (Bybit Volume > 20M & MA200 1h)`);
         } else {
           console.warn(
-            `⚠️ Nenhum símbolo em BybitAboveMa200Mc20m. Atualize o menu "Bybit MC >20M e MA200 1h" antes. Ignorando ${strategy.name}.`
+            `⚠️ Nenhum símbolo em BybitAboveMa200Mc20m. Atualize o menu "Bybit Volume >20M e MA200 1h" antes. Ignorando ${strategy.name}.`
           );
           continue;
         }

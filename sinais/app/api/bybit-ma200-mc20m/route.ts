@@ -4,6 +4,8 @@ import { prisma } from '@/lib/db';
 import { fetchBybitAboveMa200Mc20m } from '@/lib/marketData';
 import { randomUUID } from 'crypto';
 
+export const runtime = 'nodejs';
+
 async function ensureBybitScanTable(): Promise<void> {
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS public."BybitAboveMa200Mc20m" (
@@ -34,9 +36,15 @@ export async function GET() {
     if (!(await isAuthenticated())) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
-    await ensureBybitScanTable();
+    let ensureError: string | null = null;
+    try {
+      await ensureBybitScanTable();
+    } catch (err) {
+      ensureError = err instanceof Error ? err.message : String(err);
+      console.warn('[bybit-ma200-mc20m][GET] ensure table falhou:', ensureError);
+    }
 
-    const items = await prisma.$queryRaw<Array<{
+    let items: Array<{
       id: string;
       symbol: string;
       baseAsset: string;
@@ -46,17 +54,35 @@ export async function GET() {
       distPriceMa200: number;
       rank: number;
       updatedAt: Date;
-    }>>`
-      SELECT id, symbol, "baseAsset", "marketCap", "lastPrice", ma200, "distPriceMa200", rank, "updatedAt"
-      FROM "BybitAboveMa200Mc20m"
-      ORDER BY rank ASC
-    `;
+    }> = [];
+    let readError: string | null = null;
+    try {
+      items = await prisma.$queryRaw<Array<{
+        id: string;
+        symbol: string;
+        baseAsset: string;
+        marketCap: number;
+        lastPrice: number;
+        ma200: number;
+        distPriceMa200: number;
+        rank: number;
+        updatedAt: Date;
+      }>>`
+        SELECT id, symbol, "baseAsset", "marketCap", "lastPrice", ma200, "distPriceMa200", rank, "updatedAt"
+        FROM "BybitAboveMa200Mc20m"
+        ORDER BY rank ASC
+      `;
+    } catch (err) {
+      readError = err instanceof Error ? err.message : String(err);
+      console.warn('[bybit-ma200-mc20m][GET] leitura falhou:', readError);
+    }
 
     return NextResponse.json({
       success: true,
       items,
       count: items.length,
       fetchedAt: items[0]?.updatedAt?.toISOString() ?? null,
+      warning: ensureError || readError || null,
     });
   } catch (error: unknown) {
     console.error('Erro ao buscar scan Bybit MA200 + MC20M:', error);
@@ -76,7 +102,19 @@ export async function POST() {
     if (!(await isAuthenticated())) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
-    await ensureBybitScanTable();
+    try {
+      await ensureBybitScanTable();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Falha ao preparar tabela do scan',
+          details: msg,
+        },
+        { status: 500 }
+      );
+    }
 
     const items = await fetchBybitAboveMa200Mc20m(300, 20_000_000);
 

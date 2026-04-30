@@ -591,22 +591,21 @@ export interface BybitAboveMa200Mc20mItem {
 /**
  * Scan Bybit (USDT Perpetual):
  * - apenas símbolos listados/trading na Bybit
- * - market cap >= minMarketCapUsd (CoinGecko)
+ * - turnover 24h >= minTurnover24hUsd (Bybit ticker 24h)
  * - preço (close 1h fechado) acima da MA200 (1h)
  */
 export async function fetchBybitAboveMa200Mc20m(
   limit: number = 300,
-  minMarketCapUsd: number = 20_000_000
+  minTurnover24hUsd: number = 20_000_000
 ): Promise<BybitAboveMa200Mc20mItem[]> {
   type BybitInstrument = {
     symbol?: string;
     status?: string;
     quoteCoin?: string;
   };
-
-  type CoingeckoCoin = {
+  type BybitTicker = {
     symbol?: string;
-    market_cap?: number;
+    turnover24h?: string;
   };
 
   const bybitSymbolsRes = await fetch(
@@ -624,32 +623,29 @@ export async function fetchBybitAboveMa200Mc20m(
 
   if (bybitUsdtSymbols.length === 0) return [];
 
-  const marketCapByBase = new Map<string, number>();
-  for (let page = 1; page <= 4; page++) {
-    const cgRes = await fetch(
-      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=${page}&sparkline=false`
-    );
-    if (!cgRes.ok) {
-      throw new Error(`Erro ao buscar market caps (CoinGecko): ${cgRes.statusText}`);
-    }
-    const cgData: CoingeckoCoin[] = await cgRes.json();
-    for (const coin of cgData) {
-      const sym = (coin.symbol || '').toUpperCase();
-      const cap = Number(coin.market_cap || 0);
-      if (!sym || !Number.isFinite(cap) || cap <= 0) continue;
-      const prev = marketCapByBase.get(sym) ?? 0;
-      if (cap > prev) marketCapByBase.set(sym, cap);
-    }
-    await delay(220);
+  const bybitTickerRes = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
+  if (!bybitTickerRes.ok) {
+    throw new Error(`Erro ao buscar tickers Bybit 24h: ${bybitTickerRes.statusText}`);
+  }
+  const bybitTickerJson = await bybitTickerRes.json();
+  const tickerList: BybitTicker[] = bybitTickerJson?.result?.list ?? [];
+  const turnoverBySymbol = new Map<string, number>();
+  for (const ticker of tickerList) {
+    const symbol = String(ticker.symbol || '');
+    if (!symbol || !symbol.endsWith('USDT')) continue;
+    const turnover = Number(ticker.turnover24h || 0);
+    if (!Number.isFinite(turnover) || turnover <= 0) continue;
+    turnoverBySymbol.set(symbol, turnover);
   }
 
   const candidates = bybitUsdtSymbols
-    .map((symbol) => {
-      const baseAsset = symbol.replace(/USDT$/, '');
-      return { symbol, baseAsset, marketCap: marketCapByBase.get(baseAsset) ?? 0 };
-    })
-    .filter((x) => x.marketCap >= minMarketCapUsd)
-    .sort((a, b) => b.marketCap - a.marketCap);
+    .map((symbol) => ({
+      symbol,
+      baseAsset: symbol.replace(/USDT$/, ''),
+      turnover24h: turnoverBySymbol.get(symbol) ?? 0,
+    }))
+    .filter((x) => x.turnover24h >= minTurnover24hUsd)
+    .sort((a, b) => b.turnover24h - a.turnover24h);
 
   const results: Omit<BybitAboveMa200Mc20mItem, 'rank'>[] = [];
   for (let i = 0; i < candidates.length; i++) {
@@ -683,7 +679,8 @@ export async function fetchBybitAboveMa200Mc20m(
       results.push({
         symbol: c.symbol,
         baseAsset: c.baseAsset,
-        marketCap: c.marketCap,
+        // Campo legado na BD; agora guarda turnover24h em USDT.
+        marketCap: c.turnover24h,
         lastPrice,
         ma200,
         distPriceMa200,
