@@ -81,10 +81,10 @@ export default function BybitMa200Mc20mPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Bybit Volume 15M + MA200 (1h)
+              Bybit Volume 1h (1M) + MA200 (1h)
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Criptos listadas na Bybit com turnover 24h acima de 15M USDT e preço acima da MA200 (1h)
+              Criptos listadas na Bybit com turnover da última 1h acima de 1M USDT e preço acima da MA200 (1h)
             </p>
           </div>
           <button
@@ -100,9 +100,9 @@ export default function BybitMa200Mc20mPage() {
           <h2 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Como funciona o scan</h2>
           <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1 list-disc list-inside">
             <li>Universo: símbolos USDT Perpetual em estado Trading na Bybit</li>
-            <li>Liquidez: ticker 24h da Bybit, apenas ativos com turnover maior ou igual a 15 milhões USDT</li>
+            <li>Liquidez: turnover da última vela 1h da Bybit, apenas ativos com turnover maior ou igual a 1 milhão USDT</li>
             <li>Técnico: timeframe 1h na Bybit, preço de fecho acima da MA200 (vela fechada)</li>
-            <li>Ordenação: turnover 24h descendente</li>
+            <li>Ordenação: turnover 1h descendente</li>
           </ul>
         </div>
 
@@ -140,7 +140,7 @@ export default function BybitMa200Mc20mPage() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">#</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Símbolo</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Base</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Turnover 24h</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Turnover 1h</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Preço</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">MA200</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Preço vs MA200</th>

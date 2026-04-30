@@ -591,23 +591,18 @@ export interface BybitAboveMa200Mc20mItem {
 /**
  * Scan Bybit (USDT Perpetual):
  * - apenas símbolos listados/trading na Bybit
- * - turnover 24h >= minTurnover24hUsd (Bybit ticker 24h)
+ * - turnover 1h (vela fechada) >= minTurnover1hUsd
  * - preço (close 1h fechado) acima da MA200 (1h)
  */
 export async function fetchBybitAboveMa200Mc20m(
   limit: number = 300,
-  minTurnover24hUsd: number = 15_000_000
+  minTurnover1hUsd: number = 1_000_000
 ): Promise<BybitAboveMa200Mc20mItem[]> {
   type BybitInstrument = {
     symbol?: string;
     status?: string;
     quoteCoin?: string;
   };
-  type BybitTicker = {
-    symbol?: string;
-    turnover24h?: string;
-  };
-
   const bybitSymbolsRes = await fetch(
     'https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000'
   );
@@ -623,36 +618,13 @@ export async function fetchBybitAboveMa200Mc20m(
 
   if (bybitUsdtSymbols.length === 0) return [];
 
-  const bybitTickerRes = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
-  if (!bybitTickerRes.ok) {
-    throw new Error(`Erro ao buscar tickers Bybit 24h: ${bybitTickerRes.statusText}`);
-  }
-  const bybitTickerJson = await bybitTickerRes.json();
-  const tickerList: BybitTicker[] = bybitTickerJson?.result?.list ?? [];
-  const turnoverBySymbol = new Map<string, number>();
-  for (const ticker of tickerList) {
-    const symbol = String(ticker.symbol || '');
-    if (!symbol || !symbol.endsWith('USDT')) continue;
-    const turnover = Number(ticker.turnover24h || 0);
-    if (!Number.isFinite(turnover) || turnover <= 0) continue;
-    turnoverBySymbol.set(symbol, turnover);
-  }
-
-  const candidates = bybitUsdtSymbols
-    .map((symbol) => ({
-      symbol,
-      baseAsset: symbol.replace(/USDT$/, ''),
-      turnover24h: turnoverBySymbol.get(symbol) ?? 0,
-    }))
-    .filter((x) => x.turnover24h >= minTurnover24hUsd)
-    .sort((a, b) => b.turnover24h - a.turnover24h);
-
   const results: Omit<BybitAboveMa200Mc20mItem, 'rank'>[] = [];
-  for (let i = 0; i < candidates.length; i++) {
-    const c = candidates[i];
+  for (let i = 0; i < bybitUsdtSymbols.length; i++) {
+    const symbol = bybitUsdtSymbols[i];
+    const baseAsset = symbol.replace(/USDT$/, '');
     try {
       const klineRes = await fetch(
-        `https://api.bybit.com/v5/market/kline?category=linear&symbol=${c.symbol}&interval=60&limit=210`
+        `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=60&limit=210`
       );
       if (!klineRes.ok) continue;
       const klineJson = await klineRes.json();
@@ -665,6 +637,11 @@ export async function fetchBybitAboveMa200Mc20m(
       if (closes.length < 202) continue;
 
       // Excluir vela em formação
+      const lastClosed = ascending[ascending.length - 2];
+      if (!lastClosed) continue;
+      const turnover1h = Number(lastClosed[6] || 0);
+      if (!Number.isFinite(turnover1h) || turnover1h < minTurnover1hUsd) continue;
+
       const closedCloses = closes.slice(0, -1);
       const ma200Vals = closedCloses.slice(-200);
       if (ma200Vals.length < 200) continue;
@@ -677,10 +654,10 @@ export async function fetchBybitAboveMa200Mc20m(
 
       const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
       results.push({
-        symbol: c.symbol,
-        baseAsset: c.baseAsset,
-        // Campo legado na BD; agora guarda turnover24h em USDT.
-        marketCap: c.turnover24h,
+        symbol,
+        baseAsset,
+        // Campo legado na BD; agora guarda turnover1h em USDT.
+        marketCap: turnover1h,
         lastPrice,
         ma200,
         distPriceMa200,

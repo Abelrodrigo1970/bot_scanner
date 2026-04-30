@@ -20,7 +20,7 @@ const MA_CROSS_5M_MIN_STRENGTH = 70;
 /**
  * MA Cross 15m (MA12/MA30) em background.
  * Cálculo em velas 15m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
- * Universo: tabela `BybitAboveMa200Mc20m` (menu Bybit Volume >15M e MA200 1h).
+ * Universo: tabela `BybitAboveMa200Mc20m` (menu Bybit Volume 1h >1M e MA200 1h).
  */
 async function runMaCross5mInBackground(
   strategy: StrategyData,
@@ -36,7 +36,7 @@ async function runMaCross5mInBackground(
     `;
     if (maRows.length === 0) {
       console.warn(
-        '[MA Cross 15m BG] Nenhum símbolo no scan Bybit Volume >15M e MA200 1h. Atualize essa página antes.'
+        '[MA Cross 15m BG] Nenhum símbolo no scan Bybit Volume 1h >1M e MA200 1h. Atualize essa página antes.'
       );
     }
 
@@ -219,7 +219,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'MA Cross 15m iniciado em background (universo: scan Bybit Volume >15M e MA200 1h)',
+      message: 'MA Cross 15m iniciado em background (universo: scan Bybit Volume 1h >1M e MA200 1h)',
       executedAt: now.toISOString(),
     });
   } catch (error) {
