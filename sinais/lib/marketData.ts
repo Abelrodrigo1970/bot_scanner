@@ -798,6 +798,7 @@ export async function fetchBybitTradfiAboveMa2004h(
 
   const bybitSymbolsJson = await bybitSymbolsRes.json();
   const bybitList: BybitInstrument[] = bybitSymbolsJson?.result?.list ?? [];
+  console.log(`[TradFi Scan 4h] instrumentos recebidos: ${bybitList.length}`);
   const bybitTradfiSymbols = bybitList
     .filter(
       (item) =>
@@ -811,35 +812,54 @@ export async function fetchBybitTradfiAboveMa2004h(
       baseAsset: String(item.baseCoin ?? item.symbol?.replace(/USDT$/, '') ?? ''),
     }));
 
+  console.log(`[TradFi Scan 4h] símbolos stock elegíveis (Trading/USDT): ${bybitTradfiSymbols.length}`);
   if (bybitTradfiSymbols.length === 0) return [];
 
   const results: Omit<BybitTradfiAboveMa2004hItem, 'rank'>[] = [];
+  let klineFetchFail = 0;
+  let noClosedCandles = 0;
+  let insufficientClosedCandles = 0;
+  let belowMa = 0;
   for (let i = 0; i < bybitTradfiSymbols.length; i++) {
     const { symbol, baseAsset } = bybitTradfiSymbols[i];
     try {
       const klineRes = await fetch(
         `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=240&limit=210`
       );
-      if (!klineRes.ok) continue;
+      if (!klineRes.ok) {
+        klineFetchFail++;
+        continue;
+      }
       const klineJson = await klineRes.json();
       const rawList: string[][] = klineJson?.result?.list ?? [];
-      if (rawList.length < 202) continue;
 
       const ascending = rawList.slice().reverse();
       const closes = ascending.map((k) => parseFloat(k[4])).filter((n) => Number.isFinite(n) && n > 0);
-      if (closes.length < 202) continue;
+      if (closes.length < 2) {
+        noClosedCandles++;
+        continue;
+      }
 
       const closedCloses = closes.slice(0, -1);
-      if (closedCloses.length < 20) continue;
+      if (closedCloses.length < 20) {
+        insufficientClosedCandles++;
+        continue;
+      }
       // TradFi stocks foram listados recentemente; usa MA adaptativa para não ficar sem universo.
       const maPeriod = Math.min(200, closedCloses.length);
       const maVals = closedCloses.slice(-maPeriod);
-      if (maVals.length < 20) continue;
+      if (maVals.length < 20) {
+        insufficientClosedCandles++;
+        continue;
+      }
 
       const ma200 = maVals.reduce((sum, v) => sum + v, 0) / maPeriod;
       const lastPrice = closedCloses[closedCloses.length - 1];
       if (!Number.isFinite(ma200) || ma200 <= 0 || !Number.isFinite(lastPrice) || lastPrice <= 0) continue;
-      if (lastPrice <= ma200) continue;
+      if (lastPrice <= ma200) {
+        belowMa++;
+        continue;
+      }
 
       const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
       results.push({
@@ -851,11 +871,15 @@ export async function fetchBybitTradfiAboveMa2004h(
       });
     } catch {
       // ignora falha pontual por símbolo
+      klineFetchFail++;
     }
     await delay(i % 5 === 4 ? 180 : 100);
   }
 
   results.sort((a, b) => b.distPriceMa200 - a.distPriceMa200);
+  console.log(
+    `[TradFi Scan 4h] resumo: total=${bybitTradfiSymbols.length} | semKline=${klineFetchFail} | semFecho=${noClosedCandles} | historico<20=${insufficientClosedCandles} | abaixoMA=${belowMa} | acimaMA=${results.length}`
+  );
   return results.slice(0, limit).map((item, idx) => ({ ...item, rank: idx + 1 }));
 }
 

@@ -111,9 +111,12 @@ export async function POST() {
       );
     }
 
+    console.log('[bybit-tradfi-ma200-4h][POST] iniciar refresh do scan');
     const items = await fetchBybitTradfiAboveMa2004h(300);
+    console.log(`[bybit-tradfi-ma200-4h][POST] itens calculados: ${items.length}`);
 
     await prisma.$executeRaw`DELETE FROM "BybitTradfiAboveMa2004h"`;
+    console.log('[bybit-tradfi-ma200-4h][POST] tabela limpa');
     if (items.length > 0) {
       for (const item of items) {
         const id = randomUUID();
@@ -125,6 +128,7 @@ export async function POST() {
         `;
       }
     }
+    console.log(`[bybit-tradfi-ma200-4h][POST] itens inseridos: ${items.length}`);
 
     const saved = await prisma.$queryRaw<Array<{
       id: string;
