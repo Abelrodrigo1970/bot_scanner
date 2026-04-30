@@ -578,6 +578,126 @@ export async function fetchMa30Near6PriceBetween(limit: number = 300): Promise<M
   }
 }
 
+export interface BybitAboveMa200Mc20mItem {
+  symbol: string;
+  baseAsset: string;
+  marketCap: number;
+  lastPrice: number;
+  ma200: number;
+  distPriceMa200: number;
+  rank: number;
+}
+
+/**
+ * Scan Bybit (USDT Perpetual):
+ * - apenas símbolos listados/trading na Bybit
+ * - market cap >= minMarketCapUsd (CoinGecko)
+ * - preço (close 1h fechado) acima da MA200 (1h)
+ */
+export async function fetchBybitAboveMa200Mc20m(
+  limit: number = 300,
+  minMarketCapUsd: number = 20_000_000
+): Promise<BybitAboveMa200Mc20mItem[]> {
+  type BybitInstrument = {
+    symbol?: string;
+    status?: string;
+    quoteCoin?: string;
+  };
+
+  type CoingeckoCoin = {
+    symbol?: string;
+    market_cap?: number;
+  };
+
+  const bybitSymbolsRes = await fetch(
+    'https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000'
+  );
+  if (!bybitSymbolsRes.ok) {
+    throw new Error(`Erro ao buscar instrumentos Bybit: ${bybitSymbolsRes.statusText}`);
+  }
+
+  const bybitSymbolsJson = await bybitSymbolsRes.json();
+  const bybitList: BybitInstrument[] = bybitSymbolsJson?.result?.list ?? [];
+  const bybitUsdtSymbols = bybitList
+    .filter((item) => item.status === 'Trading' && item.quoteCoin === 'USDT' && item.symbol?.endsWith('USDT'))
+    .map((item) => String(item.symbol));
+
+  if (bybitUsdtSymbols.length === 0) return [];
+
+  const marketCapByBase = new Map<string, number>();
+  for (let page = 1; page <= 4; page++) {
+    const cgRes = await fetch(
+      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=${page}&sparkline=false`
+    );
+    if (!cgRes.ok) {
+      throw new Error(`Erro ao buscar market caps (CoinGecko): ${cgRes.statusText}`);
+    }
+    const cgData: CoingeckoCoin[] = await cgRes.json();
+    for (const coin of cgData) {
+      const sym = (coin.symbol || '').toUpperCase();
+      const cap = Number(coin.market_cap || 0);
+      if (!sym || !Number.isFinite(cap) || cap <= 0) continue;
+      const prev = marketCapByBase.get(sym) ?? 0;
+      if (cap > prev) marketCapByBase.set(sym, cap);
+    }
+    await delay(220);
+  }
+
+  const candidates = bybitUsdtSymbols
+    .map((symbol) => {
+      const baseAsset = symbol.replace(/USDT$/, '');
+      return { symbol, baseAsset, marketCap: marketCapByBase.get(baseAsset) ?? 0 };
+    })
+    .filter((x) => x.marketCap >= minMarketCapUsd)
+    .sort((a, b) => b.marketCap - a.marketCap);
+
+  const results: Omit<BybitAboveMa200Mc20mItem, 'rank'>[] = [];
+  for (let i = 0; i < candidates.length; i++) {
+    const c = candidates[i];
+    try {
+      const klineRes = await fetch(
+        `https://api.bybit.com/v5/market/kline?category=linear&symbol=${c.symbol}&interval=60&limit=210`
+      );
+      if (!klineRes.ok) continue;
+      const klineJson = await klineRes.json();
+      const rawList: string[][] = klineJson?.result?.list ?? [];
+      if (rawList.length < 202) continue;
+
+      // Bybit retorna mais recente -> mais antigo; inverter para ordem temporal.
+      const ascending = rawList.slice().reverse();
+      const closes = ascending.map((k) => parseFloat(k[4])).filter((n) => Number.isFinite(n) && n > 0);
+      if (closes.length < 202) continue;
+
+      // Excluir vela em formação
+      const closedCloses = closes.slice(0, -1);
+      const ma200Vals = closedCloses.slice(-200);
+      if (ma200Vals.length < 200) continue;
+
+      const ma200 = ma200Vals.reduce((sum, v) => sum + v, 0) / 200;
+      const lastPrice = closedCloses[closedCloses.length - 1];
+      if (!Number.isFinite(ma200) || ma200 <= 0 || !Number.isFinite(lastPrice) || lastPrice <= 0) continue;
+
+      if (lastPrice <= ma200) continue;
+
+      const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
+      results.push({
+        symbol: c.symbol,
+        baseAsset: c.baseAsset,
+        marketCap: c.marketCap,
+        lastPrice,
+        ma200,
+        distPriceMa200,
+      });
+    } catch {
+      // ignora falha pontual por símbolo
+    }
+    await delay(i % 5 === 4 ? 180 : 100);
+  }
+
+  results.sort((a, b) => b.marketCap - a.marketCap);
+  return results.slice(0, limit).map((item, idx) => ({ ...item, rank: idx + 1 }));
+}
+
 export async function fetchTopVolatile(limit: number = 25): Promise<TopVolatileItem[]> {
   try {
     const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');

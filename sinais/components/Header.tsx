@@ -19,6 +19,7 @@ const dataSourceItems = [
   { href: '/ma-cross-below', label: 'MA Cross Below' },
   { href: '/ma-30-above-6pct', label: 'MA30 > 9% MA200' },
   { href: '/ma-30-near-6-between', label: 'MA30 < −5% vs MA200 (1h)' },
+  { href: '/bybit-ma200-mc20m', label: 'Bybit MC >20M e MA200 1h' },
 ];
 
 export default function Header() {

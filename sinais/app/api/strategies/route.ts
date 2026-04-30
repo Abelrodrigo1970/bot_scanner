@@ -40,15 +40,9 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   ma30Period: 12,
   ma200Period: 30,
   exchange: 'binance' as const,
-  stopPercent: 4,
-  buyTp1Percent: 18,
-  buyTp1Position: 30,
-  buyTp2Percent: 40,
-  buyTp2Position: 30,
-  sellTp1Percent: 7,
-  sellTp1Position: 30,
-  sellTp2Percent: 15,
-  sellTp2Position: 30,
+  entryDiffPct: 0.9,
+  exitDiffPct: 0.7,
+  stopPercent: 5,
 };
 
 async function ensureMissingStrategies() {
@@ -122,7 +116,7 @@ async function ensureMissingStrategies() {
         name: 'MA_CROSS_5M',
         displayName: 'MA Cross 15m (MA12/MA30)',
         description:
-          'Cruzamento MA12/MA30 em 15m. Universo = scan MA30>9% MA200 (1h) no menu. Agendar cron 15m. SL 4%. BUY: TP1 +18% (30%) | TP2 +40% (30%). SELL: TP1 -7% (30%) | TP2 -15% (30%). Reversão: fecha posição oposta e abre nova no sinal contrário.',
+          'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit MC >20M e MA200 (1h).',
         isActive: true,
         params: JSON.stringify(MA_CROSS_5M_DEFAULT_PARAMS),
       },
@@ -141,21 +135,23 @@ async function ensureMissingStrategies() {
       if (p.ma30Period == null || p.ma30Period === 30) {
         next.ma30Period = 12;
       }
-      // Nova configuração MA_CROSS_5M solicitada: 15m, SL 4%, TPs distintos por direção.
-      next.stopPercent = 4;
-      next.buyTp1Percent = 18;
-      next.buyTp1Position = 30;
-      next.buyTp2Percent = 40;
-      next.buyTp2Position = 30;
-      next.sellTp1Percent = 7;
-      next.sellTp1Position = 30;
-      next.sellTp2Percent = 15;
-      next.sellTp2Position = 30;
+      // Nova configuração MA_CROSS_5M: gatilho por diferença MA12/MA30 + saída por compressão.
+      next.stopPercent = 5;
+      next.entryDiffPct = 0.9;
+      next.exitDiffPct = 0.7;
       // Limpar campos legados de TP único para evitar confusão na UI/params.
       delete next.tp1Percent;
       delete next.tp1Position;
       delete next.tp2Percent;
       delete next.tp2Position;
+      delete next.buyTp1Percent;
+      delete next.buyTp1Position;
+      delete next.buyTp2Percent;
+      delete next.buyTp2Position;
+      delete next.sellTp1Percent;
+      delete next.sellTp1Position;
+      delete next.sellTp2Percent;
+      delete next.sellTp2Position;
       if (
         p.ma200Period === 200 ||
         p.ma200Period == null ||
@@ -167,7 +163,7 @@ async function ensureMissingStrategies() {
         console.log('✅ MA_CROSS_5M: parâmetros migrados para MA12/MA30');
       }
       const newDesc =
-        'Cruzamento MA12/MA30 em 15m. Universo = scan MA30>9% MA200 (1h) no menu. Agendar cron 15m. SL 4%. BUY: TP1 +18% (30%) | TP2 +40% (30%). SELL: TP1 -7% (30%) | TP2 -15% (30%). Reversão: fecha posição oposta e abre nova no sinal contrário.';
+        'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit MC >20M e MA200 (1h).';
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
         existingMaCross5m.displayName !== 'MA Cross 15m (MA12/MA30)' || existingMaCross5m.description !== newDesc;

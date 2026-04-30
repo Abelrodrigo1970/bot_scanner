@@ -544,8 +544,11 @@ async function runMaCrossM30M200OnTimeframe(
   const maSlowPeriod = Number(
     params.ma200Period ?? (bar === '5m' ? 30 : 200)
   );
+  const isMa12x30Mode = bar === '5m';
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
+  const entryDiffPct = Number(params.entryDiffPct ?? 0.9);
+  const exitDiffPct = Number(params.exitDiffPct ?? 0.7);
   const stopPercent     = params.stopPercent     ?? 8;
   const buyTp1Percent   = params.buyTp1Percent   ?? params.tp1Percent ?? (bar === '5m' ? 18 : 85);
   const buyTp1Position  = params.buyTp1Position  ?? params.tp1Position ?? (bar === '5m' ? 30 : 60);
@@ -593,14 +596,28 @@ async function runMaCrossM30M200OnTimeframe(
     if (prevMa30 === null || prevMaSlow === null) return null;
 
     const currentPrice = candles[candles.length - 2].close;
+    const currentDiffPct = Math.abs((ma30 - maSlow) / maSlow) * 100;
+    const prevDiffPct = Math.abs((prevMa30 - prevMaSlow) / prevMaSlow) * 100;
+    const bullishNow = ma30 > maSlow;
+    const bearishNow = ma30 < maSlow;
+    const bullishPrev = prevMa30 > prevMaSlow;
+    const bearishPrev = prevMa30 < prevMaSlow;
 
     const confirmUp   = maSlow * (1 + confirmationPct / 100);
     const confirmDown = maSlow * (1 - confirmationPct / 100);
 
-    if (prevMa30 <= prevMaSlow && ma30 > confirmUp) {
+    if (
+      isMa12x30Mode
+        ? (
+          bullishNow &&
+          currentDiffPct > entryDiffPct &&
+          (!bullishPrev || prevDiffPct <= entryDiffPct)
+        )
+        : (prevMa30 <= prevMaSlow && ma30 > confirmUp)
+    ) {
       const stopLoss = currentPrice * (1 - stopPercent / 100);
-      const target1  = currentPrice * (1 + buyTp1Percent  / 100);
-      const target2  = buyTp2Percent > 0 ? currentPrice * (1 + buyTp2Percent  / 100) : undefined;
+      const target1  = isMa12x30Mode ? undefined : currentPrice * (1 + buyTp1Percent  / 100);
+      const target2  = isMa12x30Mode ? undefined : (buyTp2Percent > 0 ? currentPrice * (1 + buyTp2Percent  / 100) : undefined);
 
       return {
         direction: 'BUY',
@@ -617,8 +634,13 @@ async function runMaCrossM30M200OnTimeframe(
           maSlow: maSlow.toFixed(4),
           maSlowPeriod,
           ma200: maSlow.toFixed(4),
+          diffPct: currentDiffPct.toFixed(3),
+          entryDiffPct,
+          exitDiffPct,
           confirmationPct,
-          crossover: `MA30 crosses +${confirmationPct}% above ${slowLabel} (BUY)`,
+          crossover: isMa12x30Mode
+            ? `MA12/MA30 bullish spread > ${entryDiffPct}% (BUY)`
+            : `MA30 crosses +${confirmationPct}% above ${slowLabel} (BUY)`,
           stopPercent,
           tp1Percent: buyTp1Percent,
           tp1Position: `${buyTp1Position}%`,
@@ -629,7 +651,15 @@ async function runMaCrossM30M200OnTimeframe(
       };
     }
 
-    if (prevMa30 >= prevMaSlow && ma30 < confirmDown) {
+    if (
+      isMa12x30Mode
+        ? (
+          bearishNow &&
+          currentDiffPct > entryDiffPct &&
+          (!bearishPrev || prevDiffPct <= entryDiffPct)
+        )
+        : (prevMa30 >= prevMaSlow && ma30 < confirmDown)
+    ) {
       if (sellBlockAbsCloseDistanceFromMa200Pct > 0) {
         const distCloseSlowAbsPct =
           Math.abs((currentPrice - maSlow) / maSlow) * 100;
@@ -639,8 +669,8 @@ async function runMaCrossM30M200OnTimeframe(
       }
 
       const stopLoss = currentPrice * (1 + stopPercent / 100);
-      const target1  = currentPrice * (1 - sellTp1Percent  / 100);
-      const target2  = sellTp2Percent > 0 ? currentPrice * (1 - sellTp2Percent  / 100) : undefined;
+      const target1  = isMa12x30Mode ? undefined : currentPrice * (1 - sellTp1Percent  / 100);
+      const target2  = isMa12x30Mode ? undefined : (sellTp2Percent > 0 ? currentPrice * (1 - sellTp2Percent  / 100) : undefined);
 
       return {
         direction: 'SELL',
@@ -657,13 +687,18 @@ async function runMaCrossM30M200OnTimeframe(
           maSlow: maSlow.toFixed(4),
           maSlowPeriod,
           ma200: maSlow.toFixed(4),
+          diffPct: currentDiffPct.toFixed(3),
+          entryDiffPct,
+          exitDiffPct,
           distCloseMa200AbsPct: (
             Math.abs((currentPrice - maSlow) / maSlow) * 100
           ).toFixed(2),
           sellBlockAbsCloseDistanceFromMa200Pct:
             sellBlockAbsCloseDistanceFromMa200Pct || 'off',
           confirmationPct,
-          crossover: `MA30 crosses -${confirmationPct}% below ${slowLabel} (SELL)`,
+          crossover: isMa12x30Mode
+            ? `MA12/MA30 bearish spread > ${entryDiffPct}% (SELL)`
+            : `MA30 crosses -${confirmationPct}% below ${slowLabel} (SELL)`,
           stopPercent,
           tp1Percent: sellTp1Percent,
           tp1Position: `${sellTp1Position}%`,
@@ -696,6 +731,47 @@ export async function runMaCross5mStrategy(
   params: StrategyParams
 ): Promise<SignalResult | null> {
   return runMaCrossM30M200OnTimeframe(symbol, timeframe, params, '5m');
+}
+
+/**
+ * Condição de saída (TP dinâmico) para MA12xMA30:
+ * fechar posição quando |MA12 - MA30| / MA30 * 100 < exitDiffPct.
+ */
+export async function shouldCloseMaCross5mByDiff(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<{ shouldClose: boolean; currentDiffPct?: number }> {
+  if (timeframe !== '15m') return { shouldClose: false };
+
+  const maFastPeriod = Number(params.ma30Period ?? 12);
+  const maSlowPeriod = Number(params.ma200Period ?? 30);
+  const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
+  const exitDiffPct = Number(params.exitDiffPct ?? 0.7);
+  const ma = (arr: number[], p: number) =>
+    maType === 'SMA' ? calculateSMA(arr, p) : calculateLastEMA(arr, p);
+
+  try {
+    const emaCandles = Math.min(1000, Math.max(600, maSlowPeriod * 3));
+    const requested =
+      params.emaCandleLookback != null && Number.isFinite(Number(params.emaCandleLookback))
+        ? Math.min(1500, Math.max(200, Math.floor(Number(params.emaCandleLookback))))
+        : null;
+    const candlesNeeded = maType === 'SMA' ? maSlowPeriod + 5 : (requested ?? emaCandles);
+    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    if (candles.length < maSlowPeriod + 3) return { shouldClose: false };
+
+    const closes = getCloses(candles);
+    const closedCloses = closes.slice(0, -1);
+    const maFast = ma(closedCloses, maFastPeriod);
+    const maSlow = ma(closedCloses, maSlowPeriod);
+    if (maFast === null || maSlow === null || maSlow === 0) return { shouldClose: false };
+
+    const currentDiffPct = Math.abs((maFast - maSlow) / maSlow) * 100;
+    return { shouldClose: currentDiffPct < exitDiffPct, currentDiffPct };
+  } catch {
+    return { shouldClose: false };
+  }
 }
 
 export interface RunAllStrategiesOptions {
@@ -794,14 +870,18 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'MA_CROSS_5M') {
-        console.log(`🔍 Buscando MA30 > 9% MA200 (1h) na BD para ${strategy.name}...`);
-        const maAbove6 = await prisma.ma30Above6Pct.findMany({ orderBy: { rank: 'asc' } });
-        if (maAbove6.length > 0) {
-          symbolsToAnalyze = maAbove6.map((t: { symbol: string }) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 > 9% MA200)`);
+        console.log(`🔍 Buscando scan Bybit MC>20M e MA200 1h na BD para ${strategy.name}...`);
+        const bybitScan = await prisma.$queryRaw<Array<{ symbol: string }>>`
+          SELECT symbol
+          FROM "BybitAboveMa200Mc20m"
+          ORDER BY rank ASC
+        `;
+        if (bybitScan.length > 0) {
+          symbolsToAnalyze = bybitScan.map((t: { symbol: string }) => t.symbol);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (Bybit MC > 20M & MA200 1h)`);
         } else {
           console.warn(
-            `⚠️ Nenhum símbolo em Ma30Above6Pct. Atualize o menu "MA30 > 9% MA200" antes. Ignorando ${strategy.name}.`
+            `⚠️ Nenhum símbolo em BybitAboveMa200Mc20m. Atualize o menu "Bybit MC >20M e MA200 1h" antes. Ignorando ${strategy.name}.`
           );
           continue;
         }

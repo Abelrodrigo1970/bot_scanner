@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { runMaCross15mStrategy, type StrategyParams } from '@/lib/signalEngine';
+import {
+  runMaCross15mStrategy,
+  shouldCloseMaCross5mByDiff,
+  type StrategyParams,
+} from '@/lib/signalEngine';
 import { update24hResults } from '@/lib/update24hResults';
 import { closeActivePositionForSymbol, executeSignalReal, inspectActivePositionForSymbol } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
@@ -16,7 +20,7 @@ const MA_CROSS_5M_MIN_STRENGTH = 70;
 /**
  * MA Cross 15m (MA12/MA30) em background.
  * Cálculo em velas 15m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
- * Universo: tabela `Ma30Above6Pct` (menu MA30 > 9% MA200, velas 1h no scan).
+ * Universo: tabela `BybitAboveMa200Mc20m` (menu Bybit MC >20M e MA200 1h).
  */
 async function runMaCross5mInBackground(
   strategy: StrategyData,
@@ -25,10 +29,14 @@ async function runMaCross5mInBackground(
   const DELAY_MS = 200;
 
   try {
-    const maRows = await prisma.ma30Above6Pct.findMany({ orderBy: { rank: 'asc' } });
+    const maRows = await prisma.$queryRaw<Array<{ symbol: string }>>`
+      SELECT symbol
+      FROM "BybitAboveMa200Mc20m"
+      ORDER BY rank ASC
+    `;
     if (maRows.length === 0) {
       console.warn(
-        '[MA Cross 15m BG] Nenhum símbolo no scan MA30>9% MA200. Atualize a página "MA30 > 9% MA200".'
+        '[MA Cross 15m BG] Nenhum símbolo no scan Bybit MC >20M e MA200 1h. Atualize essa página antes.'
       );
     }
 
@@ -38,6 +46,27 @@ async function runMaCross5mInBackground(
 
     for (const symbol of symbols) {
       try {
+        const closeCheck = await shouldCloseMaCross5mByDiff(symbol, TIMEFRAME_15M, params);
+        if (closeCheck.shouldClose) {
+          const ex = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+          const positionState = await inspectActivePositionForSymbol(symbol, ex);
+          if (positionState.inspectable && positionState.hasPosition) {
+            const closeResult = await closeActivePositionForSymbol(symbol, ex);
+            if (closeResult.closed) {
+              await prisma.$executeRaw`
+                UPDATE "Signal"
+                SET status = 'EXPIRED'
+                WHERE symbol = ${symbol}
+                  AND "strategyId" = ${strategy.id}
+                  AND status = 'IN_PROGRESS'
+              `;
+              console.log(
+                `[MA Cross 15m BG] 🟨 Fecho por compressão MA12/MA30 (${(closeCheck.currentDiffPct ?? 0).toFixed(3)}%): ${symbol}`
+              );
+            }
+          }
+        }
+
         const signalResult = await runMaCross15mStrategy(symbol, TIMEFRAME_15M, params);
 
         if (signalResult && signalResult.strength >= MA_CROSS_5M_MIN_STRENGTH) {
@@ -190,7 +219,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'MA Cross 15m iniciado em background (universo: scan MA30>9% MA200)',
+      message: 'MA Cross 15m iniciado em background (universo: scan Bybit MC >20M e MA200 1h)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

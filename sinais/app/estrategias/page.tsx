@@ -264,8 +264,9 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Velas <strong>15m</strong> — <strong>MA12 / MA30</strong> (cruzamento). O cron a cada 15 min. Símbolos = resultados do scan{' '}
-              <strong>MA30 &gt; 9% MA200</strong> (menu) em 1h; actualiza esse scan com &quot;Atualizar Scan&quot; antes.
+              Velas <strong>15m</strong> — <strong>MA12 / MA30</strong>. Entrada quando a diferença entre médias supera o limiar de entrada e saída (TP) quando comprime abaixo do limiar de saída.
+              O cron corre a cada 15 min. Símbolos = resultados do scan{' '}
+              <strong>Bybit MC &gt;20M e MA200 1h</strong> (menu); actualiza esse scan com &quot;Atualizar Scan&quot; antes.
             </p>
             <div className="max-w-md">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média (MA30 e MA lenta)</label>
@@ -281,8 +282,9 @@ export default function EstrategiasPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período MA rápida (ex. 12)', p.ma30Period ?? 12, (v) => upd({ ma30Period: v }))}
               {numField('Período MA lenta (ex. 30)', p.ma200Period ?? 30, (v) => upd({ ma200Period: v }))}
-              {numField('Folga (%)', p.confirmationPct ?? 0, (v) => upd({ confirmationPct: v }), 0.5)}
-              {numField('SL (%)', p.stopPercent ?? 4, (v) => upd({ stopPercent: v }), 0.5)}
+              {numField('Entrada: dif. MA12/MA30 (%)', p.entryDiffPct ?? 0.9, (v) => upd({ entryDiffPct: v }), 0.1)}
+              {numField('Saída/TP: dif. MA12/MA30 (%)', p.exitDiffPct ?? 0.7, (v) => upd({ exitDiffPct: v }), 0.1)}
+              {numField('SL (%)', p.stopPercent ?? 5, (v) => upd({ stopPercent: v }), 0.5)}
             </div>
             <div className="max-w-md">
               {numField(
@@ -293,23 +295,12 @@ export default function EstrategiasPage() {
               )}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-500">
-              Só VENDA: se a distância do fecho à média lenta (ex. MA30) em valor absoluto (%) for maior que este limite, não
-              gera sinal. 0 desactiva o filtro.
+              Só VENDA: se a distância do fecho à média lenta (MA30) em valor absoluto (%) for maior que este limite, não gera sinal.
+              0 desactiva o filtro.
             </p>
-            <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">BUY</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('TP1 BUY (%)', p.buyTp1Percent ?? 18, (v) => upd({ buyTp1Percent: v }), 0.5)}
-              {numField('TP1 BUY Posição (%)', p.buyTp1Position ?? 30, (v) => upd({ buyTp1Position: v }))}
-              {numField('TP2 BUY (%)', p.buyTp2Percent ?? 40, (v) => upd({ buyTp2Percent: v }), 0.5)}
-              {numField('TP2 BUY Posição (%)', p.buyTp2Position ?? 30, (v) => upd({ buyTp2Position: v }))}
-            </div>
-            <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">SELL</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('TP1 SELL (%)', p.sellTp1Percent ?? 7, (v) => upd({ sellTp1Percent: v }), 0.5)}
-              {numField('TP1 SELL Posição (%)', p.sellTp1Position ?? 30, (v) => upd({ sellTp1Position: v }))}
-              {numField('TP2 SELL (%)', p.sellTp2Percent ?? 15, (v) => upd({ sellTp2Percent: v }), 0.5)}
-              {numField('TP2 SELL Posição (%)', p.sellTp2Position ?? 30, (v) => upd({ sellTp2Position: v }))}
-            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-500">
+              Nesta configuração o take profit é dinâmico pela compressão MA12/MA30 (não usa TP1/TP2 fixos).
+            </p>
           </div>
         );
 

@@ -119,3 +119,19 @@ model Ma30Near6PriceBetween {
   @@index([rank])
 }
 
+// Scan Bybit: símbolos listados na Bybit com market cap >= 20M e preço acima da MA200 (1h)
+model BybitAboveMa200Mc20m {
+  id             String   @id @default(cuid())
+  symbol         String
+  baseAsset      String
+  marketCap      Float
+  lastPrice      Float
+  ma200          Float
+  distPriceMa200 Float
+  rank           Int
+  updatedAt      DateTime @default(now())
+
+  @@index([rank])
+  @@index([marketCap])
+}
+

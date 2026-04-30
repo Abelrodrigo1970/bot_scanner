@@ -4,17 +4,10 @@ export const MA_CROSS_5M_PARAMS = {
   ma30Period: 12,
   ma200Period: 30,
   maType: 'EMA' as const,
-  confirmationPct: 0,
-  stopPercent: 4,
+  entryDiffPct: 0.9,
+  exitDiffPct: 0.7,
+  stopPercent: 5,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
-  buyTp1Percent: 18,
-  buyTp1Position: 30,
-  buyTp2Percent: 40,
-  buyTp2Position: 30,
-  sellTp1Percent: 7,
-  sellTp1Position: 30,
-  sellTp2Percent: 15,
-  sellTp2Position: 30,
   allowBuy: true,
   allowSell: true,
   exchange: 'binance',
@@ -22,7 +15,7 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'Golden / Death Cross em 15m: MA12 cruza MA30. Universo = scan MA30>9% MA200 (1h) no menu. SL 4%. BUY: TP1 +18% (30%) | TP2 +40% (30%). SELL: TP1 -7% (30%) | TP2 -15% (30%). Reversão: fecha posição oposta e abre nova no sinal contrário. Atualizar scan; cron 15m.';
+  'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit MC >20M e MA200 (1h).';
 
 /** Texto canónico da descrição (universo = tabela Ma30Near6PriceBetween / scan MA30 < -5%). */
 export const RSI_MA30_SCAN_UNIVERSE_DESCRIPTION =
