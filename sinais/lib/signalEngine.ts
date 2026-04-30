@@ -544,7 +544,9 @@ async function runMaCrossM30M200OnTimeframe(
   const maSlowPeriod = Number(
     params.ma200Period ?? (bar === '5m' ? 30 : 200)
   );
-  const isMa12x30Mode = bar === '5m';
+  // Modo MA12xMA30: no projeto corre em velas 15m (estratégia MA_CROSS_5M legada),
+  // identificado pelos períodos 12/30 em vez do "bar" histórico.
+  const isMa12x30Mode = timeframe === '15m' && ma30Period === 12 && maSlowPeriod === 30;
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
   const entryDiffPct = Number(params.entryDiffPct ?? 0.9);
