@@ -21,6 +21,7 @@ const dataSourceItems = [
   { href: '/ma-30-near-6-between', label: 'MA30 < −5% vs MA200 (1h)' },
   { href: '/bybit-ma200-mc20m', label: 'Bybit Volume 1h >500k e MA200 1h' },
   { href: '/bybit-ma200-4h-volume', label: 'Bybit Volume 4h >2M e MA200 4h' },
+  { href: '/bybit-tradfi-ma200-4h', label: 'Bybit TradFi + MA200 4h (sem volume)' },
 ];
 
 export default function Header() {

@@ -151,3 +151,17 @@ model BybitAboveMa2004hVol {
   @@index([turnover4h])
 }
 
+// Scan Bybit TradFi (stocks): preço acima da MA200 (4h), sem filtro de volume
+model BybitTradfiAboveMa2004h {
+  id             String   @id @default(cuid())
+  symbol         String
+  baseAsset      String
+  lastPrice      Float
+  ma200          Float
+  distPriceMa200 Float
+  rank           Int
+  updatedAt      DateTime @default(now())
+
+  @@index([rank])
+}
+

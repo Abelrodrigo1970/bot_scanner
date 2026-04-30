@@ -682,6 +682,15 @@ export interface BybitAboveMa2004hVolItem {
   rank: number;
 }
 
+export interface BybitTradfiAboveMa2004hItem {
+  symbol: string;
+  baseAsset: string;
+  lastPrice: number;
+  ma200: number;
+  distPriceMa200: number;
+  rank: number;
+}
+
 /**
  * Scan Bybit 4h (USDT Perpetual):
  * - símbolos listados/trading na Bybit
@@ -760,6 +769,90 @@ export async function fetchBybitAboveMa2004hVol(
   }
 
   results.sort((a, b) => b.turnover4h - a.turnover4h);
+  return results.slice(0, limit).map((item, idx) => ({ ...item, rank: idx + 1 }));
+}
+
+/**
+ * Scan Bybit TradFi Stocks 4h (via category=linear + symbolType=stock):
+ * - símbolos stock em estado Trading
+ * - preço (close 4h fechado) acima da MA200 (4h)
+ * - sem filtro de volume/turnover
+ */
+export async function fetchBybitTradfiAboveMa2004h(
+  limit: number = 300
+): Promise<BybitTradfiAboveMa2004hItem[]> {
+  type BybitInstrument = {
+    symbol?: string;
+    status?: string;
+    quoteCoin?: string;
+    symbolType?: string;
+    baseCoin?: string;
+  };
+
+  const bybitSymbolsRes = await fetch(
+    'https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000'
+  );
+  if (!bybitSymbolsRes.ok) {
+    throw new Error(`Erro ao buscar instrumentos Bybit TradFi (4h): ${bybitSymbolsRes.statusText}`);
+  }
+
+  const bybitSymbolsJson = await bybitSymbolsRes.json();
+  const bybitList: BybitInstrument[] = bybitSymbolsJson?.result?.list ?? [];
+  const bybitTradfiSymbols = bybitList
+    .filter(
+      (item) =>
+        item.status === 'Trading' &&
+        item.quoteCoin === 'USDT' &&
+        item.symbolType === 'stock' &&
+        item.symbol?.endsWith('USDT')
+    )
+    .map((item) => ({
+      symbol: String(item.symbol),
+      baseAsset: String(item.baseCoin ?? item.symbol?.replace(/USDT$/, '') ?? ''),
+    }));
+
+  if (bybitTradfiSymbols.length === 0) return [];
+
+  const results: Omit<BybitTradfiAboveMa2004hItem, 'rank'>[] = [];
+  for (let i = 0; i < bybitTradfiSymbols.length; i++) {
+    const { symbol, baseAsset } = bybitTradfiSymbols[i];
+    try {
+      const klineRes = await fetch(
+        `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=240&limit=210`
+      );
+      if (!klineRes.ok) continue;
+      const klineJson = await klineRes.json();
+      const rawList: string[][] = klineJson?.result?.list ?? [];
+      if (rawList.length < 202) continue;
+
+      const ascending = rawList.slice().reverse();
+      const closes = ascending.map((k) => parseFloat(k[4])).filter((n) => Number.isFinite(n) && n > 0);
+      if (closes.length < 202) continue;
+
+      const closedCloses = closes.slice(0, -1);
+      const ma200Vals = closedCloses.slice(-200);
+      if (ma200Vals.length < 200) continue;
+
+      const ma200 = ma200Vals.reduce((sum, v) => sum + v, 0) / 200;
+      const lastPrice = closedCloses[closedCloses.length - 1];
+      if (!Number.isFinite(ma200) || ma200 <= 0 || !Number.isFinite(lastPrice) || lastPrice <= 0) continue;
+      if (lastPrice <= ma200) continue;
+
+      const distPriceMa200 = ((lastPrice - ma200) / ma200) * 100;
+      results.push({
+        symbol,
+        baseAsset,
+        lastPrice,
+        ma200,
+        distPriceMa200,
+      });
+    } catch {
+      // ignora falha pontual por símbolo
+    }
+    await delay(i % 5 === 4 ? 180 : 100);
+  }
+
+  results.sort((a, b) => b.distPriceMa200 - a.distPriceMa200);
   return results.slice(0, limit).map((item, idx) => ({ ...item, rank: idx + 1 }));
 }
 
