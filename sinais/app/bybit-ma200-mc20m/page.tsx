@@ -81,10 +81,10 @@ export default function BybitMa200Mc20mPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Bybit Volume 1h (1M) + MA200 (1h)
+              Bybit Volume 1h (500k) + MA200 (1h)
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Criptos listadas na Bybit com turnover da última 1h acima de 1M USDT e preço acima da MA200 (1h)
+              Criptos listadas na Bybit com turnover da última 1h acima de 500k USDT e preço acima da MA200 (1h)
             </p>
           </div>
           <button
@@ -100,7 +100,7 @@ export default function BybitMa200Mc20mPage() {
           <h2 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Como funciona o scan</h2>
           <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1 list-disc list-inside">
             <li>Universo: símbolos USDT Perpetual em estado Trading na Bybit</li>
-            <li>Liquidez: turnover da última vela 1h da Bybit, apenas ativos com turnover maior ou igual a 1 milhão USDT</li>
+            <li>Liquidez: turnover da última vela 1h da Bybit, apenas ativos com turnover maior ou igual a 500 mil USDT</li>
             <li>Técnico: timeframe 1h na Bybit, preço de fecho acima da MA200 (vela fechada)</li>
             <li>Ordenação: turnover 1h descendente</li>
           </ul>

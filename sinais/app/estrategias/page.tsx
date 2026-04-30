@@ -266,7 +266,7 @@ export default function EstrategiasPage() {
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Velas <strong>15m</strong> — <strong>MA12 / MA30</strong>. Entrada quando a diferença entre médias supera o limiar de entrada e saída (TP) quando comprime abaixo do limiar de saída.
               O cron corre a cada 15 min. Símbolos = resultados do scan{' '}
-              <strong>Bybit Volume 1h &gt;1M e MA200 1h</strong> (menu); actualiza esse scan com &quot;Atualizar Scan&quot; antes.
+              <strong>Bybit Volume 1h &gt;500k e MA200 1h</strong> (menu); actualiza esse scan com &quot;Atualizar Scan&quot; antes.
             </p>
             <div className="max-w-md">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média (MA30 e MA lenta)</label>

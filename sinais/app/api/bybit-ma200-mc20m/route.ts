@@ -116,7 +116,7 @@ export async function POST() {
       );
     }
 
-    const items = await fetchBybitAboveMa200Mc20m(300, 1_000_000);
+    const items = await fetchBybitAboveMa200Mc20m(300, 500_000);
 
     await prisma.$executeRaw`DELETE FROM "BybitAboveMa200Mc20m"`;
     if (items.length > 0) {
@@ -151,10 +151,10 @@ export async function POST() {
       success: true,
       items: saved,
       count: saved.length,
-      message: 'Scan Bybit MA200 + Volume1h(1M) atualizado com sucesso',
+      message: 'Scan Bybit MA200 + Volume1h(500k) atualizado com sucesso',
     });
   } catch (error: unknown) {
-    console.error('Erro ao atualizar scan Bybit MA200 + Volume1h(1M):', error);
+    console.error('Erro ao atualizar scan Bybit MA200 + Volume1h(500k):', error);
     return NextResponse.json(
       {
         success: false,
