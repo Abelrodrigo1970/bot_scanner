@@ -4,11 +4,37 @@ import { prisma } from '@/lib/db';
 import { fetchBybitAboveMa200Mc20m } from '@/lib/marketData';
 import { randomUUID } from 'crypto';
 
+async function ensureBybitScanTable(): Promise<void> {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS public."BybitAboveMa200Mc20m" (
+      "id" TEXT NOT NULL,
+      "symbol" TEXT NOT NULL,
+      "baseAsset" TEXT NOT NULL,
+      "marketCap" DOUBLE PRECISION NOT NULL,
+      "lastPrice" DOUBLE PRECISION NOT NULL,
+      "ma200" DOUBLE PRECISION NOT NULL,
+      "distPriceMa200" DOUBLE PRECISION NOT NULL,
+      "rank" INTEGER NOT NULL,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "BybitAboveMa200Mc20m_pkey" PRIMARY KEY ("id")
+    );
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "BybitAboveMa200Mc20m_rank_idx"
+    ON public."BybitAboveMa200Mc20m"("rank");
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "BybitAboveMa200Mc20m_marketCap_idx"
+    ON public."BybitAboveMa200Mc20m"("marketCap");
+  `);
+}
+
 export async function GET() {
   try {
     if (!(await isAuthenticated())) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
+    await ensureBybitScanTable();
 
     const items = await prisma.$queryRaw<Array<{
       id: string;
@@ -50,6 +76,7 @@ export async function POST() {
     if (!(await isAuthenticated())) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
+    await ensureBybitScanTable();
 
     const items = await fetchBybitAboveMa200Mc20m(300, 20_000_000);
 
