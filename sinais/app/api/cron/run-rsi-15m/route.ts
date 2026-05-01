@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runAllStrategies } from '@/lib/signalEngine';
 import { prisma } from '@/lib/db';
 import {
+  cleanupBybitOrphanOpenOrders,
   executeSignalReal,
   closeActivePositionForSymbol,
   inspectActivePositionForSymbol,
@@ -204,6 +205,14 @@ async function runRsi15mInBackground(): Promise<void> {
           console.error(`[Run-RSI-15m BG] ❌ MA_CROSS: erro auto-exec ${sig.symbol}:`, err);
         }
       }
+    }
+
+    const orphanCleanup = await cleanupBybitOrphanOpenOrders();
+    if (orphanCleanup.cancelledSymbols.length > 0 || orphanCleanup.errors.length > 0) {
+      console.log(
+        `[Run-RSI-15m BG] Bybit órfãs: cancelados ${orphanCleanup.cancelledSymbols.length} símbolo(s)` +
+          (orphanCleanup.errors.length ? `; erros: ${orphanCleanup.errors.join('; ')}` : '')
+      );
     }
 
     console.log(`[Run-RSI-15m BG] Concluído: ${signalsCreated} sinais criados`);

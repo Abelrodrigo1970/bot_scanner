@@ -6,7 +6,12 @@ import {
   type StrategyParams,
 } from '@/lib/signalEngine';
 import { update24hResults } from '@/lib/update24hResults';
-import { closeActivePositionForSymbol, executeSignalReal, inspectActivePositionForSymbol } from '@/lib/tradingExecutor';
+import {
+  cleanupBybitOrphanOpenOrders,
+  closeActivePositionForSymbol,
+  executeSignalReal,
+  inspectActivePositionForSymbol,
+} from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 
 interface StrategyData {
@@ -169,6 +174,13 @@ async function runMaCross5mInBackground(
     }
 
     const update24h = await update24hResults();
+    const orphanCleanup = await cleanupBybitOrphanOpenOrders();
+    if (orphanCleanup.cancelledSymbols.length > 0 || orphanCleanup.errors.length > 0) {
+      console.log(
+        `[MA Cross 15m BG] Bybit órfãs: cancelados ${orphanCleanup.cancelledSymbols.length} símbolo(s)` +
+          (orphanCleanup.errors.length ? `; erros: ${orphanCleanup.errors.join('; ')}` : '')
+      );
+    }
     console.log(
       `[MA Cross 15m BG] Concluído: ${signalsCreated} sinais, 24h atualizados: ${update24h.updated}`
     );

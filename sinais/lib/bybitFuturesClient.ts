@@ -141,6 +141,44 @@ export async function createBybitOrder(params: {
   return signedPost<{ orderId: string; symbol: string; orderStatus: string }>('/v5/order/create', body);
 }
 
+/** Cancela todas as ordens abertas / condicionais do par linear (inclui TP órfãs). */
+export async function cancelAllBybitLinearOrders(symbol: string): Promise<void> {
+  await signedPost('/v5/order/cancel-all', {
+    category: 'linear',
+    symbol,
+  });
+}
+
+type OpenOrdersRealtimePage = {
+  list?: Array<{ symbol?: string }>;
+  nextPageCursor?: string;
+};
+
+/**
+ * Símbolos linear USDT com pelo menos uma ordem aberta (paginação até esgotar cursor).
+ */
+export async function listOpenLinearOrderSymbols(): Promise<string[]> {
+  const symbols = new Set<string>();
+  let cursor: string | undefined;
+  for (;;) {
+    const params: Record<string, string> = {
+      category:   'linear',
+      settleCoin: 'USDT',
+      openOnly:   '0',
+      limit:      '50',
+    };
+    if (cursor) params.cursor = cursor;
+    const result = await signedGet<OpenOrdersRealtimePage>('/v5/order/realtime', params);
+    for (const o of result?.list ?? []) {
+      if (o.symbol) symbols.add(o.symbol);
+    }
+    const next = result?.nextPageCursor;
+    if (next == null || String(next).trim() === '') break;
+    cursor = String(next);
+  }
+  return [...symbols];
+}
+
 // ---------------------------------------------------------------------------
 // Informação do símbolo — step size e tick size
 // ---------------------------------------------------------------------------

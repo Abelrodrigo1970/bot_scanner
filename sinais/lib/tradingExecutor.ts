@@ -32,10 +32,12 @@ import {
   getTickSize,
 } from './binanceFuturesClient';
 import {
+  cancelAllBybitLinearOrders,
   createBybitOrder,
   getBybitPositionRisk,
   getBybitLotSizeStep,
   getBybitTickSize,
+  listOpenLinearOrderSymbols,
 } from './bybitFuturesClient';
 
 export interface ExecuteResult {
@@ -587,6 +589,11 @@ export async function closeActivePositionForSymbol(
 
       const bybitSide: 'Buy' | 'Sell' = closeSide === 'BUY' ? 'Buy' : 'Sell';
       const closeOrder = await createBybitOrder({ symbol, side: bybitSide, qty, reduceOnly: true });
+      try {
+        await cancelAllBybitLinearOrders(symbol);
+      } catch (cancelErr) {
+        console.warn(`[Bybit] cancel-all após fecho falhou ${symbol}:`, cancelErr);
+      }
       return {
         closed: true,
         message: `Posição fechada em ${symbol} (Bybit)`,
@@ -627,6 +634,51 @@ export async function closeActivePositionForSymbol(
     const msg = error instanceof Error ? error.message : String(error);
     return { closed: false, message: `Erro Binance ao fechar ${symbol}: ${msg}` };
   }
+}
+
+/**
+ * Remove ordens Bybit linear em pares onde já não há posição (ex.: SL disparou na bolsa e TP ficou pendente).
+ * cancel-all por símbolo apaga todas as ordens desse par — evita TP reduce-only órfãs.
+ */
+export async function cleanupBybitOrphanOpenOrders(): Promise<{
+  cancelledSymbols: string[];
+  errors: string[];
+}> {
+  const cancelledSymbols: string[] = [];
+  const errors: string[] = [];
+
+  const tradingEnabled = await getTradingEnabled();
+  if (!tradingEnabled || !hasBybitCredentials() || !canExecuteOnBybit()) {
+    return { cancelledSymbols, errors };
+  }
+
+  try {
+    const orderSymbols = await listOpenLinearOrderSymbols();
+    if (orderSymbols.length === 0) return { cancelledSymbols, errors };
+
+    const positions = await getBybitPositionRisk();
+    const hasOpenPosition = new Set<string>();
+    for (const p of positions) {
+      const sz = parseFloat(p.size);
+      if (!Number.isFinite(sz) || sz <= 0 || p.side === 'None') continue;
+      hasOpenPosition.add(p.symbol);
+    }
+
+    for (const sym of orderSymbols) {
+      if (hasOpenPosition.has(sym)) continue;
+      try {
+        await cancelAllBybitLinearOrders(sym);
+        cancelledSymbols.push(sym);
+        console.log(`[Bybit cleanup] cancel-all ordens sem posição: ${sym}`);
+      } catch (e) {
+        errors.push(`${sym}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : String(e));
+  }
+
+  return { cancelledSymbols, errors };
 }
 
 /**

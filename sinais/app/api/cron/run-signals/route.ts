@@ -3,6 +3,7 @@ import { runAllStrategies } from '@/lib/signalEngine';
 import { update24hResults, updateMissingHighLow24h } from '@/lib/update24hResults';
 import { prisma } from '@/lib/db';
 import {
+  cleanupBybitOrphanOpenOrders,
   executeSignalReal,
   closeActivePositionForSymbol,
   inspectActivePositionForSymbol,
@@ -254,6 +255,14 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
     let updateHighLow = { updated: 0, errors: 0 };
     if (hour === 8 && minute < 10) {
       updateHighLow = await updateMissingHighLow24h();
+    }
+
+    const orphanCleanup = await cleanupBybitOrphanOpenOrders();
+    if (orphanCleanup.cancelledSymbols.length > 0 || orphanCleanup.errors.length > 0) {
+      console.log(
+        `[Run-Signals BG] Bybit órfãs: cancelados ${orphanCleanup.cancelledSymbols.length} símbolo(s)` +
+          (orphanCleanup.errors.length ? `; erros: ${orphanCleanup.errors.join('; ')}` : '')
+      );
     }
 
     console.log(
