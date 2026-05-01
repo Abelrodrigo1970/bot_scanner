@@ -572,6 +572,9 @@ async function runMaCrossM30M200OnTimeframe(
     params.sellBlockAbsCloseDistanceFromMa200Pct ?? 6
   );
 
+  /** MA12×MA30: sem exigir que na vela anterior o spread ainda fosse pequeno ou o alinhamento diferente. */
+  const repeatSpreadWhileTrend = params.ma12x30RepeatWhileTrend === true;
+
   const ma = (arr: number[], p: number) =>
     maType === 'SMA' ? calculateSMA(arr, p) : calculateLastEMA(arr, p);
 
@@ -611,13 +614,14 @@ async function runMaCrossM30M200OnTimeframe(
     const confirmUp   = maSlow * (1 + confirmationPct / 100);
     const confirmDown = maSlow * (1 - confirmationPct / 100);
 
+    const ma12x30BuyOk =
+      bullishNow &&
+      currentDiffPct > entryDiffPct &&
+      (repeatSpreadWhileTrend || !bullishPrev || prevDiffPct <= entryDiffPct);
+
     if (
       isMa12x30Mode
-        ? (
-          bullishNow &&
-          currentDiffPct > entryDiffPct &&
-          (!bullishPrev || prevDiffPct <= entryDiffPct)
-        )
+        ? ma12x30BuyOk
         : (prevMa30 <= prevMaSlow && ma30 > confirmUp)
     ) {
       const stopLoss = currentPrice * (1 - stopPercent / 100);
@@ -656,13 +660,14 @@ async function runMaCrossM30M200OnTimeframe(
       };
     }
 
+    const ma12x30SellOk =
+      bearishNow &&
+      currentDiffPct > entryDiffPct &&
+      (repeatSpreadWhileTrend || !bearishPrev || prevDiffPct <= entryDiffPct);
+
     if (
       isMa12x30Mode
-        ? (
-          bearishNow &&
-          currentDiffPct > entryDiffPct &&
-          (!bearishPrev || prevDiffPct <= entryDiffPct)
-        )
+        ? ma12x30SellOk
         : (prevMa30 >= prevMaSlow && ma30 < confirmDown)
     ) {
       if (sellBlockAbsCloseDistanceFromMa200Pct > 0) {

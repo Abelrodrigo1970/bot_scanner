@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
 import {
   backfillMaCross5mSignalNames,
+  MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   syncRsiMaVolatileUniverseDescriptions,
 } from '@/lib/strategyMigrations';
@@ -43,6 +44,7 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   entryDiffPct: 0.9,
   exitDiffPct: 0.7,
   stopPercent: 5,
+  ma12x30RepeatWhileTrend: true,
 };
 
 const MA_CROSS_1H_DEFAULT_PARAMS = {
@@ -123,8 +125,7 @@ async function ensureMissingStrategies() {
       data: {
         name: 'MA_CROSS_5M',
         displayName: 'MA Cross 15m (MA12/MA30)',
-        description:
-          'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+        description: MA_CROSS_5M_DESC,
         isActive: true,
         params: JSON.stringify(MA_CROSS_5M_DEFAULT_PARAMS),
       },
@@ -160,6 +161,9 @@ async function ensureMissingStrategies() {
       delete next.sellTp1Position;
       delete next.sellTp2Percent;
       delete next.sellTp2Position;
+      if (next.ma12x30RepeatWhileTrend === undefined) {
+        next.ma12x30RepeatWhileTrend = true;
+      }
       if (
         p.ma200Period === 200 ||
         p.ma200Period == null ||
@@ -170,18 +174,17 @@ async function ensureMissingStrategies() {
       ) {
         console.log('✅ MA_CROSS_5M: parâmetros migrados para MA12/MA30');
       }
-      const newDesc =
-        'MA12/MA30 em 15m com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 0.9% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 5%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
-        existingMaCross5m.displayName !== 'MA Cross 15m (MA12/MA30)' || existingMaCross5m.description !== newDesc;
+        existingMaCross5m.displayName !== 'MA Cross 15m (MA12/MA30)' ||
+        existingMaCross5m.description !== MA_CROSS_5M_DESC;
       if (needParams || needMeta) {
         await prisma.strategy.update({
           where: { name: 'MA_CROSS_5M' },
           data: {
             params: needParams ? JSON.stringify(next) : existingMaCross5m.params!,
             displayName: 'MA Cross 15m (MA12/MA30)',
-            description: newDesc,
+            description: MA_CROSS_5M_DESC,
           },
         });
       }
