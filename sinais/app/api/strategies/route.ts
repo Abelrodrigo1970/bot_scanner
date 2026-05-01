@@ -209,7 +209,7 @@ async function ensureMissingStrategies() {
         displayName: 'MA Cross 1h (MA12/MA30)',
         description:
           'MA12/MA30 em 1h com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 1.8% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 7%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
-        isActive: false,
+        isActive: true,
         params: JSON.stringify(MA_CROSS_1H_DEFAULT_PARAMS),
       },
     });

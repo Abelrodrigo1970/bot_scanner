@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Cron agregado 1h:
- * - RSI (universo: scan MA30 < −5% vs MA200 na BD)
- * - VOLUME_SPIKE (1h)
- * - MA200_VOLATILE (4h, verificado neste agregado)
- * - MA_VOLATILE (MA60 1h; universo MA Cross Proximidade / MaCrossBelow)
+ * - run-signals: RSI 1h + MA200_VOLATILE 4h + **MA_CROSS_1H** (MA12/MA30 em 1h, universo Bybit Volume 1h & MA200 na BD)
+ * - run-volume-spike: VOLUME_SPIKE (1h)
+ * - run-ma-volatile: MA_VOLATILE (MA60 1h; universo MaCrossBelow)
  *
- * Dispara os crons dedicados em background para manter a mesma lógica já existente.
+ * Dispara os três endpoints em background (CRON_SECRET no header).
  */
 async function run1hInBackground(origin: string, authHeader: string): Promise<void> {
   try {
@@ -77,7 +76,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento agregado 1h iniciado em background (RSI 1h + MA200 4h + MA60 1h + Volume Spike 1h)',
+      message:
+        'Processamento agregado 1h em background: RSI 1h + MA200 4h + MA Cross 1h (MA12/MA30) + Volume Spike 1h + MA60 1h',
       executedAt: now.toISOString(),
     });
   } catch (error) {

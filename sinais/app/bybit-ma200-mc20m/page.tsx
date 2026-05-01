@@ -42,14 +42,47 @@ export default function BybitMa200Mc20mPage() {
     try {
       setRefreshing(true);
       setError('');
+      const baselineFetchedAt = lastUpdate?.toISOString() ?? null;
+
       const response = await fetch('/api/bybit-ma200-mc20m', { method: 'POST' });
       const data = await response.json();
-      if (response.ok && data.success) {
-        setItems(data.items || []);
-        setLastUpdate(new Date());
-      } else {
-        setError(data.error || data.details || 'Erro ao atualizar');
+
+      if (response.status === 401) {
+        setError(data.error || 'Não autorizado');
+        return;
       }
+
+      if (!response.ok || data.success === false) {
+        setError(data.error || data.details || 'Erro ao atualizar');
+        return;
+      }
+
+      // Scan pesado corre em background (evita 503 por timeout do proxy).
+      if (data.skipped) {
+        setError(data.message || 'Atualização já em curso.');
+        return;
+      }
+
+      const pollMs = 5000;
+      const maxAttempts = 48;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise((r) => setTimeout(r, pollMs));
+        const checkRes = await fetch('/api/bybit-ma200-mc20m');
+        const checkData = await checkRes.json();
+        if (checkRes.ok && checkData.success) {
+          const nextFetchedAt = checkData.fetchedAt ?? null;
+          if (nextFetchedAt != null && nextFetchedAt !== baselineFetchedAt) {
+            setItems(checkData.items || []);
+            setLastUpdate(new Date(checkData.fetchedAt));
+            return;
+          }
+        }
+      }
+
+      setError(
+        'O scan ainda não reportou dados novos. Espera 1–2 minutos e usa novamente «Atualizar Scan» ou recarrega a página.'
+      );
     } catch {
       setError('Erro ao atualizar. Tente novamente.');
     } finally {
@@ -103,6 +136,9 @@ export default function BybitMa200Mc20mPage() {
             <li>Liquidez: turnover da última vela 1h da Bybit, apenas ativos com turnover maior ou igual a 500 mil USDT</li>
             <li>Técnico: timeframe 1h na Bybit, preço de fecho acima da MA200 (vela fechada)</li>
             <li>Ordenação: turnover 1h descendente</li>
+            <li>
+              «Atualizar Scan» corre vários minutos no servidor; a página espera até a BD mudar (evita erro 503 por timeout).
+            </li>
           </ul>
         </div>
 

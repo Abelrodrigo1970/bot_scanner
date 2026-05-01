@@ -6,6 +6,33 @@ import { randomUUID } from 'crypto';
 
 export const runtime = 'nodejs';
 
+/** Evita scans sobrepostos e permite responder 202 antes do fim (~minutos de klines Bybit). */
+let refreshInFlight = false;
+
+async function runBybitMa200Mc20mRefreshJob(): Promise<void> {
+  try {
+    console.log('[bybit-ma200-mc20m][BG] Início do scan Bybit MA200 + turnover 1h…');
+    const items = await fetchBybitAboveMa200Mc20m(300, 500_000);
+    await prisma.$executeRaw`DELETE FROM "BybitAboveMa200Mc20m"`;
+    if (items.length > 0) {
+      for (const item of items) {
+        const id = randomUUID();
+        await prisma.$executeRaw`
+          INSERT INTO "BybitAboveMa200Mc20m"
+          ("id", "symbol", "baseAsset", "marketCap", "lastPrice", "ma200", "distPriceMa200", "rank", "updatedAt")
+          VALUES
+          (${id}, ${item.symbol}, ${item.baseAsset}, ${item.marketCap}, ${item.lastPrice}, ${item.ma200}, ${item.distPriceMa200}, ${item.rank}, NOW())
+        `;
+      }
+    }
+    console.log(`[bybit-ma200-mc20m][BG] Concluído: ${items.length} linhas gravadas`);
+  } catch (e) {
+    console.error('[bybit-ma200-mc20m][BG] Falha:', e);
+  } finally {
+    refreshInFlight = false;
+  }
+}
+
 async function ensureBybitScanTable(): Promise<void> {
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS public."BybitAboveMa200Mc20m" (
@@ -116,43 +143,30 @@ export async function POST() {
       );
     }
 
-    const items = await fetchBybitAboveMa200Mc20m(300, 500_000);
-
-    await prisma.$executeRaw`DELETE FROM "BybitAboveMa200Mc20m"`;
-    if (items.length > 0) {
-      for (const item of items) {
-        const id = randomUUID();
-        await prisma.$executeRaw`
-          INSERT INTO "BybitAboveMa200Mc20m"
-          ("id", "symbol", "baseAsset", "marketCap", "lastPrice", "ma200", "distPriceMa200", "rank", "updatedAt")
-          VALUES
-          (${id}, ${item.symbol}, ${item.baseAsset}, ${item.marketCap}, ${item.lastPrice}, ${item.ma200}, ${item.distPriceMa200}, ${item.rank}, NOW())
-        `;
-      }
+    if (refreshInFlight) {
+      return NextResponse.json(
+        {
+          success: true,
+          accepted: false,
+          skipped: true,
+          message: 'Já existe uma atualização deste scan em curso; aguarde e volte a carregar a página.',
+        },
+        { status: 202 }
+      );
     }
 
-    const saved = await prisma.$queryRaw<Array<{
-      id: string;
-      symbol: string;
-      baseAsset: string;
-      marketCap: number;
-      lastPrice: number;
-      ma200: number;
-      distPriceMa200: number;
-      rank: number;
-      updatedAt: Date;
-    }>>`
-      SELECT id, symbol, "baseAsset", "marketCap", "lastPrice", ma200, "distPriceMa200", rank, "updatedAt"
-      FROM "BybitAboveMa200Mc20m"
-      ORDER BY rank ASC
-    `;
+    refreshInFlight = true;
+    void runBybitMa200Mc20mRefreshJob();
 
-    return NextResponse.json({
-      success: true,
-      items: saved,
-      count: saved.length,
-      message: 'Scan Bybit MA200 + Volume1h(500k) atualizado com sucesso',
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        accepted: true,
+        message:
+          'Scan iniciado em segundo plano (demora vários minutos). A página vai atualizar sozinha quando a BD estiver pronta.',
+      },
+      { status: 202 }
+    );
   } catch (error: unknown) {
     console.error('Erro ao atualizar scan Bybit MA200 + Volume1h(500k):', error);
     return NextResponse.json(

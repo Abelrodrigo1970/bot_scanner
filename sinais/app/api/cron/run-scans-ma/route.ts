@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { fetchMa30Above6Pct, fetchMa30Near6PriceBetween } from '@/lib/marketData';
+import {
+  fetchBybitAboveMa200Mc20m,
+  fetchMa30Above6Pct,
+  fetchMa30Near6PriceBetween,
+} from '@/lib/marketData';
 
 /**
  * Cron dedicado para atualizar os scans de médias:
  * - MA30 > 9% MA200 (1h)
  * - MA30 < -5% vs MA200 (1h)
+ * - Bybit Volume 1h (500k) + MA200 (1h) → `BybitAboveMa200Mc20m`
  *
  * O trabalho pesado corre em background para evitar timeout do cliente/cron HTTP.
  */
@@ -16,6 +21,7 @@ let maScansJobPromise: Promise<void> | null = null;
 async function runMaScansJob(): Promise<{
   ma30Above6Pct: number;
   ma30Minus5ToMinus10: number;
+  bybitVolume1hMa200: number;
 }> {
   const above6 = await fetchMa30Above6Pct(100);
   await prisma.ma30Above6Pct.deleteMany({});
@@ -49,9 +55,27 @@ async function runMaScansJob(): Promise<{
     });
   }
 
+  console.log('[run-scans-ma] Bybit Volume 1h (500k) + MA200 — a calcular (demora vários minutos)…');
+  const bybitVolMa200 = await fetchBybitAboveMa200Mc20m(300, 500_000);
+  await prisma.bybitAboveMa200Mc20m.deleteMany({});
+  if (bybitVolMa200.length > 0) {
+    await prisma.bybitAboveMa200Mc20m.createMany({
+      data: bybitVolMa200.map((item) => ({
+        symbol: item.symbol,
+        baseAsset: item.baseAsset,
+        marketCap: item.marketCap,
+        lastPrice: item.lastPrice,
+        ma200: item.ma200,
+        distPriceMa200: item.distPriceMa200,
+        rank: item.rank,
+      })),
+    });
+  }
+
   return {
     ma30Above6Pct: above6.length,
     ma30Minus5ToMinus10: nearBand.length,
+    bybitVolume1hMa200: bybitVolMa200.length,
   };
 }
 
@@ -70,7 +94,7 @@ export async function GET(request: NextRequest) {
           accepted: false,
           busy: true,
           message:
-            'Scan MA já em execução em background; aguarda a conclusão antes de voltar a disparar.',
+            'Scans MA / Bybit já em execução em background; aguarda a conclusão antes de voltar a disparar.',
           startedAt: new Date().toISOString(),
         },
         { status: 202 }
@@ -95,7 +119,7 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scans MA arrancaram em background; os dados na BD atualizam quando terminar (pode demorar vários minutos).',
+          'Scans MA + Bybit Volume 1h (500k)+MA200 arrancaram em background; a BD atualiza quando terminar (vários minutos).',
         startedAt,
       },
       { status: 202 }
