@@ -266,7 +266,7 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Velas <strong>{is1h ? '1h' : '15m'}</strong> — <strong>MA12 / MA30</strong>. Entrada quando a diferença entre médias supera o limiar de entrada e saída (TP) quando comprime abaixo do limiar de saída.
+              Velas <strong>{is1h ? '1h' : '15m'}</strong> — <strong>MA12 / MA30</strong>. Compra: MA12&gt;MA30 e diferença relativa &gt; limiar de entrada; venda: MA12&lt;MA30 e a mesma diferença &gt; limiar. Fecha posição quando a diferença cai abaixo do limiar de saída (compressão).
               {!is1h && ' O cron corre a cada 15 min.'} Símbolos = resultados do scan{' '}
               <strong>Bybit Volume 1h &gt;500k e MA200 1h</strong> (menu); actualiza esse scan com &quot;Atualizar Scan&quot; antes.
             </p>
@@ -285,7 +285,7 @@ export default function EstrategiasPage() {
               {numField('Período MA rápida (ex. 12)', p.ma30Period ?? 12, (v) => upd({ ma30Period: v }))}
               {numField('Período MA lenta (ex. 30)', p.ma200Period ?? 30, (v) => upd({ ma200Period: v }))}
               {numField('Entrada: dif. MA12/MA30 (%)', p.entryDiffPct ?? (is1h ? 1.8 : 0.9), (v) => upd({ entryDiffPct: v }), 0.1)}
-              {numField('Saída/TP: dif. MA12/MA30 (%)', p.exitDiffPct ?? 0.7, (v) => upd({ exitDiffPct: v }), 0.1)}
+              {numField('Saída/fecho: dif. MA12/MA30 (%)', p.exitDiffPct ?? (is1h ? 0.8 : 0.7), (v) => upd({ exitDiffPct: v }), 0.1)}
               {numField('SL (%)', p.stopPercent ?? (is1h ? 7 : 5), (v) => upd({ stopPercent: v }), 0.5)}
             </div>
             <div className="max-w-md">
@@ -296,12 +296,24 @@ export default function EstrategiasPage() {
                 0.5
               )}
             </div>
+            <label className="flex items-center gap-2 max-w-md text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300 dark:border-gray-600"
+                checked={p.ma12x30RepeatWhileTrend !== false}
+                onChange={(e) => upd({ ma12x30RepeatWhileTrend: e.target.checked })}
+              />
+              <span>
+                Entrada só por spread na vela fechada (sem exigir que na vela anterior o spread ainda fosse ≤ limiar de entrada).{' '}
+                <strong className="font-normal text-gray-500">Recomendado para MA12/MA30.</strong>
+              </span>
+            </label>
             <p className="text-xs text-gray-500 dark:text-gray-500">
               Só VENDA: se a distância do fecho à média lenta (MA30) em valor absoluto (%) for maior que este limite, não gera sinal.
               0 desactiva o filtro.
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500">
-              Nesta configuração o take profit é dinâmico pela compressão MA12/MA30 (não usa TP1/TP2 fixos).
+              O take profit é dinâmico: fecha quando a diferença MA12/MA30 comprime abaixo do limiar de saída (não usa TP1/TP2 fixos).
             </p>
           </div>
         );

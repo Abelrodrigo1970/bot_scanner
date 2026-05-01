@@ -51,8 +51,12 @@ const MA_CROSS_1H_DEFAULT_PARAMS = {
   ...MA_CROSS_5M_DEFAULT_PARAMS,
   useDiffMode: true,
   entryDiffPct: 1.8,
+  /** Fecho quando |MA12−MA30|/MA30×100 &lt; este valor */
+  exitDiffPct: 0.8,
   stopPercent: 7,
   exchange: 'bybit' as const,
+  /** true = entrada só por spread na vela fechada (sem exigir transição na vela anterior) */
+  ma12x30RepeatWhileTrend: true,
 };
 
 async function ensureMissingStrategies() {
@@ -211,7 +215,7 @@ async function ensureMissingStrategies() {
         name: 'MA_CROSS_1H',
         displayName: 'MA Cross 1h (MA12/MA30)',
         description:
-          'MA12/MA30 em 1h com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 1.8% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 7%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+          'MA12/MA30 em 1h: compra quando MA12>MA30 e |MA12−MA30|/MA30>1,8%; vende quando MA12<MA30 e o mesmo spread>1,8%. Fecha posição quando essa diferença cai abaixo de 0,8% (compressão). SL 7%. Filtro SELL: se |preço−MA30|/MA30>6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
         isActive: true,
         params: JSON.stringify(MA_CROSS_1H_DEFAULT_PARAMS),
       },
@@ -227,7 +231,8 @@ async function ensureMissingStrategies() {
       next.ma30Period = 12;
       next.ma200Period = 30;
       next.entryDiffPct = 1.8;
-      next.exitDiffPct = 0.7;
+      next.exitDiffPct = 0.8;
+      next.ma12x30RepeatWhileTrend = true;
       next.stopPercent = 7;
       delete next.entryDiffPctBuy;
       delete next.entryDiffPctSell;
@@ -239,7 +244,7 @@ async function ensureMissingStrategies() {
       delete next.sellTp2Position;
       next.exchange = p.exchange === 'binance' ? 'binance' : 'bybit';
       const newDesc =
-        'MA12/MA30 em 1h com gatilho por diferença entre médias. Entrada BUY/SELL quando |MA12−MA30|/MA30 > 1.8% na direção da tendência. Saída/TP quando a diferença cai abaixo de 0.7%. SL 7%. Filtro SELL: se |preço−MA30|/MA30 > 6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
+        'MA12/MA30 em 1h: compra quando MA12>MA30 e |MA12−MA30|/MA30>1,8%; vende quando MA12<MA30 e o mesmo spread>1,8%. Fecha posição quando essa diferença cai abaixo de 0,8%. SL 7%. Filtro SELL: se |preço−MA30|/MA30>6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
         existingMaCross1h.displayName !== 'MA Cross 1h (MA12/MA30)' || existingMaCross1h.description !== newDesc;

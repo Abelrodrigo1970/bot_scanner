@@ -572,7 +572,10 @@ async function runMaCrossM30M200OnTimeframe(
     params.sellBlockAbsCloseDistanceFromMa200Pct ?? 6
   );
 
-  /** MA12×MA30: sem exigir que na vela anterior o spread ainda fosse pequeno ou o alinhamento diferente. */
+  /**
+   * MA12×MA30: se true, entrada = só spread + alinhamento na vela fechada (MA12>MA30 e dif%>entrada, etc.).
+   * Se false, exige também transição na vela anterior (spread antes ≤ limiar ou alinhamento diferente).
+   */
   const repeatSpreadWhileTrend = params.ma12x30RepeatWhileTrend === true;
 
   const ma = (arr: number[], p: number) =>
