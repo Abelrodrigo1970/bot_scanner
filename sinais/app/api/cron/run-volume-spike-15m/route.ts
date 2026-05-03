@@ -26,6 +26,7 @@ const MA_CROSS_5M_MIN_STRENGTH = 70;
  * MA Cross 15m (MA12/MA30) em background.
  * Cálculo em velas 15m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
  * Universo: tabela `BybitAboveMa200Mc20m` (menu Bybit Volume 1h >500k e MA200 1h).
+ * Não cria novo sinal se já existir posição real no mesmo sentido (um trade por símbolo até fechar).
  */
 async function runMaCross5mInBackground(
   strategy: StrategyData,
@@ -48,12 +49,12 @@ async function runMaCross5mInBackground(
     const symbols = maRows.map((r) => r.symbol);
     console.log(`[MA Cross 15m BG] Iniciando ${symbols.length} símbolos (15m)…`);
     let signalsCreated = 0;
+    const ex = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
 
     for (const symbol of symbols) {
       try {
         const closeCheck = await shouldCloseMaCross5mByDiff(symbol, TIMEFRAME_15M, params);
         if (closeCheck.shouldClose) {
-          const ex = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
           const positionState = await inspectActivePositionForSymbol(symbol, ex);
           if (positionState.inspectable && positionState.hasPosition) {
             const closeResult = await closeActivePositionForSymbol(symbol, ex);
@@ -75,6 +76,15 @@ async function runMaCross5mInBackground(
         const signalResult = await runMaCross15mStrategy(symbol, TIMEFRAME_15M, params);
 
         if (signalResult && signalResult.strength >= MA_CROSS_5M_MIN_STRENGTH) {
+          const posGate = await inspectActivePositionForSymbol(symbol, ex);
+          if (
+            posGate.inspectable &&
+            posGate.hasPosition &&
+            posGate.direction === signalResult.direction
+          ) {
+            continue;
+          }
+
           const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
           const existingSignal = await prisma.signal.findFirst({
             where: {
@@ -107,7 +117,6 @@ async function runMaCross5mInBackground(
             signalsCreated++;
 
             const autoMinStrength = getAutoExecuteMinStrength();
-            const ex = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
             if (signalResult.strength >= autoMinStrength) {
               console.log(`[MA Cross 15m BG] Auto-exec: ${symbol} força ${signalResult.strength} (>= ${autoMinStrength})`);
               try {

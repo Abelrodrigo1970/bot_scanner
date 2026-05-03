@@ -22,11 +22,11 @@ const RSI_15M_DEFAULT_PARAMS = {
   exchange: 'bybit',
 };
 
-/** RSI 1h: SMA sobre RSI vs nível 45 (TradingView: RSI 14 + Smoothing SMA 21). */
+/** RSI 1h: SMA sobre RSI vs nível 47 (TradingView: RSI 14 + Smoothing SMA 21). */
 const RSI_MAIN_DEFAULT_PARAMS = {
   period: 14,
   rsiSmoothLength: 21,
-  rsiRefLevel: 45,
+  rsiRefLevel: 47,
   buyStopPercent: 5,
   sellStopPercent: 5,
   rsiBuyGainTpPct: 43,
@@ -68,7 +68,7 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   ma200Period: 30,
   exchange: 'binance' as const,
   entryDiffPct: 0.9,
-  exitDiffPct: 0.7,
+  exitDiffPct: 0.5,
   stopPercent: 5,
   ma12x30RepeatWhileTrend: true,
   ma12x30GainTpPct: 44,
@@ -115,7 +115,7 @@ async function ensureMissingStrategies() {
     await prisma.strategy.create({
       data: {
         name: 'RSI',
-        displayName: 'RSI Top Volatilidade (SMA21×45)',
+        displayName: 'RSI Top Volatilidade (SMA21×47)',
         description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
         isActive: true,
         params: JSON.stringify(RSI_MAIN_DEFAULT_PARAMS),
@@ -127,7 +127,7 @@ async function ensureMissingStrategies() {
       const next: Record<string, unknown> = { ...p };
       next.period = 14;
       next.rsiSmoothLength = 21;
-      next.rsiRefLevel = 45;
+      next.rsiRefLevel = 47;
       delete next.maPeriod;
       next.buyStopPercent = 5;
       next.sellStopPercent = 5;
@@ -152,14 +152,14 @@ async function ensureMissingStrategies() {
       const newDesc = RSI_MA30_SCAN_UNIVERSE_DESCRIPTION;
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
-        existingRsiMain.displayName !== 'RSI Top Volatilidade (SMA21×45)' ||
+        existingRsiMain.displayName !== 'RSI Top Volatilidade (SMA21×47)' ||
         existingRsiMain.description !== newDesc;
       if (needParams || needMeta) {
         await prisma.strategy.update({
           where: { name: 'RSI' },
           data: {
             params: JSON.stringify(next),
-            displayName: 'RSI Top Volatilidade (SMA21×45)',
+            displayName: 'RSI Top Volatilidade (SMA21×47)',
             description: newDesc,
           },
         });
@@ -178,12 +178,36 @@ async function ensureMissingStrategies() {
     await prisma.strategy.create({
       data: {
         name: 'RSI_BYBIT_15M',
-        displayName: 'RSI Bybit 15m (SMA21×45)',
+        displayName: 'RSI Bybit 15m (SMA21×47)',
         description: RSI_BYBIT_15M_UNIVERSE_DESCRIPTION,
         isActive: true,
         params: JSON.stringify(RSI_BYBIT_15M_DEFAULT_PARAMS),
       },
     });
+  } else {
+    try {
+      const rb = await prisma.strategy.findUnique({
+        where: { name: 'RSI_BYBIT_15M' },
+        select: { params: true, displayName: true },
+      });
+      if (rb) {
+        const p = rb.params ? JSON.parse(rb.params) : {};
+        const next: Record<string, unknown> = { ...p, rsiRefLevel: 47 };
+        const needParams = JSON.stringify(next) !== JSON.stringify(p);
+        const needMeta = rb.displayName !== 'RSI Bybit 15m (SMA21×47)';
+        if (needParams || needMeta) {
+          await prisma.strategy.update({
+            where: { name: 'RSI_BYBIT_15M' },
+            data: {
+              params: JSON.stringify(next),
+              displayName: 'RSI Bybit 15m (SMA21×47)',
+            },
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ RSI_BYBIT_15M: falha ao migrar rsiRefLevel/displayName:', e);
+    }
   }
 
   const existingMaCross15m = await prisma.strategy.findUnique({
@@ -259,7 +283,7 @@ async function ensureMissingStrategies() {
       // Nova configuração MA_CROSS_5M: gatilho por diferença MA12/MA30 + saída por compressão.
       next.stopPercent = 5;
       next.entryDiffPct = 0.9;
-      next.exitDiffPct = 0.7;
+      next.exitDiffPct = 0.5;
       // Limpar campos legados de TP único para evitar confusão na UI/params.
       delete next.tp1Percent;
       delete next.tp1Position;

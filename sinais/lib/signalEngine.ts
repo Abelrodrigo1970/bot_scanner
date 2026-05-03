@@ -382,7 +382,7 @@ async function runRsiSma45OnTimeframe(
 ): Promise<SignalResult | null> {
   const period           = params.period ?? 14;
   const rsiSmoothLength  = Number(params.rsiSmoothLength ?? 21);
-  const rsiRefLevel      = Number(params.rsiRefLevel ?? 45);
+  const rsiRefLevel      = Number(params.rsiRefLevel ?? 47);
   const buyStopPercent   = Number(params.buyStopPercent ?? 5);
   const sellStopPercent  = Number(params.sellStopPercent ?? 5);
   const closeAfterHours  = params.closeAfterHours ?? 24;
@@ -447,7 +447,7 @@ async function runRsiSma45OnTimeframe(
       };
     }
 
-    // SELL: linha lenta passa para baixo dos 45 (estava em cima ou no nível, fecha abaixo)
+    // SELL: linha lenta passa para baixo do nível de referência (estava em cima ou no nível, fecha abaixo)
     if (slowPrev >= rsiRefLevel && slowNow < rsiRefLevel) {
       const target1 =
         rsiSellGainTpPct > 0 && rsiSellGainTpPositionPct > 0
@@ -482,13 +482,13 @@ async function runRsiSma45OnTimeframe(
 
     return null;
   } catch (error) {
-    console.error(`Erro na estratégia RSI SMA45 (${chartTf}) para ${symbol}:`, error);
+    console.error(`Erro na estratégia RSI SMA/ref (${chartTf}) para ${symbol}:`, error);
     return null;
   }
 }
 
 /**
- * Estratégia RSI 1h — igual lógica SMA(RSI) vs 45; universo Ma30Near6PriceBetween (ver runAllStrategies).
+ * Estratégia RSI 1h — igual lógica SMA(RSI) vs nível de referência (defeito 47); universo Ma30Near6PriceBetween (ver runAllStrategies).
  */
 export async function runRsiStrategy(
   symbol: string,
@@ -500,7 +500,7 @@ export async function runRsiStrategy(
 }
 
 /**
- * RSI 15m — mesma lógica que o RSI 1h (SMA sobre RSI vs 45, SL/TP); velas 15m.
+ * RSI 15m — mesma lógica que o RSI 1h (SMA sobre RSI vs nível ref., SL/TP); velas 15m.
  * Universo de símbolos = tabela BybitAboveMa200Mc20m (Volume 1h 500k + MA200 1h), definido em runAllStrategies.
  */
 export async function runRsiBybit15mStrategy(
@@ -606,7 +606,7 @@ async function runMaCrossM30M200OnTimeframe(
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
   const entryDiffPct = Number(params.entryDiffPct ?? 0.9);
-  const exitDiffPct = Number(params.exitDiffPct ?? 0.7);
+  const exitDiffPct = Number(params.exitDiffPct ?? 0.5);
   const stopPercent     = params.stopPercent     ?? 8;
   const buyTp1Percent   = params.buyTp1Percent   ?? params.tp1Percent ?? (bar === '5m' ? 18 : 85);
   const buyTp1Position  = params.buyTp1Position  ?? params.tp1Position ?? (bar === '5m' ? 30 : 60);
@@ -857,7 +857,7 @@ export async function shouldCloseMaCross5mByDiff(
   const maFastPeriod = Number(params.ma30Period ?? 12);
   const maSlowPeriod = Number(params.ma200Period ?? 30);
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
-  const exitDiffPct = Number(params.exitDiffPct ?? 0.7);
+  const exitDiffPct = Number(params.exitDiffPct ?? 0.5);
   const ma = (arr: number[], p: number) =>
     maType === 'SMA' ? calculateSMA(arr, p) : calculateLastEMA(arr, p);
 

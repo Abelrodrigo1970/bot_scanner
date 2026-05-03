@@ -232,12 +232,12 @@ export default function EstrategiasPage() {
           <div className="space-y-3">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Timeframe <strong>1h</strong>. Universo = scan <strong>MA30 entre −9% e −3% vs MA200 (1h)</strong> (só define quais pares analisar). Linha lenta = <strong>SMA sobre o RSI</strong> (TradingView: RSI + Smoothing).{' '}
-              <strong>BUY</strong>: lenta cruza <strong>para cima</strong> do nível. <strong>SELL</strong>: lenta <strong>passa para baixo</strong> do nível (ex.: 45). Sem filtro MA200 no preço.
+              <strong>BUY</strong>: lenta cruza <strong>para cima</strong> do nível. <strong>SELL</strong>: lenta <strong>passa para baixo</strong> do nível (ex.: 47). Sem filtro MA200 no preço.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
               {numField('Suavização: período SMA sobre o RSI', p.rsiSmoothLength ?? 21, (v) => upd({ rsiSmoothLength: v }))}
-              {numField('Nível de referência (cruzamento)', p.rsiRefLevel ?? 45, (v) => upd({ rsiRefLevel: v }), 0.5)}
+              {numField('Nível de referência (cruzamento)', p.rsiRefLevel ?? 47, (v) => upd({ rsiRefLevel: v }), 0.5)}
               {numField('SL compra (%)', p.buyStopPercent ?? 5, (v) => upd({ buyStopPercent: v }), 0.5)}
               {numField('TP compra: valorização vs entrada (%)', p.rsiBuyGainTpPct ?? 43, (v) => upd({ rsiBuyGainTpPct: v }), 0.5)}
               {numField('TP compra: % da posição', p.rsiBuyGainTpPositionPct ?? 50, (v) => upd({ rsiBuyGainTpPositionPct: v }), 1)}
@@ -254,12 +254,12 @@ export default function EstrategiasPage() {
           <div className="space-y-3">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Timeframe <strong>15m</strong>. Universo = tabela <strong>BybitAboveMa200Mc20m</strong> (Volume 1h &gt;500k e MA200 1h); actualiza o scan nesse menu antes de gerar sinais. Linha lenta = <strong>SMA sobre o RSI</strong>.{' '}
-              <strong>BUY</strong>: lenta cruza <strong>para cima</strong> do nível. <strong>SELL</strong>: lenta <strong>passa para baixo</strong> do nível (ex.: 45). Mesmos SL/TP parciais que o RSI 1h.
+              <strong>BUY</strong>: lenta cruza <strong>para cima</strong> do nível. <strong>SELL</strong>: lenta <strong>passa para baixo</strong> do nível (ex.: 47). Mesmos SL/TP parciais que o RSI 1h.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
               {numField('Suavização: período SMA sobre o RSI', p.rsiSmoothLength ?? 21, (v) => upd({ rsiSmoothLength: v }))}
-              {numField('Nível de referência (cruzamento)', p.rsiRefLevel ?? 45, (v) => upd({ rsiRefLevel: v }), 0.5)}
+              {numField('Nível de referência (cruzamento)', p.rsiRefLevel ?? 47, (v) => upd({ rsiRefLevel: v }), 0.5)}
               {numField('SL compra (%)', p.buyStopPercent ?? 5, (v) => upd({ buyStopPercent: v }), 0.5)}
               {numField('TP compra: valorização vs entrada (%)', p.rsiBuyGainTpPct ?? 43, (v) => upd({ rsiBuyGainTpPct: v }), 0.5)}
               {numField('TP compra: % da posição', p.rsiBuyGainTpPositionPct ?? 50, (v) => upd({ rsiBuyGainTpPositionPct: v }), 1)}
@@ -320,7 +320,7 @@ export default function EstrategiasPage() {
               {numField('Período MA rápida (ex. 12)', p.ma30Period ?? 12, (v) => upd({ ma30Period: v }))}
               {numField('Período MA lenta (ex. 30)', p.ma200Period ?? 30, (v) => upd({ ma200Period: v }))}
               {numField('Entrada: dif. MA12/MA30 (%)', p.entryDiffPct ?? (is1h ? 1.8 : 0.9), (v) => upd({ entryDiffPct: v }), 0.1)}
-              {numField('Saída/fecho: dif. MA12/MA30 (%)', p.exitDiffPct ?? (is1h ? 0.8 : 0.7), (v) => upd({ exitDiffPct: v }), 0.1)}
+              {numField('Saída/fecho: dif. MA12/MA30 (%)', p.exitDiffPct ?? (is1h ? 0.8 : 0.5), (v) => upd({ exitDiffPct: v }), 0.1)}
               {numField('SL (%)', p.stopPercent ?? (is1h ? 7 : 5), (v) => upd({ stopPercent: v }), 0.5)}
               {numField(
                 'TP parcial: valorização vs entrada (%)',
@@ -360,7 +360,7 @@ export default function EstrategiasPage() {
               0 desactiva o filtro.
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500">
-              O take profit é dinâmico: fecha quando a diferença MA12/MA30 comprime abaixo do limiar de saída (não usa TP1/TP2 fixos).
+              O take profit é dinâmico: fecha quando a diferença MA12/MA30 comprime abaixo do limiar de saída (não usa TP1/TP2 fixos). O cron 15m não abre segundo trade no mesmo sentido se já houver posição real nesse par.
             </p>
           </div>
         );

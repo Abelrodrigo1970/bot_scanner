@@ -5,7 +5,7 @@ export const MA_CROSS_5M_PARAMS = {
   ma200Period: 30,
   maType: 'EMA' as const,
   entryDiffPct: 0.9,
-  exitDiffPct: 0.7,
+  exitDiffPct: 0.5,
   stopPercent: 5,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
   /** Se true: BUY/SELL sempre que spread > limiar e MA12 vs MA30 alinhados (sem exigir “primeira” expansão na vela anterior). */
@@ -21,11 +21,11 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,7%. SL 5%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 5%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h). Máx. um trade aberto por símbolo (não empilha o mesmo sentido).';
 
 /** Texto canónico da descrição (universo = tabela Ma30Near6PriceBetween / scan MA30 −9%…−3% vs MA200). */
 export const RSI_MA30_SCAN_UNIVERSE_DESCRIPTION =
-  'Universo = scan MA30 entre −9% e −3% vs MA200 (1h) — só lista de símbolos. RSI(14) + SMA(21) sobre o RSI (linha lenta). BUY: lenta cruza para cima do 45 → SL -5% | TP1 +43% (50%) | restante às 24h. SELL: lenta passa para baixo do 45 → SL +5% | TP1 -43% (50%) | restante às 24h.';
+  'Universo = scan MA30 entre −9% e −3% vs MA200 (1h) — só lista de símbolos. RSI(14) + SMA(21) sobre o RSI (linha lenta). BUY: lenta cruza para cima do 47 → SL -5% | TP1 +43% (50%) | restante às 24h. SELL: lenta passa para baixo do 47 → SL +5% | TP1 -43% (50%) | restante às 24h.';
 
 /** Universo = tabela MaCrossBelow (menu MA Cross Proximidade): MA30 entre −3% e +3% vs MA200 em 1h. */
 export const MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION =

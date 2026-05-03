@@ -22,16 +22,16 @@ async function main() {
     console.log(`  strategyName em sinais (estatísticas): ${mig.signalsRelabeled} actualizados para "${MA_CROSS_5M_DISPLAY}"`);
   }
 
-  // Estratégia RSI 1h: SMA(RSI) vs nível 45 + filtro MA200 (universo Ma30Near6PriceBetween)
+  // Estratégia RSI 1h: SMA(RSI) vs nível 47 + universo Ma30Near6PriceBetween
   const rsiStrategy = await prisma.strategy.upsert({
     where: { name: 'RSI' },
     update: {
-      displayName: 'RSI Top Volatilidade (SMA21×45)',
+      displayName: 'RSI Top Volatilidade (SMA21×47)',
       description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
       params: JSON.stringify({
         period: 14,
         rsiSmoothLength: 21,
-        rsiRefLevel: 45,
+        rsiRefLevel: 47,
         buyStopPercent: 5,
         sellStopPercent: 5,
         rsiBuyGainTpPct: 43,
@@ -46,13 +46,13 @@ async function main() {
     },
     create: {
       name: 'RSI',
-      displayName: 'RSI Top Volatilidade (SMA21×45)',
+      displayName: 'RSI Top Volatilidade (SMA21×47)',
       description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
       isActive: true,
       params: JSON.stringify({
         period: 14,
         rsiSmoothLength: 21,
-        rsiRefLevel: 45,
+        rsiRefLevel: 47,
         buyStopPercent: 5,
         sellStopPercent: 5,
         rsiBuyGainTpPct: 43,
@@ -308,12 +308,12 @@ async function main() {
   await prisma.strategy.upsert({
     where: { name: 'RSI_BYBIT_15M' },
     update: {
-      displayName: 'RSI Bybit 15m (SMA21×45)',
+      displayName: 'RSI Bybit 15m (SMA21×47)',
       description: RSI_BYBIT_15M_UNIVERSE_DESCRIPTION,
       params: JSON.stringify({
         period: 14,
         rsiSmoothLength: 21,
-        rsiRefLevel: 45,
+        rsiRefLevel: 47,
         buyStopPercent: 5,
         sellStopPercent: 5,
         rsiBuyGainTpPct: 43,
@@ -328,13 +328,13 @@ async function main() {
     },
     create: {
       name: 'RSI_BYBIT_15M',
-      displayName: 'RSI Bybit 15m (SMA21×45)',
+      displayName: 'RSI Bybit 15m (SMA21×47)',
       description: RSI_BYBIT_15M_UNIVERSE_DESCRIPTION,
       isActive: true,
       params: JSON.stringify({
         period: 14,
         rsiSmoothLength: 21,
-        rsiRefLevel: 45,
+        rsiRefLevel: 47,
         buyStopPercent: 5,
         sellStopPercent: 5,
         rsiBuyGainTpPct: 43,
