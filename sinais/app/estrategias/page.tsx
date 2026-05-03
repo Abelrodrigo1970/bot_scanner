@@ -466,7 +466,13 @@ export default function EstrategiasPage() {
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Estratégias</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Estratégias</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 max-w-3xl">
+          Em cada cartão, <strong>Direções permitidas</strong> controla se o motor pode <strong>criar</strong> sinais
+          long (<strong>COMPRA</strong>) e/ou short (<strong>VENDA</strong>): OFF evita novos sinais nessa direcção.
+          Os valores ficam em <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">params.allowBuy</code> e{' '}
+          <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">params.allowSell</code> na base de dados.
+        </p>
 
         {message && (
           <div
@@ -572,41 +578,20 @@ export default function EstrategiasPage() {
                   </button>
                 </div>
 
-                {/* Selector Exchange */}
-                {(() => {
-                  const params = parseStrategyParams(strategy.params);
-                  const currentEx = params.exchange || 'binance';
-                  return (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Exchange</h3>
-                      <div className="flex gap-2">
-                        {(['binance', 'bybit'] as const).map((ex) => (
-                          <button
-                            key={ex}
-                            onClick={() => handleSetExchange(strategy, ex)}
-                            disabled={saving === strategy.id + 'exchange'}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
-                              currentEx === ex
-                                ? ex === 'bybit'
-                                  ? 'bg-yellow-400 border-yellow-500 text-yellow-900 dark:bg-yellow-500 dark:text-yellow-950'
-                                  : 'bg-blue-500 border-blue-600 text-white dark:bg-blue-600'
-                                : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                            }`}
-                          >
-                            {ex === 'bybit' ? '🟡 Bybit' : '🔵 Binance'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Toggles BUY / SELL */}
+                {/* Toggles BUY / SELL — antes da exchange para ficar visível */}
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Direções permitidas
                   </h3>
-                  <div className="flex gap-3">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    Liga ou desliga a geração de sinais nesta direcção (o motor ignora sinais desactivados antes de gravar na BD).
+                    {strategy.name === 'RSI_15M' ? (
+                      <span className="block mt-1 text-amber-700 dark:text-amber-300">
+                        Nota: RSI_15M só gera compras na lógica actual; activar VENDA não produz shorts até a estratégia suportar SELL.
+                      </span>
+                    ) : null}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
                     {(['BUY', 'SELL'] as const).map((dir) => {
                       const params   = parseStrategyParams(strategy.params);
                       const field    = dir === 'BUY' ? 'allowBuy' : 'allowSell';
@@ -615,6 +600,7 @@ export default function EstrategiasPage() {
                       return (
                         <button
                           key={dir}
+                          type="button"
                           onClick={() => handleToggleDirection(strategy, dir)}
                           disabled={isSaving}
                           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
@@ -633,6 +619,36 @@ export default function EstrategiasPage() {
                     })}
                   </div>
                 </div>
+
+                {/* Selector Exchange */}
+                {(() => {
+                  const params = parseStrategyParams(strategy.params);
+                  const currentEx = params.exchange || 'binance';
+                  return (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Exchange</h3>
+                      <div className="flex gap-2">
+                        {(['binance', 'bybit'] as const).map((ex) => (
+                          <button
+                            key={ex}
+                            type="button"
+                            onClick={() => handleSetExchange(strategy, ex)}
+                            disabled={saving === strategy.id + 'exchange'}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                              currentEx === ex
+                                ? ex === 'bybit'
+                                  ? 'bg-yellow-400 border-yellow-500 text-yellow-900 dark:bg-yellow-500 dark:text-yellow-950'
+                                  : 'bg-blue-500 border-blue-600 text-white dark:bg-blue-600'
+                                : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            {ex === 'bybit' ? '🟡 Bybit' : '🔵 Binance'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                   <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">

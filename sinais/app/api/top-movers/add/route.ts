@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
+import { TOP_VOLATILE_SCAN_MS } from '@/lib/marketData';
 
 /**
  * POST: Adiciona um ou mais símbolos manualmente à lista Top Voláteis.
- * Busca dados reais dos últimos 3 meses na Binance Futures e insere na BD.
+ * Busca dados reais dos últimos ~2 meses na Binance Futures e insere na BD.
  * Body: { symbols: string[] }
  */
 export async function POST(request: NextRequest) {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const scanStart = Date.now() - TOP_VOLATILE_SCAN_MS;
     const added: string[] = [];
     const skipped: { symbol: string; reason: string }[] = [];
 
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
       try {
         // Buscar dados históricos na Binance Futures
         const klinesRes = await fetch(
-          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1d&limit=100&startTime=${threeMonthsAgo}`
+          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1d&limit=100&startTime=${scanStart}`
         );
 
         if (!klinesRes.ok) {

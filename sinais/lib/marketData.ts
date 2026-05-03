@@ -362,15 +362,20 @@ export async function fetchTopSymbolsBy1hPriceChange(
 
 export interface TopVolatileItem {
   symbol: string;
+  /** Máxima na janela de scan (~2 meses); nome de campo histórico. */
   high3m: number;
+  /** Mínima na janela de scan (~2 meses); nome de campo histórico. */
   low3m: number;
   volatilityPercent: number;
   lastPrice: number;
   rank: number;
 }
 
+/** Início da janela de klines diários para Top Voláteis (~60 dias ≈ 2 meses). */
+export const TOP_VOLATILE_SCAN_MS = 60 * 24 * 60 * 60 * 1000;
+
 /**
- * Busca as top 25 criptos mais voláteis dos últimos 3 meses.
+ * Busca as top 25 criptos mais voláteis dos últimos ~2 meses.
  * Volatilidade = (max - min) / min * 100 sobre candles diários.
  * Usa o maior número possível de pares USDT com volume mínimo.
  */
@@ -999,13 +1004,13 @@ export async function fetchTopVolatile(limit: number = 25): Promise<TopVolatileI
       .map((t: any) => t.symbol);
 
     const results: { symbol: string; high3m: number; low3m: number; volatilityPercent: number; lastPrice: number }[] = [];
-    const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const scanStart = Date.now() - TOP_VOLATILE_SCAN_MS;
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
       try {
         const klinesRes = await fetch(
-          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1d&limit=100&startTime=${threeMonthsAgo}`
+          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1d&limit=100&startTime=${scanStart}`
         );
         if (!klinesRes.ok) continue;
         const klines = await klinesRes.json();

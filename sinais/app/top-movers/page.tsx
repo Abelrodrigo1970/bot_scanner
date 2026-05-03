@@ -184,7 +184,7 @@ export default function TopVolateisPage() {
               Top Voláteis
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              As 25 criptos com maior diferença entre máxima e mínima dos últimos 3 meses - Binance Futures
+              As 25 criptos com maior diferença entre máxima e mínima dos últimos ~2 meses - Binance Futures
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -318,7 +318,7 @@ export default function TopVolateisPage() {
                       Símbolo
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Volatilidade % (3 meses)
+                      Volatilidade % (~2 meses)
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Máxima (3m)

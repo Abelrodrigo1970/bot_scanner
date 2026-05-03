@@ -64,8 +64,8 @@ model Signal {
 model TopVolatile {
   id               String   @id @default(cuid())
   symbol           String
-  high3m           Float    // Máxima dos últimos 3 meses
-  low3m            Float    // Mínima dos últimos 3 meses
+  high3m           Float    // Máxima na janela do scan Top Voláteis (~2 meses; nome histórico)
+  low3m            Float    // Mínima na janela do scan Top Voláteis (~2 meses; nome histórico)
   volatilityPercent Float   // (high3m - low3m) / low3m * 100
   lastPrice        Float?   // Preço atual no momento do cálculo
   rank             Int      // Posição 1-20

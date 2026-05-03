@@ -5,7 +5,7 @@ import { ensureDatabase } from '@/lib/db-init';
 import { fetchTopVolatile } from '@/lib/marketData';
 
 /**
- * GET: Retorna as top 25 criptos mais voláteis (dos últimos 3 meses) guardadas na base de dados.
+ * GET: Retorna as top 25 criptos mais voláteis (janela ~2 meses no scan) guardadas na base de dados.
  */
 export async function GET() {
   try {
@@ -48,7 +48,7 @@ export async function GET() {
 }
 
 /**
- * POST: Apaga os registos existentes, busca as 25 mais voláteis dos últimos 3 meses e grava na BD.
+ * POST: Apaga os registos existentes, busca as 25 mais voláteis na janela ~2 meses e grava na BD.
  */
 export async function POST() {
   try {
