@@ -6,6 +6,7 @@ import {
   backfillMaCross5mSignalNames,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
+  RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
   syncRsiMaVolatileUniverseDescriptions,
 } from '@/lib/strategyMigrations';
 
@@ -20,6 +21,31 @@ const RSI_15M_DEFAULT_PARAMS = {
   allowSell: false,
   exchange: 'bybit',
 };
+
+/** RSI 1h: SMA sobre RSI vs nível 45 (TradingView: RSI 14 + Smoothing SMA 21). */
+const RSI_MAIN_DEFAULT_PARAMS = {
+  period: 14,
+  rsiSmoothLength: 21,
+  rsiRefLevel: 45,
+  buyStopPercent: 5,
+  sellStopPercent: 5,
+  rsiBuyGainTpPct: 43,
+  rsiBuyGainTpPositionPct: 50,
+  rsiSellGainTpPct: 43,
+  rsiSellGainTpPositionPct: 50,
+  closeAfterHours: 24,
+  allowBuy: true,
+  allowSell: true,
+  exchange: 'binance',
+};
+
+const RSI_BYBIT_15M_DEFAULT_PARAMS = {
+  ...RSI_MAIN_DEFAULT_PARAMS,
+  exchange: 'bybit' as const,
+};
+
+const RSI_BYBIT_15M_UNIVERSE_DESCRIPTION =
+  'Mesma lógica que o RSI 1h (SMA sobre RSI vs nível, TradingView): velas 15m. Universo = tabela BybitAboveMa200Mc20m (Volume 1h > 500k e MA200 1h); actualiza o menu «Bybit Volume 1h >500k e MA200 1h» antes de gerar sinais.';
 
 const MA_CROSS_15M_DEFAULT_PARAMS = {
   ma30Period: 30,
@@ -45,6 +71,8 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   exitDiffPct: 0.7,
   stopPercent: 5,
   ma12x30RepeatWhileTrend: true,
+  ma12x30GainTpPct: 44,
+  ma12x30GainTpPositionPct: 60,
 };
 
 const MA_CROSS_1H_DEFAULT_PARAMS = {
@@ -71,9 +99,89 @@ async function ensureMissingStrategies() {
         name: 'RSI_15M',
         displayName: 'RSI 15m Reversal (28->32)',
         description:
-          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 < -5% vs MA200 (1h).',
+          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −9% e −3% vs MA200 (1h).',
         isActive: true,
         params: JSON.stringify(RSI_15M_DEFAULT_PARAMS),
+      },
+    });
+  }
+
+  const existingRsiMain = await prisma.strategy.findUnique({
+    where: { name: 'RSI' },
+    select: { id: true, params: true, displayName: true, description: true },
+  });
+
+  if (!existingRsiMain) {
+    await prisma.strategy.create({
+      data: {
+        name: 'RSI',
+        displayName: 'RSI Top Volatilidade (SMA21×45)',
+        description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
+        isActive: true,
+        params: JSON.stringify(RSI_MAIN_DEFAULT_PARAMS),
+      },
+    });
+  } else {
+    try {
+      const p = existingRsiMain.params ? JSON.parse(existingRsiMain.params) : {};
+      const next: Record<string, unknown> = { ...p };
+      next.period = 14;
+      next.rsiSmoothLength = 21;
+      next.rsiRefLevel = 45;
+      delete next.maPeriod;
+      next.buyStopPercent = 5;
+      next.sellStopPercent = 5;
+      if (next.rsiBuyGainTpPct == null || next.rsiBuyGainTpPct === '') {
+        next.rsiBuyGainTpPct = 43;
+      }
+      if (next.rsiBuyGainTpPositionPct == null || next.rsiBuyGainTpPositionPct === '') {
+        next.rsiBuyGainTpPositionPct = 50;
+      }
+      if (next.rsiSellGainTpPct == null || next.rsiSellGainTpPct === '') {
+        next.rsiSellGainTpPct = 43;
+      }
+      if (next.rsiSellGainTpPositionPct == null || next.rsiSellGainTpPositionPct === '') {
+        next.rsiSellGainTpPositionPct = 50;
+      }
+      next.closeAfterHours = 24;
+      if (next.allowBuy === undefined) next.allowBuy = true;
+      if (next.allowSell === undefined) next.allowSell = true;
+      if (next.exchange === undefined) next.exchange = 'binance';
+      delete next.buyThreshold;
+      delete next.sellThreshold;
+      const newDesc = RSI_MA30_SCAN_UNIVERSE_DESCRIPTION;
+      const needParams = JSON.stringify(next) !== JSON.stringify(p);
+      const needMeta =
+        existingRsiMain.displayName !== 'RSI Top Volatilidade (SMA21×45)' ||
+        existingRsiMain.description !== newDesc;
+      if (needParams || needMeta) {
+        await prisma.strategy.update({
+          where: { name: 'RSI' },
+          data: {
+            params: JSON.stringify(next),
+            displayName: 'RSI Top Volatilidade (SMA21×45)',
+            description: newDesc,
+          },
+        });
+      }
+    } catch (e) {
+      console.warn('⚠️ RSI: falha ao migrar params:', e);
+    }
+  }
+
+  const existingRsiBybit15m = await prisma.strategy.findUnique({
+    where: { name: 'RSI_BYBIT_15M' },
+    select: { id: true },
+  });
+
+  if (!existingRsiBybit15m) {
+    await prisma.strategy.create({
+      data: {
+        name: 'RSI_BYBIT_15M',
+        displayName: 'RSI Bybit 15m (SMA21×45)',
+        description: RSI_BYBIT_15M_UNIVERSE_DESCRIPTION,
+        isActive: true,
+        params: JSON.stringify(RSI_BYBIT_15M_DEFAULT_PARAMS),
       },
     });
   }
@@ -168,6 +276,12 @@ async function ensureMissingStrategies() {
       if (next.ma12x30RepeatWhileTrend === undefined) {
         next.ma12x30RepeatWhileTrend = true;
       }
+      if (next.ma12x30GainTpPct == null || next.ma12x30GainTpPct === '') {
+        next.ma12x30GainTpPct = 44;
+      }
+      if (next.ma12x30GainTpPositionPct == null || next.ma12x30GainTpPositionPct === '') {
+        next.ma12x30GainTpPositionPct = 60;
+      }
       if (
         p.ma200Period === 200 ||
         p.ma200Period == null ||
@@ -215,7 +329,7 @@ async function ensureMissingStrategies() {
         name: 'MA_CROSS_1H',
         displayName: 'MA Cross 1h (MA12/MA30)',
         description:
-          'MA12/MA30 em 1h: compra quando MA12>MA30 e |MA12−MA30|/MA30>1,8%; vende quando MA12<MA30 e o mesmo spread>1,8%. Fecha posição quando essa diferença cai abaixo de 0,8% (compressão). SL 7%. Filtro SELL: se |preço−MA30|/MA30>6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+          'MA12/MA30 em 1h: entrada por spread (>1,8%). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro SELL se |preço−MA30|/MA30>6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
         isActive: true,
         params: JSON.stringify(MA_CROSS_1H_DEFAULT_PARAMS),
       },
@@ -233,6 +347,12 @@ async function ensureMissingStrategies() {
       next.entryDiffPct = 1.8;
       next.exitDiffPct = 0.8;
       next.ma12x30RepeatWhileTrend = true;
+      if (next.ma12x30GainTpPct == null || next.ma12x30GainTpPct === '') {
+        next.ma12x30GainTpPct = 44;
+      }
+      if (next.ma12x30GainTpPositionPct == null || next.ma12x30GainTpPositionPct === '') {
+        next.ma12x30GainTpPositionPct = 60;
+      }
       next.stopPercent = 7;
       delete next.entryDiffPctBuy;
       delete next.entryDiffPctSell;
@@ -244,7 +364,7 @@ async function ensureMissingStrategies() {
       delete next.sellTp2Position;
       next.exchange = p.exchange === 'binance' ? 'binance' : 'bybit';
       const newDesc =
-        'MA12/MA30 em 1h: compra quando MA12>MA30 e |MA12−MA30|/MA30>1,8%; vende quando MA12<MA30 e o mesmo spread>1,8%. Fecha posição quando essa diferença cai abaixo de 0,8%. SL 7%. Filtro SELL: se |preço−MA30|/MA30>6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
+        'MA12/MA30 em 1h: entrada por spread (>1,8%). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro SELL se |preço−MA30|/MA30>6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
         existingMaCross1h.displayName !== 'MA Cross 1h (MA12/MA30)' || existingMaCross1h.description !== newDesc;

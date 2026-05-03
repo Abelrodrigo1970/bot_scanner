@@ -9,8 +9,9 @@ import {
 } from '@/lib/tradingExecutor';
 
 /**
- * Cron dedicado para RSI_15M (RSI 15m, universo MA30 < -5% vs MA200).
- * Gera sinais e auto-executa com reversal close (igual à lógica MA_VOLATILE).
+ * Cron dedicado 15m: RSI_15M (reversal 28→32, universo MA30 −9%…−3% vs MA200 1h),
+ * RSI_BYBIT_15M (mesma lógica SMA(RSI)×45 que o RSI 1h, velas 15m, universo BybitAboveMa200Mc20m),
+ * MA_CROSS_15M, etc. Auto-exec com reversal close onde aplicável.
  */
 async function runRsi15mInBackground(): Promise<void> {
   try {
@@ -110,6 +111,104 @@ async function runRsi15mInBackground(): Promise<void> {
           }
         } catch (err) {
           console.error(`[Run-RSI-15m BG] ❌ Erro auto-exec ${sig.symbol}:`, err);
+        }
+      }
+    }
+
+    const rsiBybit15mStrategy = await prisma.strategy.findFirst({
+      where: { name: 'RSI_BYBIT_15M', isActive: true },
+    });
+
+    if (rsiBybit15mStrategy) {
+      const RSI_BYBIT_15M_MIN_STRENGTH = 60;
+      const rbParams = JSON.parse(rsiBybit15mStrategy.params || '{}');
+      const rbExchange = (rbParams.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+
+      const bybit15mSignals = await prisma.signal.findMany({
+        where: {
+          strategyId: rsiBybit15mStrategy.id,
+          status: 'NEW',
+          generatedAt: { gte: startedAt },
+          strength: { gte: RSI_BYBIT_15M_MIN_STRENGTH },
+        },
+        orderBy: { generatedAt: 'asc' },
+      });
+
+      for (const sig of bybit15mSignals) {
+        try {
+          const positionState = await inspectActivePositionForSymbol(sig.symbol, rbExchange);
+          if (!positionState.inspectable) {
+            console.warn(
+              `[Run-RSI-15m BG] ⚠️ RSI Bybit 15m: não foi possível inspecionar ${sig.symbol}: ${positionState.message}`
+            );
+            continue;
+          }
+
+          if (positionState.inspectable && !positionState.hasPosition) {
+            const cleared = Number(
+              await prisma.$executeRaw`
+                UPDATE "Signal"
+                SET status = 'EXPIRED'
+                WHERE symbol = ${sig.symbol}
+                  AND "strategyId" = ${rsiBybit15mStrategy.id}
+                  AND status = 'IN_PROGRESS'
+              `
+            );
+            if (cleared > 0) {
+              console.log(`[Run-RSI-15m BG] 🧹 RSI Bybit 15m: ${sig.symbol}: ${cleared} IN_PROGRESS sem posição`);
+            }
+          }
+
+          if (positionState.hasPosition && positionState.direction === sig.direction) {
+            console.log(`[Run-RSI-15m BG] ⏭️ RSI Bybit 15m: já existe posição ${sig.direction} em ${sig.symbol}`);
+            continue;
+          }
+
+          if (positionState.hasPosition && positionState.direction !== sig.direction) {
+            const closeResult = await closeActivePositionForSymbol(sig.symbol, rbExchange);
+            if (!closeResult.closed) {
+              console.warn(
+                `[Run-RSI-15m BG] ⚠️ RSI Bybit 15m: fechar oposta falhou ${sig.symbol}: ${closeResult.message}`
+              );
+              continue;
+            }
+
+            await prisma.$executeRaw`
+              UPDATE "Signal"
+              SET status = 'EXPIRED'
+              WHERE symbol = ${sig.symbol}
+                AND "strategyId" = ${rsiBybit15mStrategy.id}
+                AND status = 'IN_PROGRESS'
+            `;
+            console.log(`[Run-RSI-15m BG] 🔄 RSI Bybit 15m: posição oposta fechada ${sig.symbol}: ${closeResult.message}`);
+          }
+
+          const execResult = await executeSignalReal({
+            id: sig.id,
+            symbol: sig.symbol,
+            direction: sig.direction as 'BUY' | 'SELL',
+            entryPrice: sig.entryPrice,
+            stopLoss: sig.stopLoss,
+            target1: sig.target1,
+            target2: sig.target2,
+            target3: sig.target3 ?? null,
+            strength: sig.strength,
+            strategyName: sig.strategyName,
+            status: sig.status,
+            extraInfo: sig.extraInfo,
+            exchange: rbExchange,
+          });
+
+          if (execResult.success && execResult.orderId) {
+            await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${sig.id}`;
+            console.log(
+              `[Run-RSI-15m BG] ✅ RSI Bybit 15m: auto-executado ${sig.symbol} ${sig.direction} order ${execResult.orderId}`
+            );
+          } else {
+            console.warn(`[Run-RSI-15m BG] ⚠️ RSI Bybit 15m: auto-exec falhou ${sig.symbol}: ${execResult.message}`);
+          }
+        } catch (err) {
+          console.error(`[Run-RSI-15m BG] ❌ RSI Bybit 15m: erro auto-exec ${sig.symbol}:`, err);
         }
       }
     }
@@ -235,7 +334,8 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     return NextResponse.json({
       success: true,
-      message: 'Processamento iniciado em background (RSI 15m MA30 < -5% vs MA200)',
+      message:
+        'Processamento em background (RSI_15M + RSI_BYBIT_15M + MA_CROSS_15M; crons 15m)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

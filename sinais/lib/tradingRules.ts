@@ -35,6 +35,8 @@ const ALLOWED_STRATEGIES = [
   'RSI Top Volatilidade',
   'RSI 15m Top Volatilidade',
   'RSI_15M',
+  'RSI_BYBIT_15M',
+  'RSI Bybit',
   'RSI',
   'MA Cross 15m',
   'MA_CROSS_15M',

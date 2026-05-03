@@ -512,13 +512,14 @@ export async function fetchMa30Above6Pct(limit: number = 100): Promise<MaCrossBe
   }
 }
 
-/** MA30 mais de 5% abaixo da MA200: (MA30−MA200)/MA200×100 < −5. */
-const MA30_VS_MA200_BELOW_THRESHOLD_PCT = -5;
+/** Faixa em %: MA30 abaixo da MA200 entre **−9%** e **−3%** (inclusive): −9 ≤ (MA30−MA200)/MA200×100 ≤ −3. */
+const MA30_VS_MA200_BAND_LOW_PCT = -9;
+const MA30_VS_MA200_BAND_HIGH_PCT = -3;
 
 /**
- * Scan: MA30 **abaixo** da MA200 em 1h (SMA), com separação relativa **inferior a −5%**
- * ((MA30−MA200)/MA200×100 < −5). Top 300 por volume Binance Futures.
- * Ordenado do mais “apertado” (mais perto de −5%) para o mais afastado (mais negativo).
+ * Scan: MA30 **abaixo** da MA200 em 1h (SMA), com distância relativa na **faixa −9% … −3%**
+ * (inclusive). Top 300 por volume Binance Futures.
+ * Ordenado do mais próximo de **−3%** para o mais próximo de **−9%** (mais negativo).
  */
 export async function fetchMa30Near6PriceBetween(limit: number = 300): Promise<MaCrossBelowItem[]> {
   try {
@@ -556,7 +557,7 @@ export async function fetchMa30Near6PriceBetween(limit: number = 300): Promise<M
         if (ma200 <= 0) continue;
 
         const distMa30Ma200 = ((ma30 - ma200) / ma200) * 100;
-        if (distMa30Ma200 >= MA30_VS_MA200_BELOW_THRESHOLD_PCT) {
+        if (distMa30Ma200 < MA30_VS_MA200_BAND_LOW_PCT || distMa30Ma200 > MA30_VS_MA200_BAND_HIGH_PCT) {
           continue;
         }
 
@@ -573,7 +574,7 @@ export async function fetchMa30Near6PriceBetween(limit: number = 300): Promise<M
 
     return results.slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
   } catch (error) {
-    console.error('Erro ao buscar MA30 < −5% vs MA200 (1h):', error);
+    console.error('Erro ao buscar MA30 −9%…−3% vs MA200 (1h):', error);
     throw error;
   }
 }

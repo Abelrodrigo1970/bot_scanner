@@ -76,9 +76,9 @@ export default function Ma30Near6BetweenPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">MA30 mais de 5% abaixo da MA200 (1h)</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">MA30 entre −3% e −9% vs MA200 (1h)</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              SMA 30 e SMA 200 na vela 1h fechada; MA30 abaixo da MA200 com (MA30 − MA200) / MA200 × 100 inferior a −5%
+              SMA 30 e SMA 200 na vela 1h fechada; MA30 abaixo da MA200 com distância relativa entre <strong>−9%</strong> e <strong>−3%</strong> (inclusive)
             </p>
           </div>
           <button
@@ -110,10 +110,10 @@ export default function Ma30Near6BetweenPage() {
           <ul className="text-xs text-violet-800 dark:text-violet-300 space-y-1 list-disc list-inside">
             <li>Top 300 criptos por volume na Binance Futures — <strong>timeframe 1h</strong> (SMA 30 e SMA 200, como os outros menus)</li>
             <li>
-              <strong>(MA30 − MA200) / MA200 × 100</strong> <strong>&lt; −5%</strong> (MA30 mais de 5% abaixo da MA200; sem limite inferior)
+              <strong>−9% ≤ (MA30 − MA200) / MA200 × 100 ≤ −3%</strong> (MA30 entre ~3% e ~9% abaixo da MA200)
             </li>
             <li>
-              Ordenado do mais próximo de <strong>−5%</strong> para o mais afastado (valores mais negativos)
+              Ordenado do mais próximo de <strong>−3%</strong> para o mais próximo de <strong>−9%</strong>
             </li>
             <li>Guarda até <strong>300</strong> linhas após &quot;Atualizar Scan&quot;</li>
             <li>

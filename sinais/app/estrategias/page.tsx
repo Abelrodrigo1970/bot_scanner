@@ -231,24 +231,59 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-3">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Universo = resultados do scan <strong>MA30 &lt; −5% vs MA200 (1h)</strong> (menu). Actualiza esse scan antes de gerar sinais.
+              Timeframe <strong>1h</strong>. Universo = scan <strong>MA30 entre −9% e −3% vs MA200 (1h)</strong> (só define quais pares analisar). Linha lenta = <strong>SMA sobre o RSI</strong> (TradingView: RSI + Smoothing).{' '}
+              <strong>BUY</strong>: lenta cruza <strong>para cima</strong> do nível. <strong>SELL</strong>: lenta <strong>passa para baixo</strong> do nível (ex.: 45). Sem filtro MA200 no preço.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
-              {numField('BUY — RSI sobe acima de', p.buyThreshold ?? 60, (v) => upd({ buyThreshold: v }))}
-              {numField('SELL — RSI desce abaixo de', p.sellThreshold ?? 40, (v) => upd({ sellThreshold: v }))}
+              {numField('Suavização: período SMA sobre o RSI', p.rsiSmoothLength ?? 21, (v) => upd({ rsiSmoothLength: v }))}
+              {numField('Nível de referência (cruzamento)', p.rsiRefLevel ?? 45, (v) => upd({ rsiRefLevel: v }), 0.5)}
+              {numField('SL compra (%)', p.buyStopPercent ?? 5, (v) => upd({ buyStopPercent: v }), 0.5)}
+              {numField('TP compra: valorização vs entrada (%)', p.rsiBuyGainTpPct ?? 43, (v) => upd({ rsiBuyGainTpPct: v }), 0.5)}
+              {numField('TP compra: % da posição', p.rsiBuyGainTpPositionPct ?? 50, (v) => upd({ rsiBuyGainTpPositionPct: v }), 1)}
+              {numField('SL venda (%)', p.sellStopPercent ?? 5, (v) => upd({ sellStopPercent: v }), 0.5)}
+              {numField('TP venda: valorização vs entrada (%)', p.rsiSellGainTpPct ?? 43, (v) => upd({ rsiSellGainTpPct: v }), 0.5)}
+              {numField('TP venda: % da posição', p.rsiSellGainTpPositionPct ?? 50, (v) => upd({ rsiSellGainTpPositionPct: v }), 1)}
+              {numField('Saída temporal (h)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
+            </div>
+          </div>
+        );
+
+      case 'RSI_BYBIT_15M':
+        return (
+          <div className="space-y-3">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Timeframe <strong>15m</strong>. Universo = tabela <strong>BybitAboveMa200Mc20m</strong> (Volume 1h &gt;500k e MA200 1h); actualiza o scan nesse menu antes de gerar sinais. Linha lenta = <strong>SMA sobre o RSI</strong>.{' '}
+              <strong>BUY</strong>: lenta cruza <strong>para cima</strong> do nível. <strong>SELL</strong>: lenta <strong>passa para baixo</strong> do nível (ex.: 45). Mesmos SL/TP parciais que o RSI 1h.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
+              {numField('Suavização: período SMA sobre o RSI', p.rsiSmoothLength ?? 21, (v) => upd({ rsiSmoothLength: v }))}
+              {numField('Nível de referência (cruzamento)', p.rsiRefLevel ?? 45, (v) => upd({ rsiRefLevel: v }), 0.5)}
+              {numField('SL compra (%)', p.buyStopPercent ?? 5, (v) => upd({ buyStopPercent: v }), 0.5)}
+              {numField('TP compra: valorização vs entrada (%)', p.rsiBuyGainTpPct ?? 43, (v) => upd({ rsiBuyGainTpPct: v }), 0.5)}
+              {numField('TP compra: % da posição', p.rsiBuyGainTpPositionPct ?? 50, (v) => upd({ rsiBuyGainTpPositionPct: v }), 1)}
+              {numField('SL venda (%)', p.sellStopPercent ?? 5, (v) => upd({ sellStopPercent: v }), 0.5)}
+              {numField('TP venda: valorização vs entrada (%)', p.rsiSellGainTpPct ?? 43, (v) => upd({ rsiSellGainTpPct: v }), 0.5)}
+              {numField('TP venda: % da posição', p.rsiSellGainTpPositionPct ?? 50, (v) => upd({ rsiSellGainTpPositionPct: v }), 1)}
+              {numField('Saída temporal (h)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
             </div>
           </div>
         );
 
       case 'RSI_15M':
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="space-y-3">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Universo = scan <strong>MA30 entre −9% e −3% vs MA200 (1h)</strong> (menu &quot;MA30 −3%…−9% vs MA200&quot;). Actualiza esse scan antes de gerar sinais.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
             {numField('RSI vela anterior abaixo de', p.previousBelowThreshold ?? 28, (v) => upd({ previousBelowThreshold: v }))}
             {numField('RSI atual fecha acima de', p.buyThreshold ?? 32, (v) => upd({ buyThreshold: v }))}
             {numField('SL (%)', p.stopPercent ?? 3, (v) => upd({ stopPercent: v }), 0.5)}
             {numField('Máx. símbolos', p.symbolLimit ?? 400, (v) => upd({ symbolLimit: v }))}
+            </div>
           </div>
         );
 
@@ -287,6 +322,18 @@ export default function EstrategiasPage() {
               {numField('Entrada: dif. MA12/MA30 (%)', p.entryDiffPct ?? (is1h ? 1.8 : 0.9), (v) => upd({ entryDiffPct: v }), 0.1)}
               {numField('Saída/fecho: dif. MA12/MA30 (%)', p.exitDiffPct ?? (is1h ? 0.8 : 0.7), (v) => upd({ exitDiffPct: v }), 0.1)}
               {numField('SL (%)', p.stopPercent ?? (is1h ? 7 : 5), (v) => upd({ stopPercent: v }), 0.5)}
+              {numField(
+                'TP parcial: valorização vs entrada (%)',
+                p.ma12x30GainTpPct ?? 44,
+                (v) => upd({ ma12x30GainTpPct: v }),
+                0.5
+              )}
+              {numField(
+                'TP parcial: % da posição a fechar',
+                p.ma12x30GainTpPositionPct ?? 60,
+                (v) => upd({ ma12x30GainTpPositionPct: v }),
+                1
+              )}
             </div>
             <div className="max-w-md">
               {numField(

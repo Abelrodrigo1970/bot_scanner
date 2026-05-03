@@ -13,7 +13,7 @@ import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 /**
  * Executa sinais em background (fire-and-forget):
  * RSI 1h + MA200_VOLATILE 4h + MA_CROSS_1H (MA12/MA30 em 1h, universo BybitAboveMa200Mc20m), conforme estratégias ativas na BD.
- * Exclui: RSI_15M, VOLUME_SPIKE, MA_CROSS_5M, MA_VOLATILE (têm cron dedicado).
+ * Exclui: RSI_15M, RSI_BYBIT_15M, VOLUME_SPIKE, MA_CROSS_5M, MA_VOLATILE (têm cron dedicado).
  * Auto-executa ordens: RSI e MA200_VOLATILE (não MA_CROSS_1H por defeito).
  * Volume Spike 1h: /api/cron/run-volume-spike. MA Cross 5m/15m: /api/cron/run-volume-spike-15m
  */
@@ -23,7 +23,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
-      exclude: ['RSI_15M', 'VOLUME_SPIKE', 'MA_CROSS_5M', 'MA_VOLATILE'],
+      exclude: ['RSI_15M', 'RSI_BYBIT_15M', 'VOLUME_SPIKE', 'MA_CROSS_5M', 'MA_VOLATILE'],
     });
 
     // Auto-exec RSI 1h — força mínima 60

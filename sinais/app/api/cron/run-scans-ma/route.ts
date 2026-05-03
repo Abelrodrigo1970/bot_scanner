@@ -9,7 +9,7 @@ import {
 /**
  * Cron dedicado para atualizar os scans de médias:
  * - MA30 > 9% MA200 (1h)
- * - MA30 < -5% vs MA200 (1h)
+ * - MA30 entre −9% e −3% vs MA200 (1h)
  * - Bybit Volume 1h (500k) + MA200 (1h) → `BybitAboveMa200Mc20m`
  *
  * O trabalho pesado corre em background para evitar timeout do cliente/cron HTTP.
@@ -20,7 +20,7 @@ let maScansJobPromise: Promise<void> | null = null;
 
 async function runMaScansJob(): Promise<{
   ma30Above6Pct: number;
-  ma30Minus5ToMinus10: number;
+  ma30BandMinus3ToMinus9: number;
   bybitVolume1hMa200: number;
 }> {
   const above6 = await fetchMa30Above6Pct(100);
@@ -74,7 +74,7 @@ async function runMaScansJob(): Promise<{
 
   return {
     ma30Above6Pct: above6.length,
-    ma30Minus5ToMinus10: nearBand.length,
+    ma30BandMinus3ToMinus9: nearBand.length,
     bybitVolume1hMa200: bybitVolMa200.length,
   };
 }

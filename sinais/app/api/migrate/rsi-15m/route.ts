@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       update: {
         displayName: 'RSI 15m Reversal (28->32)',
         description:
-          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 < -5% vs MA200 (1h).',
+          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −9% e −3% vs MA200 (1h).',
         isActive: true,
         params: JSON.stringify(PARAMS),
       },
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         name: 'RSI_15M',
         displayName: 'RSI 15m Reversal (28->32)',
         description:
-          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 < -5% vs MA200 (1h).',
+          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −9% e −3% vs MA200 (1h).',
         isActive: true,
         params: JSON.stringify(PARAMS),
       },

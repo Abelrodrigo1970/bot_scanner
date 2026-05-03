@@ -6,7 +6,9 @@ import { prisma } from './db';
 import { fetchCandles, fetchTopSymbolsBy1hPriceChange, fetchTopSymbolsBy24hPriceChange, fetchTopSymbolsByVolume, type Timeframe } from './marketData';
 import {
   calculateRSI,
+  calculateRSISeries,
   calculateSMA,
+  calculateSMASeries,
   calculateLastEMA,
   getCloses,
   getVolumes,
@@ -370,11 +372,123 @@ export async function runMa200VolatileStrategy(
 }
 
 /**
- * Estratégia RSI — Top Volatilidade 1h:
- * BUY  quando RSI cruza de baixo para cima 60  → SL -3% | sem TP intermédio | saída às 24h
- * SELL quando RSI cruza de cima para baixo 40  → SL +3% | sem TP intermédio | saída às 24h
- * Usa sempre o candle fechado (não o em formação).
- * Corre apenas em símbolos Top Volatilidade (filtrado em runAllStrategies).
+ * RSI + SMA sobre RSI vs nível (TradingView). Velas `chartTf` (1h ou 15m).
+ * @internal Usado por {@link runRsiStrategy} (1h) e {@link runRsiBybit15mStrategy} (15m).
+ */
+async function runRsiSma45OnTimeframe(
+  symbol: string,
+  chartTf: '1h' | '15m',
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  const period           = params.period ?? 14;
+  const rsiSmoothLength  = Number(params.rsiSmoothLength ?? 21);
+  const rsiRefLevel      = Number(params.rsiRefLevel ?? 45);
+  const buyStopPercent   = Number(params.buyStopPercent ?? 5);
+  const sellStopPercent  = Number(params.sellStopPercent ?? 5);
+  const closeAfterHours  = params.closeAfterHours ?? 24;
+  const rsiBuyGainTpPct  = Number(params.rsiBuyGainTpPct ?? 43);
+  const rsiBuyGainTpPositionPct = Number(params.rsiBuyGainTpPositionPct ?? 50);
+  const rsiSellGainTpPct = Number(params.rsiSellGainTpPct ?? 43);
+  const rsiSellGainTpPositionPct = Number(params.rsiSellGainTpPositionPct ?? 50);
+
+  try {
+    const candlesNeeded = period + rsiSmoothLength + 50;
+    const candles = await fetchCandles(symbol, chartTf, candlesNeeded);
+    if (candles.length < period + rsiSmoothLength + 5) return null;
+
+    const closes = getCloses(candles);
+
+    // Candle fechado: exclui o em formação
+    const closedCloses = closes.slice(0, -1);
+
+    const rsiSeries = calculateRSISeries(closedCloses, period);
+    if (rsiSeries.length < rsiSmoothLength + 2) return null;
+
+    const slowSeries = calculateSMASeries(rsiSeries, rsiSmoothLength);
+    if (!slowSeries || slowSeries.length < 2) return null;
+
+    const slowNow  = slowSeries[slowSeries.length - 1];
+    const slowPrev = slowSeries[slowSeries.length - 2];
+    if (!Number.isFinite(slowNow) || !Number.isFinite(slowPrev)) return null;
+
+    const rsiNow = rsiSeries[rsiSeries.length - 1];
+    const currentPrice = candles[candles.length - 2].close;
+
+    // BUY: SMA(RSI) cruza para cima o nível de referência
+    if (slowPrev <= rsiRefLevel && slowNow > rsiRefLevel) {
+      const target1 =
+        rsiBuyGainTpPct > 0 && rsiBuyGainTpPositionPct > 0
+          ? currentPrice * (1 + rsiBuyGainTpPct / 100)
+          : undefined;
+      return {
+        direction: 'BUY',
+        entryPrice: currentPrice,
+        stopLoss: currentPrice * (1 - buyStopPercent / 100),
+        target1,
+        target2:  undefined,
+        target3:  undefined,
+        strength: Math.min(100, Math.max(60, Math.round(60 + (slowNow - rsiRefLevel) * 2))),
+        extraInfo: JSON.stringify({
+          rsi: rsiNow.toFixed(2),
+          rsiSlow: slowNow.toFixed(2),
+          rsiSlowPrev: slowPrev.toFixed(2),
+          rsiRefLevel,
+          rsiSmoothLength,
+          period,
+          rsiBuyGainTpPct,
+          rsiBuyGainTpPositionPct,
+          tp1Position: rsiBuyGainTpPositionPct,
+          stopPercent: buyStopPercent,
+          crossover: `SMA${rsiSmoothLength}(RSI${period}) cruza acima de ${rsiRefLevel} (BUY)`,
+          chartTimeframe: chartTf,
+          executionProfile: `SL -${buyStopPercent}% | TP1 +${rsiBuyGainTpPct}% (${rsiBuyGainTpPositionPct}% posição) | restante às ${closeAfterHours}h`,
+          timeExit: `restante 100% às ${closeAfterHours}h`,
+        }),
+      };
+    }
+
+    // SELL: linha lenta passa para baixo dos 45 (estava em cima ou no nível, fecha abaixo)
+    if (slowPrev >= rsiRefLevel && slowNow < rsiRefLevel) {
+      const target1 =
+        rsiSellGainTpPct > 0 && rsiSellGainTpPositionPct > 0
+          ? currentPrice * (1 - rsiSellGainTpPct / 100)
+          : undefined;
+      return {
+        direction: 'SELL',
+        entryPrice: currentPrice,
+        stopLoss: currentPrice * (1 + sellStopPercent / 100),
+        target1,
+        target2:  undefined,
+        target3:  undefined,
+        strength: Math.min(100, Math.max(60, Math.round(60 + (rsiRefLevel - slowNow) * 2))),
+        extraInfo: JSON.stringify({
+          rsi: rsiNow.toFixed(2),
+          rsiSlow: slowNow.toFixed(2),
+          rsiSlowPrev: slowPrev.toFixed(2),
+          rsiRefLevel,
+          rsiSmoothLength,
+          period,
+          rsiSellGainTpPct,
+          rsiSellGainTpPositionPct,
+          tp1Position: rsiSellGainTpPositionPct,
+          stopPercent: sellStopPercent,
+          crossover: `SMA${rsiSmoothLength}(RSI${period}) passa para baixo de ${rsiRefLevel} (SELL)`,
+          chartTimeframe: chartTf,
+          executionProfile: `SL +${sellStopPercent}% | TP1 -${rsiSellGainTpPct}% (${rsiSellGainTpPositionPct}% posição) | restante às ${closeAfterHours}h`,
+          timeExit: `restante 100% às ${closeAfterHours}h`,
+        }),
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error(`Erro na estratégia RSI SMA45 (${chartTf}) para ${symbol}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Estratégia RSI 1h — igual lógica SMA(RSI) vs 45; universo Ma30Near6PriceBetween (ver runAllStrategies).
  */
 export async function runRsiStrategy(
   symbol: string,
@@ -382,82 +496,20 @@ export async function runRsiStrategy(
   params: StrategyParams
 ): Promise<SignalResult | null> {
   if (timeframe !== '1h') return null;
+  return runRsiSma45OnTimeframe(symbol, '1h', params);
+}
 
-  const period        = params.period        ?? 14;
-  const buyThreshold  = params.buyThreshold  ?? 60;
-  const sellThreshold = params.sellThreshold ?? 40;
-  const maPeriod      = params.maPeriod      ?? 200;
-  const buyStopPercent = params.buyStopPercent ?? 3;
-  const sellStopPercent = params.sellStopPercent ?? 3;
-  const closeAfterHours = params.closeAfterHours ?? 24;
-
-  try {
-    const candlesNeeded = Math.max(period + 25, maPeriod + 5);
-    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
-    if (candles.length < maPeriod + 3) return null;
-
-    const closes = getCloses(candles);
-
-    // Usa candle fechado: exclui o candle ainda em formação
-    const closedCloses     = closes.slice(0, -1);
-    const prevClosedCloses = closes.slice(0, -2);
-
-    const rsi     = calculateRSI(closedCloses,     period);
-    const prevRsi = calculateRSI(prevClosedCloses,  period);
-    const ma200   = calculateSMA(closedCloses, maPeriod);
-    if (rsi === null || prevRsi === null || ma200 === null) return null;
-
-    const currentPrice = candles[candles.length - 2].close; // último candle fechado
-
-    // BUY: RSI cruza de baixo para cima 60 E preço acima MA200
-    if (prevRsi <= buyThreshold && rsi > buyThreshold && currentPrice > ma200) {
-      return {
-        direction: 'BUY',
-        entryPrice: currentPrice,
-        stopLoss: currentPrice * (1 - buyStopPercent / 100),
-        target1:  undefined,
-        target2:  undefined,
-        target3:  undefined,
-        strength: Math.min(100, Math.max(60, Math.round(60 + (rsi - buyThreshold) * 2))),
-        extraInfo: JSON.stringify({
-          rsi: rsi.toFixed(2),
-          prevRsi: prevRsi.toFixed(2),
-          buyThreshold,
-          ma200: ma200.toFixed(4),
-          stopPercent: buyStopPercent,
-          executionProfile: `SL -${buyStopPercent}% | sem TP intermédio | saída às ${closeAfterHours}h`,
-          timeExit: `100% às ${closeAfterHours}h`,
-        }),
-      };
-    }
-
-    // SELL: RSI cruza de cima para baixo 40 E preço abaixo MA200
-    if (prevRsi >= sellThreshold && rsi < sellThreshold && currentPrice < ma200) {
-      return {
-        direction: 'SELL',
-        entryPrice: currentPrice,
-        stopLoss: currentPrice * (1 + sellStopPercent / 100),
-        target1:  undefined,
-        target2:  undefined,
-        target3:  undefined,
-        strength: Math.min(100, Math.max(60, Math.round(60 + (sellThreshold - rsi) * 2))),
-        extraInfo: JSON.stringify({
-          rsi: rsi.toFixed(2),
-          prevRsi: prevRsi.toFixed(2),
-          sellThreshold,
-          ma200: ma200.toFixed(4),
-          stopPercent: sellStopPercent,
-          executionProfile: `SL +${sellStopPercent}% | sem TP intermédio | saída às ${closeAfterHours}h`,
-          timeExit: `100% às ${closeAfterHours}h`,
-        }),
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.error(`Erro na estratégia RSI para ${symbol}:`, error);
-    return null;
-  }
+/**
+ * RSI 15m — mesma lógica que o RSI 1h (SMA sobre RSI vs 45, SL/TP); velas 15m.
+ * Universo de símbolos = tabela BybitAboveMa200Mc20m (Volume 1h 500k + MA200 1h), definido em runAllStrategies.
+ */
+export async function runRsiBybit15mStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  if (timeframe !== '15m') return null;
+  return runRsiSma45OnTimeframe(symbol, '15m', params);
 }
 
 /**
@@ -466,7 +518,7 @@ export async function runRsiStrategy(
  * Apenas BUY | SL -3% | TP1 +5% | TP2 +14%
  * Usa sempre o candle fechado (não o em formação).
  * Sem filtro MA200 para sinal mais rápido.
- * Corre no universo da BD Ma30Near6PriceBetween (scan MA30 < -5% vs MA200).
+ * Corre no universo da BD Ma30Near6PriceBetween (scan MA30 −9%…−3% vs MA200 em 1h).
  */
 export async function runRsi15mStrategy(
   symbol: string,
@@ -544,11 +596,12 @@ async function runMaCrossM30M200OnTimeframe(
   const maSlowPeriod = Number(
     params.ma200Period ?? (bar === '5m' ? 30 : 200)
   );
-  // Modo MA12xMA30: spread |MA rápida − MA lenta|/MA lenta; 15m (MA_CROSS_5M legado), 1h (MA_CROSS_1H), ou useDiffMode.
+  // Modo MA12xMA30: spread |MA rápida − MA lenta|/MA lenta. 15m/1h: sempre neste função (evita BD com períodos ≠12/30 cair no modo cruzamento MA30/MA200).
   const isMa12x30Mode = Boolean(
     params.useDiffMode === true ||
-      (timeframe === '15m' && ma30Period === 12 && maSlowPeriod === 30) ||
-      (bar === '1h' && timeframe === '1h' && ma30Period === 12 && maSlowPeriod === 30)
+      (timeframe === '15m' && bar === '15m') ||
+      (timeframe === '1h' && bar === '1h') ||
+      (timeframe === '15m' && ma30Period === 12 && maSlowPeriod === 30)
   );
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
@@ -577,6 +630,11 @@ async function runMaCrossM30M200OnTimeframe(
    * Se false, exige também transição na vela anterior (spread antes ≤ limiar ou alinhamento diferente).
    */
   const repeatSpreadWhileTrend = params.ma12x30RepeatWhileTrend === true;
+
+  /** TP parcial quando preço favorável ≥ este % vs entrada (compra: +N%; venda: −N%). */
+  const ma12x30GainTpPct = Number(params.ma12x30GainTpPct ?? 44);
+  /** % da posição a fechar nesse TP parcial. */
+  const ma12x30GainTpPositionPct = Number(params.ma12x30GainTpPositionPct ?? 60);
 
   const ma = (arr: number[], p: number) =>
     maType === 'SMA' ? calculateSMA(arr, p) : calculateLastEMA(arr, p);
@@ -628,8 +686,14 @@ async function runMaCrossM30M200OnTimeframe(
         : (prevMa30 <= prevMaSlow && ma30 > confirmUp)
     ) {
       const stopLoss = currentPrice * (1 - stopPercent / 100);
-      const target1  = isMa12x30Mode ? undefined : currentPrice * (1 + buyTp1Percent  / 100);
-      const target2  = isMa12x30Mode ? undefined : (buyTp2Percent > 0 ? currentPrice * (1 + buyTp2Percent  / 100) : undefined);
+      const target1 = isMa12x30Mode
+        ? currentPrice * (1 + ma12x30GainTpPct / 100)
+        : currentPrice * (1 + buyTp1Percent / 100);
+      const target2 = isMa12x30Mode
+        ? undefined
+        : buyTp2Percent > 0
+          ? currentPrice * (1 + buyTp2Percent / 100)
+          : undefined;
 
       return {
         direction: 'BUY',
@@ -654,11 +718,20 @@ async function runMaCrossM30M200OnTimeframe(
             ? `MA12/MA30 bullish spread > ${entryDiffPct}% (BUY)`
             : `MA30 crosses +${confirmationPct}% above ${slowLabel} (BUY)`,
           stopPercent,
-          tp1Percent: buyTp1Percent,
-          tp1Position: `${buyTp1Position}%`,
-          tp2Percent: buyTp2Percent,
-          tp2Position: `${buyTp2Position}%`,
-          executionProfile: `SL -${stopPercent}% | TP1 +${buyTp1Percent}% (${buyTp1Position}% posição) | TP2 +${buyTp2Percent}% (${buyTp2Position}% posição) | restante aberto`,
+          ...(isMa12x30Mode
+            ? {
+                ma12x30GainTpPct,
+                ma12x30GainTpPositionPct,
+                tp1Position: ma12x30GainTpPositionPct,
+                executionProfile: `SL -${stopPercent}% | TP1 +${ma12x30GainTpPct}% (${ma12x30GainTpPositionPct}% posição) | restante: fecho dinâmico se spread < ${exitDiffPct}%`,
+              }
+            : {
+                tp1Percent: buyTp1Percent,
+                tp1Position: `${buyTp1Position}%`,
+                tp2Percent: buyTp2Percent,
+                tp2Position: `${buyTp2Position}%`,
+                executionProfile: `SL -${stopPercent}% | TP1 +${buyTp1Percent}% (${buyTp1Position}% posição) | TP2 +${buyTp2Percent}% (${buyTp2Position}% posição) | restante aberto`,
+              }),
         }),
       };
     }
@@ -682,8 +755,14 @@ async function runMaCrossM30M200OnTimeframe(
       }
 
       const stopLoss = currentPrice * (1 + stopPercent / 100);
-      const target1  = isMa12x30Mode ? undefined : currentPrice * (1 - sellTp1Percent  / 100);
-      const target2  = isMa12x30Mode ? undefined : (sellTp2Percent > 0 ? currentPrice * (1 - sellTp2Percent  / 100) : undefined);
+      const target1 = isMa12x30Mode
+        ? currentPrice * (1 - ma12x30GainTpPct / 100)
+        : currentPrice * (1 - sellTp1Percent / 100);
+      const target2 = isMa12x30Mode
+        ? undefined
+        : sellTp2Percent > 0
+          ? currentPrice * (1 - sellTp2Percent / 100)
+          : undefined;
 
       return {
         direction: 'SELL',
@@ -713,11 +792,20 @@ async function runMaCrossM30M200OnTimeframe(
             ? `MA12/MA30 bearish spread > ${entryDiffPct}% (SELL)`
             : `MA30 crosses -${confirmationPct}% below ${slowLabel} (SELL)`,
           stopPercent,
-          tp1Percent: sellTp1Percent,
-          tp1Position: `${sellTp1Position}%`,
-          tp2Percent: sellTp2Percent,
-          tp2Position: `${sellTp2Position}%`,
-          executionProfile: `SL +${stopPercent}% | TP1 -${sellTp1Percent}% (${sellTp1Position}% posição) | TP2 -${sellTp2Percent}% (${sellTp2Position}% posição) | restante aberto`,
+          ...(isMa12x30Mode
+            ? {
+                ma12x30GainTpPct,
+                ma12x30GainTpPositionPct,
+                tp1Position: ma12x30GainTpPositionPct,
+                executionProfile: `SL +${stopPercent}% | TP1 -${ma12x30GainTpPct}% (${ma12x30GainTpPositionPct}% posição) | restante: fecho dinâmico se spread < ${exitDiffPct}%`,
+              }
+            : {
+                tp1Percent: sellTp1Percent,
+                tp1Position: `${sellTp1Position}%`,
+                tp2Percent: sellTp2Percent,
+                tp2Position: `${sellTp2Position}%`,
+                executionProfile: `SL +${stopPercent}% | TP1 -${sellTp1Percent}% (${sellTp1Position}% posição) | TP2 -${sellTp2Percent}% (${sellTp2Position}% posição) | restante aberto`,
+              }),
         }),
       };
     }
@@ -843,6 +931,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         strategy.name === 'MA_CROSS_1H'    ? ['1h'] :
         strategy.name === 'MA_VOLATILE'    ? ['1h'] :
         strategy.name === 'RSI_15M'        ? ['15m'] :
+        strategy.name === 'RSI_BYBIT_15M'  ? ['15m'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
         strategy.name === 'RSI'            ? ['1h'] :
         strategy.name === 'MA_CROSS_15M'   ? ['15m'] : timeframes;
@@ -858,14 +947,14 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.log(`✅ Encontrados ${volumeSymbols.length} símbolos`);
         }
       } else if (strategy.name === 'RSI_15M') {
-        console.log(`🔍 Buscando MA30 < -5% vs MA200 (1h) na BD para ${strategy.name}...`);
+        console.log(`🔍 Buscando MA30 −9%…−3% vs MA200 (1h) na BD para ${strategy.name}...`);
         const nearBand = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
         if (nearBand.length > 0) {
           symbolsToAnalyze = nearBand.map((t: { symbol: string }) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 < -5% vs MA200)`);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 −9%…−3% vs MA200)`);
         } else {
           console.warn(
-            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 < −5% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
+            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 −3%…−9% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
           );
           continue;
         }
@@ -892,7 +981,11 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.warn(`⚠️ Nenhum símbolo MA Cross Below na BD. Execute "Atualizar Scan" antes. Ignorando ${strategy.name}.`);
           continue;
         }
-      } else if (strategy.name === 'MA_CROSS_5M' || strategy.name === 'MA_CROSS_1H') {
+      } else if (
+        strategy.name === 'MA_CROSS_5M' ||
+        strategy.name === 'MA_CROSS_1H' ||
+        strategy.name === 'RSI_BYBIT_15M'
+      ) {
         console.log(`🔍 Buscando scan Bybit Volume 1h>500k e MA200 1h na BD para ${strategy.name}...`);
         const bybitScan = await prisma.$queryRaw<Array<{ symbol: string }>>`
           SELECT symbol
@@ -921,14 +1014,14 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'RSI') {
-        console.log(`🔍 Buscando scan MA30 < −5% vs MA200 (1h) na BD para ${strategy.name}...`);
+        console.log(`🔍 Buscando scan MA30 −9%…−3% vs MA200 (1h) na BD para ${strategy.name}...`);
         const ma30Below = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
         if (ma30Below.length > 0) {
           symbolsToAnalyze = ma30Below.map((t: { symbol: string }) => t.symbol);
           console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (Ma30Near6PriceBetween)`);
         } else {
           console.warn(
-            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 < −5% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
+            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 −3%…−9% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
           );
           continue;
         }
@@ -968,6 +1061,12 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 signalResult = await runRsi15mStrategy(symbol, timeframe, params);
                 if (signalResult) {
                   console.log(`✅ RSI 15m: ${symbol} ${signalResult.direction} (${timeframe})`);
+                }
+                break;
+              case 'RSI_BYBIT_15M':
+                signalResult = await runRsiBybit15mStrategy(symbol, timeframe, params);
+                if (signalResult) {
+                  console.log(`✅ RSI Bybit 15m: ${symbol} ${signalResult.direction} (${timeframe})`);
                 }
                 break;
               case 'MA_VOLATILE':

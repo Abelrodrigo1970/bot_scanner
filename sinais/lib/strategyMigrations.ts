@@ -10,6 +10,10 @@ export const MA_CROSS_5M_PARAMS = {
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
   /** Se true: BUY/SELL sempre que spread > limiar e MA12 vs MA30 alinhados (sem exigir “primeira” expansão na vela anterior). */
   ma12x30RepeatWhileTrend: true,
+  /** TP parcial quando preço vs entrada atinge +N% (compra) ou −N% (venda). */
+  ma12x30GainTpPct: 44,
+  /** % da posição a fechar nesse TP. */
+  ma12x30GainTpPositionPct: 60,
   allowBuy: true,
   allowSell: true,
   exchange: 'binance',
@@ -17,11 +21,11 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m com gatilho por diferença entre médias (|MA12−MA30|/MA30 > 0,9% na direção da tendência). Com ma12x30RepeatWhileTrend=true volta a avaliar entrada em cada ciclo enquanto o spread forte se mantém (útil para inverter posição em tendência); desliga no JSON para o modo antigo (só na transição da vela anterior). Saída por compressão < 0,7%. SL 5%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,7%. SL 5%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
 
-/** Texto canónico da descrição (universo = tabela Ma30Near6PriceBetween / scan MA30 < -5%). */
+/** Texto canónico da descrição (universo = tabela Ma30Near6PriceBetween / scan MA30 −9%…−3% vs MA200). */
 export const RSI_MA30_SCAN_UNIVERSE_DESCRIPTION =
-  'Universo = scan MA30 < -5% vs MA200 (1h). BUY quando RSI cruza acima de 60 E preço > MA200 → SL -3% | sem TP intermédio | 100% às 24h. SELL quando RSI cruza abaixo de 40 E preço < MA200 → SL +3% | sem TP intermédio | 100% às 24h.';
+  'Universo = scan MA30 entre −9% e −3% vs MA200 (1h) — só lista de símbolos. RSI(14) + SMA(21) sobre o RSI (linha lenta). BUY: lenta cruza para cima do 45 → SL -5% | TP1 +43% (50%) | restante às 24h. SELL: lenta passa para baixo do 45 → SL +5% | TP1 -43% (50%) | restante às 24h.';
 
 /** Universo = tabela MaCrossBelow (menu MA Cross Proximidade): MA30 entre −3% e +3% vs MA200 em 1h. */
 export const MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION =
@@ -40,7 +44,15 @@ export async function syncRsiMaVolatileUniverseDescriptions(
     where: { name: 'RSI' },
     select: { description: true },
   });
-  if (rsi?.description?.includes('Top Voláteis')) {
+  const rsiDesc = rsi?.description ?? '';
+  const rsiNeedsRsiDescUpdate =
+    rsiDesc.includes('Top Voláteis') ||
+    rsiDesc.includes('cruza acima de 60') ||
+    rsiDesc.includes('cruza abaixo de 40') ||
+    rsiDesc.includes('RSI cruza') ||
+    rsiDesc.includes('MA30 < -5%') ||
+    rsiDesc.includes('MA30 < −5%');
+  if (rsi && rsiNeedsRsiDescUpdate) {
     await prisma.strategy.update({
       where: { name: 'RSI' },
       data: { description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION },

@@ -22,6 +22,14 @@ export function calculateRSI(closes: number[], period: number = 14): number | nu
   return rsiValues.length > 0 ? rsiValues[rsiValues.length - 1] : null;
 }
 
+/** Série RSI (um valor por vela fechada após warm-up), alinhada com TradingView “RSI Length”. */
+export function calculateRSISeries(closes: number[], period: number = 14): number[] {
+  if (closes.length < period + 1) {
+    return [];
+  }
+  return RSI.calculate({ values: closes, period });
+}
+
 /**
  * Calcula Média Móvel Simples (SMA)
  */
@@ -36,6 +44,14 @@ export function calculateSMA(values: number[], period: number): number | null {
   });
 
   return smaValues.length > 0 ? smaValues[smaValues.length - 1] : null;
+}
+
+/** Série SMA completa (para suavizar RSI, etc.). */
+export function calculateSMASeries(values: number[], period: number): number[] {
+  if (values.length < period) {
+    return [];
+  }
+  return SMA.calculate({ values, period });
 }
 
 /**

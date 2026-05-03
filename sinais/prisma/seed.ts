@@ -22,19 +22,22 @@ async function main() {
     console.log(`  strategyName em sinais (estatísticas): ${mig.signalsRelabeled} actualizados para "${MA_CROSS_5M_DISPLAY}"`);
   }
 
-  // Estratégia RSI (invertida / momentum) com filtro MA200
+  // Estratégia RSI 1h: SMA(RSI) vs nível 45 + filtro MA200 (universo Ma30Near6PriceBetween)
   const rsiStrategy = await prisma.strategy.upsert({
     where: { name: 'RSI' },
     update: {
-      displayName: 'RSI Top Volatilidade (60/40)',
+      displayName: 'RSI Top Volatilidade (SMA21×45)',
       description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
       params: JSON.stringify({
         period: 14,
-        buyThreshold: 60,
-        sellThreshold: 40,
-        maPeriod: 200,
-        buyStopPercent: 3,
-        sellStopPercent: 3,
+        rsiSmoothLength: 21,
+        rsiRefLevel: 45,
+        buyStopPercent: 5,
+        sellStopPercent: 5,
+        rsiBuyGainTpPct: 43,
+        rsiBuyGainTpPositionPct: 50,
+        rsiSellGainTpPct: 43,
+        rsiSellGainTpPositionPct: 50,
         closeAfterHours: 24,
         allowBuy: true,
         allowSell: true,
@@ -43,16 +46,19 @@ async function main() {
     },
     create: {
       name: 'RSI',
-      displayName: 'RSI Top Volatilidade (60/40)',
+      displayName: 'RSI Top Volatilidade (SMA21×45)',
       description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
       isActive: true,
       params: JSON.stringify({
         period: 14,
-        buyThreshold: 60,
-        sellThreshold: 40,
-        maPeriod: 200,
-        buyStopPercent: 3,
-        sellStopPercent: 3,
+        rsiSmoothLength: 21,
+        rsiRefLevel: 45,
+        buyStopPercent: 5,
+        sellStopPercent: 5,
+        rsiBuyGainTpPct: 43,
+        rsiBuyGainTpPositionPct: 50,
+        rsiSellGainTpPct: 43,
+        rsiSellGainTpPositionPct: 50,
         closeAfterHours: 24,
         allowBuy: true,
         allowSell: true,
@@ -164,7 +170,7 @@ async function main() {
       isActive: true,
       displayName: 'MA Cross 1h (MA12/MA30)',
       description:
-        'MA12/MA30 em 1h: compra quando MA12>MA30 e |MA12−MA30|/MA30>1,8%; vende quando MA12<MA30 e o mesmo spread>1,8%. Fecha posição quando essa diferença cai abaixo de 0,8%. SL 7%. Filtro SELL: se |preço−MA30|/MA30>6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+        'MA12/MA30 em 1h: entrada por spread (>1,8%). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro SELL se |preço−MA30|/MA30>6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
       params: JSON.stringify({
         ma30Period: 12,
         ma200Period: 30,
@@ -178,13 +184,15 @@ async function main() {
         allowSell: true,
         exchange: 'bybit',
         ma12x30RepeatWhileTrend: true,
+        ma12x30GainTpPct: 44,
+        ma12x30GainTpPositionPct: 60,
       }),
     },
     create: {
       name: 'MA_CROSS_1H',
       displayName: 'MA Cross 1h (MA12/MA30)',
       description:
-        'MA12/MA30 em 1h: compra quando MA12>MA30 e |MA12−MA30|/MA30>1,8%; vende quando MA12<MA30 e o mesmo spread>1,8%. Fecha posição quando essa diferença cai abaixo de 0,8%. SL 7%. Filtro SELL: se |preço−MA30|/MA30>6% não entra. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+        'MA12/MA30 em 1h: entrada por spread (>1,8%). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro SELL se |preço−MA30|/MA30>6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
       isActive: true,
       params: JSON.stringify({
         ma30Period: 12,
@@ -199,6 +207,8 @@ async function main() {
         allowSell: true,
         exchange: 'bybit',
         ma12x30RepeatWhileTrend: true,
+        ma12x30GainTpPct: 44,
+        ma12x30GainTpPositionPct: 60,
       }),
     },
   });
@@ -259,7 +269,7 @@ async function main() {
     update: {
       displayName: 'RSI 15m Reversal (28->32)',
       description:
-        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 < -5% vs MA200 (1h).',
+        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −9% e −3% vs MA200 (1h).',
       params: JSON.stringify({
         period: 14,
         previousBelowThreshold: 28,
@@ -276,7 +286,7 @@ async function main() {
       name: 'RSI_15M',
       displayName: 'RSI 15m Reversal (28->32)',
       description:
-        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 < -5% vs MA200 (1h).',
+        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −9% e −3% vs MA200 (1h).',
       isActive: true,
       params: JSON.stringify({
         period: 14,
@@ -287,6 +297,53 @@ async function main() {
         minQuoteVolume: 500000,
         allowBuy: true,
         allowSell: false,
+        exchange: 'bybit',
+      }),
+    },
+  });
+
+  const RSI_BYBIT_15M_UNIVERSE_DESCRIPTION =
+    'Mesma lógica que o RSI 1h (SMA sobre RSI vs nível, TradingView): velas 15m. Universo = BybitAboveMa200Mc20m (Volume 1h > 500k e MA200 1h); actualiza o scan «Bybit Volume 1h >500k e MA200 1h».';
+
+  await prisma.strategy.upsert({
+    where: { name: 'RSI_BYBIT_15M' },
+    update: {
+      displayName: 'RSI Bybit 15m (SMA21×45)',
+      description: RSI_BYBIT_15M_UNIVERSE_DESCRIPTION,
+      params: JSON.stringify({
+        period: 14,
+        rsiSmoothLength: 21,
+        rsiRefLevel: 45,
+        buyStopPercent: 5,
+        sellStopPercent: 5,
+        rsiBuyGainTpPct: 43,
+        rsiBuyGainTpPositionPct: 50,
+        rsiSellGainTpPct: 43,
+        rsiSellGainTpPositionPct: 50,
+        closeAfterHours: 24,
+        allowBuy: true,
+        allowSell: true,
+        exchange: 'bybit',
+      }),
+    },
+    create: {
+      name: 'RSI_BYBIT_15M',
+      displayName: 'RSI Bybit 15m (SMA21×45)',
+      description: RSI_BYBIT_15M_UNIVERSE_DESCRIPTION,
+      isActive: true,
+      params: JSON.stringify({
+        period: 14,
+        rsiSmoothLength: 21,
+        rsiRefLevel: 45,
+        buyStopPercent: 5,
+        sellStopPercent: 5,
+        rsiBuyGainTpPct: 43,
+        rsiBuyGainTpPositionPct: 50,
+        rsiSellGainTpPct: 43,
+        rsiSellGainTpPositionPct: 50,
+        closeAfterHours: 24,
+        allowBuy: true,
+        allowSell: true,
         exchange: 'bybit',
       }),
     },
