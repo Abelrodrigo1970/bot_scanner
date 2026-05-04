@@ -501,7 +501,7 @@ export async function runRsiStrategy(
 
 /**
  * RSI 15m — mesma lógica que o RSI 1h (SMA sobre RSI vs nível ref., SL/TP); velas 15m.
- * Universo de símbolos = tabela BybitAboveMa200Mc20m (Volume 1h 500k + MA200 1h), definido em runAllStrategies.
+ * Universo de símbolos = tabela Ma30Above6Pct (MA30 > 9% vs MA200 em 1h), definido em runAllStrategies.
  */
 export async function runRsiBybit15mStrategy(
   symbol: string,
@@ -890,7 +890,7 @@ export interface RunAllStrategiesOptions {
 }
 
 /**
- * Executa todas as estratégias ativas (RSI usa Ma30Near6PriceBetween; MA_VOLATILE usa MaCrossBelow / MA Cross Proximidade, …)
+ * Executa todas as estratégias ativas (RSI usa Ma30Near6PriceBetween; RSI_BYBIT_15M usa Ma30Above6Pct; MA_VOLATILE usa MaCrossBelow / MA Cross Proximidade, …)
  */
 export async function runAllStrategies(options?: RunAllStrategiesOptions): Promise<number> {
   let signalsCreated = 0;
@@ -981,10 +981,21 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.warn(`⚠️ Nenhum símbolo MA Cross Below na BD. Execute "Atualizar Scan" antes. Ignorando ${strategy.name}.`);
           continue;
         }
+      } else if (strategy.name === 'RSI_BYBIT_15M') {
+        console.log(`🔍 Buscando MA30 > 9% vs MA200 (1h) na BD para ${strategy.name}...`);
+        const ma30Above = await prisma.ma30Above6Pct.findMany({ orderBy: { rank: 'asc' } });
+        if (ma30Above.length > 0) {
+          symbolsToAnalyze = ma30Above.map((t: { symbol: string }) => t.symbol);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (MA30 > 9% vs MA200)`);
+        } else {
+          console.warn(
+            `⚠️ Nenhum símbolo em Ma30Above6Pct. Atualize o menu "MA30 > 9% MA200" antes. Ignorando ${strategy.name}.`
+          );
+          continue;
+        }
       } else if (
         strategy.name === 'MA_CROSS_5M' ||
-        strategy.name === 'MA_CROSS_1H' ||
-        strategy.name === 'RSI_BYBIT_15M'
+        strategy.name === 'MA_CROSS_1H'
       ) {
         console.log(`🔍 Buscando scan Bybit Volume 1h>500k e MA200 1h na BD para ${strategy.name}...`);
         const bybitScan = await prisma.$queryRaw<Array<{ symbol: string }>>`

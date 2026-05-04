@@ -45,7 +45,7 @@ const RSI_BYBIT_15M_DEFAULT_PARAMS = {
 };
 
 const RSI_BYBIT_15M_UNIVERSE_DESCRIPTION =
-  'Mesma lógica que o RSI 1h (SMA sobre RSI vs nível, TradingView): velas 15m. Universo = tabela BybitAboveMa200Mc20m (Volume 1h > 500k e MA200 1h); actualiza o menu «Bybit Volume 1h >500k e MA200 1h» antes de gerar sinais.';
+  'Mesma lógica que o RSI 1h (SMA sobre RSI vs nível, TradingView): velas 15m. Universo = tabela Ma30Above6Pct (MA30 > 9% da MA200 em 1h); actualiza o menu «MA30 > 9% MA200» antes de gerar sinais.';
 
 const MA_CROSS_15M_DEFAULT_PARAMS = {
   ma30Period: 30,
@@ -188,19 +188,22 @@ async function ensureMissingStrategies() {
     try {
       const rb = await prisma.strategy.findUnique({
         where: { name: 'RSI_BYBIT_15M' },
-        select: { params: true, displayName: true },
+        select: { params: true, displayName: true, description: true },
       });
       if (rb) {
         const p = rb.params ? JSON.parse(rb.params) : {};
         const next: Record<string, unknown> = { ...p, rsiRefLevel: 47 };
         const needParams = JSON.stringify(next) !== JSON.stringify(p);
-        const needMeta = rb.displayName !== 'RSI Bybit 15m (SMA21×47)';
+        const needMeta =
+          rb.displayName !== 'RSI Bybit 15m (SMA21×47)' ||
+          rb.description !== RSI_BYBIT_15M_UNIVERSE_DESCRIPTION;
         if (needParams || needMeta) {
           await prisma.strategy.update({
             where: { name: 'RSI_BYBIT_15M' },
             data: {
               params: JSON.stringify(next),
               displayName: 'RSI Bybit 15m (SMA21×47)',
+              description: RSI_BYBIT_15M_UNIVERSE_DESCRIPTION,
             },
           });
         }

@@ -253,7 +253,7 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-3">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>15m</strong>. Universo = tabela <strong>BybitAboveMa200Mc20m</strong> (Volume 1h &gt;500k e MA200 1h); actualiza o scan nesse menu antes de gerar sinais. Linha lenta = <strong>SMA sobre o RSI</strong>.{' '}
+              Timeframe <strong>15m</strong>. Universo = tabela <strong>Ma30Above6Pct</strong> (<strong>MA30 &gt; 9% da MA200</strong> em 1h); actualiza o scan &quot;MA30 &gt; 9% MA200&quot; antes de gerar sinais. Linha lenta = <strong>SMA sobre o RSI</strong>.{' '}
               <strong>BUY</strong>: lenta cruza <strong>para cima</strong> do nível. <strong>SELL</strong>: lenta <strong>passa para baixo</strong> do nível (ex.: 47). Mesmos SL/TP parciais que o RSI 1h.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

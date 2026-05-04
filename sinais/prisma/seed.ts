@@ -303,7 +303,7 @@ async function main() {
   });
 
   const RSI_BYBIT_15M_UNIVERSE_DESCRIPTION =
-    'Mesma lógica que o RSI 1h (SMA sobre RSI vs nível, TradingView): velas 15m. Universo = BybitAboveMa200Mc20m (Volume 1h > 500k e MA200 1h); actualiza o scan «Bybit Volume 1h >500k e MA200 1h».';
+    'Mesma lógica que o RSI 1h (SMA sobre RSI vs nível, TradingView): velas 15m. Universo = Ma30Above6Pct (MA30 > 9% da MA200 em 1h); actualiza o scan «MA30 > 9% MA200».';
 
   await prisma.strategy.upsert({
     where: { name: 'RSI_BYBIT_15M' },
