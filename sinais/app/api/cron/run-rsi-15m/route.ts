@@ -11,7 +11,7 @@ import {
 /**
  * Cron dedicado 15m: RSI_15M (reversal 28→32, universo MA30 −9%…−3% vs MA200 1h),
  * RSI_BYBIT_15M (mesma lógica SMA(RSI)×47 que o RSI 1h, velas 15m, universo MA30 > 9% vs MA200 1h),
- * MA_CROSS_15M, etc. Auto-exec com reversal close onde aplicável.
+ * EMA_SCALPING (fita EMA + rompimento / pullback SB, só BUY), MA_CROSS_15M, etc. Auto-exec com reversal close onde aplicável.
  */
 async function runRsi15mInBackground(): Promise<void> {
   try {

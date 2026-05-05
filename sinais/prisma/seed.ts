@@ -349,6 +349,62 @@ async function main() {
     },
   });
 
+  await prisma.strategy.upsert({
+    where: { name: 'EMA_SCALPING' },
+    update: {
+      displayName: 'EMA Ribbon Scalping (15m)',
+      description:
+        'Scalping 15m tipo «EMA Ribbon»: só COMPRA. Fita 8×55 por defeito (parametrizável); tendência com subida forte da EMA lenta; consolidação + rompimento SB ou pullback à fita + SB; TP por R. Binance Futures. Universo Top movers 1h (limite parametrizável).',
+      params: JSON.stringify({
+        ribbonFastPeriod: 8,
+        ribbonSlowPeriod: 55,
+        atrPeriod: 14,
+        slopeLookback: 5,
+        minSlowEmaSlopePct: 0.85,
+        consolidationLookback: 14,
+        consolidationMaxRangePct: 1.35,
+        pullbackMaxBars: 10,
+        strongBodyOfRangeMin: 0.58,
+        strongBodyMinAtrMult: 0.42,
+        symbolLimit: 80,
+        rewardRisk1: 1.65,
+        rewardRisk2: 3.2,
+        tp1PositionPct: 55,
+        tp2PositionPct: 35,
+        allowBuy: true,
+        allowSell: false,
+        exchange: 'binance',
+      }),
+    },
+    create: {
+      name: 'EMA_SCALPING',
+      displayName: 'EMA Ribbon Scalping (15m)',
+      description:
+        'Scalping 15m tipo «EMA Ribbon»: só COMPRA. Fita 8×55 por defeito (parametrizável); tendência com subida forte da EMA lenta; consolidação + rompimento SB ou pullback à fita + SB; TP por R. Binance Futures. Universo Top movers 1h (limite parametrizável).',
+      isActive: true,
+      params: JSON.stringify({
+        ribbonFastPeriod: 8,
+        ribbonSlowPeriod: 55,
+        atrPeriod: 14,
+        slopeLookback: 5,
+        minSlowEmaSlopePct: 0.85,
+        consolidationLookback: 14,
+        consolidationMaxRangePct: 1.35,
+        pullbackMaxBars: 10,
+        strongBodyOfRangeMin: 0.58,
+        strongBodyMinAtrMult: 0.42,
+        symbolLimit: 80,
+        rewardRisk1: 1.65,
+        rewardRisk2: 3.2,
+        tp1PositionPct: 55,
+        tp2PositionPct: 35,
+        allowBuy: true,
+        allowSell: false,
+        exchange: 'binance',
+      }),
+    },
+  });
+
   // Estratégia MA Cross 15m (Golden Cross / Death Cross MA30/MA200)
   await prisma.strategy.upsert({
     where: { name: 'MA_CROSS_15M' },
