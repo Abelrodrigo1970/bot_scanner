@@ -20,7 +20,7 @@ export async function GET() {
       fetchedAt: items[0]?.updatedAt?.toISOString() ?? null,
     });
   } catch (error: unknown) {
-    console.error('Erro ao buscar scan MA30 vs MA200 (−9%…−3%):', error);
+    console.error('Erro ao buscar scan MA30 vs MA200 (−6%…+1%):', error);
     return NextResponse.json(
       {
         success: false,
@@ -65,7 +65,7 @@ export async function POST() {
       message: 'Scan actualizado com sucesso',
     });
   } catch (error: unknown) {
-    console.error('Erro ao actualizar scan MA30 vs MA200 (−9%…−3%):', error);
+    console.error('Erro ao actualizar scan MA30 vs MA200 (−6%…+1%):', error);
     return NextResponse.json(
       {
         success: false,

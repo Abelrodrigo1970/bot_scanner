@@ -9,7 +9,7 @@ import {
 } from '@/lib/tradingExecutor';
 
 /**
- * Cron dedicado 15m: RSI_15M (reversal 28→32, universo MA30 −9%…−3% vs MA200 1h),
+ * Cron dedicado 15m: RSI_15M (reversal 28→32, universo MA30 −6%…+1% vs MA200 1h),
  * RSI_BYBIT_15M (mesma lógica SMA(RSI)×47 que o RSI 1h, velas 15m, universo MA30 > 9% vs MA200 1h),
  * EMA_SCALPING (fita EMA + rompimento / pullback SB, só BUY), EMA_SCALPING_SELL (só VENDA), MA_CROSS_15M, etc. Auto-exec com reversal close onde aplicável.
  */

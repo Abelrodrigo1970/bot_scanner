@@ -9,7 +9,7 @@ import {
 /**
  * Cron dedicado para atualizar os scans de médias:
  * - MA30 > 9% MA200 (1h)
- * - MA30 entre −9% e −3% vs MA200 (1h)
+ * - MA30 entre −6% e +1% vs MA200 (1h)
  * - Bybit Volume 1h (500k) + MA200 (1h) → `BybitAboveMa200Mc20m`
  *
  * O trabalho pesado corre em background para evitar timeout do cliente/cron HTTP.

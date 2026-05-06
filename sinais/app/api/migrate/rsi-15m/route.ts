@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { RSI_15M_STRATEGY_DESCRIPTION } from '@/lib/strategyMigrations';
 
 const PARAMS = {
   period: 14,
@@ -31,16 +32,14 @@ export async function GET(request: NextRequest) {
       where: { name: 'RSI_15M' },
       update: {
         displayName: 'RSI 15m Reversal (28->32)',
-        description:
-          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −9% e −3% vs MA200 (1h).',
+        description: RSI_15M_STRATEGY_DESCRIPTION,
         isActive: true,
         params: JSON.stringify(PARAMS),
       },
       create: {
         name: 'RSI_15M',
         displayName: 'RSI 15m Reversal (28->32)',
-        description:
-          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −9% e −3% vs MA200 (1h).',
+        description: RSI_15M_STRATEGY_DESCRIPTION,
         isActive: true,
         params: JSON.stringify(PARAMS),
       },

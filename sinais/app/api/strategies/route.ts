@@ -6,6 +6,7 @@ import {
   backfillMaCross5mSignalNames,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
+  RSI_15M_STRATEGY_DESCRIPTION,
   RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
   syncRsiMaVolatileUniverseDescriptions,
 } from '@/lib/strategyMigrations';
@@ -147,8 +148,7 @@ async function ensureMissingStrategies() {
       data: {
         name: 'RSI_15M',
         displayName: 'RSI 15m Reversal (28->32)',
-        description:
-          'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −9% e −3% vs MA200 (1h).',
+        description: RSI_15M_STRATEGY_DESCRIPTION,
         isActive: true,
         params: JSON.stringify(RSI_15M_DEFAULT_PARAMS),
       },

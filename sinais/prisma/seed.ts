@@ -5,6 +5,7 @@ import {
   MA_CROSS_5M_PARAMS,
   MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION,
   migrateVolumeSpike15mToMaCross5m,
+  RSI_15M_STRATEGY_DESCRIPTION,
   RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
 } from '../lib/strategyMigrations';
 
@@ -269,7 +270,7 @@ async function main() {
     update: {
       displayName: 'RSI 15m Reversal (28->32)',
       description:
-        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −9% e −3% vs MA200 (1h).',
+        RSI_15M_STRATEGY_DESCRIPTION,
       params: JSON.stringify({
         period: 14,
         previousBelowThreshold: 28,
@@ -286,7 +287,7 @@ async function main() {
       name: 'RSI_15M',
       displayName: 'RSI 15m Reversal (28->32)',
       description:
-        'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −9% e −3% vs MA200 (1h).',
+        RSI_15M_STRATEGY_DESCRIPTION,
       isActive: true,
       params: JSON.stringify({
         period: 14,

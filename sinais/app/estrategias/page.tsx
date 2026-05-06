@@ -231,7 +231,7 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-3">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>1h</strong>. Universo = scan <strong>MA30 entre −9% e −3% vs MA200 (1h)</strong> (só define quais pares analisar). Linha lenta = <strong>SMA sobre o RSI</strong> (TradingView: RSI + Smoothing).{' '}
+              Timeframe <strong>1h</strong>. Universo = scan <strong>MA30 entre −6% e +1% vs MA200 (1h)</strong> (só define quais pares analisar). Linha lenta = <strong>SMA sobre o RSI</strong> (TradingView: RSI + Smoothing).{' '}
               <strong>BUY</strong>: lenta cruza <strong>para cima</strong> do nível. <strong>SELL</strong>: lenta <strong>passa para baixo</strong> do nível (ex.: 47). Sem filtro MA200 no preço.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -275,7 +275,7 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-3">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Universo = scan <strong>MA30 entre −9% e −3% vs MA200 (1h)</strong> (menu &quot;MA30 −3%…−9% vs MA200&quot;). Actualiza esse scan antes de gerar sinais.
+              Universo = scan <strong>MA30 entre −6% e +1% vs MA200 (1h)</strong> (menu &quot;MA30 −6%…+1% vs MA200&quot;). Actualiza esse scan antes de gerar sinais.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}

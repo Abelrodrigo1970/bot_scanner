@@ -954,7 +954,7 @@ export async function runEmaRibbonScalpingSellStrategy(
  * Apenas BUY | SL -3% | TP1 +5% | TP2 +14%
  * Usa sempre o candle fechado (não o em formação).
  * Sem filtro MA200 para sinal mais rápido.
- * Corre no universo da BD Ma30Near6PriceBetween (scan MA30 −9%…−3% vs MA200 em 1h).
+ * Corre no universo da BD Ma30Near6PriceBetween (scan MA30 −6%…+1% vs MA200 em 1h).
  */
 export async function runRsi15mStrategy(
   symbol: string,
@@ -1343,7 +1343,7 @@ export interface RunAllStrategiesOptions {
 }
 
 /**
- * Executa todas as estratégias ativas (RSI usa Ma30Near6PriceBetween; RSI_BYBIT_15M usa Ma30Above6Pct; EMA_SCALPING / EMA_SCALPING_SELL em 15m; MA_VOLATILE usa MaCrossBelow / MA Cross Proximidade, …)
+ * Executa todas as estratégias ativas (RSI usa Ma30Near6PriceBetween com faixa MA30 −6%…+1% vs MA200 1h; RSI_BYBIT_15M usa Ma30Above6Pct; EMA_SCALPING / EMA_SCALPING_SELL em 15m; MA_VOLATILE usa MaCrossBelow / MA Cross Proximidade, …)
  */
 export async function runAllStrategies(options?: RunAllStrategiesOptions): Promise<number> {
   let signalsCreated = 0;
@@ -1416,14 +1416,14 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
       } else if (strategy.name === 'RSI_15M') {
-        console.log(`🔍 Buscando MA30 −9%…−3% vs MA200 (1h) na BD para ${strategy.name}...`);
+        console.log(`🔍 Buscando MA30 −6%…+1% vs MA200 (1h) na BD para ${strategy.name}...`);
         const nearBand = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
         if (nearBand.length > 0) {
           symbolsToAnalyze = nearBand.map((t: { symbol: string }) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 −9%…−3% vs MA200)`);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 −6%…+1% vs MA200)`);
         } else {
           console.warn(
-            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 −3%…−9% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
+            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 −6%…+1% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
           );
           continue;
         }
@@ -1494,14 +1494,14 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'RSI') {
-        console.log(`🔍 Buscando scan MA30 −9%…−3% vs MA200 (1h) na BD para ${strategy.name}...`);
+        console.log(`🔍 Buscando scan MA30 −6%…+1% vs MA200 (1h) na BD para ${strategy.name}...`);
         const ma30Below = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
         if (ma30Below.length > 0) {
           symbolsToAnalyze = ma30Below.map((t: { symbol: string }) => t.symbol);
           console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (Ma30Near6PriceBetween)`);
         } else {
           console.warn(
-            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 −3%…−9% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
+            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 −6%…+1% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
           );
           continue;
         }

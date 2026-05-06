@@ -25,9 +25,13 @@ export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
   'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 5%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h). Máx. um trade aberto por símbolo no cron (não empilha o mesmo sentido).';
 
-/** Texto canónico da descrição (universo = tabela Ma30Near6PriceBetween / scan MA30 −9%…−3% vs MA200). */
+/** Texto canónico da descrição (universo = tabela Ma30Near6PriceBetween / scan MA30 −6%…+1% vs MA200). */
 export const RSI_MA30_SCAN_UNIVERSE_DESCRIPTION =
-  'Universo = scan MA30 entre −9% e −3% vs MA200 (1h) — só lista de símbolos. RSI(14) + SMA(21) sobre o RSI (linha lenta). BUY: lenta cruza para cima do 47 → SL -5% | TP1 +43% (50%) | restante às 24h. SELL: lenta passa para baixo do 47 → SL +5% | TP1 -43% (50%) | restante às 24h.';
+  'Universo = scan MA30 entre −6% e +1% vs MA200 (1h) — só lista de símbolos. RSI(14) + SMA(21) sobre o RSI (linha lenta). BUY: lenta cruza para cima do 47 → SL -5% | TP1 +43% (50%) | restante às 24h. SELL: lenta passa para baixo do 47 → SL +5% | TP1 -43% (50%) | restante às 24h.';
+
+/** Descrição canónica RSI_15M (universo = mesmo scan Ma30Near6PriceBetween). */
+export const RSI_15M_STRATEGY_DESCRIPTION =
+  'RSI 15m reversal. Compra apenas quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32. Apenas BUY, SL -3%, universo = scan MA30 entre −6% e +1% vs MA200 (1h).';
 
 /** Universo = tabela MaCrossBelow (menu MA Cross Proximidade): MA30 entre −3% e +3% vs MA200 em 1h. */
 export const MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION =
@@ -53,13 +57,30 @@ export async function syncRsiMaVolatileUniverseDescriptions(
     rsiDesc.includes('cruza abaixo de 40') ||
     rsiDesc.includes('RSI cruza') ||
     rsiDesc.includes('MA30 < -5%') ||
-    rsiDesc.includes('MA30 < −5%');
+    rsiDesc.includes('MA30 < −5%') ||
+    rsiDesc.includes('entre −9% e −3%') ||
+    rsiDesc.includes('entre -9% e -3%');
   if (rsi && rsiNeedsRsiDescUpdate) {
     await prisma.strategy.update({
       where: { name: 'RSI' },
       data: { description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION },
     });
     updated.push('RSI');
+  }
+
+  const rsi15m = await prisma.strategy.findUnique({
+    where: { name: 'RSI_15M' },
+    select: { description: true },
+  });
+  const rsi15mDesc = rsi15m?.description ?? '';
+  const rsi15mNeedsUniverseText =
+    rsi15mDesc.includes('entre −9% e −3%') || rsi15mDesc.includes('entre -9% e -3%');
+  if (rsi15m && rsi15mNeedsUniverseText) {
+    await prisma.strategy.update({
+      where: { name: 'RSI_15M' },
+      data: { description: RSI_15M_STRATEGY_DESCRIPTION },
+    });
+    updated.push('RSI_15M');
   }
 
   const maV = await prisma.strategy.findUnique({
