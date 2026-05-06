@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
 import {
   backfillMaCross5mSignalNames,
+  MA_CROSS_15M_STRATEGY_DESCRIPTION,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   RSI_15M_STRATEGY_DESCRIPTION,
@@ -52,15 +53,22 @@ const MA_CROSS_15M_DEFAULT_PARAMS = {
   ma30Period: 30,
   ma200Period: 200,
   maType: 'EMA' as const,
+  /** Mesma filosofia MA12×MA30: entrada por spread, não só no cruzamento */
+  useDiffMode: true,
   confirmationPct: 0,
-  stopPercent: 8,
-  /** SELL: bloquear se |close−MA200|/MA200 (%) > este valor; 0 = sem filtro */
+  entryDiffPct: 0.9,
+  exitDiffPct: 0.5,
+  stopPercent: 5,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
+  ma12x30RepeatWhileTrend: true,
+  ma12x30RepeatMinSpreadDeltaPct: 0.06,
+  ma12x30GainTpPct: 44,
+  ma12x30GainTpPositionPct: 60,
   symbolLimit: 500,
   minQuoteVolume: 100000,
   allowBuy: true,
   allowSell: true,
-  exchange: 'bybit',
+  exchange: 'bybit' as const,
 };
 
 const MA_CROSS_5M_DEFAULT_PARAMS = {
@@ -264,7 +272,7 @@ async function ensureMissingStrategies() {
 
   const existingMaCross15m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_15M' },
-    select: { id: true, params: true },
+    select: { id: true, params: true, description: true },
   });
 
   if (!existingMaCross15m) {
@@ -272,8 +280,7 @@ async function ensureMissingStrategies() {
       data: {
         name: 'MA_CROSS_15M',
         displayName: 'MA Cross 15m (MA30/MA200)',
-        description:
-          'Cruzamento da MA30 com a MA200 no timeframe de 15m. Golden Cross/Death Cross 15m. BUY quando MA30 cruza MA200 para cima. SELL quando MA30 cruza MA200 para baixo. SL de 8%.',
+        description: MA_CROSS_15M_STRATEGY_DESCRIPTION,
         isActive: false,
         params: JSON.stringify(MA_CROSS_15M_DEFAULT_PARAMS),
       },
@@ -292,10 +299,35 @@ async function ensureMissingStrategies() {
         next.maType = 'EMA';
         console.log('✅ MA_CROSS_15M: maType predefinido → EMA (TradingView)');
       }
-      if (JSON.stringify(next) !== JSON.stringify(p)) {
+      /** Alinhar com MA12×MA30: spread + repetir + TP parcial + compressão */
+      if (next.useDiffMode === undefined) next.useDiffMode = true;
+      if (next.entryDiffPct == null || next.entryDiffPct === '') next.entryDiffPct = 0.9;
+      if (next.exitDiffPct == null || next.exitDiffPct === '') next.exitDiffPct = 0.5;
+      if (next.ma12x30RepeatWhileTrend === undefined) next.ma12x30RepeatWhileTrend = true;
+      if (next.ma12x30RepeatMinSpreadDeltaPct == null || next.ma12x30RepeatMinSpreadDeltaPct === '')
+        next.ma12x30RepeatMinSpreadDeltaPct = 0.06;
+      if (next.ma12x30GainTpPct == null || next.ma12x30GainTpPct === '') next.ma12x30GainTpPct = 44;
+      if (next.ma12x30GainTpPositionPct == null || next.ma12x30GainTpPositionPct === '')
+        next.ma12x30GainTpPositionPct = 60;
+      if (Number(p.stopPercent) === 8) {
+        next.stopPercent = 5;
+        console.log('✅ MA_CROSS_15M: stopPercent legado 8% → 5% (alinhado MA12×MA30)');
+      }
+      if (next.stopPercent == null || next.stopPercent === '') next.stopPercent = 5;
+
+      const metaDesc =
+        existingMaCross15m.description?.includes('Golden Cross') ||
+        existingMaCross15m.description?.includes('TP1 +85%')
+          ? MA_CROSS_15M_STRATEGY_DESCRIPTION
+          : undefined;
+
+      if (JSON.stringify(next) !== JSON.stringify(p) || metaDesc) {
         await prisma.strategy.update({
           where: { name: 'MA_CROSS_15M' },
-          data: { params: JSON.stringify(next) },
+          data: {
+            params: JSON.stringify(next),
+            ...(metaDesc ? { description: metaDesc } : {}),
+          },
         });
       }
     } catch (e) {

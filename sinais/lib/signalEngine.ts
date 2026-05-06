@@ -1017,8 +1017,8 @@ export async function runRsi15mStrategy(
 }
 
 /**
- * Cruzamento MA rápida com MA lenta (5m: MA12/MA30 por defeito, 15m: MA30/MA200) — velas fechadas.
- * `ma200Period` = período da média lenta (nome histórico); `maType` EMA (default) ou SMA.
+ * MA rápida × MA lenta em velas fechadas (`ma200Period` = período da média lenta; `maType` EMA ou SMA).
+ * Em **15m** e **1h** usa **modo spread** (`|rápida−lenta|/lenta`, limiares entrada/saída, repetir tendência, TP parcial + compressão) — mesma filosofia MA12×MA30 e MA30×MA200.
  */
 async function runMaCrossM30M200OnTimeframe(
   symbol: string,
@@ -1053,6 +1053,7 @@ async function runMaCrossM30M200OnTimeframe(
   const sellTp2Percent  = params.sellTp2Percent  ?? params.tp2Percent ?? (bar === '5m' ? 15 : 0);
   const sellTp2Position = params.sellTp2Position ?? params.tp2Position ?? (bar === '5m' ? 30 : 0);
   const slowLabel = `MA${maSlowPeriod}`;
+  const fastLabel = `MA${ma30Period}`;
   /**
    * SELL: não emitir se |close−MA lenta|/MA lenta*100 (%) for > N%. 0 = desactiva. Default 6.
    * (o param chama-se sellBlockAbsCloseDistanceFromMa200Pct no JSON)
@@ -1166,8 +1167,8 @@ async function runMaCrossM30M200OnTimeframe(
           exitDiffPct,
           confirmationPct,
           crossover: isMa12x30Mode
-            ? `MA12/MA30 bullish spread > ${entryDiffPct}% (BUY)`
-            : `MA30 crosses +${confirmationPct}% above ${slowLabel} (BUY)`,
+            ? `${fastLabel}/${slowLabel} bullish spread > ${entryDiffPct}% (BUY)`
+            : `${fastLabel} crosses +${confirmationPct}% above ${slowLabel} (BUY)`,
           stopPercent,
           ...(isMa12x30Mode
             ? {
@@ -1242,8 +1243,8 @@ async function runMaCrossM30M200OnTimeframe(
             sellBlockAbsCloseDistanceFromMa200Pct || 'off',
           confirmationPct,
           crossover: isMa12x30Mode
-            ? `MA12/MA30 bearish spread > ${entryDiffPct}% (SELL)`
-            : `MA30 crosses -${confirmationPct}% below ${slowLabel} (SELL)`,
+            ? `${fastLabel}/${slowLabel} bearish spread > ${entryDiffPct}% (SELL)`
+            : `${fastLabel} crosses -${confirmationPct}% below ${slowLabel} (SELL)`,
           stopPercent,
           ...(isMa12x30Mode
             ? {
@@ -1297,8 +1298,8 @@ export async function runMaCross5mStrategy(
 }
 
 /**
- * Condição de saída (TP dinâmico) para MA12xMA30:
- * fechar posição quando |MA12 - MA30| / MA30 * 100 < exitDiffPct.
+ * Saída por compressão do spread entre MA rápida e MA lenta (15m): quando
+ * |rápida−lenta|/lenta×100 &lt; `exitDiffPct` (parâmetros típicos: MA12/MA30 ou MA30/MA200).
  */
 export async function shouldCloseMaCross5mByDiff(
   symbol: string,

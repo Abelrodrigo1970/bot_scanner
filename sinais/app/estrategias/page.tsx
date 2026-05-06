@@ -296,17 +296,30 @@ export default function EstrategiasPage() {
         );
 
       case 'MA_CROSS_5M':
-      case 'MA_CROSS_1H': {
+      case 'MA_CROSS_1H':
+      case 'MA_CROSS_15M': {
         const is1h = strategy.name === 'MA_CROSS_1H';
+        const isMa30Ma200 = strategy.name === 'MA_CROSS_15M';
+        const maPairLabel = isMa30Ma200 ? 'MA30 / MA200' : 'MA12 / MA30';
+        const diffLabel = isMa30Ma200 ? 'MA30 / MA200' : 'MA12 / MA30';
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Velas <strong>{is1h ? '1h' : '15m'}</strong> — <strong>MA12 / MA30</strong>. Compra: MA12&gt;MA30 e diferença relativa &gt; limiar de entrada; venda: MA12&lt;MA30 e a mesma diferença &gt; limiar. Fecha posição quando a diferença cai abaixo do limiar de saída (compressão).
-              {!is1h && ' O cron corre a cada 15 min.'} Símbolos = resultados do scan{' '}
-              <strong>Bybit Volume 1h &gt;500k e MA200 1h</strong> (menu); actualiza esse scan com &quot;Atualizar Scan&quot; antes.
+              Velas <strong>{is1h ? '1h' : '15m'}</strong> — <strong>{maPairLabel}</strong>. Mesma lógica de spread: rápida&gt;lenta (ou &lt;) e |rápida−lenta|/lenta &gt; limiar de entrada; fecho quando a diferença comprime abaixo do limiar de saída (compressão).
+              {isMa30Ma200 ? (
+                <>
+                  {' '}
+                  Universo = scan <strong>MA Cross Proximidade</strong> (menu). O cron 15m aplica também fecho por compressão nas posições desta estratégia.
+                </>
+              ) : (
+                <>
+                  {!is1h && ' O cron corre a cada 15 min.'} Símbolos = resultados do scan{' '}
+                  <strong>Bybit Volume 1h &gt;500k e MA200 1h</strong> (menu); actualiza esse scan com &quot;Atualizar Scan&quot; antes.
+                </>
+              )}
             </p>
             <div className="max-w-md">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média (MA30 e MA lenta)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média</label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                 value={p.maType === 'SMA' ? 'SMA' : 'EMA'}
@@ -317,10 +330,10 @@ export default function EstrategiasPage() {
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Período MA rápida (ex. 12)', p.ma30Period ?? 12, (v) => upd({ ma30Period: v }))}
-              {numField('Período MA lenta (ex. 30)', p.ma200Period ?? 30, (v) => upd({ ma200Period: v }))}
-              {numField('Entrada: dif. MA12/MA30 (%)', p.entryDiffPct ?? (is1h ? 1.8 : 0.9), (v) => upd({ entryDiffPct: v }), 0.1)}
-              {numField('Saída/fecho: dif. MA12/MA30 (%)', p.exitDiffPct ?? (is1h ? 0.8 : 0.5), (v) => upd({ exitDiffPct: v }), 0.1)}
+              {numField(`Período MA rápida (ex. ${isMa30Ma200 ? '30' : '12'})`, p.ma30Period ?? (isMa30Ma200 ? 30 : 12), (v) => upd({ ma30Period: v }))}
+              {numField(`Período MA lenta (ex. ${isMa30Ma200 ? '200' : '30'})`, p.ma200Period ?? (isMa30Ma200 ? 200 : 30), (v) => upd({ ma200Period: v }))}
+              {numField(`Entrada: dif. ${diffLabel} (%)`, p.entryDiffPct ?? (is1h ? 1.8 : 0.9), (v) => upd({ entryDiffPct: v }), 0.1)}
+              {numField(`Saída/fecho: dif. ${diffLabel} (%)`, p.exitDiffPct ?? (is1h ? 0.8 : 0.5), (v) => upd({ exitDiffPct: v }), 0.1)}
               {numField('SL (%)', p.stopPercent ?? (is1h ? 7 : 5), (v) => upd({ stopPercent: v }), 0.5)}
               {numField(
                 'TP parcial: valorização vs entrada (%)',
@@ -335,9 +348,15 @@ export default function EstrategiasPage() {
                 1
               )}
             </div>
+            {isMa30Ma200 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {numField('Máx. símbolos', p.symbolLimit ?? 500, (v) => upd({ symbolLimit: v }))}
+                {numField('Volume mínimo', p.minQuoteVolume ?? 100000, (v) => upd({ minQuoteVolume: v }))}
+              </div>
+            )}
             <div className="max-w-md">
               {numField(
-                'SELL: máx. |preço − MA lenta| / MA lenta (%)',
+                `SELL: máx. |preço − MA lenta| / MA lenta (${isMa30Ma200 ? 'MA200' : 'MA30'}) (%)`,
                 p.sellBlockAbsCloseDistanceFromMa200Pct ?? 6,
                 (v) => upd({ sellBlockAbsCloseDistanceFromMa200Pct: v }),
                 0.5
@@ -351,7 +370,7 @@ export default function EstrategiasPage() {
                 onChange={(e) => upd({ ma12x30RepeatWhileTrend: e.target.checked })}
               />
               <span>
-                Modo repetir tendência (sem exigir spread «frio» na vela anterior): só entra quando o spread atravessa o limiar, o alinhamento MAs muda face à vela anterior, ou o spread <strong>alarga</strong> vs a vela anterior (ver campo abaixo). Evita gerar um sinal <strong>nem todas</strong> as barras só por estar MA12/MA30 abertos.
+                Modo repetir tendência (sem exigir spread «frio» na vela anterior): só entra quando o spread atravessa o limiar, o alinhamento MAs muda face à vela anterior, ou o spread <strong>alarga</strong> vs a vela anterior (ver campo abaixo). Evita gerar um sinal <strong>nem todas</strong> as barras só por estar o par de MAs «aberto».
               </span>
             </label>
             <div className="max-w-md">
@@ -366,11 +385,11 @@ export default function EstrategiasPage() {
               Mesma unidade que «Entrada: dif.». Aumentar (ex.: 0,08–0,15) reduz falsos repetidos em tendência forte com spread já largo.
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500">
-              Só VENDA: se a distância do fecho à média lenta (MA30) em valor absoluto (%) for maior que este limite, não gera sinal.
+              Só VENDA: se a distância do fecho à média lenta em valor absoluto (%) for maior que este limite, não gera sinal.
               0 desactiva o filtro.
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500">
-              O take profit é dinâmico: fecha quando a diferença MA12/MA30 comprime abaixo do limiar de saída (não usa TP1/TP2 fixos). O cron 15m não abre segundo trade no mesmo sentido se já houver posição real nesse par.
+              O take profit parcial é quando o preço atinge a % indicada; o restante fecha por compressão do spread (cron 15m). O cron não abre segundo trade no mesmo sentido se já houver posição real nesse par.
             </p>
           </div>
         );
@@ -481,47 +500,6 @@ export default function EstrategiasPage() {
               {numField('Risk-reward TP2', p.rewardRisk2 ?? 3.2, (v) => upd({ rewardRisk2: v }), 0.05)}
               {numField('TP1 — % da posição', p.tp1PositionPct ?? 55, (v) => upd({ tp1PositionPct: v }))}
               {numField('TP2 — % da posição', p.tp2PositionPct ?? 35, (v) => upd({ tp2PositionPct: v }))}
-            </div>
-          </div>
-        );
-
-      case 'MA_CROSS_15M':
-        return (
-          <div className="space-y-4">
-            <div className="max-w-md">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média (MA30 / MA200)</label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                value={p.maType === 'SMA' ? 'SMA' : 'EMA'}
-                onChange={(e) => upd({ maType: e.target.value === 'SMA' ? 'SMA' : 'EMA' })}
-              >
-                <option value="EMA">EMA (alinhada com gráfico tipo TradingView)</option>
-                <option value="SMA">SMA (média simples)</option>
-              </select>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Período MA rápida', p.ma30Period ?? 30, (v) => upd({ ma30Period: v }))}
-              {numField('Período MA lenta', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
-              {numField('Folga (%)', p.confirmationPct ?? 0, (v) => upd({ confirmationPct: v }), 0.5)}
-              {numField('SL (%)', p.stopPercent ?? 8, (v) => upd({ stopPercent: v }), 0.5)}
-            </div>
-            <div className="max-w-md">
-              {numField(
-                'SELL: máx. |preço−MA200| / MA200 (%)',
-                p.sellBlockAbsCloseDistanceFromMa200Pct ?? 6,
-                (v) => upd({ sellBlockAbsCloseDistanceFromMa200Pct: v }),
-                0.5
-              )}
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-500">
-              Só VENDA: se a distância do fecho à MA200 (em valor absoluto, em %) for maior que este limite, não
-              gera sinal. 0 desactiva o filtro.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('TP1 (%)', p.tp1Percent ?? 85, (v) => upd({ tp1Percent: v }), 1)}
-              {numField('TP1 Posição (%)', p.tp1Position ?? 60, (v) => upd({ tp1Position: v }))}
-              {numField('Máx. símbolos', p.symbolLimit ?? 500, (v) => upd({ symbolLimit: v }))}
-              {numField('Volume mínimo', p.minQuoteVolume ?? 100000, (v) => upd({ minQuoteVolume: v }))}
             </div>
           </div>
         );

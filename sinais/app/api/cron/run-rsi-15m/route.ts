@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runAllStrategies } from '@/lib/signalEngine';
+import { runAllStrategies, shouldCloseMaCross5mByDiff } from '@/lib/signalEngine';
 import { prisma } from '@/lib/db';
 import {
   cleanupBybitOrphanOpenOrders,
@@ -303,6 +303,42 @@ async function runRsi15mInBackground(): Promise<void> {
         } catch (err) {
           console.error(`[Run-RSI-15m BG] ❌ MA_CROSS: erro auto-exec ${sig.symbol}:`, err);
         }
+      }
+
+      try {
+        const uniRows = await prisma.maCrossBelow.findMany({
+          select: { symbol: true },
+          orderBy: { rank: 'asc' },
+        });
+        const openSymbols = await prisma.signal.findMany({
+          where: { strategyId: maCross15mStrategy.id, status: 'IN_PROGRESS' },
+          distinct: ['symbol'],
+          select: { symbol: true },
+        });
+        const symbolsToCheck = new Set<string>();
+        uniRows.forEach((r) => symbolsToCheck.add(r.symbol));
+        openSymbols.forEach((r) => symbolsToCheck.add(r.symbol));
+
+        for (const symbol of symbolsToCheck) {
+          const closeCheck = await shouldCloseMaCross5mByDiff(symbol, '15m', maCrossParams);
+          if (!closeCheck.shouldClose) continue;
+          const positionState = await inspectActivePositionForSymbol(symbol, maCrossExchange);
+          if (!(positionState.inspectable && positionState.hasPosition)) continue;
+          const closeResult = await closeActivePositionForSymbol(symbol, maCrossExchange);
+          if (!closeResult.closed) continue;
+          await prisma.$executeRaw`
+            UPDATE "Signal"
+            SET status = 'EXPIRED'
+            WHERE symbol = ${symbol}
+              AND "strategyId" = ${maCross15mStrategy.id}
+              AND status = 'IN_PROGRESS'
+          `;
+          console.log(
+            `[Run-RSI-15m BG] 🟨 MA_CROSS_15M compressão (${(closeCheck.currentDiffPct ?? 0).toFixed(3)}%): ${symbol}`
+          );
+        }
+      } catch (err) {
+        console.warn('[Run-RSI-15m BG] MA_CROSS_15M fecho por compressão:', err);
       }
     }
 

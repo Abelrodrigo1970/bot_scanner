@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import {
+  MA_CROSS_15M_STRATEGY_DESCRIPTION,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_5M_PARAMS,
@@ -462,22 +463,26 @@ async function main() {
     },
   });
 
-  // Estratégia MA Cross 15m (Golden Cross / Death Cross MA30/MA200)
+  // Estratégia MA Cross 15m MA30/MA200 — mesma lógica de spread que MA12×MA30
   await prisma.strategy.upsert({
     where: { name: 'MA_CROSS_15M' },
     update: {
       displayName: 'MA Cross 15m (MA30/MA200)',
-      description:
-        'Golden Cross / Death Cross 15m. BUY quando MA30 cruza MA200 para cima. SELL quando MA30 cruza MA200 para baixo. SL 8%. TP1 +85% (60% posição). Top Voláteis.',
+      description: MA_CROSS_15M_STRATEGY_DESCRIPTION,
       params: JSON.stringify({
         ma30Period: 30,
         ma200Period: 200,
         maType: 'EMA',
+        useDiffMode: true,
         confirmationPct: 0,
-        stopPercent: 8,
+        entryDiffPct: 0.9,
+        exitDiffPct: 0.5,
+        stopPercent: 5,
         sellBlockAbsCloseDistanceFromMa200Pct: 6,
-        tp1Percent: 85,
-        tp1Position: 60,
+        ma12x30RepeatWhileTrend: true,
+        ma12x30RepeatMinSpreadDeltaPct: 0.06,
+        ma12x30GainTpPct: 44,
+        ma12x30GainTpPositionPct: 60,
         symbolLimit: 500,
         minQuoteVolume: 100000,
         allowBuy: true,
@@ -488,18 +493,22 @@ async function main() {
     create: {
       name: 'MA_CROSS_15M',
       displayName: 'MA Cross 15m (MA30/MA200)',
-      description:
-        'Golden Cross / Death Cross 15m. BUY quando MA30 cruza MA200 para cima. SELL quando MA30 cruza MA200 para baixo. SL 8%. TP1 +85% (60% posição). Top Voláteis.',
+      description: MA_CROSS_15M_STRATEGY_DESCRIPTION,
       isActive: false,
       params: JSON.stringify({
         ma30Period: 30,
         ma200Period: 200,
         maType: 'EMA',
+        useDiffMode: true,
         confirmationPct: 0,
-        stopPercent: 8,
+        entryDiffPct: 0.9,
+        exitDiffPct: 0.5,
+        stopPercent: 5,
         sellBlockAbsCloseDistanceFromMa200Pct: 6,
-        tp1Percent: 85,
-        tp1Position: 60,
+        ma12x30RepeatWhileTrend: true,
+        ma12x30RepeatMinSpreadDeltaPct: 0.06,
+        ma12x30GainTpPct: 44,
+        ma12x30GainTpPositionPct: 60,
         symbolLimit: 500,
         minQuoteVolume: 100000,
         allowBuy: true,
