@@ -148,7 +148,7 @@ const EMA_SCALPING_SELL_DESCRIPTION =
 async function ensureMissingStrategies() {
   const existingRsi15m = await prisma.strategy.findUnique({
     where: { name: 'RSI_15M' },
-    select: { id: true },
+    select: { id: true, description: true, displayName: true },
   });
 
   if (!existingRsi15m) {
@@ -161,6 +161,26 @@ async function ensureMissingStrategies() {
         params: JSON.stringify(RSI_15M_DEFAULT_PARAMS),
       },
     });
+  } else {
+    const desc = existingRsi15m.description ?? '';
+    /** Descrição legada diferente dos params 28→32 reversal */
+    const rsi15mStale =
+      desc.includes('cruza acima de 62') ||
+      desc.includes('cruza abaixo de 38') ||
+      desc.includes('preço > MA200') ||
+      desc.includes('preço < MA200') ||
+      desc.includes('Top Voláteis 15m') ||
+      desc.includes('Top Voláties 15m');
+    if (rsi15mStale) {
+      await prisma.strategy.update({
+        where: { name: 'RSI_15M' },
+        data: {
+          description: RSI_15M_STRATEGY_DESCRIPTION,
+          displayName: 'RSI 15m Reversal (28->32)',
+        },
+      });
+      console.log('✅ RSI_15M: descrição/displayName sincronizados com lógica 28→32');
+    }
   }
 
   const existingRsiMain = await prisma.strategy.findUnique({
@@ -319,7 +339,10 @@ async function ensureMissingStrategies() {
         existingMaCross15m.description?.includes('Golden Cross') ||
         existingMaCross15m.description?.includes('TP1 +85%') ||
         existingMaCross15m.description?.includes('MaCrossBelow') ||
-        existingMaCross15m.description?.includes('Cross Proximidade')
+        existingMaCross15m.description?.includes('Cross Proximidade') ||
+        existingMaCross15m.description?.includes('folga de 2') ||
+        existingMaCross15m.description?.includes('Cruzamento da MA30') ||
+        existingMaCross15m.description?.includes('SL de 8')
           ? MA_CROSS_15M_STRATEGY_DESCRIPTION
           : undefined;
 

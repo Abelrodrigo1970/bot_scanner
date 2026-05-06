@@ -1518,69 +1518,36 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
             switch (strategy.name) {
               case 'VOLUME_SPIKE':
                 signalResult = await runVolumeSpikeStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ Volume Spike: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               case 'MA_CROSS_5M':
                 signalResult = await runMaCross15mStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ MA Cross 15m: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               case 'MA_CROSS_1H':
                 signalResult = await runMaCross1hStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ MA Cross 1h: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               case 'RSI':
                 signalResult = await runRsiStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ RSI: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               case 'RSI_15M':
                 signalResult = await runRsi15mStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ RSI 15m: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               case 'EMA_SCALPING':
                 signalResult = await runEmaRibbonScalpingStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ EMA Ribbon Scalping: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               case 'EMA_SCALPING_SELL':
                 signalResult = await runEmaRibbonScalpingSellStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ EMA Ribbon Scalping SELL: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               case 'RSI_BYBIT_15M':
                 signalResult = await runRsiBybit15mStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ RSI Bybit 15m: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               case 'MA_VOLATILE':
                 signalResult = await runMa60VolatileStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ MA Voláteis: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               case 'MA200_VOLATILE':
                 signalResult = await runMa200VolatileStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ MA200 Voláteis: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               case 'MA_CROSS_15M':
                 signalResult = await runMaCross15mStrategy(symbol, timeframe, params);
-                if (signalResult) {
-                  console.log(`✅ MA Cross 15m: ${symbol} ${signalResult.direction} (${timeframe})`);
-                }
                 break;
               default:
                 if (!unknownStrategiesLogged.has(strategy.name)) {
@@ -1590,10 +1557,13 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 continue;
             }
 
-            // Filtrar direção com base em allowBuy / allowSell dos params
+            // Filtrar direção com base em allowBuy / allowSell; log só quando o candidato **passar** ao filtro
             if (signalResult) {
-              if (!strategyAllowsSignalDirection(signalResult.direction, params)) {
+              const dir = signalResult.direction;
+              if (!strategyAllowsSignalDirection(dir, params)) {
                 signalResult = null;
+              } else {
+                console.log(`✅ Motor: ${strategy.name} candidato válido → ${symbol} ${dir} (${timeframe})`);
               }
             }
 
