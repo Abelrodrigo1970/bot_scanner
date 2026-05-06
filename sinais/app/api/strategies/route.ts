@@ -112,6 +112,30 @@ const EMA_SCALPING_DEFAULT_PARAMS = {
 const EMA_SCALPING_DESCRIPTION =
   'Scalping 15m tipo «EMA Ribbon»: só COMPRA. Fita = EMA rápida × EMA lenta (ex.: 8/55): tendência com subida forte da EMA lenta nos últimos N candles; cenário «lateral»: consolidação estreita e rompimento com vela bull forte (corpo alto vs range, perto da máxima) a fechar acima da EMA rápida; cenário «pullback»: toque dentro da zona da fita e continuação com vela forte. SL = mínimo entre swing low − margem por ATR e EMA lenta com folga %. TP por múltiplos de R. Dados Binance Futures (mesmo endpoint que fetchCandles). Universo = Top movers 1h (limite parametrizável).';
 
+const EMA_SCALPING_SELL_DEFAULT_PARAMS = {
+  ribbonFastPeriod: 8,
+  ribbonSlowPeriod: 55,
+  atrPeriod: 14,
+  slopeLookback: 5,
+  minSlowEmaSlopePct: 0.85,
+  consolidationLookback: 14,
+  consolidationMaxRangePct: 1.35,
+  pullbackMaxBars: 10,
+  strongBodyOfRangeMin: 0.58,
+  strongBodyMinAtrMult: 0.42,
+  symbolLimit: 80,
+  rewardRisk1: 1.65,
+  rewardRisk2: 3.2,
+  tp1PositionPct: 55,
+  tp2PositionPct: 35,
+  allowBuy: false,
+  allowSell: true,
+  exchange: 'binance' as const,
+};
+
+const EMA_SCALPING_SELL_DESCRIPTION =
+  'Scalping 15m «EMA Ribbon» só VENDA: fita descendente (EMA lenta em queda forte), EMA rápida por baixo da lenta; preço sob a fita; consolidação com fechos maioritariamente acima da EMA rápida (pullback) ou pullback tocando a fita; entrada em vela bear forte que fecha por baixo da EMA rápida. SL = máximo entre swing high + margem ATR e EMA lenta + folga %. TP por R (igual filosofia ao lado BUY). Binance Futures. Universo = Top movers 1h (limite parametrizável).';
+
 async function ensureMissingStrategies() {
   const existingRsi15m = await prisma.strategy.findUnique({
     where: { name: 'RSI_15M' },
@@ -447,6 +471,22 @@ async function ensureMissingStrategies() {
         description: EMA_SCALPING_DESCRIPTION,
         isActive: true,
         params: JSON.stringify(EMA_SCALPING_DEFAULT_PARAMS),
+      },
+    });
+  }
+
+  const existingEmaScalpingSell = await prisma.strategy.findUnique({
+    where: { name: 'EMA_SCALPING_SELL' },
+    select: { id: true },
+  });
+  if (!existingEmaScalpingSell) {
+    await prisma.strategy.create({
+      data: {
+        name: 'EMA_SCALPING_SELL',
+        displayName: 'EMA Ribbon Scalping SELL (15m)',
+        description: EMA_SCALPING_SELL_DESCRIPTION,
+        isActive: false,
+        params: JSON.stringify(EMA_SCALPING_SELL_DEFAULT_PARAMS),
       },
     });
   }

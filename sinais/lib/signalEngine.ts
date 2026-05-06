@@ -557,6 +557,14 @@ function lowestLow(cs: Candle[], from: number, to: number): number {
   return m;
 }
 
+function highestHigh(cs: Candle[], from: number, to: number): number {
+  let m = -Infinity;
+  for (let i = Math.max(0, from); i <= to && i < cs.length; i++) {
+    m = Math.max(m, cs[i].high);
+  }
+  return m;
+}
+
 /**
  * EMA Ribbon Scalping (15m, Binance Futures — mesma fonte que `fetchCandles`).
  * Inspiração: fita de EMAs em tendência com inclinação forte; cenário 1 consolidação + vela SB a romper;
@@ -741,6 +749,201 @@ export async function runEmaRibbonScalpingStrategy(
     };
   } catch (error) {
     console.error(`Erro na estratégia EMA Ribbon Scalping (${symbol}):`, error);
+    return null;
+  }
+}
+
+/**
+ * EMA Ribbon Scalping **venda** (15m): espelho bearish de `runEmaRibbonScalpingStrategy`.
+ * Tendência com EMA lenta a cair; fita com EMA rápida abaixo da lenta; consolidação/pullback para a fita;
+ * vela bear forte a fechar abaixo da EMA rápida. SL acima do swing / EMA lenta + folga. Só VENDA.
+ */
+export async function runEmaRibbonScalpingSellStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  if (timeframe !== '15m') return null;
+
+  const ribbonFast = Math.max(2, Math.floor(Number(params.ribbonFastPeriod ?? 8)));
+  const ribbonSlow = Math.max(ribbonFast + 1, Math.floor(Number(params.ribbonSlowPeriod ?? 55)));
+  const atrPeriod = Math.max(2, Math.floor(Number(params.atrPeriod ?? 14)));
+  const slopeLookback = Math.max(2, Math.floor(Number(params.slopeLookback ?? 5)));
+  const minSlowEmaSlopePct = Number(params.minSlowEmaSlopePct ?? 0.85);
+  const consolidationLookback = Math.max(5, Math.floor(Number(params.consolidationLookback ?? 14)));
+  const consolidationMaxRangePct = Number(params.consolidationMaxRangePct ?? 1.35);
+  const minBarsAboveFastInConsolidation = Math.max(
+    1,
+    Math.floor(
+      Number(
+        params.minBarsAboveFastInConsolidation ?? Math.ceil(consolidationLookback * 0.55)
+      )
+    )
+  );
+  const pullbackMaxBars = Math.max(3, Math.floor(Number(params.pullbackMaxBars ?? 10)));
+  const strongBodyOfRangeMin = Number(params.strongBodyOfRangeMin ?? 0.58);
+  const strongBodyMinAtrMult = Number(params.strongBodyMinAtrMult ?? 0.42);
+  const closeLowerThirdMaxFrac = Number(params.closeLowerThirdMaxFrac ?? 0.32);
+  const freshBreakAtrFrac = Number(params.freshBreakAtrFrac ?? 0.07);
+  const swingLookback = Math.max(2, Math.floor(Number(params.swingLookback ?? 6)));
+  const swingAboveAtrMult = Number(params.swingAboveAtrMult ?? 0.14);
+  const slowEmaStopBufferPct = Number(params.slowEmaStopBufferPct ?? 0.12);
+  const minStopDistancePct = Number(params.minStopDistancePct ?? 0.22);
+  const maxStopDistancePct = Number(params.maxStopDistancePct ?? 2.9);
+  const rr1 = Number(params.rewardRisk1 ?? 1.65);
+  const rr2 = Number(params.rewardRisk2 ?? 3.2);
+  const tp1PositionPct = Math.min(100, Math.max(1, Math.floor(Number(params.tp1PositionPct ?? 55))));
+  const tp2PositionPct = Math.min(100, Math.max(0, Math.floor(Number(params.tp2PositionPct ?? 35))));
+
+  try {
+    const warm = ribbonSlow + consolidationLookback + pullbackMaxBars + slopeLookback + atrPeriod + 30;
+    const candlesNeeded = Math.min(1500, Math.max(220, warm));
+    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    if (candles.length < ribbonSlow + consolidationLookback + 5) return null;
+
+    const closedCandles = candles.slice(0, -1);
+    const lc = closedCandles.length - 1;
+    if (lc < ribbonSlow + consolidationLookback) return null;
+
+    const closedCloses = closedCandles.map((c) => c.close);
+    const fastSeries = calculateEMA(closedCloses, ribbonFast);
+    const slowSeries = calculateEMA(closedCloses, ribbonSlow);
+    if (!fastSeries || !slowSeries) return null;
+
+    const fastNow = emaValueAtClosedIdx(fastSeries, ribbonFast, lc);
+    const slowNow = emaValueAtClosedIdx(slowSeries, ribbonSlow, lc);
+    if (fastNow == null || slowNow == null || slowNow === 0) return null;
+
+    const slowThenIdx = lc - slopeLookback;
+    const slowThen = emaValueAtClosedIdx(slowSeries, ribbonSlow, slowThenIdx);
+    if (slowThen == null || slowThen === 0) return null;
+
+    const slopePct = ((slowNow - slowThen) / slowThen) * 100;
+    if (slopePct > -minSlowEmaSlopePct) return null;
+    if (!(fastNow < slowNow)) return null;
+
+    const atr = calculateATR(closedCandles, atrPeriod);
+    if (atr == null || atr <= 0) return null;
+
+    const c = closedCandles[lc];
+    if (c.close >= c.open) return null;
+    const body = c.open - c.close;
+    const range = Math.max(c.high - c.low, 1e-12);
+    if (body / range < strongBodyOfRangeMin) return null;
+    if (body < atr * strongBodyMinAtrMult) return null;
+    if ((c.close - c.low) / range > closeLowerThirdMaxFrac) return null;
+    if (c.close >= fastNow) return null;
+
+    const prevCi = lc - 1;
+    if (prevCi < ribbonFast - 1) return null;
+    const prevFast = emaValueAtClosedIdx(fastSeries, ribbonFast, prevCi);
+    if (prevFast == null) return null;
+    if (closedCandles[prevCi].close < prevFast - atr * freshBreakAtrFrac) return null;
+
+    let scenarioBreakout = false;
+    const cStart = lc - consolidationLookback;
+    const cEnd = lc - 1;
+    if (cStart >= 0) {
+      let hi = -Infinity;
+      let lo = Infinity;
+      for (let k = cStart; k <= cEnd; k++) {
+        hi = Math.max(hi, closedCandles[k].high);
+        lo = Math.min(lo, closedCandles[k].low);
+      }
+      const mid = (hi + lo) / 2;
+      const rangePct = mid > 0 ? ((hi - lo) / mid) * 100 : 999;
+      if (rangePct <= consolidationMaxRangePct) {
+        let aboveFast = 0;
+        let counted = 0;
+        for (let k = cStart; k <= cEnd; k++) {
+          const ft = emaValueAtClosedIdx(fastSeries, ribbonFast, k);
+          if (ft == null) continue;
+          counted++;
+          if (closedCandles[k].close > ft) aboveFast++;
+        }
+        if (counted >= consolidationLookback - 1 && aboveFast >= minBarsAboveFastInConsolidation) {
+          scenarioBreakout = true;
+        }
+      }
+    }
+
+    let scenarioPullback = false;
+    const pbFrom = Math.max(ribbonSlow - 1, lc - pullbackMaxBars);
+    for (let j = pbFrom; j <= lc - 2; j++) {
+      const fj = emaValueAtClosedIdx(fastSeries, ribbonFast, j);
+      const sj = emaValueAtClosedIdx(slowSeries, ribbonSlow, j);
+      if (fj == null || sj == null) continue;
+      if (!(fj < sj)) continue;
+      const touch = closedCandles[j].high >= fj || closedCandles[j].close > fj;
+      if (touch) {
+        scenarioPullback = true;
+        break;
+      }
+    }
+
+    if (!scenarioBreakout && !scenarioPullback) return null;
+
+    const scenarios: string[] = [];
+    if (scenarioBreakout) scenarios.push('consolidacao_breakdown_SB_short');
+    if (scenarioPullback) scenarios.push('pullback_fita_SB_short');
+
+    const swingHi = highestHigh(closedCandles, Math.max(0, lc - swingLookback), lc);
+    const stopFromSwing = swingHi + atr * swingAboveAtrMult;
+    const stopFromSlow = slowNow * (1 + slowEmaStopBufferPct / 100);
+    let stopLoss = Math.max(stopFromSwing, stopFromSlow);
+
+    const entryPrice = c.close;
+    const minDist = entryPrice * (minStopDistancePct / 100);
+    if (stopLoss - entryPrice < minDist) {
+      stopLoss = entryPrice + minDist;
+    }
+    const maxDist = entryPrice * (maxStopDistancePct / 100);
+    if (stopLoss - entryPrice > maxDist) {
+      stopLoss = entryPrice + maxDist;
+    }
+
+    if (!(stopLoss > entryPrice && stopLoss - entryPrice >= minDist * 0.85)) return null;
+
+    const risk = stopLoss - entryPrice;
+    const target1 = entryPrice - risk * rr1;
+    const target2 = entryPrice - risk * rr2;
+
+    const slopeStrength = Math.min(18, Math.max(0, -slopePct - minSlowEmaSlopePct) * 3);
+    const bodyBonus = Math.min(14, ((body / range - strongBodyOfRangeMin) / (1 - strongBodyOfRangeMin)) * 14);
+    const strength = Math.min(
+      98,
+      Math.max(
+        62,
+        Math.round(62 + slopeStrength + bodyBonus + (scenarioBreakout && scenarioPullback ? 4 : 0))
+      )
+    );
+
+    return {
+      direction: 'SELL',
+      entryPrice,
+      stopLoss,
+      target1,
+      target2,
+      target3: undefined,
+      strength,
+      extraInfo: JSON.stringify({
+        scenarios,
+        ribbonFast,
+        ribbonSlow,
+        slopePct: Number(slopePct.toFixed(3)),
+        minSlowEmaSlopePct,
+        atr: Number(atr.toFixed(6)),
+        bodyRangePct: Number(((body / range) * 100).toFixed(1)),
+        executionProfile:
+          `SELL apenas | SB abaixo da EMA rápida | SL maior entre swing +${swingAboveAtrMult.toString()}×ATR e EMA${ribbonSlow.toString()} +${slowEmaStopBufferPct}% | TP1 R×${rr1} (${tp1PositionPct}% pos.) | TP2 R×${rr2} (${tp2PositionPct}% pos.)`,
+        tp1Position: tp1PositionPct,
+        tp2Position: tp2PositionPct,
+        rewardRisk1: rr1,
+        rewardRisk2: rr2,
+      }),
+    };
+  } catch (error) {
+    console.error(`Erro na estratégia EMA Ribbon Scalping SELL (${symbol}):`, error);
     return null;
   }
 }
@@ -1140,7 +1343,7 @@ export interface RunAllStrategiesOptions {
 }
 
 /**
- * Executa todas as estratégias ativas (RSI usa Ma30Near6PriceBetween; RSI_BYBIT_15M usa Ma30Above6Pct; EMA_SCALPING em 15m; MA_VOLATILE usa MaCrossBelow / MA Cross Proximidade, …)
+ * Executa todas as estratégias ativas (RSI usa Ma30Near6PriceBetween; RSI_BYBIT_15M usa Ma30Above6Pct; EMA_SCALPING / EMA_SCALPING_SELL em 15m; MA_VOLATILE usa MaCrossBelow / MA Cross Proximidade, …)
  */
 export async function runAllStrategies(options?: RunAllStrategiesOptions): Promise<number> {
   let signalsCreated = 0;
@@ -1189,7 +1392,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         strategy.name === 'MA_VOLATILE'    ? ['1h'] :
         strategy.name === 'RSI_15M'        ? ['15m'] :
         strategy.name === 'RSI_BYBIT_15M'  ? ['15m'] :
-        strategy.name === 'EMA_SCALPING'   ? ['15m'] :
+        strategy.name === 'EMA_SCALPING' ||
+        strategy.name === 'EMA_SCALPING_SELL'
+          ? ['15m'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
         strategy.name === 'RSI'            ? ['1h'] :
         strategy.name === 'MA_CROSS_15M'   ? ['15m'] : timeframes;
@@ -1204,11 +1409,11 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           symbolsToAnalyze = volumeSymbols;
           console.log(`✅ Encontrados ${volumeSymbols.length} símbolos`);
         }
-      } else if (strategy.name === 'EMA_SCALPING') {
+      } else if (strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL') {
         const lim = Math.min(250, Math.max(15, Math.floor(Number(params.symbolLimit ?? 80))));
         symbolsToAnalyze = symbols.slice(0, lim);
         console.log(
-          `✅ EMA Ribbon Scalping: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
+          `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
       } else if (strategy.name === 'RSI_15M') {
         console.log(`🔍 Buscando MA30 −9%…−3% vs MA200 (1h) na BD para ${strategy.name}...`);
@@ -1342,6 +1547,12 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 signalResult = await runEmaRibbonScalpingStrategy(symbol, timeframe, params);
                 if (signalResult) {
                   console.log(`✅ EMA Ribbon Scalping: ${symbol} ${signalResult.direction} (${timeframe})`);
+                }
+                break;
+              case 'EMA_SCALPING_SELL':
+                signalResult = await runEmaRibbonScalpingSellStrategy(symbol, timeframe, params);
+                if (signalResult) {
+                  console.log(`✅ EMA Ribbon Scalping SELL: ${symbol} ${signalResult.direction} (${timeframe})`);
                 }
                 break;
               case 'RSI_BYBIT_15M':

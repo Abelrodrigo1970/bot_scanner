@@ -45,7 +45,9 @@ const ALLOWED_STRATEGIES = [
   'MA Cross 1h',
   'MA_CROSS_1H',
   'EMA_SCALPING',
+  'EMA_SCALPING_SELL',
   'EMA Ribbon Scalping',
+  'EMA Ribbon Scalping SELL',
 ];
 
 /** Força mínima para executar */
