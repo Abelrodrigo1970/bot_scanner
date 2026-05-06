@@ -317,7 +317,9 @@ async function ensureMissingStrategies() {
 
       const metaDesc =
         existingMaCross15m.description?.includes('Golden Cross') ||
-        existingMaCross15m.description?.includes('TP1 +85%')
+        existingMaCross15m.description?.includes('TP1 +85%') ||
+        existingMaCross15m.description?.includes('MaCrossBelow') ||
+        existingMaCross15m.description?.includes('Cross Proximidade')
           ? MA_CROSS_15M_STRATEGY_DESCRIPTION
           : undefined;
 

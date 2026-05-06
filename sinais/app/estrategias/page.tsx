@@ -309,7 +309,7 @@ export default function EstrategiasPage() {
               {isMa30Ma200 ? (
                 <>
                   {' '}
-                  Universo = scan <strong>MA Cross Proximidade</strong> (menu). O cron 15m aplica também fecho por compressão nas posições desta estratégia.
+                  Universo = mesmo scan que RSI/RSI_15m: <strong>MA30 entre −6% e +1% vs MA200 (1h)</strong> (<code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">Ma30Near6PriceBetween</code>). Actualiza o menu correspondente antes de gerar sinais. O cron 15m aplica fecho por compressão nas posições desta estratégia.
                 </>
               ) : (
                 <>

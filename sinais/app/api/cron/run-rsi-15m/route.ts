@@ -306,7 +306,7 @@ async function runRsi15mInBackground(): Promise<void> {
       }
 
       try {
-        const uniRows = await prisma.maCrossBelow.findMany({
+        const uniRows = await prisma.ma30Near6PriceBetween.findMany({
           select: { symbol: true },
           orderBy: { rank: 'asc' },
         });

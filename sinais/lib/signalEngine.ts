@@ -1344,7 +1344,7 @@ export interface RunAllStrategiesOptions {
 }
 
 /**
- * Executa todas as estratégias ativas (RSI usa Ma30Near6PriceBetween com faixa MA30 −6%…+1% vs MA200 1h; RSI_BYBIT_15M usa Ma30Above6Pct; EMA_SCALPING / EMA_SCALPING_SELL em 15m; MA_VOLATILE usa MaCrossBelow / MA Cross Proximidade, …)
+ * Executa todas as estratégias ativas (RSI + MA_CROSS_15M usam Ma30Near6PriceBetween: MA30 −6%…+1% vs MA200 1h; RSI_BYBIT_15M usa Ma30Above6Pct; EMA_SCALPING / EMA_SCALPING_SELL em 15m; MA_VOLATILE usa MaCrossBelow, …)
  */
 export async function runAllStrategies(options?: RunAllStrategiesOptions): Promise<number> {
   let signalsCreated = 0;
@@ -1442,13 +1442,15 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top Voláteis:`, err);
         }
       } else if (strategy.name === 'MA_CROSS_15M') {
-        console.log(`🔍 Buscando MA Cross Below na BD para ${strategy.name}...`);
-        const maCrossBelow = await prisma.maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
-        if (maCrossBelow.length > 0) {
-          symbolsToAnalyze = maCrossBelow.map((t) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos MA Cross Below`);
+        console.log(`🔍 Buscando Ma30Near6PriceBetween na BD (${strategy.name}, scan MA30 −6%…+1% vs MA200 1h)...`);
+        const nearBand = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
+        if (nearBand.length > 0) {
+          symbolsToAnalyze = nearBand.map((t) => t.symbol);
+          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (Ma30Near6PriceBetween)`);
         } else {
-          console.warn(`⚠️ Nenhum símbolo MA Cross Below na BD. Execute "Atualizar Scan" antes. Ignorando ${strategy.name}.`);
+          console.warn(
+            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Actualize o menu "MA30 −6%…+1% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
+          );
           continue;
         }
       } else if (strategy.name === 'RSI_BYBIT_15M') {
