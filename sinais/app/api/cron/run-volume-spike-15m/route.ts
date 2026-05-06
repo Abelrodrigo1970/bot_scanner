@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db';
 import {
   runMaCross15mStrategy,
   shouldCloseMaCross5mByDiff,
+  strategyAllowsSignalDirection,
+  strategyHasAnyAllowedDirection,
   type StrategyParams,
 } from '@/lib/signalEngine';
 import { update24hResults } from '@/lib/update24hResults';
@@ -47,6 +49,13 @@ async function runMaCross5mInBackground(
     }
 
     const symbols = maRows.map((r) => r.symbol);
+    const canOpenNew = strategyHasAnyAllowedDirection(params);
+    if (!canOpenNew) {
+      console.warn(
+        '[MA Cross 15m BG] COMPRA e VENDA desactivadas na estratégia — sem novos sinais; mantém-se apenas fecho por compressão quando aplicável.'
+      );
+    }
+
     console.log(`[MA Cross 15m BG] Iniciando ${symbols.length} símbolos (15m)…`);
     let signalsCreated = 0;
     const ex = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
@@ -73,9 +82,15 @@ async function runMaCross5mInBackground(
           }
         }
 
-        const signalResult = await runMaCross15mStrategy(symbol, TIMEFRAME_15M, params);
+        const signalResult = canOpenNew
+          ? await runMaCross15mStrategy(symbol, TIMEFRAME_15M, params)
+          : null;
 
-        if (signalResult && signalResult.strength >= MA_CROSS_5M_MIN_STRENGTH) {
+        if (
+          signalResult &&
+          strategyAllowsSignalDirection(signalResult.direction, params) &&
+          signalResult.strength >= MA_CROSS_5M_MIN_STRENGTH
+        ) {
           const posGate = await inspectActivePositionForSymbol(symbol, ex);
           if (
             posGate.inspectable &&

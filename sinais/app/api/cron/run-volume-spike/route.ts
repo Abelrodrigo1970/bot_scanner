@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { runVolumeSpikeStrategy } from '@/lib/signalEngine';
+import { runVolumeSpikeStrategy, strategyAllowsSignalDirection, strategyHasAnyAllowedDirection } from '@/lib/signalEngine';
 import { fetchTopSymbolsBy24hPriceChange } from '@/lib/marketData';
 import { update24hResults } from '@/lib/update24hResults';
 
@@ -25,13 +25,27 @@ async function runVolumeSpikeInBackground(
     console.log(`[Volume Spike BG] Iniciando processamento de ${SYMBOLS} símbolos...`);
     const symbols = await fetchTopSymbolsBy24hPriceChange(SYMBOLS, 100000);
     const timeframe = '1h' as const;
+
+    if (!strategyHasAnyAllowedDirection(params)) {
+      console.warn('[Volume Spike BG] COMPRA e VENDA desactivadas — sem novos sinais.');
+      const update24h = await update24hResults();
+      console.log(
+        `[Volume Spike BG] Concluído: 0 sinais, 24h atualizados: ${update24h.updated}`
+      );
+      return;
+    }
+
     let signalsCreated = 0;
 
     for (const symbol of symbols) {
       try {
         const signalResult = await runVolumeSpikeStrategy(symbol, timeframe, params);
 
-        if (signalResult && signalResult.strength >= 85) {
+        if (
+          signalResult &&
+          signalResult.strength >= 85 &&
+          strategyAllowsSignalDirection(signalResult.direction, params)
+        ) {
           const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
           const existingSignal = await prisma.signal.findFirst({
             where: {

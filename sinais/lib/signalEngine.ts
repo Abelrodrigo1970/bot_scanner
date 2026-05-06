@@ -40,6 +40,27 @@ export interface StrategyParams {
 }
 
 /**
+ * Toggles COMPRA/VENDA (página Estratégias → `params.allowBuy` / `params.allowSell`).
+ * Só bloqueiam quando são exactamente `false`; omitidos → ambos permitidos (compatível com registos antigos).
+ */
+export function strategyAllowsSignalDirection(
+  direction: 'BUY' | 'SELL',
+  params: StrategyParams | Record<string, unknown>
+): boolean {
+  if (direction === 'BUY') return params.allowBuy !== false;
+  return params.allowSell !== false;
+}
+
+export function strategyHasAnyAllowedDirection(
+  params: StrategyParams | Record<string, unknown>
+): boolean {
+  return (
+    strategyAllowsSignalDirection('BUY', params) ||
+    strategyAllowsSignalDirection('SELL', params)
+  );
+}
+
+/**
  * Estratégia Volume Spike: Gera sinais quando volume é maior que 12 vezes a média das últimas 20 horas
  * Timeframe 1h - analisa volume das últimas 20 horas
  */
@@ -1138,6 +1159,13 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
     for (const strategy of strategies) {
       const params = JSON.parse(strategy.params || '{}');
 
+      if (!strategyHasAnyAllowedDirection(params)) {
+        console.log(
+          `⏭️ ${strategy.name}: COMPRA e VENDA desactivadas (params.allowBuy/allowSell) — ignorada neste ciclo.`
+        );
+        continue;
+      }
+
       const timeframesToUse: Timeframe[] =
         strategy.name === 'MA_CROSS_5M'    ? ['15m'] :
         strategy.name === 'MA_CROSS_1H'    ? ['1h'] :
@@ -1333,15 +1361,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
             // Filtrar direção com base em allowBuy / allowSell dos params
             if (signalResult) {
-              const allowBuy  = params.allowBuy  !== false;
-              const allowSell = params.allowSell !== false;
-              if (
-                (signalResult.direction === 'BUY'  && !allowBuy) ||
-                (signalResult.direction === 'SELL' && !allowSell)
-              ) {
+              if (!strategyAllowsSignalDirection(signalResult.direction, params)) {
                 signalResult = null;
               }
-              if (!signalResult) continue;
             }
 
             if (signalResult) {
