@@ -71,6 +71,7 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   exitDiffPct: 0.5,
   stopPercent: 5,
   ma12x30RepeatWhileTrend: true,
+  ma12x30RepeatMinSpreadDeltaPct: 0.06,
   ma12x30GainTpPct: 44,
   ma12x30GainTpPositionPct: 60,
 };

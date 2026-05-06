@@ -351,10 +351,20 @@ export default function EstrategiasPage() {
                 onChange={(e) => upd({ ma12x30RepeatWhileTrend: e.target.checked })}
               />
               <span>
-                Entrada só por spread na vela fechada (sem exigir que na vela anterior o spread ainda fosse ≤ limiar de entrada).{' '}
-                <strong className="font-normal text-gray-500">Recomendado para MA12/MA30.</strong>
+                Modo repetir tendência (sem exigir spread «frio» na vela anterior): só entra quando o spread atravessa o limiar, o alinhamento MAs muda face à vela anterior, ou o spread <strong>alarga</strong> vs a vela anterior (ver campo abaixo). Evita gerar um sinal <strong>nem todas</strong> as barras só por estar MA12/MA30 abertos.
               </span>
             </label>
+            <div className="max-w-md">
+              {numField(
+                'Repeat: Δ mínimo spread vs vela ant. (pts %)',
+                p.ma12x30RepeatMinSpreadDeltaPct ?? 0.06,
+                (v) => upd({ ma12x30RepeatMinSpreadDeltaPct: v }),
+                0.01
+              )}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-500">
+              Mesma unidade que «Entrada: dif.». Aumentar (ex.: 0,08–0,15) reduz falsos repetidos em tendência forte com spread já largo.
+            </p>
             <p className="text-xs text-gray-500 dark:text-gray-500">
               Só VENDA: se a distância do fecho à média lenta (MA30) em valor absoluto (%) for maior que este limite, não gera sinal.
               0 desactiva o filtro.

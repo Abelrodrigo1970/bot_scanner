@@ -8,8 +8,10 @@ export const MA_CROSS_5M_PARAMS = {
   exitDiffPct: 0.5,
   stopPercent: 5,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
-  /** Se true: BUY/SELL sempre que spread > limiar e MA12 vs MA30 alinhados (sem exigir “primeira” expansão na vela anterior). */
+  /** Se true: re-entradas quando spread > limiar e alinhado, desde que haja novo impulso (cruzamento de limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). */
   ma12x30RepeatWhileTrend: true,
+  /** No modo repetir tendência: mínimo (em pts %) que o spread |MA12−MA30|/MA30 deve aumentar vs a vela anterior para contar como «novidade». */
+  ma12x30RepeatMinSpreadDeltaPct: 0.06,
   /** TP parcial quando preço vs entrada atinge +N% (compra) ou −N% (venda). */
   ma12x30GainTpPct: 44,
   /** % da posição a fechar nesse TP. */
@@ -21,7 +23,7 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 5%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h). Máx. um trade aberto por símbolo (não empilha o mesmo sentido).';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 5%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h). Máx. um trade aberto por símbolo no cron (não empilha o mesmo sentido).';
 
 /** Texto canónico da descrição (universo = tabela Ma30Near6PriceBetween / scan MA30 −9%…−3% vs MA200). */
 export const RSI_MA30_SCAN_UNIVERSE_DESCRIPTION =

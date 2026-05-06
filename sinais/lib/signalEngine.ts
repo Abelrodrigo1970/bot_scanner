@@ -859,10 +859,13 @@ async function runMaCrossM30M200OnTimeframe(
   );
 
   /**
-   * MA12×MA30: se true, entrada = só spread + alinhamento na vela fechada (MA12>MA30 e dif%>entrada, etc.).
+   * MA12×MA30: se true, permite re-entrada sem exigir que o spread da vela anterior fosse ≤ `entryDiffPct`,
+   * mas **não** dispara em todas as velas: exige sempre uma «novidade» (ver `ma12x30RepeatEligibleBuy` no código).
    * Se false, exige também transição na vela anterior (spread antes ≤ limiar ou alinhamento diferente).
    */
   const repeatSpreadWhileTrend = params.ma12x30RepeatWhileTrend === true;
+  /** No modo repeat: spread actual deve superar o da vela anterior pelo menos estes pontos percentuais (na mesma métrica que entryDiffPct). */
+  const minRepeatSpreadDelta = Number(params.ma12x30RepeatMinSpreadDeltaPct ?? 0.06);
 
   /** TP parcial quando preço favorável ≥ este % vs entrada (compra: +N%; venda: −N%). */
   const ma12x30GainTpPct = Number(params.ma12x30GainTpPct ?? 44);
@@ -905,13 +908,25 @@ async function runMaCrossM30M200OnTimeframe(
     const bullishPrev = prevMa30 > prevMaSlow;
     const bearishPrev = prevMa30 < prevMaSlow;
 
+    const ma12x30RepeatEligibleBuy =
+      prevDiffPct <= entryDiffPct ||
+      !bullishPrev ||
+      currentDiffPct > prevDiffPct + minRepeatSpreadDelta;
+
+    const ma12x30RepeatEligibleSell =
+      prevDiffPct <= entryDiffPct ||
+      !bearishPrev ||
+      currentDiffPct > prevDiffPct + minRepeatSpreadDelta;
+
     const confirmUp   = maSlow * (1 + confirmationPct / 100);
     const confirmDown = maSlow * (1 - confirmationPct / 100);
 
     const ma12x30BuyOk =
       bullishNow &&
       currentDiffPct > entryDiffPct &&
-      (repeatSpreadWhileTrend || !bullishPrev || prevDiffPct <= entryDiffPct);
+      (repeatSpreadWhileTrend
+        ? ma12x30RepeatEligibleBuy
+        : !bullishPrev || prevDiffPct <= entryDiffPct);
 
     if (
       isMa12x30Mode
@@ -972,7 +987,9 @@ async function runMaCrossM30M200OnTimeframe(
     const ma12x30SellOk =
       bearishNow &&
       currentDiffPct > entryDiffPct &&
-      (repeatSpreadWhileTrend || !bearishPrev || prevDiffPct <= entryDiffPct);
+      (repeatSpreadWhileTrend
+        ? ma12x30RepeatEligibleSell
+        : !bearishPrev || prevDiffPct <= entryDiffPct);
 
     if (
       isMa12x30Mode
