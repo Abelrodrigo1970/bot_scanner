@@ -78,7 +78,7 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   exchange: 'binance' as const,
   entryDiffPct: 0.9,
   exitDiffPct: 0.5,
-  stopPercent: 5,
+  stopPercent: 15,
   ma12x30RepeatWhileTrend: true,
   ma12x30RepeatMinSpreadDeltaPct: 0.06,
   ma12x30GainTpPct: 44,
@@ -390,7 +390,7 @@ async function ensureMissingStrategies() {
         next.ma30Period = 12;
       }
       // Nova configuração MA_CROSS_5M: gatilho por diferença MA12/MA30 + saída por compressão.
-      next.stopPercent = 5;
+      next.stopPercent = 15;
       next.entryDiffPct = 0.9;
       next.exitDiffPct = 0.5;
       // Limpar campos legados de TP único para evitar confusão na UI/params.

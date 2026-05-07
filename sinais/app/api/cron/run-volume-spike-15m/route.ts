@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import {
+  MA_CROSS_5M_SIGNAL_COOLDOWN_MS,
   runMaCross15mStrategy,
   shouldCloseMaCross5mByDiff,
   strategyAllowsSignalDirection,
@@ -29,6 +30,7 @@ const MA_CROSS_5M_MIN_STRENGTH = 70;
  * Cálculo em velas 15m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
  * Universo: tabela `BybitAboveMa200Mc20m` (menu Bybit Volume 1h >500k e MA200 1h).
  * Não cria novo sinal se já existir posição real no mesmo sentido (um trade por símbolo até fechar).
+ * Cooldown: no máximo um sinal por símbolo/direção a cada 8 h (ver `MA_CROSS_5M_SIGNAL_COOLDOWN_MS`).
  */
 async function runMaCross5mInBackground(
   strategy: StrategyData,
@@ -100,14 +102,14 @@ async function runMaCross5mInBackground(
             continue;
           }
 
-          const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+          const cooldownSince = new Date(Date.now() - MA_CROSS_5M_SIGNAL_COOLDOWN_MS);
           const existingSignal = await prisma.signal.findFirst({
             where: {
               symbol,
               strategyId: strategy.id,
               timeframe: TIMEFRAME_15M,
               direction: signalResult.direction,
-              generatedAt: { gte: twoHoursAgo },
+              generatedAt: { gte: cooldownSince },
             },
           });
 

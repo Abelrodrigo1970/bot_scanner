@@ -75,8 +75,8 @@ VERIFICAR_CONFIGURACAO.md
 .vscode/
 .idea/
 
-# Prisma backups
-prisma/schema.prisma.backup
+# Colagem local opcional para estudo MA12×MA30 (dados pessoais / export UI)
+/scripts/ma12x30_trades_paste.txt
 
 # Railway config (opcional - descomente se não quiser commitado)
 # railway.json

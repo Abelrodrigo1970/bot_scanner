@@ -300,6 +300,8 @@ export default function EstrategiasPage() {
       case 'MA_CROSS_15M': {
         const is1h = strategy.name === 'MA_CROSS_1H';
         const isMa30Ma200 = strategy.name === 'MA_CROSS_15M';
+        const defaultSlSpread =
+          strategy.name === 'MA_CROSS_1H' ? 7 : strategy.name === 'MA_CROSS_5M' ? 15 : 5;
         const maPairLabel = isMa30Ma200 ? 'MA30 / MA200' : 'MA12 / MA30';
         const diffLabel = isMa30Ma200 ? 'MA30 / MA200' : 'MA12 / MA30';
         return (
@@ -334,7 +336,7 @@ export default function EstrategiasPage() {
               {numField(`Período MA lenta (ex. ${isMa30Ma200 ? '200' : '30'})`, p.ma200Period ?? (isMa30Ma200 ? 200 : 30), (v) => upd({ ma200Period: v }))}
               {numField(`Entrada: dif. ${diffLabel} (%)`, p.entryDiffPct ?? (is1h ? 1.8 : 0.9), (v) => upd({ entryDiffPct: v }), 0.1)}
               {numField(`Saída/fecho: dif. ${diffLabel} (%)`, p.exitDiffPct ?? (is1h ? 0.8 : 0.5), (v) => upd({ exitDiffPct: v }), 0.1)}
-              {numField('SL (%)', p.stopPercent ?? (is1h ? 7 : 5), (v) => upd({ stopPercent: v }), 0.5)}
+              {numField('SL (%)', p.stopPercent ?? defaultSlSpread, (v) => upd({ stopPercent: v }), 0.5)}
               {numField(
                 'TP parcial: valorização vs entrada (%)',
                 p.ma12x30GainTpPct ?? 44,

@@ -39,6 +39,9 @@ export interface StrategyParams {
   [key: string]: any;
 }
 
+/** Intervalo mínimo entre dois sinais MA12×MA30 (`MA_CROSS_5M`): mesmo símbolo, timeframe e direção. */
+export const MA_CROSS_5M_SIGNAL_COOLDOWN_MS = 8 * 60 * 60 * 1000;
+
 /**
  * Toggles COMPRA/VENDA (página Estratégias → `params.allowBuy` / `params.allowSell`).
  * Só bloqueiam quando são exactamente `false`; omitidos → ambos permitidos (compatível com registos antigos).
@@ -1568,15 +1571,22 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
             }
 
             if (signalResult) {
+              const isMaCross12x30 = strategy.name === 'MA_CROSS_5M';
+              const dedupMs = isMaCross12x30
+                ? MA_CROSS_5M_SIGNAL_COOLDOWN_MS
+                : 2 * 60 * 60 * 1000;
+
               const recentSignal = await prisma.signal.findFirst({
                 where: {
                   symbol,
                   strategyId: strategy.id,
                   timeframe,
                   direction: signalResult.direction,
-                  status: { in: ['NEW', 'IN_PROGRESS'] },
+                  ...(isMaCross12x30
+                    ? {}
+                    : { status: { in: ['NEW', 'IN_PROGRESS'] } }),
                   generatedAt: {
-                    gte: new Date(Date.now() - 2 * 60 * 60 * 1000),
+                    gte: new Date(Date.now() - dedupMs),
                   },
                 },
               });
@@ -1602,7 +1612,11 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 signalsCreated++;
                 console.log(`✅ Sinal criado: ${symbol} ${signalResult.direction} (${strategy.displayName})`);
               } else {
-                console.log(`⏭️ Sinal duplicado ignorado: ${symbol} ${signalResult.direction}`);
+                const h = dedupMs / (60 * 60 * 1000);
+                console.log(
+                  `⏭️ Sinal duplicado ignorado: ${symbol} ${signalResult.direction}` +
+                    (isMaCross12x30 ? ` (cooldown ${h}h MA12×MA30)` : '')
+                );
               }
             }
 
