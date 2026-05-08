@@ -21,34 +21,60 @@ export async function fetchCandles(
   startTime?: number,
   endTime?: number
 ): Promise<Candle[]> {
+  const BINANCE_FAPI_HOSTS = [
+    'https://fapi.binance.com',
+    'https://fapi1.binance.com',
+    'https://fapi2.binance.com',
+    'https://fapi3.binance.com',
+  ];
+
+  const RETRYABLE_STATUSES = new Set([418, 429, 500, 502, 503, 504]);
+  const maxAttempts = BINANCE_FAPI_HOSTS.length;
+
   try {
-    let url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-    
-    if (startTime) {
-      url += `&startTime=${startTime}`;
+    let lastError: any;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const host = BINANCE_FAPI_HOSTS[attempt];
+      const url = new URL('/fapi/v1/klines', host);
+      url.searchParams.set('symbol', symbol);
+      url.searchParams.set('interval', interval);
+      url.searchParams.set('limit', String(limit));
+      if (startTime) url.searchParams.set('startTime', String(startTime));
+      if (endTime) url.searchParams.set('endTime', String(endTime));
+
+      try {
+        const response = await fetch(url.toString(), { cache: 'no-store' });
+        if (!response.ok) {
+          const error: any = new Error(`Erro ao buscar dados: ${response.statusText}`);
+          error.status = response.status;
+          error.endpoint = host;
+          if (!RETRYABLE_STATUSES.has(response.status) || attempt === maxAttempts - 1) {
+            throw error;
+          }
+          await delay(400 * (attempt + 1));
+          lastError = error;
+          continue;
+        }
+
+        const data = await response.json();
+        return data.map((candle: any[]) => ({
+          open: parseFloat(candle[1]),
+          high: parseFloat(candle[2]),
+          low: parseFloat(candle[3]),
+          close: parseFloat(candle[4]),
+          volume: parseFloat(candle[5]),
+          timestamp: candle[0],
+        }));
+      } catch (err) {
+        lastError = err;
+        if (attempt === maxAttempts - 1) {
+          throw err;
+        }
+        await delay(400 * (attempt + 1));
+      }
     }
-    if (endTime) {
-      url += `&endTime=${endTime}`;
-    }
 
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      const error: any = new Error(`Erro ao buscar dados: ${response.statusText}`);
-      error.status = response.status;
-      throw error;
-    }
-
-    const data = await response.json();
-
-    return data.map((candle: any[]) => ({
-      open: parseFloat(candle[1]),
-      high: parseFloat(candle[2]),
-      low: parseFloat(candle[3]),
-      close: parseFloat(candle[4]),
-      volume: parseFloat(candle[5]),
-      timestamp: candle[0],
-    }));
+    throw lastError;
   } catch (error) {
     console.error(`Erro ao buscar candles para ${symbol}:`, error);
     throw error;

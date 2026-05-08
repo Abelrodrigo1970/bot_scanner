@@ -92,6 +92,7 @@ export async function getBybitPositionRisk(symbol?: string): Promise<Array<{
 }>> {
   const params: Record<string, string> = { category: 'linear' };
   if (symbol) params.symbol = symbol;
+  else params.settleCoin = 'USDT';
 
   const result = await signedGet<{ list: Array<Record<string, string>> }>('/v5/position/list', params);
   return (result?.list ?? []).map((p) => ({
