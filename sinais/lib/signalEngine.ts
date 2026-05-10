@@ -1064,6 +1064,12 @@ async function runMaCrossM30M200OnTimeframe(
   const sellBlockAbsCloseDistanceFromMa200Pct = Number(
     params.sellBlockAbsCloseDistanceFromMa200Pct ?? 6
   );
+  /**
+   * BUY (modo spread): não emitir se |close−MA lenta|/MA lenta*100 (%) for > N%. 0 = desactiva.
+   */
+  const buyBlockAbsCloseDistanceFromMa200Pct = Number(
+    params.buyBlockAbsCloseDistanceFromMa200Pct ?? 0
+  );
 
   /**
    * MA12×MA30: se true, permite re-entrada sem exigir que o spread da vela anterior fosse ≤ `entryDiffPct`,
@@ -1079,6 +1085,13 @@ async function runMaCrossM30M200OnTimeframe(
   /** % da posição a fechar nesse TP parcial. */
   const ma12x30GainTpPositionPct = Number(params.ma12x30GainTpPositionPct ?? 60);
 
+  /**
+   * Entrada só se |MA lenta − MA200|/MA200×100 ≤ N (MA200 = período fixo 200 no mesmo timeframe).
+   * 0 = desactiva. Só aplicável quando MA lenta ≠ MA200 (ex. MA12/MA30 com lenta período 30).
+   */
+  const entryMaxAbsPctMa30VsMa200 = Number(params.entryMaxAbsPctMa30VsMa200 ?? 0);
+  const ma200LongPeriod = 200;
+
   const ma = (arr: number[], p: number) =>
     maType === 'SMA' ? calculateSMA(arr, p) : calculateLastEMA(arr, p);
 
@@ -1088,10 +1101,17 @@ async function runMaCrossM30M200OnTimeframe(
       params.emaCandleLookback != null && Number.isFinite(Number(params.emaCandleLookback))
         ? Math.min(1500, Math.max(200, Math.floor(Number(params.emaCandleLookback))))
         : null;
-    const candlesNeeded =
+    let candlesNeeded =
       maType === 'SMA'
         ? maSlowPeriod + 5
         : (requested ?? emaCandles);
+    if (
+      isMa12x30Mode &&
+      entryMaxAbsPctMa30VsMa200 > 0 &&
+      maSlowPeriod < ma200LongPeriod
+    ) {
+      candlesNeeded = Math.max(candlesNeeded, ma200LongPeriod + 5);
+    }
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
     if (candles.length < maSlowPeriod + 3) return null;
 
@@ -1107,7 +1127,28 @@ async function runMaCrossM30M200OnTimeframe(
     const prevMaSlow = ma(prevClosedCloses, maSlowPeriod);
     if (prevMa30 === null || prevMaSlow === null) return null;
 
+    let absPctMaSlowVsMa200: number | undefined;
+    if (
+      isMa12x30Mode &&
+      entryMaxAbsPctMa30VsMa200 > 0 &&
+      maSlowPeriod < ma200LongPeriod
+    ) {
+      const ma200Long = ma(closedCloses, ma200LongPeriod);
+      if (
+        ma200Long === null ||
+        !Number.isFinite(ma200Long) ||
+        Math.abs(ma200Long) < 1e-12
+      ) {
+        return null;
+      }
+      absPctMaSlowVsMa200 = Math.abs((maSlow - ma200Long) / ma200Long) * 100;
+      if (absPctMaSlowVsMa200 > entryMaxAbsPctMa30VsMa200) {
+        return null;
+      }
+    }
+
     const currentPrice = candles[candles.length - 2].close;
+    const distCloseSlowAbsPct = Math.abs((currentPrice - maSlow) / maSlow) * 100;
     const currentDiffPct = Math.abs((ma30 - maSlow) / maSlow) * 100;
     const prevDiffPct = Math.abs((prevMa30 - prevMaSlow) / prevMaSlow) * 100;
     const bullishNow = ma30 > maSlow;
@@ -1137,7 +1178,9 @@ async function runMaCrossM30M200OnTimeframe(
 
     if (
       isMa12x30Mode
-        ? ma12x30BuyOk
+        ? ma12x30BuyOk &&
+            (buyBlockAbsCloseDistanceFromMa200Pct <= 0 ||
+              distCloseSlowAbsPct <= buyBlockAbsCloseDistanceFromMa200Pct)
         : (prevMa30 <= prevMaSlow && ma30 > confirmUp)
     ) {
       const stopLoss = currentPrice * (1 - stopPercent / 100);
@@ -1166,6 +1209,7 @@ async function runMaCrossM30M200OnTimeframe(
           maSlowPeriod,
           ma200: maSlow.toFixed(4),
           diffPct: currentDiffPct.toFixed(3),
+          distCloseMaSlowAbsPct: distCloseSlowAbsPct.toFixed(2),
           entryDiffPct,
           exitDiffPct,
           confirmationPct,
@@ -1178,6 +1222,14 @@ async function runMaCrossM30M200OnTimeframe(
                 ma12x30GainTpPct,
                 ma12x30GainTpPositionPct,
                 tp1Position: ma12x30GainTpPositionPct,
+                buyBlockAbsCloseDistanceFromMa200Pct:
+                  buyBlockAbsCloseDistanceFromMa200Pct || 'off',
+                ...(absPctMaSlowVsMa200 !== undefined
+                  ? {
+                      entryMaxAbsPctMa30VsMa200,
+                      absPctMaSlowVsMa200: absPctMaSlowVsMa200.toFixed(2),
+                    }
+                  : {}),
                 executionProfile: `SL -${stopPercent}% | TP1 +${ma12x30GainTpPct}% (${ma12x30GainTpPositionPct}% posição) | restante: fecho dinâmico se spread < ${exitDiffPct}%`,
               }
             : {
@@ -1203,12 +1255,11 @@ async function runMaCrossM30M200OnTimeframe(
         ? ma12x30SellOk
         : (prevMa30 >= prevMaSlow && ma30 < confirmDown)
     ) {
-      if (sellBlockAbsCloseDistanceFromMa200Pct > 0) {
-        const distCloseSlowAbsPct =
-          Math.abs((currentPrice - maSlow) / maSlow) * 100;
-        if (distCloseSlowAbsPct > sellBlockAbsCloseDistanceFromMa200Pct) {
-          return null;
-        }
+      if (
+        sellBlockAbsCloseDistanceFromMa200Pct > 0 &&
+        distCloseSlowAbsPct > sellBlockAbsCloseDistanceFromMa200Pct
+      ) {
+        return null;
       }
 
       const stopLoss = currentPrice * (1 + stopPercent / 100);
@@ -1239,9 +1290,7 @@ async function runMaCrossM30M200OnTimeframe(
           diffPct: currentDiffPct.toFixed(3),
           entryDiffPct,
           exitDiffPct,
-          distCloseMa200AbsPct: (
-            Math.abs((currentPrice - maSlow) / maSlow) * 100
-          ).toFixed(2),
+          distCloseMa200AbsPct: distCloseSlowAbsPct.toFixed(2),
           sellBlockAbsCloseDistanceFromMa200Pct:
             sellBlockAbsCloseDistanceFromMa200Pct || 'off',
           confirmationPct,
@@ -1254,6 +1303,12 @@ async function runMaCrossM30M200OnTimeframe(
                 ma12x30GainTpPct,
                 ma12x30GainTpPositionPct,
                 tp1Position: ma12x30GainTpPositionPct,
+                ...(absPctMaSlowVsMa200 !== undefined
+                  ? {
+                      entryMaxAbsPctMa30VsMa200,
+                      absPctMaSlowVsMa200: absPctMaSlowVsMa200.toFixed(2),
+                    }
+                  : {}),
                 executionProfile: `SL +${stopPercent}% | TP1 -${ma12x30GainTpPct}% (${ma12x30GainTpPositionPct}% posição) | restante: fecho dinâmico se spread < ${exitDiffPct}%`,
               }
             : {

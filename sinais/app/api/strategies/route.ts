@@ -88,13 +88,19 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
 const MA_CROSS_1H_DEFAULT_PARAMS = {
   ...MA_CROSS_5M_DEFAULT_PARAMS,
   useDiffMode: true,
-  entryDiffPct: 1.8,
+  entryDiffPct: 1.2,
   /** Fecho quando |MA12−MA30|/MA30×100 &lt; este valor */
   exitDiffPct: 0.8,
   stopPercent: 7,
   exchange: 'bybit' as const,
   /** true = entrada só por spread na vela fechada (sem exigir transição na vela anterior) */
   ma12x30RepeatWhileTrend: true,
+  /** COMPRA só se |preço−MA30|/MA30 ≤ N%; 0 desactiva */
+  buyBlockAbsCloseDistanceFromMa200Pct: 8,
+  /** VENDA só se |preço−MA30|/MA30 ≤ N%; 0 desactiva */
+  sellBlockAbsCloseDistanceFromMa200Pct: 8,
+  /** Entrada só se |MA30−MA200|/MA200×100 ≤ N (MA200 período 200, mesmo TF); 0 desactiva */
+  entryMaxAbsPctMa30VsMa200: 8,
 };
 
 const EMA_SCALPING_DEFAULT_PARAMS = {
@@ -462,7 +468,7 @@ async function ensureMissingStrategies() {
         name: 'MA_CROSS_1H',
         displayName: 'MA Cross 1h (MA12/MA30)',
         description:
-          'MA12/MA30 em 1h: entrada por spread (>1,8%). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro SELL se |preço−MA30|/MA30>6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+          'MA12/MA30 em 1h: entrada por spread (>1,2%). Só entra se |MA30−MA200|/MA200 ≤ 8% (MA200 período 200 em 1h). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro BUY e SELL: só se |preço−MA30|/MA30 ≤ 8%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
         isActive: true,
         params: JSON.stringify(MA_CROSS_1H_DEFAULT_PARAMS),
       },
@@ -477,9 +483,17 @@ async function ensureMissingStrategies() {
       next.useDiffMode = true;
       next.ma30Period = 12;
       next.ma200Period = 30;
-      next.entryDiffPct = 1.8;
+      next.entryDiffPct = 1.2;
       next.exitDiffPct = 0.8;
       next.ma12x30RepeatWhileTrend = true;
+      next.buyBlockAbsCloseDistanceFromMa200Pct = 8;
+      next.sellBlockAbsCloseDistanceFromMa200Pct = 8;
+      if (
+        next.entryMaxAbsPctMa30VsMa200 == null ||
+        next.entryMaxAbsPctMa30VsMa200 === ''
+      ) {
+        next.entryMaxAbsPctMa30VsMa200 = 8;
+      }
       if (next.ma12x30GainTpPct == null || next.ma12x30GainTpPct === '') {
         next.ma12x30GainTpPct = 44;
       }
@@ -497,7 +511,7 @@ async function ensureMissingStrategies() {
       delete next.sellTp2Position;
       next.exchange = p.exchange === 'binance' ? 'binance' : 'bybit';
       const newDesc =
-        'MA12/MA30 em 1h: entrada por spread (>1,8%). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro SELL se |preço−MA30|/MA30>6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
+        'MA12/MA30 em 1h: entrada por spread (>1,2%). Só entra se |MA30−MA200|/MA200 ≤ 8% (MA200 período 200 em 1h). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro BUY e SELL: só se |preço−MA30|/MA30 ≤ 8%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
         existingMaCross1h.displayName !== 'MA Cross 1h (MA12/MA30)' || existingMaCross1h.description !== newDesc;
