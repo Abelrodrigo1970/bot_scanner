@@ -25,8 +25,16 @@ const BINANCE_FAPI_HOSTS = [
 
 const BINANCE_FAPI_RETRYABLE_STATUSES = new Set([418, 429, 500, 502, 503, 504]);
 /** Espaço mínimo entre pedidos klines (cron analisa muitos símbolos em sequência). */
-const BINANCE_KLINES_MIN_GAP_MS = 80;
+const BINANCE_KLINES_MIN_GAP_MS = 120;
 let lastBinanceKlinesFetchAt = 0;
+
+const BINANCE_PUBLIC_HEADERS: Record<string, string> = {
+  Accept: 'application/json',
+  'User-Agent':
+    'Mozilla/5.0 (compatible; bot_cripto-cron/1.0; +https://github.com/Abelrodrigo1970/bot_cripto)',
+};
+
+const BINANCE_KLINES_TIMEOUT_MS = 25_000;
 
 async function throttleBinanceKlinesFetch(): Promise<void> {
   const now = Date.now();
@@ -41,6 +49,8 @@ function isRetryableKlinesError(err: unknown): boolean {
   if (e.retryable === true) return true;
   if (e.status != null && BINANCE_FAPI_RETRYABLE_STATUSES.has(e.status)) return true;
   if (e.name === 'SyntaxError') return true;
+  if (e.name === 'TypeError') return true;
+  if (e.name === 'AbortError') return true;
   return false;
 }
 
@@ -104,7 +114,8 @@ export async function fetchCandles(
   endTime?: number
 ): Promise<Candle[]> {
   const hostCount = BINANCE_FAPI_HOSTS.length;
-  const maxAttempts = hostCount * 2;
+  /** Várias voltas aos mirrors (timeouts / corpo truncado / rate limit). */
+  const maxAttempts = hostCount * 3;
 
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -118,7 +129,11 @@ export async function fetchCandles(
 
     try {
       await throttleBinanceKlinesFetch();
-      const response = await fetch(url.toString(), { cache: 'no-store' });
+      const response = await fetch(url.toString(), {
+        cache: 'no-store',
+        headers: BINANCE_PUBLIC_HEADERS,
+        signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+      });
       const bodyText = await response.text();
 
       if (!response.ok) {
@@ -162,7 +177,11 @@ export async function fetchCurrentPrice(symbol: string, retries = 2): Promise<nu
       await throttleBinanceKlinesFetch();
       const response = await fetch(
         `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`,
-        { cache: 'no-store' }
+        {
+          cache: 'no-store',
+          headers: BINANCE_PUBLIC_HEADERS,
+          signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+        }
       );
       const bodyText = await response.text();
 
