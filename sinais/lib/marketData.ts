@@ -11,6 +11,88 @@ export interface Candle {
   timestamp: number;
 }
 
+/** Atraso em ms (evitar rate limit da Binance) */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const BINANCE_FAPI_HOSTS = [
+  'https://fapi.binance.com',
+  'https://fapi1.binance.com',
+  'https://fapi2.binance.com',
+  'https://fapi3.binance.com',
+] as const;
+
+const BINANCE_FAPI_RETRYABLE_STATUSES = new Set([418, 429, 500, 502, 503, 504]);
+/** Espaço mínimo entre pedidos klines (cron analisa muitos símbolos em sequência). */
+const BINANCE_KLINES_MIN_GAP_MS = 80;
+let lastBinanceKlinesFetchAt = 0;
+
+async function throttleBinanceKlinesFetch(): Promise<void> {
+  const now = Date.now();
+  const waitMs = lastBinanceKlinesFetchAt + BINANCE_KLINES_MIN_GAP_MS - now;
+  if (waitMs > 0) await delay(waitMs);
+  lastBinanceKlinesFetchAt = Date.now();
+}
+
+function isRetryableKlinesError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { retryable?: boolean; status?: number; name?: string };
+  if (e.retryable === true) return true;
+  if (e.status != null && BINANCE_FAPI_RETRYABLE_STATUSES.has(e.status)) return true;
+  if (e.name === 'SyntaxError') return true;
+  return false;
+}
+
+function parseBinanceKlinesBody(text: string, symbol: string, host: string): Candle[] {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    const err: Error & { retryable?: boolean } = new Error(
+      `Resposta vazia da Binance klines (${symbol} @ ${host})`
+    );
+    err.retryable = true;
+    throw err;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    const err: Error & { retryable?: boolean } = new Error(
+      `JSON inválido da Binance klines (${symbol} @ ${host})`
+    );
+    err.retryable = true;
+    throw err;
+  }
+
+  if (!Array.isArray(parsed)) {
+    const api = parsed as { code?: number; msg?: string };
+    const msg = api?.msg ?? trimmed.slice(0, 160);
+    const err: Error & { retryable?: boolean; status?: number } = new Error(
+      `Binance klines erro (${symbol}): ${msg}`
+    );
+    err.retryable =
+      api?.code === -1003 ||
+      api?.code === -1006 ||
+      api?.code === -1007 ||
+      api?.code === 418;
+    if (api?.code === 418) err.status = 418;
+    throw err;
+  }
+
+  return parsed.map((candle: unknown) => {
+    const c = candle as (string | number)[];
+    return {
+      open: parseFloat(String(c[1])),
+      high: parseFloat(String(c[2])),
+      low: parseFloat(String(c[3])),
+      close: parseFloat(String(c[4])),
+      volume: parseFloat(String(c[5])),
+      timestamp: Number(c[0]),
+    };
+  });
+}
+
 /**
  * Busca velas (candles) de uma exchange pública (Binance Futures USDⓈ-M)
  */
@@ -21,64 +103,52 @@ export async function fetchCandles(
   startTime?: number,
   endTime?: number
 ): Promise<Candle[]> {
-  const BINANCE_FAPI_HOSTS = [
-    'https://fapi.binance.com',
-    'https://fapi1.binance.com',
-    'https://fapi2.binance.com',
-    'https://fapi3.binance.com',
-  ];
+  const hostCount = BINANCE_FAPI_HOSTS.length;
+  const maxAttempts = hostCount * 2;
 
-  const RETRYABLE_STATUSES = new Set([418, 429, 500, 502, 503, 504]);
-  const maxAttempts = BINANCE_FAPI_HOSTS.length;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const host = BINANCE_FAPI_HOSTS[attempt % hostCount];
+    const url = new URL('/fapi/v1/klines', host);
+    url.searchParams.set('symbol', symbol);
+    url.searchParams.set('interval', interval);
+    url.searchParams.set('limit', String(limit));
+    if (startTime) url.searchParams.set('startTime', String(startTime));
+    if (endTime) url.searchParams.set('endTime', String(endTime));
 
-  try {
-    let lastError: any;
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const host = BINANCE_FAPI_HOSTS[attempt];
-      const url = new URL('/fapi/v1/klines', host);
-      url.searchParams.set('symbol', symbol);
-      url.searchParams.set('interval', interval);
-      url.searchParams.set('limit', String(limit));
-      if (startTime) url.searchParams.set('startTime', String(startTime));
-      if (endTime) url.searchParams.set('endTime', String(endTime));
+    try {
+      await throttleBinanceKlinesFetch();
+      const response = await fetch(url.toString(), { cache: 'no-store' });
+      const bodyText = await response.text();
 
-      try {
-        const response = await fetch(url.toString(), { cache: 'no-store' });
-        if (!response.ok) {
-          const error: any = new Error(`Erro ao buscar dados: ${response.statusText}`);
-          error.status = response.status;
-          error.endpoint = host;
-          if (!RETRYABLE_STATUSES.has(response.status) || attempt === maxAttempts - 1) {
-            throw error;
-          }
+      if (!response.ok) {
+        const error: Error & { status?: number; endpoint?: string } = new Error(
+          `Erro ao buscar dados: ${response.status} ${response.statusText}`
+        );
+        error.status = response.status;
+        error.endpoint = host;
+        if (!BINANCE_FAPI_RETRYABLE_STATUSES.has(response.status)) {
+          throw error;
+        }
+        lastError = error;
+        if (attempt < maxAttempts - 1) {
           await delay(400 * (attempt + 1));
-          lastError = error;
-          continue;
         }
-
-        const data = await response.json();
-        return data.map((candle: any[]) => ({
-          open: parseFloat(candle[1]),
-          high: parseFloat(candle[2]),
-          low: parseFloat(candle[3]),
-          close: parseFloat(candle[4]),
-          volume: parseFloat(candle[5]),
-          timestamp: candle[0],
-        }));
-      } catch (err) {
-        lastError = err;
-        if (attempt === maxAttempts - 1) {
-          throw err;
-        }
-        await delay(400 * (attempt + 1));
+        continue;
       }
-    }
 
-    throw lastError;
-  } catch (error) {
-    console.error(`Erro ao buscar candles para ${symbol}:`, error);
-    throw error;
+      return parseBinanceKlinesBody(bodyText, symbol, host);
+    } catch (err) {
+      lastError = err;
+      if (!isRetryableKlinesError(err) || attempt === maxAttempts - 1) {
+        break;
+      }
+      await delay(400 * (attempt + 1));
+    }
   }
+
+  console.error(`Erro ao buscar candles para ${symbol}:`, lastError);
+  throw lastError;
 }
 
 /**
@@ -89,24 +159,50 @@ export async function fetchCurrentPrice(symbol: string, retries = 2): Promise<nu
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
+      await throttleBinanceKlinesFetch();
       const response = await fetch(
-        `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`
+        `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`,
+        { cache: 'no-store' }
       );
+      const bodyText = await response.text();
 
       if (!response.ok) {
         if (response.status === 400 && attempt < retries) {
-          await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+          await delay(1500 * (attempt + 1));
           continue;
         }
         throw new Error(`Erro ao buscar preço: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      return parseFloat(data.price);
+      const trimmed = bodyText.trim();
+      if (!trimmed) {
+        const err: Error & { retryable?: boolean } = new Error(
+          `Resposta vazia da Binance (preço ${symbol})`
+        );
+        err.retryable = true;
+        throw err;
+      }
+
+      let data: { price?: string };
+      try {
+        data = JSON.parse(trimmed);
+      } catch {
+        const err: Error & { retryable?: boolean } = new Error(
+          `JSON inválido da Binance (preço ${symbol})`
+        );
+        err.retryable = true;
+        throw err;
+      }
+
+      const price = parseFloat(data.price ?? '');
+      if (!Number.isFinite(price)) {
+        throw new Error(`Preço inválido para ${symbol}`);
+      }
+      return price;
     } catch (error) {
       lastError = error;
-      if (attempt < retries) {
-        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+      if (attempt < retries && isRetryableKlinesError(error)) {
+        await delay(1500 * (attempt + 1));
       } else {
         console.error(`Erro ao buscar preço para ${symbol}:`, error);
         throw error;
@@ -320,11 +416,6 @@ export async function fetchTopSymbolsBy24hPriceChange(
     console.error('Erro ao buscar top símbolos por % 24h:', error);
     throw error;
   }
-}
-
-/** Atraso em ms (evitar rate limit da Binance) */
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
