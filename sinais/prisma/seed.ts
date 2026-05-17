@@ -1,19 +1,22 @@
 import { PrismaClient } from '@prisma/client';
 import {
-  MA_CROSS_15M_STRATEGY_DESCRIPTION,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_5M_PARAMS,
   MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION,
   migrateVolumeSpike15mToMaCross5m,
-  RSI_15M_STRATEGY_DESCRIPTION,
-  RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
+  removeDeprecatedStrategies,
 } from '../lib/strategyMigrations';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Iniciando seed do banco de dados (RSI + Volume)...');
+
+  const deprecated = await removeDeprecatedStrategies(prisma);
+  if (deprecated.removed.length > 0) {
+    console.log(`[estratégias retiradas] ${deprecated.removed.join(', ')}`);
+  }
 
   const mig = await migrateVolumeSpike15mToMaCross5m(prisma);
   console.log(`[migração VOLUME_SPIKE_15M] ${mig.action}: ${mig.message}`);
@@ -23,81 +26,6 @@ async function main() {
   if (mig.signalsRelabeled != null && mig.signalsRelabeled > 0) {
     console.log(`  strategyName em sinais (estatísticas): ${mig.signalsRelabeled} actualizados para "${MA_CROSS_5M_DISPLAY}"`);
   }
-
-  // Estratégia RSI 1h: SMA(RSI) vs nível 47 + universo Ma30Near6PriceBetween
-  const rsiStrategy = await prisma.strategy.upsert({
-    where: { name: 'RSI' },
-    update: {
-      displayName: 'RSI Top Volatilidade (SMA21×47)',
-      description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
-      params: JSON.stringify({
-        period: 14,
-        rsiSmoothLength: 21,
-        rsiRefLevel: 47,
-        buyStopPercent: 5,
-        sellStopPercent: 5,
-        rsiBuyGainTpPct: 43,
-        rsiBuyGainTpPositionPct: 50,
-        rsiSellGainTpPct: 43,
-        rsiSellGainTpPositionPct: 50,
-        closeAfterHours: 24,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'binance',
-      }),
-    },
-    create: {
-      name: 'RSI',
-      displayName: 'RSI Top Volatilidade (SMA21×47)',
-      description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION,
-      isActive: true,
-      params: JSON.stringify({
-        period: 14,
-        rsiSmoothLength: 21,
-        rsiRefLevel: 47,
-        buyStopPercent: 5,
-        sellStopPercent: 5,
-        rsiBuyGainTpPct: 43,
-        rsiBuyGainTpPositionPct: 50,
-        rsiSellGainTpPct: 43,
-        rsiSellGainTpPositionPct: 50,
-        closeAfterHours: 24,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'binance',
-      }),
-    },
-  });
-
-  // Estratégia Volume Spike (1h)
-  const volumeSpikeStrategy = await prisma.strategy.upsert({
-    where: { name: 'VOLUME_SPIKE' },
-    update: {
-      description:
-        'Gera sinais quando o volume do último candle fechado é maior que 20 vezes a média das últimas 20 horas. COMPRA: volume spike com preço a subir. VENDA: volume spike com preço a descer. Timeframe 1h.',
-      params: JSON.stringify({
-        volumeMultiplier: 20,
-        lookbackHours: 20,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'bybit',
-      }),
-    },
-    create: {
-      name: 'VOLUME_SPIKE',
-      displayName: 'Volume Spike 1h',
-      description:
-        'Gera sinais quando o volume do último candle fechado é maior que 20 vezes a média das últimas 20 horas. COMPRA: volume spike com preço a subir. VENDA: volume spike com preço a descer. Timeframe 1h.',
-      isActive: true,
-      params: JSON.stringify({
-        volumeMultiplier: 20,
-        lookbackHours: 20,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'bybit',
-      }),
-    },
-  });
 
   // Estratégia MA Cross Top Voláteis (universo = MA Cross Proximidade / MaCrossBelow na BD)
   const maVolatileStrategy = await prisma.strategy.upsert({
@@ -269,92 +197,6 @@ async function main() {
     },
   });
 
-  // Nova estratégia RSI 15m Top Volatilidade
-  const rsi15mStrategy = await prisma.strategy.upsert({
-    where: { name: 'RSI_15M' },
-    update: {
-      displayName: 'RSI 15m Reversal (28->32)',
-      description:
-        RSI_15M_STRATEGY_DESCRIPTION,
-      params: JSON.stringify({
-        period: 14,
-        previousBelowThreshold: 28,
-        buyThreshold: 32,
-        stopPercent: 3,
-        symbolLimit: 400,
-        minQuoteVolume: 500000,
-        allowBuy: true,
-        allowSell: false,
-        exchange: 'bybit',
-      }),
-    },
-    create: {
-      name: 'RSI_15M',
-      displayName: 'RSI 15m Reversal (28->32)',
-      description:
-        RSI_15M_STRATEGY_DESCRIPTION,
-      isActive: true,
-      params: JSON.stringify({
-        period: 14,
-        previousBelowThreshold: 28,
-        buyThreshold: 32,
-        stopPercent: 3,
-        symbolLimit: 400,
-        minQuoteVolume: 500000,
-        allowBuy: true,
-        allowSell: false,
-        exchange: 'bybit',
-      }),
-    },
-  });
-
-  const RSI_BYBIT_15M_UNIVERSE_DESCRIPTION =
-    'Mesma lógica que o RSI 1h (SMA sobre RSI vs nível, TradingView): velas 15m. Universo = Ma30Above6Pct (MA30 > 9% da MA200 em 1h); actualiza o scan «MA30 > 9% MA200».';
-
-  await prisma.strategy.upsert({
-    where: { name: 'RSI_BYBIT_15M' },
-    update: {
-      displayName: 'RSI Bybit 15m (SMA21×47)',
-      description: RSI_BYBIT_15M_UNIVERSE_DESCRIPTION,
-      params: JSON.stringify({
-        period: 14,
-        rsiSmoothLength: 21,
-        rsiRefLevel: 47,
-        buyStopPercent: 5,
-        sellStopPercent: 5,
-        rsiBuyGainTpPct: 43,
-        rsiBuyGainTpPositionPct: 50,
-        rsiSellGainTpPct: 43,
-        rsiSellGainTpPositionPct: 50,
-        closeAfterHours: 24,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'bybit',
-      }),
-    },
-    create: {
-      name: 'RSI_BYBIT_15M',
-      displayName: 'RSI Bybit 15m (SMA21×47)',
-      description: RSI_BYBIT_15M_UNIVERSE_DESCRIPTION,
-      isActive: true,
-      params: JSON.stringify({
-        period: 14,
-        rsiSmoothLength: 21,
-        rsiRefLevel: 47,
-        buyStopPercent: 5,
-        sellStopPercent: 5,
-        rsiBuyGainTpPct: 43,
-        rsiBuyGainTpPositionPct: 50,
-        rsiSellGainTpPct: 43,
-        rsiSellGainTpPositionPct: 50,
-        closeAfterHours: 24,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'bybit',
-      }),
-    },
-  });
-
   await prisma.strategy.upsert({
     where: { name: 'EMA_SCALPING' },
     update: {
@@ -467,62 +309,7 @@ async function main() {
     },
   });
 
-  // Estratégia MA Cross 15m MA30/MA200 — mesma lógica de spread que MA12×MA30
-  await prisma.strategy.upsert({
-    where: { name: 'MA_CROSS_15M' },
-    update: {
-      displayName: 'MA Cross 15m (MA30/MA200)',
-      description: MA_CROSS_15M_STRATEGY_DESCRIPTION,
-      params: JSON.stringify({
-        ma30Period: 30,
-        ma200Period: 200,
-        maType: 'EMA',
-        useDiffMode: true,
-        confirmationPct: 0,
-        entryDiffPct: 0.9,
-        exitDiffPct: 0.5,
-        stopPercent: 5,
-        sellBlockAbsCloseDistanceFromMa200Pct: 6,
-        ma12x30RepeatWhileTrend: true,
-        ma12x30RepeatMinSpreadDeltaPct: 0.06,
-        ma12x30GainTpPct: 44,
-        ma12x30GainTpPositionPct: 60,
-        symbolLimit: 500,
-        minQuoteVolume: 100000,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'bybit',
-      }),
-    },
-    create: {
-      name: 'MA_CROSS_15M',
-      displayName: 'MA Cross 15m (MA30/MA200)',
-      description: MA_CROSS_15M_STRATEGY_DESCRIPTION,
-      isActive: false,
-      params: JSON.stringify({
-        ma30Period: 30,
-        ma200Period: 200,
-        maType: 'EMA',
-        useDiffMode: true,
-        confirmationPct: 0,
-        entryDiffPct: 0.9,
-        exitDiffPct: 0.5,
-        stopPercent: 5,
-        sellBlockAbsCloseDistanceFromMa200Pct: 6,
-        ma12x30RepeatWhileTrend: true,
-        ma12x30RepeatMinSpreadDeltaPct: 0.06,
-        ma12x30GainTpPct: 44,
-        ma12x30GainTpPositionPct: 60,
-        symbolLimit: 500,
-        minQuoteVolume: 100000,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'bybit',
-      }),
-    },
-  });
-
-  // Remover estratégias que não usamos (caso existam de import anterior)
+  // Remover estratégias legadas (caso existam de import anterior)
   const removed = await prisma.strategy.deleteMany({
     where: {
       name: {
@@ -535,6 +322,7 @@ async function main() {
           'PMO',
           'MA_CROSSOVER',
           'MACD',
+          ...deprecated.removed,
         ],
       },
     },
@@ -553,8 +341,6 @@ async function main() {
 
   console.log('Seed concluído!');
   console.log('Estratégias (ids):', {
-    rsi: rsiStrategy.id,
-    volumeSpike: volumeSpikeStrategy.id,
     maCross5m: maCross5mStrategy.id,
     maCross1h: maCross1hStrategy.id,
     maVolatile: maVolatileStrategy.id,

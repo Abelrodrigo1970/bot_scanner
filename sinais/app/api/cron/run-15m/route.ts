@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Cron agregado 15m:
  * - MA_CROSS_5M (candles 5m, URL: /api/cron/run-volume-spike-15m)
- * - RSI_15M + RSI_BYBIT_15M (15m) e MA_CROSS_15M via /api/cron/run-rsi-15m
+ * - EMA Ribbon 15m via /api/cron/run-rsi-15m
  *
  * Dispara os crons dedicados em background para manter a mesma lógica já existente.
  */

@@ -296,29 +296,19 @@ export default function EstrategiasPage() {
         );
 
       case 'MA_CROSS_5M':
-      case 'MA_CROSS_1H':
-      case 'MA_CROSS_15M': {
+      case 'MA_CROSS_1H': {
         const is1h = strategy.name === 'MA_CROSS_1H';
-        const isMa30Ma200 = strategy.name === 'MA_CROSS_15M';
-        const defaultSlSpread =
-          strategy.name === 'MA_CROSS_1H' ? 7 : strategy.name === 'MA_CROSS_5M' ? 15 : 5;
-        const maPairLabel = isMa30Ma200 ? 'MA30 / MA200' : 'MA12 / MA30';
-        const diffLabel = isMa30Ma200 ? 'MA30 / MA200' : 'MA12 / MA30';
+        const defaultSlSpread = is1h ? 7 : 15;
+        const maPairLabel = 'MA12 / MA30';
+        const diffLabel = 'MA12 / MA30';
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Velas <strong>{is1h ? '1h' : '15m'}</strong> — <strong>{maPairLabel}</strong>. Mesma lógica de spread: rápida&gt;lenta (ou &lt;) e |rápida−lenta|/lenta &gt; limiar de entrada; fecho quando a diferença comprime abaixo do limiar de saída (compressão).
-              {isMa30Ma200 ? (
-                <>
-                  {' '}
-                  Universo = mesmo scan que RSI/RSI_15m: <strong>MA30 entre −6% e +1% vs MA200 (1h)</strong> (<code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">Ma30Near6PriceBetween</code>). Actualiza o menu correspondente antes de gerar sinais. O cron 15m aplica fecho por compressão nas posições desta estratégia.
-                </>
-              ) : (
-                <>
-                  {!is1h && ' O cron corre a cada 15 min.'} Símbolos = resultados do scan{' '}
-                  <strong>Bybit Volume 1h &gt;500k e MA200 1h</strong> (menu); actualiza esse scan com &quot;Atualizar Scan&quot; antes.
-                </>
-              )}
+              <>
+                {!is1h && ' O cron corre a cada 15 min.'} Símbolos = resultados do scan{' '}
+                <strong>Bybit Volume 1h &gt;500k e MA200 1h</strong> (menu); actualiza esse scan com &quot;Atualizar Scan&quot; antes.
+              </>
             </p>
             <div className="max-w-md">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média</label>
@@ -332,8 +322,8 @@ export default function EstrategiasPage() {
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField(`Período MA rápida (ex. ${isMa30Ma200 ? '30' : '12'})`, p.ma30Period ?? (isMa30Ma200 ? 30 : 12), (v) => upd({ ma30Period: v }))}
-              {numField(`Período MA lenta (ex. ${isMa30Ma200 ? '200' : '30'})`, p.ma200Period ?? (isMa30Ma200 ? 200 : 30), (v) => upd({ ma200Period: v }))}
+              {numField('Período MA rápida (ex. 12)', p.ma30Period ?? 12, (v) => upd({ ma30Period: v }))}
+              {numField('Período MA lenta (ex. 30)', p.ma200Period ?? 30, (v) => upd({ ma200Period: v }))}
               {numField(`Entrada: dif. ${diffLabel} (%)`, p.entryDiffPct ?? (is1h ? 1.2 : 0.9), (v) => upd({ entryDiffPct: v }), 0.1)}
               {numField(`Saída/fecho: dif. ${diffLabel} (%)`, p.exitDiffPct ?? (is1h ? 0.8 : 0.5), (v) => upd({ exitDiffPct: v }), 0.1)}
               {numField('SL (%)', p.stopPercent ?? defaultSlSpread, (v) => upd({ stopPercent: v }), 0.5)}
@@ -350,39 +340,31 @@ export default function EstrategiasPage() {
                 1
               )}
             </div>
-            {isMa30Ma200 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {numField('Máx. símbolos', p.symbolLimit ?? 500, (v) => upd({ symbolLimit: v }))}
-                {numField('Volume mínimo', p.minQuoteVolume ?? 100000, (v) => upd({ minQuoteVolume: v }))}
-              </div>
-            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
               {numField(
-                `BUY: máx. |preço − MA lenta| / MA lenta (${isMa30Ma200 ? 'MA200' : 'MA30'}) (%)`,
+                `BUY: máx. |preço − MA lenta| / MA lenta (${'MA30'}) (%)`,
                 p.buyBlockAbsCloseDistanceFromMa200Pct ?? (is1h ? 8 : 0),
                 (v) => upd({ buyBlockAbsCloseDistanceFromMa200Pct: v }),
                 0.5
               )}
               {numField(
-                `SELL: máx. |preço − MA lenta| / MA lenta (${isMa30Ma200 ? 'MA200' : 'MA30'}) (%)`,
+                `SELL: máx. |preço − MA lenta| / MA lenta (${'MA30'}) (%)`,
                 p.sellBlockAbsCloseDistanceFromMa200Pct ?? (is1h ? 8 : 6),
                 (v) => upd({ sellBlockAbsCloseDistanceFromMa200Pct: v }),
                 0.5
               )}
             </div>
-            {!isMa30Ma200 && (
-              <div className="max-w-md">
-                {numField(
-                  'Entrada: máx. |MA30 − MA200| / MA200 (%)',
-                  p.entryMaxAbsPctMa30VsMa200 ?? (is1h ? 8 : 0),
-                  (v) => upd({ entryMaxAbsPctMa30VsMa200: v }),
-                  0.5
-                )}
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                  MA200 = período 200 nas mesmas velas que o par MA12/MA30. Só emite BUY/SELL se esta distância for ≤ ao limiar; 0 desactiva.
-                </p>
-              </div>
-            )}
+            <div className="max-w-md">
+              {numField(
+                'Entrada: máx. |MA30 − MA200| / MA200 (%)',
+                p.entryMaxAbsPctMa30VsMa200 ?? (is1h ? 8 : 0),
+                (v) => upd({ entryMaxAbsPctMa30VsMa200: v }),
+                0.5
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                MA200 = período 200 nas mesmas velas que o par MA12/MA30. Só emite BUY/SELL se esta distância for ≤ ao limiar; 0 desactiva.
+              </p>
+            </div>
             <label className="flex items-center gap-2 max-w-md text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
               <input
                 type="checkbox"
@@ -408,8 +390,7 @@ export default function EstrategiasPage() {
             <p className="text-xs text-gray-500 dark:text-gray-500">
               BUY / SELL (modo spread): se |preço − MA lenta|/MA lenta (%) for maior que o limite desse lado, não gera sinal.
               0 desactiva o filtro desse lado (ex.: BUY a 0 = sem filtro de distância à MA na compra).
-              {!isMa30Ma200 &&
-                ' O campo «MA30 − MA200» limita o afastamento entre a MA lenta (30) e uma MA200 no mesmo timeframe.'}
+              {' O campo «MA30 − MA200» limita o afastamento entre a MA lenta (30) e uma MA200 no mesmo timeframe.'}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500">
               O take profit parcial é quando o preço atinge a % indicada; o restante fecha por compressão do spread (cron 15m). O cron não abre segundo trade no mesmo sentido se já houver posição real nesse par.

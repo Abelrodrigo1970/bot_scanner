@@ -1,5 +1,53 @@
 import type { PrismaClient } from '@prisma/client';
 
+/** Estratégias retiradas (não recriar no seed / apagar da BD em produção). */
+export const REMOVED_DEPRECATED_STRATEGY_NAMES = [
+  'VOLUME_SPIKE',
+  'RSI',
+  'RSI_15M',
+  'RSI_BYBIT_15M',
+  'MA_CROSS_15M',
+] as const;
+
+export interface RemoveDeprecatedStrategiesResult {
+  removed: string[];
+  signalsDeleted: number;
+}
+
+/**
+ * Remove estratégias descontinuadas. Sinais associados são apagados (onDelete: Cascade).
+ * Idempotente.
+ */
+export async function removeDeprecatedStrategies(
+  prisma: PrismaClient
+): Promise<RemoveDeprecatedStrategiesResult> {
+  const removed: string[] = [];
+  let signalsDeleted = 0;
+
+  for (const name of REMOVED_DEPRECATED_STRATEGY_NAMES) {
+    const row = await prisma.strategy.findUnique({
+      where: { name },
+      select: { id: true },
+    });
+    if (!row) continue;
+
+    const signalCount = await prisma.signal.count({
+      where: { strategyId: row.id },
+    });
+    await prisma.strategy.delete({ where: { id: row.id } });
+    removed.push(name);
+    signalsDeleted += signalCount;
+  }
+
+  if (removed.length > 0) {
+    console.log(
+      `🗑️ Estratégias removidas: ${removed.join(', ')} (${signalsDeleted} sinal(is) em cascade)`
+    );
+  }
+
+  return { removed, signalsDeleted };
+}
+
 export const MA_CROSS_5M_PARAMS = {
   ma30Period: 12,
   ma200Period: 30,
@@ -49,43 +97,6 @@ export async function syncRsiMaVolatileUniverseDescriptions(
   prisma: PrismaClient
 ): Promise<{ updated: string[] }> {
   const updated: string[] = [];
-
-  const rsi = await prisma.strategy.findUnique({
-    where: { name: 'RSI' },
-    select: { description: true },
-  });
-  const rsiDesc = rsi?.description ?? '';
-  const rsiNeedsRsiDescUpdate =
-    rsiDesc.includes('Top Voláteis') ||
-    rsiDesc.includes('cruza acima de 60') ||
-    rsiDesc.includes('cruza abaixo de 40') ||
-    rsiDesc.includes('RSI cruza') ||
-    rsiDesc.includes('MA30 < -5%') ||
-    rsiDesc.includes('MA30 < −5%') ||
-    rsiDesc.includes('entre −9% e −3%') ||
-    rsiDesc.includes('entre -9% e -3%');
-  if (rsi && rsiNeedsRsiDescUpdate) {
-    await prisma.strategy.update({
-      where: { name: 'RSI' },
-      data: { description: RSI_MA30_SCAN_UNIVERSE_DESCRIPTION },
-    });
-    updated.push('RSI');
-  }
-
-  const rsi15m = await prisma.strategy.findUnique({
-    where: { name: 'RSI_15M' },
-    select: { description: true },
-  });
-  const rsi15mDesc = rsi15m?.description ?? '';
-  const rsi15mNeedsUniverseText =
-    rsi15mDesc.includes('entre −9% e −3%') || rsi15mDesc.includes('entre -9% e -3%');
-  if (rsi15m && rsi15mNeedsUniverseText) {
-    await prisma.strategy.update({
-      where: { name: 'RSI_15M' },
-      data: { description: RSI_15M_STRATEGY_DESCRIPTION },
-    });
-    updated.push('RSI_15M');
-  }
 
   const maV = await prisma.strategy.findUnique({
     where: { name: 'MA_VOLATILE' },

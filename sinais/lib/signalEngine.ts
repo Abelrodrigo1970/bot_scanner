@@ -3,6 +3,7 @@
  */
 
 import { prisma } from './db';
+import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
 import {
   fetchCandles,
   fetchTopSymbolsBy1hPriceChange,
@@ -1411,6 +1412,10 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
     let strategies = await prisma.strategy.findMany({
       where: { isActive: true },
     });
+
+    strategies = strategies.filter(
+      (s) => !(REMOVED_DEPRECATED_STRATEGY_NAMES as readonly string[]).includes(s.name)
+    );
 
     if (options?.exclude?.length) {
       strategies = strategies.filter((s) => !options!.exclude!.includes(s.name));

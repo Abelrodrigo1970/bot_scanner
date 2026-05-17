@@ -1,24 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { RSI_15M_STRATEGY_DESCRIPTION } from '@/lib/strategyMigrations';
 
-const PARAMS = {
-  period: 14,
-  previousBelowThreshold: 28,
-  buyThreshold: 32,
-  stopPercent: 3,
-  symbolLimit: 400,
-  minQuoteVolume: 500000,
-  allowBuy: true,
-  allowSell: false,
-  exchange: 'bybit',
-};
-
-/**
- * GET /api/migrate/rsi-15m
- * Cria (ou actualiza) a estratégia RSI_15M na BD de produção.
- * Protegido por CRON_SECRET. Executar uma só vez.
- */
+/** RSI_15M foi descontinuada — endpoint mantido para compatibilidade. */
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = request.headers.get('authorization');
@@ -27,37 +9,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
 
-  try {
-    const strategy = await prisma.strategy.upsert({
-      where: { name: 'RSI_15M' },
-      update: {
-        displayName: 'RSI 15m Reversal (28->32)',
-        description: RSI_15M_STRATEGY_DESCRIPTION,
-        isActive: true,
-        params: JSON.stringify(PARAMS),
-      },
-      create: {
-        name: 'RSI_15M',
-        displayName: 'RSI 15m Reversal (28->32)',
-        description: RSI_15M_STRATEGY_DESCRIPTION,
-        isActive: true,
-        params: JSON.stringify(PARAMS),
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Estratégia RSI_15M criada/actualizada com sucesso.',
-      strategy: {
-        id: strategy.id,
-        name: strategy.name,
-        displayName: strategy.displayName,
-        isActive: strategy.isActive,
-        params: PARAMS,
-      },
-    });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Erro desconhecido';
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
+  return NextResponse.json({
+    success: true,
+    skipped: true,
+    message: 'Estratégia RSI_15M foi removida — migração não aplicada.',
+  });
 }
