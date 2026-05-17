@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 } from '@/lib/symbolUniverseDefaults';
+import { resolveUniverseScanSymbols } from '@/lib/universeScanPersistence';
 import {
   MA_CROSS_5M_SIGNAL_COOLDOWN_MS,
   runMaCross15mStrategy,
@@ -28,7 +30,7 @@ const MA_CROSS_5M_MIN_STRENGTH = 70;
 /**
  * MA Cross 15m (MA12/MA30) em background.
  * Cálculo em velas 15m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
- * Universo: tabela `BybitAboveMa200Mc20m` (menu Bybit Volume 1h >500k e MA200 1h).
+ * Universo: Scanner 1 — último scan `UNIVERSE_ABOVE_MA200_1H` (fecho acima SMA200 em 1h).
  * Não cria novo sinal se já existir posição real no mesmo sentido (um trade por símbolo até fechar).
  * Cooldown: no máximo um sinal por símbolo/direção a cada 8 h (ver `MA_CROSS_5M_SIGNAL_COOLDOWN_MS`).
  */
@@ -39,18 +41,12 @@ async function runMaCross5mInBackground(
   const DELAY_MS = 200;
 
   try {
-    const maRows = await prisma.$queryRaw<Array<{ symbol: string }>>`
-      SELECT symbol
-      FROM "BybitAboveMa200Mc20m"
-      ORDER BY rank ASC
-    `;
-    if (maRows.length === 0) {
+    const symbols = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
+    if (symbols.length === 0) {
       console.warn(
-        '[MA Cross 15m BG] Nenhum símbolo no scan Bybit Volume 1h >500k e MA200 1h. Atualize essa página antes.'
+        '[MA Cross 15m BG] Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1.'
       );
     }
-
-    const symbols = maRows.map((r) => r.symbol);
     const canOpenNew = strategyHasAnyAllowedDirection(params);
     if (!canOpenNew) {
       console.warn(

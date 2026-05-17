@@ -5,7 +5,7 @@ import { fetchBybitAboveMa200Mc20m, fetchMaCrossBelow } from '@/lib/marketData';
 /**
  * Atualiza tabelas de universo usadas por estratégias activas:
  * - MaCrossBelow → MA_VOLATILE
- * - BybitAboveMa200Mc20m → MA_CROSS_5M, MA_CROSS_1H
+ * - BybitAboveMa200Mc20m → menu Origem de dados (Bybit); MA Cross usa Scanner 1
  *
  * Scanners 1/2/3 (afastamento / RSI): /api/cron/run-universe-scans
  */

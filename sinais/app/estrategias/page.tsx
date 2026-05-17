@@ -306,8 +306,9 @@ export default function EstrategiasPage() {
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Velas <strong>{is1h ? '1h' : '15m'}</strong> — <strong>{maPairLabel}</strong>. Mesma lógica de spread: rápida&gt;lenta (ou &lt;) e |rápida−lenta|/lenta &gt; limiar de entrada; fecho quando a diferença comprime abaixo do limiar de saída (compressão).
               <>
-                {!is1h && ' O cron corre a cada 15 min.'} Símbolos = resultados do scan{' '}
-                <strong>Bybit Volume 1h &gt;500k e MA200 1h</strong> (menu); actualiza esse scan com &quot;Atualizar Scan&quot; antes.
+                {!is1h && ' O cron corre a cada 15 min.'} Símbolos ={' '}
+                <strong>Scanner 1</strong> (fecho acima SMA200 em 1h); actualize em Origem de dados → Scanner 1
+                ou aguarde o cron <strong>run-universe-scans</strong> (cada 4 h).
               </>
             </p>
             <div className="max-w-md">

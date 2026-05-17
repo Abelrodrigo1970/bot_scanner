@@ -7,8 +7,10 @@ import {
   backfillMaCross5mSignalNames,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
+  MA_CROSS_1H_DESC,
   removeDeprecatedStrategies,
   syncMacdHistogramPmoParams,
+  syncMaCrossScanner1UniverseDescriptions,
   syncRsiMaVolatileUniverseDescriptions,
 } from '@/lib/strategyMigrations';
 
@@ -103,6 +105,7 @@ async function ensureMissingStrategies() {
   await removeDeprecatedStrategies(prisma);
   await ensureMissingBuiltinStrategies(prisma);
   await syncMacdHistogramPmoParams(prisma);
+  await syncMaCrossScanner1UniverseDescriptions(prisma);
 
   const existingMaCross5m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_5M' },
@@ -205,8 +208,7 @@ async function ensureMissingStrategies() {
       data: {
         name: 'MA_CROSS_1H',
         displayName: 'MA Cross 1h (MA12/MA30)',
-        description:
-          'MA12/MA30 em 1h: entrada por spread (>1,2%). Só entra se |MA30−MA200|/MA200 ≤ 8% (MA200 período 200 em 1h). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro BUY e SELL: só se |preço−MA30|/MA30 ≤ 8%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+        description: MA_CROSS_1H_DESC,
         isActive: true,
         params: JSON.stringify(MA_CROSS_1H_DEFAULT_PARAMS),
       },
@@ -248,18 +250,17 @@ async function ensureMissingStrategies() {
       delete next.sellTp2Percent;
       delete next.sellTp2Position;
       next.exchange = p.exchange === 'binance' ? 'binance' : 'bybit';
-      const newDesc =
-        'MA12/MA30 em 1h: entrada por spread (>1,2%). Só entra se |MA30−MA200|/MA200 ≤ 8% (MA200 período 200 em 1h). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro BUY e SELL: só se |preço−MA30|/MA30 ≤ 8%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).';
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
-        existingMaCross1h.displayName !== 'MA Cross 1h (MA12/MA30)' || existingMaCross1h.description !== newDesc;
+        existingMaCross1h.displayName !== 'MA Cross 1h (MA12/MA30)' ||
+        existingMaCross1h.description !== MA_CROSS_1H_DESC;
       if (needParams || needMeta) {
         await prisma.strategy.update({
           where: { name: 'MA_CROSS_1H' },
           data: {
             params: needParams ? JSON.stringify(next) : existingMaCross1h.params!,
             displayName: 'MA Cross 1h (MA12/MA30)',
-            description: newDesc,
+            description: MA_CROSS_1H_DESC,
           },
         });
       }

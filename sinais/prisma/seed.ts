@@ -4,6 +4,7 @@ import {
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_5M_PARAMS,
+  MA_CROSS_1H_DESC,
   MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION,
   migrateVolumeSpike15mToMaCross5m,
   removeDeprecatedStrategies,
@@ -100,8 +101,7 @@ async function main() {
     update: {
       isActive: true,
       displayName: 'MA Cross 1h (MA12/MA30)',
-      description:
-        'MA12/MA30 em 1h: entrada por spread (>1,2%). Só entra se |MA30−MA200|/MA200 ≤ 8% (MA200 período 200 em 1h). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro BUY e SELL: só se |preço−MA30|/MA30 ≤ 8%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+      description: MA_CROSS_1H_DESC,
       params: JSON.stringify({
         ma30Period: 12,
         ma200Period: 30,
@@ -124,8 +124,7 @@ async function main() {
     create: {
       name: 'MA_CROSS_1H',
       displayName: 'MA Cross 1h (MA12/MA30)',
-      description:
-        'MA12/MA30 em 1h: entrada por spread (>1,2%). Só entra se |MA30−MA200|/MA200 ≤ 8% (MA200 período 200 em 1h). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro BUY e SELL: só se |preço−MA30|/MA30 ≤ 8%. Universo = scan Bybit Volume 1h >500k e MA200 (1h).',
+      description: MA_CROSS_1H_DESC,
       isActive: true,
       params: JSON.stringify({
         ma30Period: 12,

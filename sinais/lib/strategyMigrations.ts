@@ -71,7 +71,10 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = scan Bybit Volume 1h >500k e MA200 (1h). Máx. um trade aberto por símbolo no cron (não empilha o mesmo sentido).';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 (fecho acima SMA200 em 1h, Binance Futures). Máx. um trade aberto por símbolo no cron (não empilha o mesmo sentido).';
+
+export const MA_CROSS_1H_DESC =
+  'MA12/MA30 em 1h: entrada por spread (>1,2%). Só entra se |MA30−MA200|/MA200 ≤ 8% (MA200 período 200 em 1h). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro BUY e SELL: só se |preço−MA30|/MA30 ≤ 8%. Universo = Scanner 1 (fecho acima SMA200 em 1h).';
 
 /** MA30/MA200 em 15m — mesma lógica de spread que MA12/MA30 (universo = scan Ma30Near6PriceBetween). */
 export const MA_CROSS_15M_STRATEGY_DESCRIPTION =
@@ -177,6 +180,39 @@ export async function syncMacdHistogramPmoParams(
     },
   });
   return { updated: true };
+}
+
+/**
+ * Actualiza descrições MA Cross se ainda referirem universo Bybit (legado).
+ */
+export async function syncMaCrossScanner1UniverseDescriptions(
+  prisma: PrismaClient
+): Promise<{ updated: string[] }> {
+  const updated: string[] = [];
+
+  for (const [name, description] of [
+    ['MA_CROSS_5M', MA_CROSS_5M_DESC] as const,
+    ['MA_CROSS_1H', MA_CROSS_1H_DESC] as const,
+  ]) {
+    const row = await prisma.strategy.findUnique({
+      where: { name },
+      select: { description: true },
+    });
+    if (!row) continue;
+    const needsUpdate =
+      row.description?.includes('Bybit') ||
+      row.description?.includes('bybit') ||
+      row.description !== description;
+    if (needsUpdate) {
+      await prisma.strategy.update({
+        where: { name },
+        data: { description },
+      });
+      updated.push(name);
+    }
+  }
+
+  return { updated };
 }
 
 /**

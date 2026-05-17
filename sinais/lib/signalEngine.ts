@@ -1506,16 +1506,12 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top movers 1h:`, err);
         }
       } else if (strategy.name === 'MA_CROSS_5M' || strategy.name === 'MA_CROSS_1H') {
-        console.log(`🔍 Bybit Vol 1h + MA200 na BD para ${strategy.name}...`);
-        const bybitScan = await prisma.$queryRaw<Array<{ symbol: string }>>`
-          SELECT symbol FROM "BybitAboveMa200Mc20m" ORDER BY rank ASC
-        `;
-        if (bybitScan.length > 0) {
-          symbolsToAnalyze = bybitScan.map((t) => t.symbol);
-          console.log(`✅ ${symbolsToAnalyze.length} símbolos (BybitAboveMa200Mc20m)`);
-        } else {
+        console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima SMA200, 1h)...`);
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
+        if (symbolsToAnalyze.length === 0) {
           console.warn(
-            `⚠️ BybitAboveMa200Mc20m vazio. Corra /api/cron/run-scans-ma ou Origem de dados → Bybit. Ignorando ${strategy.name}.`
+            `⚠️ Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
           );
           continue;
         }
