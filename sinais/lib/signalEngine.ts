@@ -3,6 +3,19 @@
  */
 
 import { prisma } from './db';
+import { ensureMissingBuiltinStrategies } from './ensureMissingBuiltinStrategies';
+import {
+  runMacdHistogramPmoStrategy,
+  runRsiOverboughtDrop1hStrategy,
+  runAfastamentoMedioStrategy,
+  runAfastamentoMedio30mStrategy,
+} from './builtinImportedStrategies';
+import { resolveUniverseScanSymbols } from './universeScanPersistence';
+import {
+  UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80,
+  UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
+  UNIVERSE_CODE_SCANNER_3_MA80_PCT4,
+} from './symbolUniverseDefaults';
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
 import {
   fetchCandles,
@@ -1400,6 +1413,8 @@ export async function shouldCloseMaCross5mByDiff(
 export interface RunAllStrategiesOptions {
   /** Estratégias a excluir (ex: ['VOLUME_SPIKE'] para cron separado) */
   exclude?: string[];
+  /** Se definido, só executa estas estratégias (por `name`) */
+  only?: string[];
 }
 
 /**
@@ -1409,6 +1424,8 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
   let signalsCreated = 0;
 
   try {
+    await ensureMissingBuiltinStrategies(prisma);
+
     let strategies = await prisma.strategy.findMany({
       where: { isActive: true },
     });
@@ -1416,6 +1433,11 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
     strategies = strategies.filter(
       (s) => !(REMOVED_DEPRECATED_STRATEGY_NAMES as readonly string[]).includes(s.name)
     );
+
+    if (options?.only?.length) {
+      strategies = strategies.filter((s) => options!.only!.includes(s.name));
+      console.log(`📋 Apenas estratégias: ${options.only.join(', ')}`);
+    }
 
     if (options?.exclude?.length) {
       strategies = strategies.filter((s) => !options!.exclude!.includes(s.name));
@@ -1461,7 +1483,13 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           ? ['15m'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
         strategy.name === 'RSI'            ? ['1h'] :
-        strategy.name === 'MA_CROSS_15M'   ? ['15m'] : timeframes;
+        strategy.name === 'MA_CROSS_15M'   ? ['15m'] :
+        strategy.name === 'AFASTAMENTO_MEDIO_30M' ? ['30m'] :
+        strategy.name === 'MACD_HISTOGRAM_PMO' ||
+        strategy.name === 'AFASTAMENTO_MEDIO' ||
+        strategy.name === 'RSI_OVERBOUGHT_DROP_1H'
+          ? ['1h'] :
+        timeframes;
 
       let symbolsToAnalyze = symbols;
       if (strategy.name === 'VOLUME_SPIKE') {
@@ -1571,6 +1599,21 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           );
           continue;
         }
+      } else if (strategy.name === 'AFASTAMENTO_MEDIO') {
+        console.log('🔍 AFASTAMENTO_MEDIO: universo Scanner 1 (acima SMA200, 1h)...');
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
+        if (symbolsToAnalyze.length === 0) continue;
+      } else if (strategy.name === 'AFASTAMENTO_MEDIO_30M') {
+        console.log('🔍 AFASTAMENTO_MEDIO_30M: universo Scanner 3 (±4% SMA80, 1h); sinais em 30m...');
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_3_MA80_PCT4);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 3)`);
+        if (symbolsToAnalyze.length === 0) continue;
+      } else if (strategy.name === 'RSI_OVERBOUGHT_DROP_1H') {
+        console.log('🔍 RSI_OVERBOUGHT_DROP_1H: universo Scanner 2 (±10% SMA80, 1h)...');
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2)`);
+        if (symbolsToAnalyze.length === 0) continue;
       }
 
       for (const symbol of symbolsToAnalyze) {
@@ -1611,6 +1654,18 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 break;
               case 'MA_CROSS_15M':
                 signalResult = await runMaCross15mStrategy(symbol, timeframe, params);
+                break;
+              case 'MACD_HISTOGRAM_PMO':
+                signalResult = await runMacdHistogramPmoStrategy(symbol, timeframe, params);
+                break;
+              case 'AFASTAMENTO_MEDIO':
+                signalResult = await runAfastamentoMedioStrategy(symbol, timeframe, params);
+                break;
+              case 'AFASTAMENTO_MEDIO_30M':
+                signalResult = await runAfastamentoMedio30mStrategy(symbol, timeframe, params);
+                break;
+              case 'RSI_OVERBOUGHT_DROP_1H':
+                signalResult = await runRsiOverboughtDrop1hStrategy(symbol, timeframe, params);
                 break;
               default:
                 if (!unknownStrategiesLogged.has(strategy.name)) {

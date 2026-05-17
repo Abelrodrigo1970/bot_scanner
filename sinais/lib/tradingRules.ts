@@ -40,6 +40,14 @@ const ALLOWED_STRATEGIES = [
   'EMA_SCALPING_SELL',
   'EMA Ribbon Scalping',
   'EMA Ribbon Scalping SELL',
+  'MACD Histogram 1h + PMO',
+  'MACD_HISTOGRAM_PMO',
+  'Afastamento médio (80/7)',
+  'AFASTAMENTO_MEDIO',
+  'Afastamento médio 30m (1→2)',
+  'AFASTAMENTO_MEDIO_30M',
+  'RSI queda de 70',
+  'RSI_OVERBOUGHT_DROP_1H',
 ];
 
 /** Força mínima para executar */

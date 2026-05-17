@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
+import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrategies';
 import {
   backfillMaCross5mSignalNames,
   MA_CROSS_5M_DESC,
@@ -99,6 +100,7 @@ const EMA_SCALPING_SELL_DESCRIPTION =
 
 async function ensureMissingStrategies() {
   await removeDeprecatedStrategies(prisma);
+  await ensureMissingBuiltinStrategies(prisma);
 
   const existingMaCross5m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_5M' },

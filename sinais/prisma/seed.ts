@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { IMPORTED_BUILTIN_STRATEGY_SEEDS } from '../lib/ensureMissingBuiltinStrategies';
 import {
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
@@ -253,6 +254,19 @@ async function main() {
     },
   });
 
+  for (const def of IMPORTED_BUILTIN_STRATEGY_SEEDS) {
+    await prisma.strategy.upsert({
+      where: { name: def.name },
+      update: {
+        displayName: def.displayName,
+        description: def.description,
+        params: def.params,
+      },
+      create: def,
+    });
+  }
+  console.log(`Estratégias importadas: ${IMPORTED_BUILTIN_STRATEGY_SEEDS.map((s) => s.name).join(', ')}`);
+
   await prisma.strategy.upsert({
     where: { name: 'EMA_SCALPING_SELL' },
     update: {
@@ -309,13 +323,12 @@ async function main() {
     },
   });
 
-  // Remover estratégias legadas (caso existam de import anterior)
+  // Remover estratégias legadas (não incluir MACD_HISTOGRAM_PMO / afastamento / RSI importados)
   const removed = await prisma.strategy.deleteMany({
     where: {
       name: {
         in: [
           'MACD_HISTOGRAM',
-          'MACD_HISTOGRAM_PMO',
           'MA60_CROSSOVER',
           'SCANNER_APLUS',
           'MULTI_TIMEFRAME',

@@ -16,6 +16,32 @@ model AppSetting {
   value String
 }
 
+/// Histórico de scanners de universo (Scanner 1/2/3 para afastamento e RSI).
+model UniverseScanRun {
+  id           String   @id @default(cuid())
+  universeCode String
+  scannedAt    DateTime @default(now())
+  rowCount     Int
+  source       String
+
+  rows UniverseScanRow[]
+
+  @@index([universeCode, scannedAt])
+}
+
+model UniverseScanRow {
+  id        String @id @default(cuid())
+  runId     String
+  run       UniverseScanRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  symbol    String
+  close     Float
+  ma        Float
+  pctFromMa Float
+
+  @@index([runId])
+  @@index([symbol])
+}
+
 model Strategy {
   id          String   @id @default(cuid())
   name        String   @unique // ex: "RSI", "MA_CROSSOVER"

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Cron agregado 1h:
- * - run-signals: MA200_VOLATILE 4h + MA_CROSS_1H (se activa)
+ * - run-universe-scans: Scanner 1/2/3 (universos afastamento + RSI)
+ * - run-signals: MA200 4h + MA_CROSS_1H + MACD/PMO + afastamento 1h + RSI queda 70
  * - run-ma-volatile: MA_VOLATILE (MA60 1h; universo MaCrossBelow)
  */
 async function run1hInBackground(origin: string, authHeader: string): Promise<void> {
@@ -13,6 +14,7 @@ async function run1hInBackground(origin: string, authHeader: string): Promise<vo
     if (authHeader) headers.authorization = authHeader;
 
     const calls = [
+      `${origin}/api/cron/run-universe-scans`,
       `${origin}/api/cron/run-signals`,
       `${origin}/api/cron/run-ma-volatile`,
     ];
@@ -73,7 +75,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message:
-        'Processamento agregado 1h em background: MA200 4h + MA Cross 1h (MA12/MA30) + MA60 1h',
+        'Processamento agregado 1h: scanners universo + MA200 + MA Cross 1h + estratégias importadas + MA60 1h',
       executedAt: now.toISOString(),
     });
   } catch (error) {

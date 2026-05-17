@@ -278,6 +278,54 @@ export function calculatePMO(
 }
 
 /**
+ * Série de afastamento percentual do fecho à SMA(maPeriod) por candle.
+ */
+export function getSmaPercentDistanceSeries(closes: number[], maPeriod: number): number[] {
+  if (closes.length < maPeriod) {
+    return [];
+  }
+  const distances: number[] = [];
+  let sum = 0;
+  for (let j = 0; j < maPeriod; j++) {
+    sum += closes[j];
+  }
+  for (let i = maPeriod - 1; i < closes.length; i++) {
+    const ma = sum / maPeriod;
+    distances.push(ma !== 0 ? ((closes[i] - ma) / ma) * 100 : 0);
+    if (i < closes.length - 1) {
+      sum += closes[i + 1] - closes[i - maPeriod + 1];
+    }
+  }
+  return distances;
+}
+
+/**
+ * Série de afastamento percentual do fecho à EMA(maPeriod).
+ */
+export function getEmaPercentDistanceSeries(closes: number[], maPeriod: number): number[] {
+  const emaAll = calculateEMA(closes, maPeriod);
+  if (!emaAll || emaAll.length === 0) {
+    return [];
+  }
+  const distances: number[] = [];
+  for (let k = 0; k < emaAll.length; k++) {
+    const close = closes[maPeriod - 1 + k];
+    const em = emaAll[k];
+    distances.push(em !== 0 ? ((close - em) / em) * 100 : 0);
+  }
+  return distances;
+}
+
+/** SMA simples dos últimos `period` valores de um array. */
+export function smaTail(values: number[], period: number): number | null {
+  if (values.length < period || period < 1) {
+    return null;
+  }
+  const slice = values.slice(-period);
+  return slice.reduce((a, b) => a + b, 0) / period;
+}
+
+/**
  * Calcula Bollinger Bands
  */
 export function calculateBollingerBands(
