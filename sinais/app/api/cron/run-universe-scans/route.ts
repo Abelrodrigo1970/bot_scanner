@@ -5,52 +5,92 @@ import { persistUniverseScan } from '@/lib/universeScanPersistence';
 
 /**
  * Executa os 3 scanners de universo (MA200+, ±10% MA80, ±4% MA80) e grava na BD.
- * Agendar no cron-job.org de 4 em 4 horas (minuto 0: 00:00, 04:00, 08:00, …).
- * Não está no agregado run-1h; as estratégias usam o último scan até ao próximo ciclo.
+ * Resposta imediata 202 — trabalho pesado em background (evita timeout do cron-job.org).
+ * Agendar de 4 em 4 horas (00:00, 04:00, 08:00, …).
  */
+let universeScansJobPromise: Promise<void> | null = null;
+
+type ScanJobResult = {
+  universeCode: string;
+  rowCount: number;
+  persist: { ok: boolean; runId?: string; reason?: string };
+};
+
+async function runUniverseScansJob(): Promise<ScanJobResult[]> {
+  const results: ScanJobResult[] = [];
+
+  for (const [code, def] of Object.entries(BUILTIN_UNIVERSE_SCAN)) {
+    console.log(`[Universe-Scans] A executar ${code}...`);
+    const rows = await scanSymbolUniverse(def);
+    const persist = await persistUniverseScan({
+      universeCode: code,
+      source: 'cron/run-universe-scans',
+      rows,
+    });
+    results.push({
+      universeCode: code,
+      rowCount: rows.length,
+      persist: persist.ok
+        ? { ok: true, runId: persist.runId }
+        : { ok: false, reason: persist.reason },
+    });
+    console.log(`[Universe-Scans] ${code}: ${rows.length} símbolos`);
+  }
+
+  return results;
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
+    const authHeader = request.headers.get('authorization') || '';
     const cronSecret = process.env.CRON_SECRET;
 
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    const results: Array<{
-      universeCode: string;
-      rowCount: number;
-      persist: { ok: boolean; runId?: string; reason?: string };
-    }> = [];
-
-    for (const [code, def] of Object.entries(BUILTIN_UNIVERSE_SCAN)) {
-      console.log(`[Universe-Scans] A executar ${code}...`);
-      const rows = await scanSymbolUniverse(def);
-      const persist = await persistUniverseScan({
-        universeCode: code,
-        source: 'cron/run-universe-scans',
-        rows,
-      });
-      results.push({
-        universeCode: code,
-        rowCount: rows.length,
-        persist: persist.ok
-          ? { ok: true, runId: persist.runId }
-          : { ok: false, reason: persist.reason },
-      });
-      console.log(`[Universe-Scans] ${code}: ${rows.length} símbolos`);
+    if (universeScansJobPromise) {
+      return NextResponse.json(
+        {
+          accepted: false,
+          busy: true,
+          message:
+            'Scanners 1/2/3 já em execução em background. Aguarde a conclusão (pode demorar 15–30 min).',
+          startedAt: new Date().toISOString(),
+        },
+        { status: 202 }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      executedAt: new Date().toISOString(),
-      results,
-    });
-  } catch (error) {
-    console.error('[Universe-Scans] Erro:', error);
+    const startedAt = new Date().toISOString();
+
+    universeScansJobPromise = (async () => {
+      try {
+        const results = await runUniverseScansJob();
+        console.log('[Universe-Scans] concluído', { startedAt, results });
+      } catch (err) {
+        console.error('[Universe-Scans] erro em background:', err);
+      } finally {
+        universeScansJobPromise = null;
+      }
+    })();
+
     return NextResponse.json(
       {
-        error: 'Erro ao executar scanners de universo',
+        accepted: true,
+        background: true,
+        message:
+          'Scanners 1, 2 e 3 iniciados em background. O teste no cron-job.org deve responder já; verifique os logs no Railway para conclusão.',
+        startedAt,
+        scanners: Object.keys(BUILTIN_UNIVERSE_SCAN),
+      },
+      { status: 202 }
+    );
+  } catch (error) {
+    console.error('[Universe-Scans] Erro ao iniciar:', error);
+    return NextResponse.json(
+      {
+        error: 'Erro ao iniciar scanners de universo',
         details: error instanceof Error ? error.message : 'Erro desconhecido',
       },
       { status: 500 }
