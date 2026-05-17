@@ -90,7 +90,7 @@ export async function getLatestUniverseScanSymbols(
       return {
         ok: false,
         reason:
-          'Nenhum scan gravado na BD. Execute /api/cron/run-universe-scans (ou aguarde o cron 1h) primeiro.',
+          'Nenhum scan gravado na BD. Execute /api/cron/run-universe-scans (cron 4 h) ou Actualizar scan nesta página.',
       };
     }
     const symbols = run.rows.map((r) => r.symbol);

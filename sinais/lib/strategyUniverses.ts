@@ -81,7 +81,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     source: 'universe_scan',
     dataKey: 'UNIVERSE_ABOVE_MA200_1H',
     description: 'Scanner 1: fecho acima SMA200 (1h).',
-    refresh: '/api/cron/run-universe-scans',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
     strategyName: 'RSI_OVERBOUGHT_DROP_1H',
@@ -90,7 +90,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     source: 'universe_scan',
     dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
     description: 'Scanner 2: ±10% da SMA80 (1h).',
-    refresh: '/api/cron/run-universe-scans',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
     strategyName: 'AFASTAMENTO_MEDIO_30M',
@@ -99,7 +99,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     source: 'universe_scan',
     dataKey: 'UNIVERSE_NEAR_MA200_PCT4_1H',
     description: 'Scanner 3: ±4% da SMA80 (1h); sinais em 30m.',
-    refresh: '/api/cron/run-universe-scans',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
 ];
 

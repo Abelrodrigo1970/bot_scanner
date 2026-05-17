@@ -5,7 +5,8 @@ import { persistUniverseScan } from '@/lib/universeScanPersistence';
 
 /**
  * Executa os 3 scanners de universo (MA200+, ±10% MA80, ±4% MA80) e grava na BD.
- * Deve correr antes de run-signals / estratégias com universo filtrado.
+ * Agendar no cron-job.org de 4 em 4 horas (minuto 0: 00:00, 04:00, 08:00, …).
+ * Não está no agregado run-1h; as estratégias usam o último scan até ao próximo ciclo.
  */
 export async function GET(request: NextRequest) {
   try {

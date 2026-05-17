@@ -139,8 +139,9 @@ export default function UniverseScannerPage() {
               Estratégia: <strong>{meta.strategyNames}</strong>
             </li>
             <li>
-              Também actualizado pelo cron{' '}
-              <code className="text-[10px]">/api/cron/run-universe-scans</code>
+              Actualização automática: cron{' '}
+              <code className="text-[10px]">/api/cron/run-universe-scans</code> de{' '}
+              <strong>4 em 4 horas</strong> (não faz parte do run-1h horário)
             </li>
           </ul>
         </div>
