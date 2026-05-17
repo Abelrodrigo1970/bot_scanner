@@ -3,8 +3,9 @@ import {
   MACD_HISTOGRAM_PMO_DESCRIPTION,
   MACD_HISTOGRAM_PMO_PARAMS,
   RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
+  RSI_OVERBOUGHT_DROP_1H_PARAMS,
   syncMacdHistogramPmoParams,
-  syncRsiScanner2EmaDescription,
+  syncRsiOverboughtDrop1hConfig,
 } from './strategyMigrations';
 
 /** Estratégias importadas (foto + afastamento 80/7) — criadas se faltarem na BD. */
@@ -66,17 +67,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     displayName: 'RSI queda de 70 (mín. 4 pts) + afastamento >12% (1h)',
     description: RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
     isActive: true,
-    params: JSON.stringify({
-      rsiPeriod: 14,
-      overboughtLevel: 70,
-      minDropPoints: 4,
-      minDistancePct: 12,
-      maPeriod: 80,
-      meanLineType: 'EMA',
-      stopLossPct: 0.06,
-      allowBuy: false,
-      allowSell: true,
-    }),
+    params: JSON.stringify(RSI_OVERBOUGHT_DROP_1H_PARAMS),
   },
 ] as const;
 
@@ -92,8 +83,8 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   if (macdSync.updated) {
     console.log('✅ MACD_HISTOGRAM_PMO: params actualizados (filtros mais selectivos)');
   }
-  const rsiSync = await syncRsiScanner2EmaDescription(prisma);
+  const rsiSync = await syncRsiOverboughtDrop1hConfig(prisma);
   if (rsiSync.updated) {
-    console.log('✅ RSI_OVERBOUGHT_DROP_1H: descrição actualizada (Scanner 2 = EMA80)');
+    console.log('✅ RSI_OVERBOUGHT_DROP_1H: params/descrição actualizados (SL 8%, TP1/TP2 %)');
   }
 }

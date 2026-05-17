@@ -113,29 +113,84 @@ export const MACD_HISTOGRAM_PMO_PARAMS = {
 export const MACD_HISTOGRAM_PMO_DESCRIPTION =
   'MACD histograma (1h, vela fechada) + PMO. COMPRA: histograma cruza para cima, linha MACD > signal, PMO > 0 e a subir. VENDA: histograma cruza para baixo, MACD < signal, PMO < 0 e a descer. Top 50 movers 1h; cooldown 4 h por símbolo/direcção.';
 
-export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
-  'Universo: último scan Scanner 2 (±10% EMA80 em 1h). VENDA: RSI cai de ≥70 com queda ≥4 pts e afastamento à EMA80 >12%. SL 6%; TP na EMA80.';
+export const RSI_OVERBOUGHT_DROP_1H_PARAMS = {
+  rsiPeriod: 14,
+  overboughtLevel: 70,
+  minDropPoints: 4,
+  minDistancePct: 12,
+  maPeriod: 80,
+  meanLineType: 'EMA',
+  stopLossPct: 0.08,
+  sellTp1Percent: 9,
+  sellTp2Percent: 19,
+  sellTp1Position: 30,
+  sellTp2Position: 40,
+  allowBuy: false,
+  allowSell: true,
+} as const;
 
-/** Actualiza descrição RSI se ainda referir SMA80 no Scanner 2. */
-export async function syncRsiScanner2EmaDescription(
+export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
+  'Universo: Scanner 2 (±10% EMA80, 1h). VENDA: RSI cai de ≥70 (≥4 pts) e afastamento à EMA80 >12%. SL +8%. TP1 -9% (30% pos.) | TP2 -19% (40% pos.) | restante fecho manual.';
+
+/** Actualiza descrição e params RSI (Scanner 2 EMA80, SL/TP %). */
+export async function syncRsiOverboughtDrop1hConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
   const row = await prisma.strategy.findUnique({
     where: { name: 'RSI_OVERBOUGHT_DROP_1H' },
-    select: { description: true },
+    select: { params: true, description: true },
   });
   if (!row) return { updated: false };
-  if (
-    !row.description?.includes('SMA80') &&
-    row.description === RSI_OVERBOUGHT_DROP_1H_DESCRIPTION
-  ) {
-    return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
   }
+
+  const needsSlTp =
+    p.stopLossPct === 0.06 ||
+    p.stopLossPct === '0.06' ||
+    p.sellTp1Percent == null ||
+    p.sellTp2Percent == null;
+  const needsDesc =
+    row.description?.includes('SMA80') ||
+    row.description?.includes('TP na EMA80') ||
+    row.description?.includes('SL 6%') ||
+    row.description !== RSI_OVERBOUGHT_DROP_1H_DESCRIPTION;
+
+  if (!needsSlTp && !needsDesc) return { updated: false };
+
+  const next = {
+    ...RSI_OVERBOUGHT_DROP_1H_PARAMS,
+    ...p,
+    ...(needsSlTp
+      ? {
+          stopLossPct: 0.08,
+          sellTp1Percent: 9,
+          sellTp2Percent: 19,
+          sellTp1Position: 30,
+          sellTp2Position: 40,
+        }
+      : {}),
+  };
+
   await prisma.strategy.update({
     where: { name: 'RSI_OVERBOUGHT_DROP_1H' },
-    data: { description: RSI_OVERBOUGHT_DROP_1H_DESCRIPTION },
+    data: {
+      params: JSON.stringify(next),
+      description: RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
+    },
   });
   return { updated: true };
+}
+
+/** @deprecated Use syncRsiOverboughtDrop1hConfig */
+export async function syncRsiScanner2EmaDescription(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  return syncRsiOverboughtDrop1hConfig(prisma);
 }
 
 /**

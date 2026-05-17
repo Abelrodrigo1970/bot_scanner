@@ -157,7 +157,11 @@ export async function runRsiOverboughtDrop1hStrategy(
   const maPeriod = Math.max(2, Number(params.maPeriod) || 80);
   const meanLineType =
     String(params.meanLineType || 'EMA').toUpperCase() === 'SMA' ? 'SMA' : 'EMA';
-  const stopLossPct = Number(params.stopLossPct ?? 0.06);
+  const stopLossPct = Number(params.stopLossPct ?? 0.08);
+  const sellTp1Percent = Number(params.sellTp1Percent ?? 9);
+  const sellTp2Percent = Number(params.sellTp2Percent ?? 19);
+  const sellTp1Position = Math.min(100, Math.max(1, Number(params.sellTp1Position ?? 30)));
+  const sellTp2Position = Math.min(100, Math.max(1, Number(params.sellTp2Position ?? 40)));
 
   try {
     const candlesNeeded = Math.max(maPeriod, rsiPeriod) + 50;
@@ -193,7 +197,8 @@ export async function runRsiOverboughtDrop1hStrategy(
 
     const currentPrice = candles[candles.length - 1].close;
     const stopLoss = currentPrice * (1 + stopLossPct);
-    const target1 = meanAtClose;
+    const target1 = currentPrice * (1 - sellTp1Percent / 100);
+    const target2 = currentPrice * (1 - sellTp2Percent / 100);
     const strength = Math.min(
       100,
       Math.max(
@@ -211,8 +216,7 @@ export async function runRsiOverboughtDrop1hStrategy(
       entryPrice: currentPrice,
       stopLoss,
       target1,
-      target2: target1,
-      target3: target1,
+      target2,
       strength,
       extraInfo: JSON.stringify({
         setup: 'rsi_overbought_drop_distance_ma',
@@ -226,7 +230,16 @@ export async function runRsiOverboughtDrop1hStrategy(
         distancePct: currDist.toFixed(3),
         meanLineType,
         maPeriod,
+        meanAtClose: meanAtClose.toFixed(8),
         stopLossPct,
+        sellTp1Percent,
+        sellTp2Percent,
+        sellTp1Position,
+        sellTp2Position,
+        tp1Position: sellTp1Position,
+        tp2Position: sellTp2Position,
+        manualRemainderPct: Math.max(0, 100 - sellTp1Position - sellTp2Position),
+        executionProfile: `SL +${(stopLossPct * 100).toFixed(0)}% | TP1 -${sellTp1Percent}% (${sellTp1Position}% pos.) | TP2 -${sellTp2Percent}% (${sellTp2Position}% pos.) | restante fecho manual`,
       }),
     };
   } catch (error) {
