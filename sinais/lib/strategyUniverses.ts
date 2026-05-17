@@ -89,7 +89,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     signalTimeframes: ['1h'],
     source: 'universe_scan',
     dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
-    description: 'Scanner 2: ±10% da SMA80 (1h).',
+    description: 'Scanner 2: ±10% da EMA80 (1h).',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
@@ -119,7 +119,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/2',
-    label: 'Scanner 2 — ±10% MA80 (RSI queda 70)',
+    label: 'Scanner 2 — ±10% EMA80 (RSI queda 70)',
   },
   {
     href: '/scanners/3',

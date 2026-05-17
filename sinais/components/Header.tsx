@@ -19,7 +19,7 @@ const dataSourceItems = [
   { href: '/ma-cross-below', label: 'MA Cross Proximidade → MA_VOLATILE' },
   { href: '/bybit-ma200-mc20m', label: 'Bybit Vol 1h + MA200 → MA12×MA30' },
   { href: '/scanners/1', label: 'Scanner 1 — Acima MA200 (Afastamento 80/7)' },
-  { href: '/scanners/2', label: 'Scanner 2 — ±10% MA80 (RSI queda 70)' },
+  { href: '/scanners/2', label: 'Scanner 2 — ±10% EMA80 (RSI queda 70)' },
   { href: '/scanners/3', label: 'Scanner 3 — ±4% MA80 (Afastamento 30m)' },
 ];
 

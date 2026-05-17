@@ -1538,7 +1538,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 3)`);
         if (symbolsToAnalyze.length === 0) continue;
       } else if (strategy.name === 'RSI_OVERBOUGHT_DROP_1H') {
-        console.log('🔍 RSI_OVERBOUGHT_DROP_1H: universo Scanner 2 (±10% SMA80, 1h)...');
+        console.log('🔍 RSI_OVERBOUGHT_DROP_1H: universo Scanner 2 (±10% EMA80, 1h)...');
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2)`);
         if (symbolsToAnalyze.length === 0) continue;

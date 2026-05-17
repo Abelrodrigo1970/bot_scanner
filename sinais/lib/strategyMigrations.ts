@@ -113,6 +113,31 @@ export const MACD_HISTOGRAM_PMO_PARAMS = {
 export const MACD_HISTOGRAM_PMO_DESCRIPTION =
   'MACD histograma (1h, vela fechada) + PMO. COMPRA: histograma cruza para cima, linha MACD > signal, PMO > 0 e a subir. VENDA: histograma cruza para baixo, MACD < signal, PMO < 0 e a descer. Top 50 movers 1h; cooldown 4 h por símbolo/direcção.';
 
+export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
+  'Universo: último scan Scanner 2 (±10% EMA80 em 1h). VENDA: RSI cai de ≥70 com queda ≥4 pts e afastamento à EMA80 >12%. SL 6%; TP na EMA80.';
+
+/** Actualiza descrição RSI se ainda referir SMA80 no Scanner 2. */
+export async function syncRsiScanner2EmaDescription(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'RSI_OVERBOUGHT_DROP_1H' },
+    select: { description: true },
+  });
+  if (!row) return { updated: false };
+  if (
+    !row.description?.includes('SMA80') &&
+    row.description === RSI_OVERBOUGHT_DROP_1H_DESCRIPTION
+  ) {
+    return { updated: false };
+  }
+  await prisma.strategy.update({
+    where: { name: 'RSI_OVERBOUGHT_DROP_1H' },
+    data: { description: RSI_OVERBOUGHT_DROP_1H_DESCRIPTION },
+  });
+  return { updated: true };
+}
+
 /**
  * Aperta params legados (PMO ±0,5, 150 símbolos) para filtros mais selectivos.
  * Idempotente; não sobrescreve thresholds personalizados.

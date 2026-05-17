@@ -12,6 +12,7 @@ import {
   syncMacdHistogramPmoParams,
   syncMaCrossScanner1UniverseDescriptions,
   syncRsiMaVolatileUniverseDescriptions,
+  syncRsiScanner2EmaDescription,
 } from '@/lib/strategyMigrations';
 
 const MA_CROSS_5M_DEFAULT_PARAMS = {
@@ -106,6 +107,7 @@ async function ensureMissingStrategies() {
   await ensureMissingBuiltinStrategies(prisma);
   await syncMacdHistogramPmoParams(prisma);
   await syncMaCrossScanner1UniverseDescriptions(prisma);
+  await syncRsiScanner2EmaDescription(prisma);
 
   const existingMaCross5m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_5M' },

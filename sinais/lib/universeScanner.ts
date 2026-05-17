@@ -1,17 +1,24 @@
 /**
- * Scanners de universo: filtra perpétuos USDT por regra vs média móvel (SMA).
+ * Scanners de universo: filtra perpétuos USDT por regra vs média móvel (SMA ou EMA).
  */
 
 import { fetchCandles, fetchTopSymbolsByVolume } from './marketData';
-import { calculateSMA, getCloses } from './indicators';
+import { calculateLastEMA, calculateSMA, getCloses } from './indicators';
 
 export interface UniverseScanDefinition {
   ruleType: string;
   maPeriod: number;
+  /** SMA (defeito) ou EMA — alinhar com a estratégia que usa o scan. */
+  maType?: 'SMA' | 'EMA';
   maxDistancePct: number | null;
   timeframe: string;
   minQuoteVolume: number;
   candidateLimit: number;
+}
+
+function maAtClose(closes: number[], def: UniverseScanDefinition): number | null {
+  const useEma = def.maType === 'EMA';
+  return useEma ? calculateLastEMA(closes, def.maPeriod) : calculateSMA(closes, def.maPeriod);
 }
 
 export interface UniverseScanRow {
@@ -45,7 +52,7 @@ export async function scanSymbolUniverse(
           const candles = await fetchCandles(symbol, def.timeframe, def.maPeriod + 10);
           if (candles.length < def.maPeriod) return null;
           const closes = getCloses(candles);
-          const ma = calculateSMA(closes, def.maPeriod);
+          const ma = maAtClose(closes, def);
           const close = closes[closes.length - 1];
           if (ma === null || ma === 0) return null;
           const pctFromMa = ((close - ma) / ma) * 100;

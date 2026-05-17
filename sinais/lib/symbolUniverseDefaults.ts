@@ -19,6 +19,7 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
   UNIVERSE_NEAR_MA200_PCT10_1H: {
     ruleType: 'WITHIN_PCT_OF_MA',
     maPeriod: 80,
+    maType: 'EMA',
     maxDistancePct: 10,
     timeframe: '1h',
     minQuoteVolume: 100000,
@@ -49,9 +50,9 @@ export const BUILTIN_UNIVERSE_META: Record<
     strategyNames: 'AFASTAMENTO_MEDIO',
   },
   UNIVERSE_NEAR_MA200_PCT10_1H: {
-    displayName: 'Scanner 2 — Até ±10% da MA80 (1h)',
+    displayName: 'Scanner 2 — Até ±10% da EMA80 (1h)',
     description:
-      'Preço dentro de ±10% da SMA80 em 1h. Universo: RSI queda de 70 + afastamento >12%.',
+      'Preço dentro de ±10% da EMA80 em 1h. Universo: RSI queda de 70 + afastamento >12%.',
     strategyNames: 'RSI_OVERBOUGHT_DROP_1H',
   },
   UNIVERSE_NEAR_MA200_PCT4_1H: {

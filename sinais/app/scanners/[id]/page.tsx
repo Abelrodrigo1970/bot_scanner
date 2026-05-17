@@ -103,7 +103,8 @@ export default function UniverseScannerPage() {
     );
   }
 
-  const maLabel = scannerId === '1' ? 'SMA200' : 'SMA80';
+  const maLabel =
+    scannerId === '1' ? 'SMA200' : scannerId === '2' ? 'EMA80' : 'SMA80';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
