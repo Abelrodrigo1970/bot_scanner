@@ -1,33 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import {
-  fetchBybitAboveMa200Mc20m,
-  fetchMa30Above6Pct,
-  fetchMa30Near6PriceBetween,
-} from '@/lib/marketData';
+import { fetchBybitAboveMa200Mc20m, fetchMaCrossBelow } from '@/lib/marketData';
 
 /**
- * Cron dedicado para atualizar os scans de médias:
- * - MA30 > 9% MA200 (1h)
- * - MA30 entre −6% e +1% vs MA200 (1h)
- * - Bybit Volume 1h (500k) + MA200 (1h) → `BybitAboveMa200Mc20m`
+ * Atualiza tabelas de universo usadas por estratégias activas:
+ * - MaCrossBelow → MA_VOLATILE
+ * - BybitAboveMa200Mc20m → MA_CROSS_5M, MA_CROSS_1H
  *
- * O trabalho pesado corre em background para evitar timeout do cliente/cron HTTP.
+ * Scanners 1/2/3 (afastamento / RSI): /api/cron/run-universe-scans
  */
-
-/** Evita dois scans completos em paralelo (ex.: cron a disparar em cima do outro). */
 let maScansJobPromise: Promise<void> | null = null;
 
 async function runMaScansJob(): Promise<{
-  ma30Above6Pct: number;
-  ma30BandMinus3ToMinus9: number;
+  maCrossBelow: number;
   bybitVolume1hMa200: number;
 }> {
-  const above6 = await fetchMa30Above6Pct(100);
-  await prisma.ma30Above6Pct.deleteMany({});
-  if (above6.length > 0) {
-    await prisma.ma30Above6Pct.createMany({
-      data: above6.map((item) => ({
+  const maCross = await fetchMaCrossBelow(100);
+  await prisma.maCrossBelow.deleteMany({});
+  if (maCross.length > 0) {
+    await prisma.maCrossBelow.createMany({
+      data: maCross.map((item) => ({
         symbol: item.symbol,
         lastPrice: item.lastPrice,
         ma30: item.ma30,
@@ -39,23 +31,7 @@ async function runMaScansJob(): Promise<{
     });
   }
 
-  const nearBand = await fetchMa30Near6PriceBetween(300);
-  await prisma.ma30Near6PriceBetween.deleteMany({});
-  if (nearBand.length > 0) {
-    await prisma.ma30Near6PriceBetween.createMany({
-      data: nearBand.map((item) => ({
-        symbol: item.symbol,
-        lastPrice: item.lastPrice,
-        ma30: item.ma30,
-        ma200: item.ma200,
-        distPriceMa200: item.distPriceMa200,
-        distMa30Ma200: item.distMa30Ma200,
-        rank: item.rank,
-      })),
-    });
-  }
-
-  console.log('[run-scans-ma] Bybit Volume 1h (500k) + MA200 — a calcular (demora vários minutos)…');
+  console.log('[run-scans-ma] Bybit Volume 1h (500k) + MA200 — a calcular…');
   const bybitVolMa200 = await fetchBybitAboveMa200Mc20m(300, 500_000);
   await prisma.bybitAboveMa200Mc20m.deleteMany({});
   if (bybitVolMa200.length > 0) {
@@ -73,8 +49,7 @@ async function runMaScansJob(): Promise<{
   }
 
   return {
-    ma30Above6Pct: above6.length,
-    ma30BandMinus3ToMinus9: nearBand.length,
+    maCrossBelow: maCross.length,
     bybitVolume1hMa200: bybitVolMa200.length,
   };
 }
@@ -93,8 +68,7 @@ export async function GET(request: NextRequest) {
         {
           accepted: false,
           busy: true,
-          message:
-            'Scans MA / Bybit já em execução em background; aguarda a conclusão antes de voltar a disparar.',
+          message: 'Scans MA/Bybit já em execução em background.',
           startedAt: new Date().toISOString(),
         },
         { status: 202 }
@@ -119,7 +93,7 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scans MA + Bybit Volume 1h (500k)+MA200 arrancaram em background; a BD atualiza quando terminar (vários minutos).',
+          'Scans MaCrossBelow + Bybit Vol1h/MA200 em background (universos MA_VOLATILE e MA Cross).',
         startedAt,
       },
       { status: 202 }

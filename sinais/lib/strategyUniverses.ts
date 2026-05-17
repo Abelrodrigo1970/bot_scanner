@@ -1,0 +1,128 @@
+/**
+ * Mapa estratégia → universo de símbolos (fonte de dados).
+ * Usado para documentação e para alinhar crons / menu «Origem de dados».
+ */
+
+export type UniverseSourceKind =
+  | 'runtime_top_movers_1h'
+  | 'runtime_top_volume'
+  | 'table'
+  | 'universe_scan';
+
+export interface StrategyUniverseSpec {
+  strategyName: string;
+  displayLabel: string;
+  signalTimeframes: string[];
+  source: UniverseSourceKind;
+  /** Tabela Prisma, código UniverseScanRun, ou descrição runtime */
+  dataKey: string;
+  description: string;
+  /** Cron ou acção manual que alimenta a BD */
+  refresh?: string;
+}
+
+/** Estratégias activas no seed + importadas (exclui descontinuadas). */
+export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
+  {
+    strategyName: 'MA_VOLATILE',
+    displayLabel: 'MA Cross Top Voláteis',
+    signalTimeframes: ['1h'],
+    source: 'table',
+    dataKey: 'MaCrossBelow',
+    description: 'MA30 entre −3% e +3% vs MA200 (1h), preço abaixo MA200.',
+    refresh: '/api/cron/run-scans-ma ou POST /api/ma-cross-below',
+  },
+  {
+    strategyName: 'MA_CROSS_5M',
+    displayLabel: 'MA Cross 15m (MA12/MA30)',
+    signalTimeframes: ['15m'],
+    source: 'table',
+    dataKey: 'BybitAboveMa200Mc20m',
+    description: 'Bybit: turnover 1h ≥ 500k USDT e preço acima MA200 (1h).',
+    refresh: '/api/cron/run-scans-ma ou POST /api/bybit-ma200-mc20m',
+  },
+  {
+    strategyName: 'MA_CROSS_1H',
+    displayLabel: 'MA Cross 1h (MA12/MA30)',
+    signalTimeframes: ['1h'],
+    source: 'table',
+    dataKey: 'BybitAboveMa200Mc20m',
+    description: 'Igual MA_CROSS_5M.',
+    refresh: '/api/cron/run-scans-ma',
+  },
+  {
+    strategyName: 'MA200_VOLATILE',
+    displayLabel: 'MA200 Top Voláteis',
+    signalTimeframes: ['4h'],
+    source: 'runtime_top_volume',
+    dataKey: 'fetchTopSymbolsByVolume',
+    description: 'Top por volume 24h (param. symbolLimit / minQuoteVolume), sem tabela de universo.',
+  },
+  {
+    strategyName: 'EMA_SCALPING',
+    displayLabel: 'EMA Ribbon Scalping',
+    signalTimeframes: ['15m'],
+    source: 'runtime_top_movers_1h',
+    dataKey: 'fetchTopSymbolsBy1hPriceChange',
+    description: 'Top movers 1h (limite symbolLimit nos params).',
+  },
+  {
+    strategyName: 'MACD_HISTOGRAM_PMO',
+    displayLabel: 'MACD Histogram 1h + PMO',
+    signalTimeframes: ['1h'],
+    source: 'runtime_top_movers_1h',
+    dataKey: 'fetchTopSymbolsBy1hPriceChange:150',
+    description: 'Top 150 por variação na última hora (Binance Futures).',
+  },
+  {
+    strategyName: 'AFASTAMENTO_MEDIO',
+    displayLabel: 'Afastamento médio (80/7)',
+    signalTimeframes: ['1h'],
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+    description: 'Scanner 1: fecho acima SMA200 (1h).',
+    refresh: '/api/cron/run-universe-scans',
+  },
+  {
+    strategyName: 'RSI_OVERBOUGHT_DROP_1H',
+    displayLabel: 'RSI queda 70 + afastamento',
+    signalTimeframes: ['1h'],
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
+    description: 'Scanner 2: ±10% da SMA80 (1h).',
+    refresh: '/api/cron/run-universe-scans',
+  },
+  {
+    strategyName: 'AFASTAMENTO_MEDIO_30M',
+    displayLabel: 'Afastamento médio 30m',
+    signalTimeframes: ['30m'],
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_NEAR_MA200_PCT4_1H',
+    description: 'Scanner 3: ±4% da SMA80 (1h); sinais em 30m.',
+    refresh: '/api/cron/run-universe-scans',
+  },
+];
+
+/** Rotas do menu «Origem de dados» alinhadas a universos em uso. */
+export const DATA_SOURCE_MENU_ITEMS = [
+  {
+    href: '/ma-cross-below',
+    label: 'MA Cross Proximidade → MA_VOLATILE',
+  },
+  {
+    href: '/bybit-ma200-mc20m',
+    label: 'Bybit Vol 1h + MA200 → MA12×MA30',
+  },
+  {
+    href: '/scanners/1',
+    label: 'Scanner 1 — Acima MA200 (Afastamento 80/7)',
+  },
+  {
+    href: '/scanners/2',
+    label: 'Scanner 2 — ±10% MA80 (RSI queda 70)',
+  },
+  {
+    href: '/scanners/3',
+    label: 'Scanner 3 — ±4% MA80 (Afastamento 30m)',
+  },
+] as const;

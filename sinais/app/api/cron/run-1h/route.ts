@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Cron agregado 1h:
+ * - run-scans-ma: MaCrossBelow + Bybit Vol1h/MA200 (MA_VOLATILE, MA Cross)
  * - run-universe-scans: Scanner 1/2/3 (universos afastamento + RSI)
  * - run-signals: MA200 4h + MA_CROSS_1H + MACD/PMO + afastamento 1h + RSI queda 70
  * - run-ma-volatile: MA_VOLATILE (MA60 1h; universo MaCrossBelow)
@@ -14,6 +15,7 @@ async function run1hInBackground(origin: string, authHeader: string): Promise<vo
     if (authHeader) headers.authorization = authHeader;
 
     const calls = [
+      `${origin}/api/cron/run-scans-ma`,
       `${origin}/api/cron/run-universe-scans`,
       `${origin}/api/cron/run-signals`,
       `${origin}/api/cron/run-ma-volatile`,

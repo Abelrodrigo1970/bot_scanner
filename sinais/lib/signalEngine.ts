@@ -1418,7 +1418,7 @@ export interface RunAllStrategiesOptions {
 }
 
 /**
- * Executa todas as estratégias ativas (RSI + MA_CROSS_15M usam Ma30Near6PriceBetween: MA30 −6%…+1% vs MA200 1h; RSI_BYBIT_15M usa Ma30Above6Pct; EMA_SCALPING / EMA_SCALPING_SELL em 15m; MA_VOLATILE usa MaCrossBelow, …)
+ * Executa todas as estratégias ativas. Universos: ver `lib/strategyUniverses.ts`.
  */
 export async function runAllStrategies(options?: RunAllStrategiesOptions): Promise<number> {
   let signalsCreated = 0;
@@ -1473,52 +1473,25 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
       }
 
       const timeframesToUse: Timeframe[] =
-        strategy.name === 'MA_CROSS_5M'    ? ['15m'] :
-        strategy.name === 'MA_CROSS_1H'    ? ['1h'] :
-        strategy.name === 'MA_VOLATILE'    ? ['1h'] :
-        strategy.name === 'RSI_15M'        ? ['15m'] :
-        strategy.name === 'RSI_BYBIT_15M'  ? ['15m'] :
-        strategy.name === 'EMA_SCALPING' ||
-        strategy.name === 'EMA_SCALPING_SELL'
-          ? ['15m'] :
+        strategy.name === 'MA_CROSS_5M' ? ['15m'] :
+        strategy.name === 'MA_CROSS_1H' ? ['1h'] :
+        strategy.name === 'MA_VOLATILE' ? ['1h'] :
+        strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL' ? ['15m'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
-        strategy.name === 'RSI'            ? ['1h'] :
-        strategy.name === 'MA_CROSS_15M'   ? ['15m'] :
         strategy.name === 'AFASTAMENTO_MEDIO_30M' ? ['30m'] :
         strategy.name === 'MACD_HISTOGRAM_PMO' ||
         strategy.name === 'AFASTAMENTO_MEDIO' ||
         strategy.name === 'RSI_OVERBOUGHT_DROP_1H'
-          ? ['1h'] :
-        timeframes;
+          ? ['1h']
+          : timeframes;
 
       let symbolsToAnalyze = symbols;
-      if (strategy.name === 'VOLUME_SPIKE') {
-        const maxSymbols = 500;
-        const minQuoteVolume = 100000;
-        console.log(`🔍 Buscando símbolos por % variação 24h para ${strategy.name}...`);
-        const volumeSymbols = await fetchTopSymbolsBy24hPriceChange(maxSymbols, minQuoteVolume);
-        if (volumeSymbols.length > 0) {
-          symbolsToAnalyze = volumeSymbols;
-          console.log(`✅ Encontrados ${volumeSymbols.length} símbolos`);
-        }
-      } else if (strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL') {
+      if (strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL') {
         const lim = Math.min(250, Math.max(15, Math.floor(Number(params.symbolLimit ?? 80))));
         symbolsToAnalyze = symbols.slice(0, lim);
         console.log(
           `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
-      } else if (strategy.name === 'RSI_15M') {
-        console.log(`🔍 Buscando MA30 −6%…+1% vs MA200 (1h) na BD para ${strategy.name}...`);
-        const nearBand = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
-        if (nearBand.length > 0) {
-          symbolsToAnalyze = nearBand.map((t: { symbol: string }) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (scan MA30 −6%…+1% vs MA200)`);
-        } else {
-          console.warn(
-            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 −6%…+1% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
-          );
-          continue;
-        }
       } else if (strategy.name === 'MA200_VOLATILE') {
         const maxSymbols = params.symbolLimit ?? 500;
         const minQuoteVolume = params.minQuoteVolume ?? 100000;
@@ -1530,72 +1503,31 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
             console.log(`✅ Encontrados ${broadSymbols.length} símbolos líquidos`);
           }
         } catch (err) {
-          console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top Voláteis:`, err);
+          console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top movers 1h:`, err);
         }
-      } else if (strategy.name === 'MA_CROSS_15M') {
-        console.log(`🔍 Buscando Ma30Near6PriceBetween na BD (${strategy.name}, scan MA30 −6%…+1% vs MA200 1h)...`);
-        const nearBand = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
-        if (nearBand.length > 0) {
-          symbolsToAnalyze = nearBand.map((t) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (Ma30Near6PriceBetween)`);
-        } else {
-          console.warn(
-            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Actualize o menu "MA30 −6%…+1% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
-          );
-          continue;
-        }
-      } else if (strategy.name === 'RSI_BYBIT_15M') {
-        console.log(`🔍 Buscando MA30 > 9% vs MA200 (1h) na BD para ${strategy.name}...`);
-        const ma30Above = await prisma.ma30Above6Pct.findMany({ orderBy: { rank: 'asc' } });
-        if (ma30Above.length > 0) {
-          symbolsToAnalyze = ma30Above.map((t: { symbol: string }) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (MA30 > 9% vs MA200)`);
-        } else {
-          console.warn(
-            `⚠️ Nenhum símbolo em Ma30Above6Pct. Atualize o menu "MA30 > 9% MA200" antes. Ignorando ${strategy.name}.`
-          );
-          continue;
-        }
-      } else if (
-        strategy.name === 'MA_CROSS_5M' ||
-        strategy.name === 'MA_CROSS_1H'
-      ) {
-        console.log(`🔍 Buscando scan Bybit Volume 1h>500k e MA200 1h na BD para ${strategy.name}...`);
+      } else if (strategy.name === 'MA_CROSS_5M' || strategy.name === 'MA_CROSS_1H') {
+        console.log(`🔍 Bybit Vol 1h + MA200 na BD para ${strategy.name}...`);
         const bybitScan = await prisma.$queryRaw<Array<{ symbol: string }>>`
-          SELECT symbol
-          FROM "BybitAboveMa200Mc20m"
-          ORDER BY rank ASC
+          SELECT symbol FROM "BybitAboveMa200Mc20m" ORDER BY rank ASC
         `;
         if (bybitScan.length > 0) {
-          symbolsToAnalyze = bybitScan.map((t: { symbol: string }) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (Bybit Volume 1h > 500k & MA200 1h)`);
+          symbolsToAnalyze = bybitScan.map((t) => t.symbol);
+          console.log(`✅ ${symbolsToAnalyze.length} símbolos (BybitAboveMa200Mc20m)`);
         } else {
           console.warn(
-            `⚠️ Nenhum símbolo em BybitAboveMa200Mc20m. Atualize o menu "Bybit Volume 1h >500k e MA200 1h" antes. Ignorando ${strategy.name}.`
+            `⚠️ BybitAboveMa200Mc20m vazio. Corra /api/cron/run-scans-ma ou Origem de dados → Bybit. Ignorando ${strategy.name}.`
           );
           continue;
         }
       } else if (strategy.name === 'MA_VOLATILE') {
-        console.log(`🔍 Buscando MA Cross Proximidade (MaCrossBelow) na BD para ${strategy.name}...`);
+        console.log(`🔍 MaCrossBelow na BD para ${strategy.name}...`);
         const maCrossProximity = await prisma.maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
         if (maCrossProximity.length > 0) {
           symbolsToAnalyze = maCrossProximity.map((t) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (MA Cross Proximidade)`);
+          console.log(`✅ ${symbolsToAnalyze.length} símbolos (MaCrossBelow)`);
         } else {
           console.warn(
-            `⚠️ Nenhum símbolo em MaCrossBelow. Atualize o menu "MA Cross Proximidade" antes. Ignorando ${strategy.name}.`
-          );
-          continue;
-        }
-      } else if (strategy.name === 'RSI') {
-        console.log(`🔍 Buscando scan MA30 −6%…+1% vs MA200 (1h) na BD para ${strategy.name}...`);
-        const ma30Below = await prisma.ma30Near6PriceBetween.findMany({ orderBy: { rank: 'asc' } });
-        if (ma30Below.length > 0) {
-          symbolsToAnalyze = ma30Below.map((t: { symbol: string }) => t.symbol);
-          console.log(`✅ Encontrados ${symbolsToAnalyze.length} símbolos (Ma30Near6PriceBetween)`);
-        } else {
-          console.warn(
-            `⚠️ Nenhum símbolo em Ma30Near6PriceBetween. Atualize o menu "MA30 −6%…+1% vs MA200 (1h)" antes. Ignorando ${strategy.name}.`
+            `⚠️ MaCrossBelow vazio. Corra /api/cron/run-scans-ma ou Origem de dados → MA Cross. Ignorando ${strategy.name}.`
           );
           continue;
         }
@@ -1622,20 +1554,11 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
             let signalResult: SignalResult | null = null;
 
             switch (strategy.name) {
-              case 'VOLUME_SPIKE':
-                signalResult = await runVolumeSpikeStrategy(symbol, timeframe, params);
-                break;
               case 'MA_CROSS_5M':
                 signalResult = await runMaCross15mStrategy(symbol, timeframe, params);
                 break;
               case 'MA_CROSS_1H':
                 signalResult = await runMaCross1hStrategy(symbol, timeframe, params);
-                break;
-              case 'RSI':
-                signalResult = await runRsiStrategy(symbol, timeframe, params);
-                break;
-              case 'RSI_15M':
-                signalResult = await runRsi15mStrategy(symbol, timeframe, params);
                 break;
               case 'EMA_SCALPING':
                 signalResult = await runEmaRibbonScalpingStrategy(symbol, timeframe, params);
@@ -1643,17 +1566,11 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
               case 'EMA_SCALPING_SELL':
                 signalResult = await runEmaRibbonScalpingSellStrategy(symbol, timeframe, params);
                 break;
-              case 'RSI_BYBIT_15M':
-                signalResult = await runRsiBybit15mStrategy(symbol, timeframe, params);
-                break;
               case 'MA_VOLATILE':
                 signalResult = await runMa60VolatileStrategy(symbol, timeframe, params);
                 break;
               case 'MA200_VOLATILE':
                 signalResult = await runMa200VolatileStrategy(symbol, timeframe, params);
-                break;
-              case 'MA_CROSS_15M':
-                signalResult = await runMaCross15mStrategy(symbol, timeframe, params);
                 break;
               case 'MACD_HISTOGRAM_PMO':
                 signalResult = await runMacdHistogramPmoStrategy(symbol, timeframe, params);

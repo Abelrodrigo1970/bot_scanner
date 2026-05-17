@@ -37,3 +37,38 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
 export function getBuiltinScanDefinition(code: string): UniverseScanDefinition | null {
   return BUILTIN_UNIVERSE_SCAN[code] ?? null;
 }
+
+export const BUILTIN_UNIVERSE_META: Record<
+  string,
+  { displayName: string; description: string; strategyNames: string }
+> = {
+  UNIVERSE_ABOVE_MA200_1H: {
+    displayName: 'Scanner 1 — Acima da MA200 (1h)',
+    description:
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Universo: Afastamento médio (80/7).',
+    strategyNames: 'AFASTAMENTO_MEDIO',
+  },
+  UNIVERSE_NEAR_MA200_PCT10_1H: {
+    displayName: 'Scanner 2 — Até ±10% da MA80 (1h)',
+    description:
+      'Preço dentro de ±10% da SMA80 em 1h. Universo: RSI queda de 70 + afastamento >12%.',
+    strategyNames: 'RSI_OVERBOUGHT_DROP_1H',
+  },
+  UNIVERSE_NEAR_MA200_PCT4_1H: {
+    displayName: 'Scanner 3 — Até ±4% da MA80 (1h)',
+    description:
+      'Preço dentro de ±4% da SMA80 em 1h. Universo: Afastamento médio 30m (sinais em 30m).',
+    strategyNames: 'AFASTAMENTO_MEDIO_30M',
+  },
+};
+
+/** Rotas UI `/scanners/1` … `/scanners/3` */
+export const SCANNER_UI_ROUTES = [
+  { scannerId: '1', code: UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 },
+  { scannerId: '2', code: UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80 },
+  { scannerId: '3', code: UNIVERSE_CODE_SCANNER_3_MA80_PCT4 },
+] as const;
+
+export function getScannerByUiId(scannerId: string) {
+  return SCANNER_UI_ROUTES.find((s) => s.scannerId === scannerId) ?? null;
+}
