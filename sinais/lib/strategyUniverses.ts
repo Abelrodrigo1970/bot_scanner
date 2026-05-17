@@ -71,8 +71,8 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     displayLabel: 'MACD Histogram 1h + PMO',
     signalTimeframes: ['1h'],
     source: 'runtime_top_movers_1h',
-    dataKey: 'fetchTopSymbolsBy1hPriceChange:150',
-    description: 'Top 150 por variação na última hora (Binance Futures).',
+    dataKey: 'fetchTopSymbolsBy1hPriceChange:50',
+    description: 'Top 50 movers 1h (param. symbolLimit; vela fechada + PMO/MACD confirmados).',
   },
   {
     strategyName: 'AFASTAMENTO_MEDIO',

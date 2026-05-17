@@ -242,6 +242,27 @@ export const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADA
 export const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h', '1d'] as const;
 export type Timeframe = typeof TIMEFRAMES[number];
 
+const TIMEFRAME_DURATION_MS: Record<Timeframe, number> = {
+  '1m': 60_000,
+  '5m': 300_000,
+  '15m': 900_000,
+  '30m': 1_800_000,
+  '1h': 3_600_000,
+  '4h': 14_400_000,
+  '1d': 86_400_000,
+};
+
+/** Remove a última vela se ainda estiver em formação (evita falsos cruzamentos intrabar). */
+export function dropFormingCandle(candles: Candle[], timeframe: Timeframe): Candle[] {
+  if (candles.length === 0) return candles;
+  const durationMs = TIMEFRAME_DURATION_MS[timeframe];
+  const last = candles[candles.length - 1]!;
+  if (last.timestamp + durationMs > Date.now()) {
+    return candles.slice(0, -1);
+  }
+  return candles;
+}
+
 /**
  * Interface para dados de Top Movers
  */

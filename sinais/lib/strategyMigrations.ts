@@ -89,6 +89,96 @@ export const RSI_15M_STRATEGY_DESCRIPTION =
 export const MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION =
   'Universo = scan MA Cross Proximidade (MaCrossBelow): MA30 entre −3% e +3% vs MA200 (1h). COMPRA: fecha 2%+ acima MA60 → SL -15% | TP1 +30% (40%) | TP2 +60% (30%) | 30% na reversão. VENDA: fecha 2%+ abaixo MA60 → SL +15% | TP1 -30% (40%) | TP2 -60% (30%) | 30% na reversão.';
 
+export const MACD_HISTOGRAM_PMO_PARAMS = {
+  fastPeriod: 12,
+  slowPeriod: 26,
+  signalPeriod: 9,
+  rocPeriodPmo: 35,
+  emaFastPmo: 20,
+  pmoBuyThreshold: 0,
+  pmoSellThreshold: 0,
+  symbolLimit: 50,
+  minHistogramAbs: 0,
+  requireMacdLineConfirm: true,
+  requirePmoMomentum: true,
+  useClosedCandleOnly: true,
+  signalCooldownHours: 4,
+  allowBuy: true,
+  allowSell: true,
+} as const;
+
+export const MACD_HISTOGRAM_PMO_DESCRIPTION =
+  'MACD histograma (1h, vela fechada) + PMO. COMPRA: histograma cruza para cima, linha MACD > signal, PMO > 0 e a subir. VENDA: histograma cruza para baixo, MACD < signal, PMO < 0 e a descer. Top 50 movers 1h; cooldown 4 h por símbolo/direcção.';
+
+/**
+ * Aperta params legados (PMO ±0,5, 150 símbolos) para filtros mais selectivos.
+ * Idempotente; não sobrescreve thresholds personalizados.
+ */
+export async function syncMacdHistogramPmoParams(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'MACD_HISTOGRAM_PMO' },
+    select: { params: true, description: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const hasLoosePmo =
+    p.pmoBuyThreshold === -0.5 ||
+    p.pmoBuyThreshold === '-0.5' ||
+    (p.pmoBuyThreshold == null && p.pmoSellThreshold == null);
+  const hasLooseSellPmo = p.pmoSellThreshold === 0.5 || p.pmoSellThreshold === '0.5';
+  const missingGuards =
+    p.useClosedCandleOnly == null ||
+    p.requireMacdLineConfirm == null ||
+    p.requirePmoMomentum == null;
+  const wideUniverse =
+    p.symbolLimit == null || Number(p.symbolLimit) >= 150;
+
+  if (!hasLoosePmo && !hasLooseSellPmo && !missingGuards && !wideUniverse) {
+    if (row.description === MACD_HISTOGRAM_PMO_DESCRIPTION) {
+      return { updated: false };
+    }
+    await prisma.strategy.update({
+      where: { name: 'MACD_HISTOGRAM_PMO' },
+      data: { description: MACD_HISTOGRAM_PMO_DESCRIPTION },
+    });
+    return { updated: true };
+  }
+
+  const next = {
+    ...MACD_HISTOGRAM_PMO_PARAMS,
+    ...p,
+    ...(hasLoosePmo || hasLooseSellPmo
+      ? { pmoBuyThreshold: 0, pmoSellThreshold: 0 }
+      : {}),
+    ...(missingGuards
+      ? {
+          useClosedCandleOnly: true,
+          requireMacdLineConfirm: true,
+          requirePmoMomentum: true,
+        }
+      : {}),
+    ...(wideUniverse ? { symbolLimit: 50, signalCooldownHours: 4 } : {}),
+  };
+
+  await prisma.strategy.update({
+    where: { name: 'MACD_HISTOGRAM_PMO' },
+    data: {
+      params: JSON.stringify(next),
+      description: MACD_HISTOGRAM_PMO_DESCRIPTION,
+    },
+  });
+  return { updated: true };
+}
+
 /**
  * Actualiza descrições em BD se ainda mencionarem Top Voláteis como universo (legado).
  * Idempotente; chamado em GET /api/strategies.

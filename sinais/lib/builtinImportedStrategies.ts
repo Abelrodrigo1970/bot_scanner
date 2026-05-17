@@ -2,7 +2,7 @@
  * Estratégias importadas de crypto-sinais-automaticos (MACD+PMO, afastamento, RSI queda 70).
  */
 
-import { fetchCandles, type Timeframe } from './marketData';
+import { dropFormingCandle, fetchCandles, type Timeframe } from './marketData';
 import {
   calculateMACD,
   calculatePMO,
@@ -16,6 +16,12 @@ import {
 } from './indicators';
 import type { SignalResult, StrategyParams } from './signalEngine';
 
+function paramFlag(value: unknown, defaultTrue: boolean): boolean {
+  if (value === false || value === 'false') return false;
+  if (value === true || value === 'true') return true;
+  return defaultTrue;
+}
+
 export async function runMacdHistogramPmoStrategy(
   symbol: string,
   timeframe: Timeframe,
@@ -26,14 +32,21 @@ export async function runMacdHistogramPmoStrategy(
   const fastPeriod = params.fastPeriod || 12;
   const slowPeriod = params.slowPeriod || 26;
   const signalPeriod = params.signalPeriod || 9;
-  const pmoBuyThreshold = params.pmoBuyThreshold ?? -0.5;
-  const pmoSellThreshold = params.pmoSellThreshold ?? 0.5;
+  const pmoBuyThreshold = params.pmoBuyThreshold ?? 0;
+  const pmoSellThreshold = params.pmoSellThreshold ?? 0;
   const pmoFirstLength = params.rocPeriodPmo || 35;
   const pmoSecondLength = params.emaFastPmo || 20;
+  const minHistogramAbs = Math.max(0, Number(params.minHistogramAbs ?? 0));
+  const useClosedCandleOnly = paramFlag(params.useClosedCandleOnly, true);
+  const requireMacdLineConfirm = paramFlag(params.requireMacdLineConfirm, true);
+  const requirePmoMomentum = paramFlag(params.requirePmoMomentum, true);
 
   try {
     const maxPeriod = Math.max(slowPeriod + signalPeriod, pmoFirstLength + pmoSecondLength) + 20;
-    const candles = await fetchCandles(symbol, timeframe, maxPeriod);
+    let candles = await fetchCandles(symbol, timeframe, maxPeriod + 2);
+    if (useClosedCandleOnly) {
+      candles = dropFormingCandle(candles, timeframe);
+    }
     if (candles.length < maxPeriod) return null;
 
     const closes = getCloses(candles);
@@ -47,9 +60,22 @@ export async function runMacdHistogramPmoStrategy(
     const pmo = calculatePMO(closes, pmoFirstLength, pmoSecondLength);
     if (pmo === null) return null;
 
+    const pmoPrev = requirePmoMomentum
+      ? calculatePMO(prevCloses, pmoFirstLength, pmoSecondLength)
+      : null;
+
     const currentPrice = candles[candles.length - 1].close;
 
-    if (prevMacd.histogram < 0 && macd.histogram > 0 && pmo > pmoBuyThreshold) {
+    const histogramCrossUp =
+      prevMacd.histogram < 0 &&
+      macd.histogram > 0 &&
+      (minHistogramAbs <= 0 || Math.abs(macd.histogram) >= minHistogramAbs);
+    const macdLineBullish = !requireMacdLineConfirm || macd.macd > macd.signal;
+    const pmoBullish =
+      pmo > pmoBuyThreshold &&
+      (!requirePmoMomentum || (pmoPrev !== null && pmo > pmoPrev));
+
+    if (histogramCrossUp && macdLineBullish && pmoBullish) {
       const stopLoss = currentPrice * 0.96;
       const target1 = currentPrice * 1.2;
       const histogramStrength = Math.min(50, Math.round(Math.abs(macd.histogram) * 1000));
@@ -75,7 +101,16 @@ export async function runMacdHistogramPmoStrategy(
       };
     }
 
-    if (prevMacd.histogram > 0 && macd.histogram < 0 && pmo < pmoSellThreshold) {
+    const histogramCrossDown =
+      prevMacd.histogram > 0 &&
+      macd.histogram < 0 &&
+      (minHistogramAbs <= 0 || Math.abs(macd.histogram) >= minHistogramAbs);
+    const macdLineBearish = !requireMacdLineConfirm || macd.macd < macd.signal;
+    const pmoBearish =
+      pmo < pmoSellThreshold &&
+      (!requirePmoMomentum || (pmoPrev !== null && pmo < pmoPrev));
+
+    if (histogramCrossDown && macdLineBearish && pmoBearish) {
       const stopLoss = currentPrice * 1.04;
       const target1 = currentPrice * 0.8;
       const histogramStrength = Math.min(50, Math.round(Math.abs(macd.histogram) * 1000));

@@ -1,24 +1,18 @@
 import type { PrismaClient } from '@prisma/client';
+import {
+  MACD_HISTOGRAM_PMO_DESCRIPTION,
+  MACD_HISTOGRAM_PMO_PARAMS,
+  syncMacdHistogramPmoParams,
+} from './strategyMigrations';
 
 /** Estratégias importadas (foto + afastamento 80/7) — criadas se faltarem na BD. */
 export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
   {
     name: 'MACD_HISTOGRAM_PMO',
     displayName: 'MACD Histogram 1h + PMO',
-    description:
-      'Combina cruzamento do histograma MACD (1h) com filtro PMO. COMPRA: histograma cruza para cima E PMO > -0.5. VENDA: histograma cruza para baixo E PMO < 0.5. Universo = top movers 1h.',
+    description: MACD_HISTOGRAM_PMO_DESCRIPTION,
     isActive: true,
-    params: JSON.stringify({
-      fastPeriod: 12,
-      slowPeriod: 26,
-      signalPeriod: 9,
-      rocPeriodPmo: 35,
-      emaFastPmo: 20,
-      pmoBuyThreshold: -0.5,
-      pmoSellThreshold: 0.5,
-      allowBuy: true,
-      allowSell: true,
-    }),
+    params: JSON.stringify(MACD_HISTOGRAM_PMO_PARAMS),
   },
   {
     name: 'AFASTAMENTO_MEDIO',
@@ -92,5 +86,9 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
       await prisma.strategy.create({ data: def });
       console.log(`✅ Estratégia criada: ${def.name}`);
     }
+  }
+  const macdSync = await syncMacdHistogramPmoParams(prisma);
+  if (macdSync.updated) {
+    console.log('✅ MACD_HISTOGRAM_PMO: params actualizados (filtros mais selectivos)');
   }
 }

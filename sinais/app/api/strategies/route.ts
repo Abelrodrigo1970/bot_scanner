@@ -8,6 +8,7 @@ import {
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   removeDeprecatedStrategies,
+  syncMacdHistogramPmoParams,
   syncRsiMaVolatileUniverseDescriptions,
 } from '@/lib/strategyMigrations';
 
@@ -101,6 +102,7 @@ const EMA_SCALPING_SELL_DESCRIPTION =
 async function ensureMissingStrategies() {
   await removeDeprecatedStrategies(prisma);
   await ensureMissingBuiltinStrategies(prisma);
+  await syncMacdHistogramPmoParams(prisma);
 
   const existingMaCross5m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_5M' },

@@ -1546,6 +1546,12 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2)`);
         if (symbolsToAnalyze.length === 0) continue;
+      } else if (strategy.name === 'MACD_HISTOGRAM_PMO') {
+        const lim = Math.min(150, Math.max(20, Math.floor(Number(params.symbolLimit ?? 50))));
+        symbolsToAnalyze = symbols.slice(0, lim);
+        console.log(
+          `✅ MACD Histogram + PMO: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
+        );
       }
 
       for (const symbol of symbolsToAnalyze) {
@@ -1604,9 +1610,18 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
             if (signalResult) {
               const isMaCross12x30 = strategy.name === 'MA_CROSS_5M';
+              const isMacdPmo = strategy.name === 'MACD_HISTOGRAM_PMO';
               const dedupMs = isMaCross12x30
                 ? MA_CROSS_5M_SIGNAL_COOLDOWN_MS
-                : 2 * 60 * 60 * 1000;
+                : isMacdPmo
+                  ? Math.max(
+                      1,
+                      Number(params.signalCooldownHours ?? 4)
+                    ) *
+                    60 *
+                    60 *
+                    1000
+                  : 2 * 60 * 60 * 1000;
 
               const recentSignal = await prisma.signal.findFirst({
                 where: {
@@ -1614,7 +1629,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                   strategyId: strategy.id,
                   timeframe,
                   direction: signalResult.direction,
-                  ...(isMaCross12x30
+                  ...(isMaCross12x30 || isMacdPmo
                     ? {}
                     : { status: { in: ['NEW', 'IN_PROGRESS'] } }),
                   generatedAt: {
@@ -1647,7 +1662,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 const h = dedupMs / (60 * 60 * 1000);
                 console.log(
                   `⏭️ Sinal duplicado ignorado: ${symbol} ${signalResult.direction}` +
-                    (isMaCross12x30 ? ` (cooldown ${h}h MA12×MA30)` : '')
+                    (isMaCross12x30 || isMacdPmo ? ` (cooldown ${h}h)` : '')
                 );
               }
             }
