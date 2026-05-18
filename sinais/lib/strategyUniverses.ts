@@ -79,8 +79,8 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     displayLabel: 'Afastamento médio (80/7)',
     signalTimeframes: ['1h'],
     source: 'universe_scan',
-    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-    description: 'Scanner 1: fecho acima SMA200 (1h).',
+    dataKey: 'UNIVERSE_NEAR_MA200_PCT4_1H',
+    description: 'Scanner 3: ±4% da MA80 (1h).',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
@@ -115,7 +115,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — Acima MA200 (Afastamento 80/7)',
+    label: 'Scanner 1 — Acima MA200 (MA Cross)',
   },
   {
     href: '/scanners/2',
@@ -123,6 +123,6 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/3',
-    label: 'Scanner 3 — ±4% MA80 (Afastamento 30m)',
+    label: 'Scanner 3 — ±4% MA80 (Afastamento 1h + 30m)',
   },
 ] as const;

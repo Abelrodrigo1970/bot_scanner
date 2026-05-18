@@ -46,8 +46,8 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA200_1H: {
     displayName: 'Scanner 1 — Acima da MA200 (1h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Universo: Afastamento médio (80/7).',
-    strategyNames: 'AFASTAMENTO_MEDIO',
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Universo: MA Cross 15m / 1h.',
+    strategyNames: 'MA_CROSS_5M, MA_CROSS_1H',
   },
   UNIVERSE_NEAR_MA200_PCT10_1H: {
     displayName: 'Scanner 2 — Até ±10% da EMA80 (1h)',
@@ -58,8 +58,8 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_NEAR_MA200_PCT4_1H: {
     displayName: 'Scanner 3 — Até ±4% da MA80 (1h)',
     description:
-      'Preço dentro de ±4% da SMA80 em 1h. Universo: Afastamento médio 30m (sinais em 30m).',
-    strategyNames: 'AFASTAMENTO_MEDIO_30M',
+      'Preço dentro de ±4% da MA80 em 1h. Universo: Afastamento médio 1h e Afastamento médio 30m.',
+    strategyNames: 'AFASTAMENTO_MEDIO, AFASTAMENTO_MEDIO_30M',
   },
 };
 

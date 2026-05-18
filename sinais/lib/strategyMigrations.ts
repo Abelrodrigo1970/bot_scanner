@@ -132,6 +132,32 @@ export const RSI_OVERBOUGHT_DROP_1H_PARAMS = {
 export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
   'Universo: Scanner 2 (±10% EMA80, 1h). VENDA: RSI cai de ≥70 (≥4 pts) e afastamento à EMA80 >12%. SL +8%. TP1 -9% (30% pos.) | TP2 -19% (40% pos.) | restante fecho manual.';
 
+export const AFASTAMENTO_MEDIO_DESCRIPTION =
+  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) do afastamento %; COMPRA: linha 7 de ≤2 para ≥3 com preço > EMA30. VENDA: afastamento cruza >60%. Timeframe 1h.';
+
+/** Actualiza descrição AFASTAMENTO_MEDIO se ainda referir Scanner 1. */
+export async function syncAfastamentoMedio1hScanner3Description(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'AFASTAMENTO_MEDIO' },
+    select: { description: true },
+  });
+  if (!row) return { updated: false };
+  if (
+    !row.description?.includes('Scanner 1') &&
+    !row.description?.includes('SMA200') &&
+    row.description === AFASTAMENTO_MEDIO_DESCRIPTION
+  ) {
+    return { updated: false };
+  }
+  await prisma.strategy.update({
+    where: { name: 'AFASTAMENTO_MEDIO' },
+    data: { description: AFASTAMENTO_MEDIO_DESCRIPTION },
+  });
+  return { updated: true };
+}
+
 /** Actualiza descrição e params RSI (Scanner 2 EMA80, SL/TP %). */
 export async function syncRsiOverboughtDrop1hConfig(
   prisma: PrismaClient

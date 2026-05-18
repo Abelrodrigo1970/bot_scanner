@@ -9,6 +9,7 @@ import {
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_1H_DESC,
   removeDeprecatedStrategies,
+  syncAfastamentoMedio1hScanner3Description,
   syncMacdHistogramPmoParams,
   syncMaCrossScanner1UniverseDescriptions,
   syncRsiMaVolatileUniverseDescriptions,
@@ -108,6 +109,7 @@ async function ensureMissingStrategies() {
   await syncMacdHistogramPmoParams(prisma);
   await syncMaCrossScanner1UniverseDescriptions(prisma);
   await syncRsiOverboughtDrop1hConfig(prisma);
+  await syncAfastamentoMedio1hScanner3Description(prisma);
 
   const existingMaCross5m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_5M' },

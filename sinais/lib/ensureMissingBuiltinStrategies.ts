@@ -2,8 +2,10 @@ import type { PrismaClient } from '@prisma/client';
 import {
   MACD_HISTOGRAM_PMO_DESCRIPTION,
   MACD_HISTOGRAM_PMO_PARAMS,
+  AFASTAMENTO_MEDIO_DESCRIPTION,
   RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
   RSI_OVERBOUGHT_DROP_1H_PARAMS,
+  syncAfastamentoMedio1hScanner3Description,
   syncMacdHistogramPmoParams,
   syncRsiOverboughtDrop1hConfig,
 } from './strategyMigrations';
@@ -20,8 +22,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
   {
     name: 'AFASTAMENTO_MEDIO',
     displayName: 'Afastamento médio (80/7)',
-    description:
-      'Universo: último scan Scanner 1 (fecho acima SMA200 em 1h). EMA80 + SMA(7) do afastamento %; COMPRA: linha 7 de ≤2 para ≥3 com preço > EMA30. Timeframe 1h.',
+    description: AFASTAMENTO_MEDIO_DESCRIPTION,
     isActive: true,
     params: JSON.stringify({
       maPeriod: 80,
@@ -86,5 +87,9 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const rsiSync = await syncRsiOverboughtDrop1hConfig(prisma);
   if (rsiSync.updated) {
     console.log('✅ RSI_OVERBOUGHT_DROP_1H: params/descrição actualizados (SL 8%, TP1/TP2 %)');
+  }
+  const af1hSync = await syncAfastamentoMedio1hScanner3Description(prisma);
+  if (af1hSync.updated) {
+    console.log('✅ AFASTAMENTO_MEDIO: descrição actualizada (universo Scanner 3)');
   }
 }
