@@ -3,9 +3,14 @@ import {
   MACD_HISTOGRAM_PMO_DESCRIPTION,
   MACD_HISTOGRAM_PMO_PARAMS,
   AFASTAMENTO_MEDIO_DESCRIPTION,
+  AFASTAMENTO_MEDIO_SELL_PARAMS,
+  AFASTAMENTO_MEDIO_30M_DESCRIPTION,
+  AFASTAMENTO_MEDIO_30M_DISPLAY,
   RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
   RSI_OVERBOUGHT_DROP_1H_PARAMS,
+  syncAfastamentoMedio1hBuyThresholds,
   syncAfastamentoMedio1hScanner3Description,
+  syncAfastamentoMedio30mBuyPrevMax,
   syncMacdHistogramPmoParams,
   syncRsiOverboughtDrop1hConfig,
 } from './strategyMigrations';
@@ -21,7 +26,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
   },
   {
     name: 'AFASTAMENTO_MEDIO',
-    displayName: 'Afastamento médio (80/7)',
+    displayName: 'Afastamento médio 1h (≤2→≥2)',
     description: AFASTAMENTO_MEDIO_DESCRIPTION,
     isActive: true,
     params: JSON.stringify({
@@ -29,21 +34,19 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
       smoothPeriod: 7,
       meanLineType: 'EMA',
       trendMaType: 'EMA',
-      upperThresholdPct: 60,
-      lowerThresholdPct: -60,
       buyTrendMaPeriod: 30,
       buySmoothPrevMax: 2,
-      buySmoothCurrMin: 3,
-      requireSmoothCross: false,
+      buySmoothCurrMin: 2,
+      sellSmoothPrevMin: 2,
+      sellSmoothCurrMax: 2,
       allowBuy: true,
       allowSell: true,
     }),
   },
   {
     name: 'AFASTAMENTO_MEDIO_30M',
-    displayName: 'Afastamento médio 30m (1→2)',
-    description:
-      'Universo: último scan Scanner 3 (±4% SMA80 em 1h). EMA80 + SMA(7) em 30m. COMPRA: acima EMA80, linha 1→2, preço > EMA30. VENDA: abaixo EMA80 e EMA30, linha 2→2,5. SL 6%; TP 18%.',
+    displayName: AFASTAMENTO_MEDIO_30M_DISPLAY,
+    description: AFASTAMENTO_MEDIO_30M_DESCRIPTION,
     isActive: true,
     params: JSON.stringify({
       maPeriod: 80,
@@ -51,10 +54,9 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
       meanLineType: 'EMA',
       trendMaType: 'EMA',
       buyTrendMaPeriod: 30,
-      buySmoothPrevMax: 1,
+      buySmoothPrevMax: 2,
       buySmoothCurrMin: 2,
-      sellSmoothPrevMax: 2,
-      sellSmoothCurrMin: 2.5,
+      ...AFASTAMENTO_MEDIO_SELL_PARAMS,
       stopLossPct: 0.06,
       takeProfitPct: 0.18,
       allowBuy: true,
@@ -91,5 +93,13 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const af1hSync = await syncAfastamentoMedio1hScanner3Description(prisma);
   if (af1hSync.updated) {
     console.log('✅ AFASTAMENTO_MEDIO: descrição actualizada (universo Scanner 3)');
+  }
+  const af1hBuySync = await syncAfastamentoMedio1hBuyThresholds(prisma);
+  if (af1hBuySync.updated) {
+    console.log('✅ AFASTAMENTO_MEDIO: COMPRA/VENDA ≤2↔≥2 (1h)');
+  }
+  const af30mSync = await syncAfastamentoMedio30mBuyPrevMax(prisma);
+  if (af30mSync.updated) {
+    console.log('✅ AFASTAMENTO_MEDIO_30M: COMPRA/VENDA ≤2↔≥2 (30m)');
   }
 }

@@ -257,16 +257,15 @@ export async function runAfastamentoMedioStrategy(
 
   const maPeriod = Math.max(2, Number(params.maPeriod) || 80);
   const smoothPeriod = Math.max(2, Number(params.smoothPeriod) || 7);
-  const upperThreshold = Number(params.upperThresholdPct ?? 60);
   const buyTrendMaPeriod = Math.max(2, Number(params.buyTrendMaPeriod) || 30);
   const buySmoothPrevMax = Number(params.buySmoothPrevMax ?? 2);
-  const buySmoothCurrMin = Number(params.buySmoothCurrMin ?? 3);
+  const buySmoothCurrMin = Number(params.buySmoothCurrMin ?? 2);
+  const sellSmoothPrevMin = Number(params.sellSmoothPrevMin ?? 2);
+  const sellSmoothCurrMax = Number(params.sellSmoothCurrMax ?? 2);
   const meanLineType =
     String(params.meanLineType || 'EMA').toUpperCase() === 'SMA' ? 'SMA' : 'EMA';
   const trendMaType =
     String(params.trendMaType || 'EMA').toUpperCase() === 'SMA' ? 'SMA' : 'EMA';
-  const requireSmoothCross =
-    params.requireSmoothCross === true || params.requireSmoothCross === 'true';
 
   const candlesNeeded = Math.max(maPeriod, buyTrendMaPeriod) + smoothPeriod + 40;
   try {
@@ -281,8 +280,6 @@ export async function runAfastamentoMedioStrategy(
         : getEmaPercentDistanceSeries(closes, maPeriod);
     if (distances.length < smoothPeriod + 2) return null;
 
-    const currDist = distances[distances.length - 1];
-    const prevDist = distances[distances.length - 2];
     const smoothCurr = smaTail(distances, smoothPeriod);
     const smoothPrev = smaTail(distances.slice(0, -1), smoothPeriod);
     if (smoothCurr === null || smoothPrev === null) return null;
@@ -319,29 +316,33 @@ export async function runAfastamentoMedioStrategy(
       smoothPeriod,
       meanLineType,
       trendMaType,
-      distancePct: currDist.toFixed(3),
-      prevDistancePct: prevDist.toFixed(3),
       smoothDistancePct: smoothCurr.toFixed(3),
       prevSmoothDistancePct: smoothPrev.toFixed(3),
       meanAtClose: meanAtClose.toFixed(8),
       trendMaPeriod: buyTrendMaPeriod,
       trendAtClose: trendAtClose.toFixed(8),
-      upperThreshold,
       buySmoothPrevMax,
       buySmoothCurrMin,
+      sellSmoothPrevMin,
+      sellSmoothCurrMax,
     };
 
-    const crossShort =
-      prevDist <= upperThreshold &&
-      currDist > upperThreshold &&
-      (!requireSmoothCross ||
-        (smoothPrev <= upperThreshold && smoothCurr > upperThreshold));
+    const sellCrossSmooth2To2 =
+      smoothPrev >= sellSmoothPrevMin && smoothCurr <= sellSmoothCurrMax;
 
-    if (crossShort) {
+    if (
+      sideEnabled('SELL', params) &&
+      sellCrossSmooth2To2 &&
+      currentPrice < meanAtClose &&
+      currentPrice < trendAtClose
+    ) {
       const stopLoss = currentPrice * 1.04;
-      const target1 = meanAtClose;
-      const overshoot = currDist - upperThreshold;
-      const strength = Math.min(100, Math.max(60, Math.round(65 + Math.min(overshoot, 40))));
+      const target1 = currentPrice * 0.8;
+      const drop = smoothPrev - smoothCurr;
+      const strength = Math.min(
+        100,
+        Math.max(60, Math.round(65 + Math.min(Math.max(drop, 0) * 10, 25)))
+      );
 
       return {
         direction: 'SELL',
@@ -351,14 +352,22 @@ export async function runAfastamentoMedioStrategy(
         target2: target1,
         target3: target1,
         strength,
-        extraInfo: JSON.stringify({ ...extraBase, setup: 'mean_reversion_short' }),
+        extraInfo: JSON.stringify({
+          ...extraBase,
+          setup: 'smooth_cross_2_to_2_below_ma80_ma30_1h',
+        }),
       };
     }
 
-    const buyCrossSmooth2To3 =
+    const buyCrossSmooth2To2 =
       smoothPrev <= buySmoothPrevMax && smoothCurr >= buySmoothCurrMin;
 
-    if (buyCrossSmooth2To3 && currentPrice > trendAtClose) {
+    if (
+      sideEnabled('BUY', params) &&
+      buyCrossSmooth2To2 &&
+      currentPrice > meanAtClose &&
+      currentPrice > trendAtClose
+    ) {
       const stopLoss = currentPrice * 0.96;
       const target1 = currentPrice * 1.2;
       const rise = smoothCurr - smoothPrev;
@@ -377,7 +386,7 @@ export async function runAfastamentoMedioStrategy(
         strength,
         extraInfo: JSON.stringify({
           ...extraBase,
-          setup: 'smooth_cross_2_to_3_above_ma30',
+          setup: 'smooth_cross_2_to_2_above_ma80_ma30_1h',
         }),
       };
     }
@@ -409,10 +418,10 @@ export async function runAfastamentoMedio30mStrategy(
   const maPeriod = Math.max(2, Number(params.maPeriod) || 80);
   const smoothPeriod = Math.max(2, Number(params.smoothPeriod) || 7);
   const buyTrendMaPeriod = Math.max(2, Number(params.buyTrendMaPeriod) || 30);
-  const buySmoothPrevMax = Number(params.buySmoothPrevMax ?? 1);
+  const buySmoothPrevMax = Number(params.buySmoothPrevMax ?? 2);
   const buySmoothCurrMin = Number(params.buySmoothCurrMin ?? 2);
-  const sellSmoothPrevMax = Number(params.sellSmoothPrevMax ?? 2);
-  const sellSmoothCurrMin = Number(params.sellSmoothCurrMin ?? 2.5);
+  const sellSmoothPrevMin = Number(params.sellSmoothPrevMin ?? 2);
+  const sellSmoothCurrMax = Number(params.sellSmoothCurrMax ?? 2);
   const stopLossPct = Math.min(0.5, Math.max(0.001, Number(params.stopLossPct ?? 0.06)));
   const takeProfitPct = Math.min(1, Math.max(0.001, Number(params.takeProfitPct ?? 0.18)));
   const meanLineType =
@@ -473,25 +482,25 @@ export async function runAfastamentoMedio30mStrategy(
       prevSmoothDistancePct: smoothPrev.toFixed(3),
       buySmoothPrevMax,
       buySmoothCurrMin,
-      sellSmoothPrevMax,
-      sellSmoothCurrMin,
+      sellSmoothPrevMin,
+      sellSmoothCurrMax,
     };
 
-    const sellCrossSmooth2To25 =
-      smoothPrev <= sellSmoothPrevMax && smoothCurr >= sellSmoothCurrMin;
+    const sellCrossSmooth2To2 =
+      smoothPrev >= sellSmoothPrevMin && smoothCurr <= sellSmoothCurrMax;
 
     if (
       sideEnabled('SELL', params) &&
-      sellCrossSmooth2To25 &&
+      sellCrossSmooth2To2 &&
       currentPrice < meanAtClose &&
       currentPrice < trendAtClose
     ) {
       const stopLoss = currentPrice * (1 + stopLossPct);
       const target1 = currentPrice * (1 - takeProfitPct);
-      const rise = smoothCurr - smoothPrev;
+      const drop = smoothPrev - smoothCurr;
       const strength = Math.min(
         100,
-        Math.max(60, Math.round(65 + Math.min(Math.max(rise, 0) * 10, 25)))
+        Math.max(60, Math.round(65 + Math.min(Math.max(drop, 0) * 10, 25)))
       );
 
       return {
@@ -502,7 +511,7 @@ export async function runAfastamentoMedio30mStrategy(
         strength,
         extraInfo: JSON.stringify({
           ...extraBase,
-          setup: 'smooth_cross_2_to_2_5_below_ma80_ma30',
+          setup: 'smooth_cross_2_to_2_below_ma80_ma30_30m',
           stopLossPct,
           takeProfitPct,
         }),

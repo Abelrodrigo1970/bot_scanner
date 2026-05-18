@@ -76,7 +76,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
   },
   {
     strategyName: 'AFASTAMENTO_MEDIO',
-    displayLabel: 'Afastamento médio (80/7)',
+    displayLabel: 'Afastamento médio 1h (≤2→≥2)',
     signalTimeframes: ['1h'],
     source: 'universe_scan',
     dataKey: 'UNIVERSE_NEAR_MA200_PCT4_1H',

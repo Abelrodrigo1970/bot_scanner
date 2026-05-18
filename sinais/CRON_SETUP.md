@@ -1,25 +1,26 @@
 # ⏰ Configuração do Cron Job Automático
 
-Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
+Sistema de sinais. Executa automaticamente entre 8:00 e 23:59 (ajuste o timezone no cron-job.org se necessário).
 
-## Endpoints disponíveis (modo agregado: 2 cron jobs)
+## Endpoints disponíveis (modo agregado)
 
-| Endpoint | Estratégias | Tempo estimado |
-|----------|-------------|----------------|
-| `/api/cron/run-15m` | MA Cross 5m + EMA Ribbon 15m | Resposta imediata |
-| `/api/cron/run-1h` | `run-signals` (RSI 1h + MA200 4h + **MA Cross 1h MA12/MA30** se ativo) + Volume Spike 1h + MA_VOLATILE (MA60 1h) | Resposta imediata |
+| Endpoint | Estratégias | Frequência recomendada |
+|----------|-------------|------------------------|
+| `/api/cron/run-15m` | MA Cross 15m + EMA Ribbon 15m | `*/15 8-23 * * *` |
+| `/api/cron/run-30m` | **Afastamento médio 30m** | `*/30 8-23 * * *` |
+| `/api/cron/run-1h` | RSI 1h, MA200 4h, MA Cross 1h, MACD+PMO, **Afastamento 1h**, MA_VOLATILE | `0 8-23 * * *` |
+| `/api/cron/run-universe-scans` | Scanners 1, 2 e 3 (universo) | `0 */4 8-23 * * *` (de 4 em 4 h) |
 
-**Configuração:** Crie 2 cron jobs no cron-job.org.
+**Importante:** `AFASTAMENTO_MEDIO_30M` **não** corre no `run-1h` nem no `run-signals`. Precisa do job **30m** separado.
 
-## Horários de Execução
+**Configuração mínima no cron-job.org:** 3 jobs (15m + **30m** + 1h) + 1 job para scanners (opcional mas recomendado).
 
-- **8:00** - Primeira execução do dia
-- **9:00** - Segunda execução
-- **10:00** - Terceira execução
-- ...
-- **23:00** - Última execução do dia
+## Horários de Execução (exemplo 8h–23h)
 
-**Total:** 16 execuções por dia (8:00 até 23:00)
+- **15m:** :00, :15, :30, :45 de cada hora
+- **30m:** :00 e :30 de cada hora ← **Afastamento 30m**
+- **1h:** início de cada hora
+- **Scanners:** de 4 em 4 horas (alimenta Scanner 3 usado pelo afastamento 1h e 30m)
 
 ## Configuração no cron-job.org (Recomendado)
 
@@ -27,25 +28,39 @@ Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
 1. Acesse: https://cron-job.org
 2. Crie uma conta gratuita
 
-### Passo 2: Criar os 2 Cron Jobs
+### Passo 2: Criar os Cron Jobs
 
 **Cron Job 1 – Agregado 15m:**
-- **Title:** Sinais 15m (Volume + RSI)
+- **Title:** Sinais 15m
 - **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-15m`
-- **Schedule:** `*/15 8-23 * * *` (a cada 15 min, 8h–23h)
+- **Schedule:** `*/15 8-23 * * *`
 - **Method:** GET
 - **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
 
-**Cron Job 2 – Agregado 1h:**
-- **Title:** Sinais 1h (RSI + MA200 + MA Cross 1h 12×30 + MA60 + Volume)
+**Cron Job 2 – Agregado 30m (obrigatório para Afastamento 30m):**
+- **Title:** Sinais 30m (Afastamento)
+- **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-30m`
+- **Schedule:** `*/30 8-23 * * *`
+- **Method:** GET
+- **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
+
+**Cron Job 3 – Agregado 1h:**
+- **Title:** Sinais 1h
 - **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-1h`
-- **Schedule:** `0 8-23 * * *` (hora a hora 8h–23h)
+- **Schedule:** `0 8-23 * * *`
+- **Method:** GET
+- **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
+
+**Cron Job 4 – Scanners universo (recomendado):**
+- **Title:** Scanners 1/2/3
+- **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-universe-scans`
+- **Schedule:** `0 */4 8-23 * * *`
 - **Method:** GET
 - **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
 
 ### Passo 3: Testar
-1. Clique em "Run now" para testar
-2. Verifique os logs no Railway
+1. Clique em "Run now" no job 30m
+2. Verifique os logs no Railway: `[Run-30m BG]` e `[Afastamento-30m BG] Concluído`
 
 ## Configuração de Segurança (Opcional mas Recomendado)
 
@@ -62,20 +77,21 @@ Sistema RSI + Volume Spike. Executa automaticamente entre 8:00 e 23:59.
 
 Substitua `SEU-DOMINIO` pelo domínio do seu projeto Railway.
 
-**Agregado 15m:**
 ```
 https://SEU-DOMINIO.up.railway.app/api/cron/run-15m
+https://SEU-DOMINIO.up.railway.app/api/cron/run-30m
+https://SEU-DOMINIO.up.railway.app/api/cron/run-1h
+https://SEU-DOMINIO.up.railway.app/api/cron/run-universe-scans
 ```
 
-**Agregado 1h:**
+Endpoint directo (equivalente ao que o run-30m chama):
 ```
-https://SEU-DOMINIO.up.railway.app/api/cron/run-1h
+https://SEU-DOMINIO.up.railway.app/api/cron/run-afastamento-30m
 ```
 
 **Respostas esperadas:**
-- ✅ **200 OK:** Executado com sucesso (se estiver entre 8:00-23:59)
-- ⚠️ **200 OK (fora do horário):** Mensagem informando que está fora do horário
-- ❌ **401:** Não autorizado (se CRON_SECRET estiver configurado e não fornecido)
+- ✅ **200 OK:** Processamento iniciado em background
+- ❌ **401:** Não autorizado (CRON_SECRET em falta ou incorrecto)
 - ❌ **500:** Erro na execução
 
 ## Alternativas ao cron-job.org
@@ -90,16 +106,17 @@ https://SEU-DOMINIO.up.railway.app/api/cron/run-1h
 - Monitora e pode executar URLs
 - Plano gratuito disponível
 
-### Opção 3: GitHub Actions (se o código estiver no GitHub)
-- Pode criar um workflow que executa a cada hora
-- Gratuito para repositórios públicos
-
 ## Troubleshooting
+
+### Afastamento 30m nunca gera sinais
+1. Confirme que existe o cron **`run-30m`** com `*/30` (não basta o job 1h)
+2. Confirme que o **Scanner 3** corre (`run-universe-scans`)
+3. Nos logs Railway procure `[Afastamento-30m BG] Concluído`
 
 ### Erro 502 Bad Gateway / Cron desativado
 - **Causa:** Timeout - o endpoint demorou demais (Railway ~60-300s)
-- **Solução:** Use `/api/cron/run-volume-spike` em vez de `/api/cron/run-signals`
-- Reative o cron no cron-job.org e altere a URL
+- **Solução:** Os endpoints agregados respondem 200 imediato e correm em background
+- Reative o cron no cron-job.org
 
 ### Cron não está executando
 1. Verifique se o cron-job.org está ativo
@@ -115,4 +132,3 @@ https://SEU-DOMINIO.up.railway.app/api/cron/run-1h
 - Verifique o timezone do servidor
 - O código usa UTC por padrão
 - Ajuste o horário no cron-job.org se necessário
-

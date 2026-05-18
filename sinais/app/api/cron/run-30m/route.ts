@@ -1,26 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Cron agregado 1h:
- * - run-scans-ma: MaCrossBelow + Bybit Vol1h/MA200 (MA_VOLATILE, MA Cross)
- * - run-signals: MA200 4h + MA_CROSS_1H + MACD/PMO + afastamento 1h + RSI queda 70
- *   (AFASTAMENTO_MEDIO_30M → cron separado /api/cron/run-30m)
- * - run-ma-volatile: MA_VOLATILE (MA60 1h; universo MaCrossBelow)
+ * Cron agregado 30m:
+ * - AFASTAMENTO_MEDIO_30M (velas 30m; universo Scanner 3 em 1h)
  *
- * Scanners 1/2/3: agendar à parte de 4 em 4 h → /api/cron/run-universe-scans
+ * Agendar no cron-job.org: `*/30 8-23 * * *` (às :00 e :30, 8h–23h).
+ * Não corre no run-1h nem no run-signals (excluída de propósito).
  */
-async function run1hInBackground(origin: string, authHeader: string): Promise<void> {
+async function run30mInBackground(origin: string, authHeader: string): Promise<void> {
   try {
-    console.log('[Run-1h BG] Iniciando agregado 1h...');
+    console.log('[Run-30m BG] Iniciando agregado 30m...');
 
     const headers: Record<string, string> = {};
     if (authHeader) headers.authorization = authHeader;
 
-    const calls = [
-      `${origin}/api/cron/run-scans-ma`,
-      `${origin}/api/cron/run-signals`,
-      `${origin}/api/cron/run-ma-volatile`,
-    ];
+    const calls = [`${origin}/api/cron/run-afastamento-30m`];
 
     const results = await Promise.allSettled(
       calls.map((url) => fetch(url, { method: 'GET', headers, cache: 'no-store' }))
@@ -32,15 +26,15 @@ async function run1hInBackground(origin: string, authHeader: string): Promise<vo
       const result = results[i];
       if (result.status === 'fulfilled') {
         okCount++;
-        console.log(`[Run-1h BG] ${endpoint} -> HTTP ${result.value.status}`);
+        console.log(`[Run-30m BG] ${endpoint} -> HTTP ${result.value.status}`);
       } else {
-        console.error(`[Run-1h BG] ${endpoint} -> erro`, result.reason);
+        console.error(`[Run-30m BG] ${endpoint} -> erro`, result.reason);
       }
     }
 
-    console.log(`[Run-1h BG] Agregado 1h finalizado: ${okCount}/${calls.length} chamadas OK`);
+    console.log(`[Run-30m BG] Agregado 30m finalizado: ${okCount}/${calls.length} chamadas OK`);
   } catch (error) {
-    console.error('[Run-1h BG] Erro fatal:', error);
+    console.error('[Run-30m BG] Erro fatal:', error);
   }
 }
 
@@ -73,19 +67,19 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const origin = resolveInternalOrigin(request);
 
-    run1hInBackground(origin, authHeader || (cronSecret ? `Bearer ${cronSecret}` : ''));
+    run30mInBackground(origin, authHeader || (cronSecret ? `Bearer ${cronSecret}` : ''));
 
     return NextResponse.json({
       success: true,
       message:
-        'Processamento agregado 1h: MA Cross/Bybit scan + MA200 + MA Cross 1h + estratégias importadas + MA60 1h (Scanners 1–3: cron 4h separado)',
+        'Processamento agregado 30m iniciado (Afastamento médio 30m). Agendar */30 no cron-job.org.',
       executedAt: now.toISOString(),
     });
   } catch (error) {
-    console.error('Erro no cron agregado 1h:', error);
+    console.error('Erro no cron agregado 30m:', error);
     return NextResponse.json(
       {
-        error: 'Ocorreu um erro ao executar cron 1h',
+        error: 'Ocorreu um erro ao executar cron 30m',
         details: error instanceof Error ? error.message : 'Erro desconhecido',
       },
       { status: 500 }

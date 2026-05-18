@@ -132,8 +132,146 @@ export const RSI_OVERBOUGHT_DROP_1H_PARAMS = {
 export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
   'Universo: Scanner 2 (±10% EMA80, 1h). VENDA: RSI cai de ≥70 (≥4 pts) e afastamento à EMA80 >12%. SL +8%. TP1 -9% (30% pos.) | TP2 -19% (40% pos.) | restante fecho manual.';
 
+export const AFASTAMENTO_MEDIO_DISPLAY = 'Afastamento médio 1h (≤2→≥2)';
+
 export const AFASTAMENTO_MEDIO_DESCRIPTION =
-  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) do afastamento %; COMPRA: linha 7 de ≤2 para ≥3 com preço > EMA30. VENDA: afastamento cruza >60%. Timeframe 1h.';
+  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 1h. COMPRA: linha ≤2%→≥2%, preço > EMA80 e > EMA30 (SL -4%, TP +20%). VENDA: linha ≥2%→≤2%, preço < EMA80 e < EMA30 (SL +4%, TP -20%).';
+
+/** COMPRA 1h/30m: smooth anterior ≤2% e actual ≥2%. */
+export const AFASTAMENTO_MEDIO_BUY_PARAMS = {
+  buySmoothPrevMax: 2,
+  buySmoothCurrMin: 2,
+} as const;
+
+/** VENDA 1h/30m: espelho da compra — smooth anterior ≥2% e actual ≤2%. */
+export const AFASTAMENTO_MEDIO_SELL_PARAMS = {
+  sellSmoothPrevMin: 2,
+  sellSmoothCurrMax: 2,
+} as const;
+
+export const AFASTAMENTO_MEDIO_30M_DISPLAY = 'Afastamento médio 30m (≤2↔≥2)';
+
+export const AFASTAMENTO_MEDIO_30M_DESCRIPTION =
+  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 30m. COMPRA: linha ≤2%→≥2%, preço > EMA80 e > EMA30. VENDA: linha ≥2%→≤2%, preço < EMA80 e < EMA30. SL 6%; TP 18%.';
+
+/** @deprecated Use AFASTAMENTO_MEDIO_BUY_PARAMS */
+export const AFASTAMENTO_MEDIO_30M_BUY_PARAMS = AFASTAMENTO_MEDIO_BUY_PARAMS;
+
+/** Actualiza COMPRA ≤2→≥2 em AFASTAMENTO_MEDIO (1h). */
+export async function syncAfastamentoMedio1hBuyThresholds(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'AFASTAMENTO_MEDIO' },
+    select: { params: true, displayName: true, description: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const currMin = Number(p.buySmoothCurrMin);
+  const prevMax = Number(p.buySmoothPrevMax);
+  const needsBuy =
+    p.buySmoothCurrMin == null ||
+    currMin === 3 ||
+    currMin > 2 ||
+    p.buySmoothPrevMax == null ||
+    prevMax === 1 ||
+    prevMax < 2;
+  const needsSell =
+    p.sellSmoothPrevMin == null ||
+    p.sellSmoothCurrMax == null ||
+    p.sellSmoothCurrMin != null ||
+    p.sellSmoothPrevMax != null ||
+    Number(p.sellSmoothCurrMin) === 2.5;
+  const needsMeta =
+    row.displayName?.includes('(80/7)') ||
+    row.description?.includes('≥3') ||
+    row.description?.includes('para ≥3') ||
+    row.description?.includes('>60%') ||
+    row.description !== AFASTAMENTO_MEDIO_DESCRIPTION;
+
+  if (!needsBuy && !needsSell && !needsMeta) return { updated: false };
+
+  const next: Record<string, unknown> = {
+    ...p,
+    ...(needsBuy ? AFASTAMENTO_MEDIO_BUY_PARAMS : {}),
+    ...(needsSell ? AFASTAMENTO_MEDIO_SELL_PARAMS : {}),
+  };
+  if (needsSell) {
+    delete next.sellSmoothPrevMax;
+    delete next.sellSmoothCurrMin;
+  }
+
+  await prisma.strategy.update({
+    where: { name: 'AFASTAMENTO_MEDIO' },
+    data: {
+      params: JSON.stringify(next),
+      displayName: AFASTAMENTO_MEDIO_DISPLAY,
+      description: AFASTAMENTO_MEDIO_DESCRIPTION,
+    },
+  });
+  return { updated: true };
+}
+
+/** Actualiza buySmoothPrevMax 1→2 em AFASTAMENTO_MEDIO_30M (deploy / cron). */
+export async function syncAfastamentoMedio30mBuyPrevMax(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'AFASTAMENTO_MEDIO_30M' },
+    select: { params: true, displayName: true, description: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const prevMax = Number(p.buySmoothPrevMax);
+  const needsBuyPrev =
+    p.buySmoothPrevMax == null || prevMax === 1 || prevMax < 2;
+  const needsSell =
+    p.sellSmoothPrevMin == null ||
+    p.sellSmoothCurrMax == null ||
+    p.sellSmoothCurrMin != null ||
+    Number(p.sellSmoothCurrMin) === 2.5;
+  const needsMeta =
+    row.displayName?.includes('1→2') ||
+    row.description?.includes('linha 1→2') ||
+    row.description?.includes('2→2,5') ||
+    row.description !== AFASTAMENTO_MEDIO_30M_DESCRIPTION;
+
+  if (!needsBuyPrev && !needsSell && !needsMeta) return { updated: false };
+
+  const next: Record<string, unknown> = {
+    ...p,
+    ...(needsBuyPrev ? AFASTAMENTO_MEDIO_BUY_PARAMS : {}),
+    ...(needsSell ? AFASTAMENTO_MEDIO_SELL_PARAMS : {}),
+  };
+  if (needsSell) {
+    delete next.sellSmoothPrevMax;
+    delete next.sellSmoothCurrMin;
+  }
+
+  await prisma.strategy.update({
+    where: { name: 'AFASTAMENTO_MEDIO_30M' },
+    data: {
+      params: JSON.stringify(next),
+      displayName: AFASTAMENTO_MEDIO_30M_DISPLAY,
+      description: AFASTAMENTO_MEDIO_30M_DESCRIPTION,
+    },
+  });
+  return { updated: true };
+}
 
 /** Actualiza descrição AFASTAMENTO_MEDIO se ainda referir Scanner 1. */
 export async function syncAfastamentoMedio1hScanner3Description(
