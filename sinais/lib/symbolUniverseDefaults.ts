@@ -11,7 +11,7 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
   UNIVERSE_ABOVE_MA200_1H: {
     ruleType: 'ABOVE_MA',
     maPeriod: 200,
-    maxDistancePct: null,
+    maxDistancePct: 10,
     timeframe: '1h',
     minQuoteVolume: 100000,
     candidateLimit: 400,
@@ -44,9 +44,9 @@ export const BUILTIN_UNIVERSE_META: Record<
   { displayName: string; description: string; strategyNames: string }
 > = {
   UNIVERSE_ABOVE_MA200_1H: {
-    displayName: 'Scanner 1 — Acima da MA200 (1h)',
+    displayName: 'Scanner 1 — 0–10% acima SMA200 (1h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Universo: MA Cross 15m / 1h.',
+      'Perpétuos USDT (top volume) com fecho entre 0% e +10% acima da SMA200 em 1h. Universo: MA Cross 15m / 1h.',
     strategyNames: 'MA_CROSS_5M, MA_CROSS_1H',
   },
   UNIVERSE_NEAR_MA200_PCT10_1H: {

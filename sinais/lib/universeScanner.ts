@@ -58,7 +58,8 @@ export async function scanSymbolUniverse(
           const pctFromMa = ((close - ma) / ma) * 100;
 
           if (def.ruleType === 'ABOVE_MA') {
-            if (close <= ma) return null;
+            if (close < ma) return null;
+            if (def.maxDistancePct != null && pctFromMa > def.maxDistancePct) return null;
             return { symbol, close, ma, pctFromMa };
           }
           if (def.ruleType === 'WITHIN_PCT_OF_MA') {

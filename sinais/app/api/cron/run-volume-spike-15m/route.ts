@@ -30,7 +30,7 @@ const MA_CROSS_5M_MIN_STRENGTH = 70;
 /**
  * MA Cross 15m (MA12/MA30) em background.
  * Cálculo em velas 15m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
- * Universo: Scanner 1 — último scan `UNIVERSE_ABOVE_MA200_1H` (fecho acima SMA200 em 1h).
+ * Universo: Scanner 1 — último scan `UNIVERSE_ABOVE_MA200_1H` (fecho 0–10% acima SMA200 em 1h).
  * Não cria novo sinal se já existir posição real no mesmo sentido (um trade por símbolo até fechar).
  * Cooldown: no máximo um sinal por símbolo/direção a cada 8 h (ver `MA_CROSS_5M_SIGNAL_COOLDOWN_MS`).
  */
