@@ -82,16 +82,17 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   {
     strategyName: 'AFASTAMENTO_MEDIO',
     displayNames: ['Afastamento médio 1h (≤2→≥2)', 'Afastamento médio 1h (≤2↔≥2)'],
-    buy: side(4, 20, 100),
-    sell: side(4, 20, 100),
-    summary: 'COMPRA: SL -4% | TP +20%. VENDA: SL +4% | TP -20%.',
+    buy: side(4, 9, 40),
+    sell: side(4, 9, 40),
+    summary:
+      'SL 4%. TP1 ±9% (40% pos.). Restante às 24h.',
   },
   {
     strategyName: 'AFASTAMENTO_MEDIO_30M',
     displayNames: ['Afastamento médio 30m (≤2↔≥2)'],
-    buy: side(6, 18, 100),
-    sell: side(6, 18, 100),
-    summary: 'SL 6%. TP ±18% (posição total).',
+    buy: side(6, 9, 50),
+    sell: side(6, 9, 50),
+    summary: 'SL 6%. TP1 ±9% (50% pos.). Restante às 24h.',
   },
   {
     strategyName: 'RSI_OVERBOUGHT_DROP_1H',

@@ -135,7 +135,15 @@ export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
 export const AFASTAMENTO_MEDIO_DISPLAY = 'Afastamento médio 1h (≤2→≥2)';
 
 export const AFASTAMENTO_MEDIO_DESCRIPTION =
-  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 1h. COMPRA: linha ≤2%→≥2%, preço > EMA80 e > EMA30 (SL -4%, TP +20%). VENDA: linha ≥2%→≤2%, preço < EMA80 e < EMA30 (SL +4%, TP -20%).';
+  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 1h. COMPRA: linha ≤2%→≥2%, preço > EMA80 e > EMA30 (SL -4%, TP1 +9% (40%) | restante às 24h). VENDA: linha ≥2%→≤2%, preço < EMA80 e < EMA30 (SL +4%, TP1 -9% (40%) | restante às 24h).';
+
+/** SL/TP 1h: TP parcial + restante ao fecho 24h. */
+export const AFASTAMENTO_MEDIO_EXIT_PARAMS = {
+  stopLossPct: 0.04,
+  tp1Pct: 0.09,
+  tp1Position: 40,
+  closeAfterHours: 24,
+} as const;
 
 /** COMPRA 1h/30m: smooth anterior ≤2% e actual ≥2%. */
 export const AFASTAMENTO_MEDIO_BUY_PARAMS = {
@@ -151,8 +159,16 @@ export const AFASTAMENTO_MEDIO_SELL_PARAMS = {
 
 export const AFASTAMENTO_MEDIO_30M_DISPLAY = 'Afastamento médio 30m (≤2↔≥2)';
 
+/** SL/TP 30m: TP parcial + restante ao fecho 24h. */
+export const AFASTAMENTO_MEDIO_30M_EXIT_PARAMS = {
+  stopLossPct: 0.06,
+  tp1Pct: 0.09,
+  tp1Position: 50,
+  closeAfterHours: 24,
+} as const;
+
 export const AFASTAMENTO_MEDIO_30M_DESCRIPTION =
-  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 30m. COMPRA: linha ≤2%→≥2%, preço > EMA80 e > EMA30. VENDA: linha ≥2%→≤2%, preço < EMA80 e < EMA30. SL 6%; TP 18%.';
+  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 30m. COMPRA: linha ≤2%→≥2%, preço > EMA80 e > EMA30 (SL -6%, TP1 +9% (50%) | restante às 24h). VENDA: linha ≥2%→≤2%, preço < EMA80 e < EMA30 (SL +6%, TP1 -9% (50%) | restante às 24h).';
 
 /** @deprecated Use AFASTAMENTO_MEDIO_BUY_PARAMS */
 export const AFASTAMENTO_MEDIO_30M_BUY_PARAMS = AFASTAMENTO_MEDIO_BUY_PARAMS;
@@ -194,14 +210,22 @@ export async function syncAfastamentoMedio1hBuyThresholds(
     row.description?.includes('≥3') ||
     row.description?.includes('para ≥3') ||
     row.description?.includes('>60%') ||
+    row.description?.includes('TP +20%') ||
+    row.description?.includes('TP -20%') ||
     row.description !== AFASTAMENTO_MEDIO_DESCRIPTION;
+  const needsExit =
+    Number(p.stopLossPct ?? 0) !== AFASTAMENTO_MEDIO_EXIT_PARAMS.stopLossPct ||
+    Number(p.tp1Pct ?? 0) !== AFASTAMENTO_MEDIO_EXIT_PARAMS.tp1Pct ||
+    Number(p.tp1Position ?? 0) !== AFASTAMENTO_MEDIO_EXIT_PARAMS.tp1Position ||
+    Number(p.closeAfterHours ?? 0) !== AFASTAMENTO_MEDIO_EXIT_PARAMS.closeAfterHours;
 
-  if (!needsBuy && !needsSell && !needsMeta) return { updated: false };
+  if (!needsBuy && !needsSell && !needsMeta && !needsExit) return { updated: false };
 
   const next: Record<string, unknown> = {
     ...p,
     ...(needsBuy ? AFASTAMENTO_MEDIO_BUY_PARAMS : {}),
     ...(needsSell ? AFASTAMENTO_MEDIO_SELL_PARAMS : {}),
+    ...(needsExit || needsMeta ? AFASTAMENTO_MEDIO_EXIT_PARAMS : {}),
   };
   if (needsSell) {
     delete next.sellSmoothPrevMax;
@@ -248,15 +272,26 @@ export async function syncAfastamentoMedio30mBuyPrevMax(
     row.displayName?.includes('1→2') ||
     row.description?.includes('linha 1→2') ||
     row.description?.includes('2→2,5') ||
+    row.description?.includes('TP 18%') ||
     row.description !== AFASTAMENTO_MEDIO_30M_DESCRIPTION;
+  const needsExit =
+    Number(p.stopLossPct ?? 0) !== AFASTAMENTO_MEDIO_30M_EXIT_PARAMS.stopLossPct ||
+    Number(p.tp1Pct ?? 0) !== AFASTAMENTO_MEDIO_30M_EXIT_PARAMS.tp1Pct ||
+    Number(p.tp1Position ?? 0) !== AFASTAMENTO_MEDIO_30M_EXIT_PARAMS.tp1Position ||
+    Number(p.closeAfterHours ?? 0) !== AFASTAMENTO_MEDIO_30M_EXIT_PARAMS.closeAfterHours ||
+    p.takeProfitPct != null;
 
-  if (!needsBuyPrev && !needsSell && !needsMeta) return { updated: false };
+  if (!needsBuyPrev && !needsSell && !needsMeta && !needsExit) return { updated: false };
 
   const next: Record<string, unknown> = {
     ...p,
     ...(needsBuyPrev ? AFASTAMENTO_MEDIO_BUY_PARAMS : {}),
     ...(needsSell ? AFASTAMENTO_MEDIO_SELL_PARAMS : {}),
+    ...(needsExit || needsMeta ? AFASTAMENTO_MEDIO_30M_EXIT_PARAMS : {}),
   };
+  if (needsExit) {
+    delete next.takeProfitPct;
+  }
   if (needsSell) {
     delete next.sellSmoothPrevMax;
     delete next.sellSmoothCurrMin;

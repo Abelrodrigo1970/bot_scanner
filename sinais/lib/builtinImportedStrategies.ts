@@ -248,6 +248,74 @@ export async function runRsiOverboughtDrop1hStrategy(
   }
 }
 
+function afastamentoExitLevels(
+  currentPrice: number,
+  direction: 'BUY' | 'SELL',
+  params: StrategyParams,
+  defaults: {
+    stopLossPct: number;
+    tp1Pct: number;
+    tp1Position: number;
+    closeAfterHours: number;
+  }
+): {
+  stopLoss: number;
+  target1: number;
+  extraExit: Record<string, unknown>;
+} {
+  const stopLossPct = Number(params.stopLossPct ?? defaults.stopLossPct);
+  const tp1Pct = Number(params.tp1Pct ?? defaults.tp1Pct);
+  const tp1Position = Number(params.tp1Position ?? defaults.tp1Position);
+  const closeAfterHours = Number(params.closeAfterHours ?? defaults.closeAfterHours);
+  const stopLoss =
+    direction === 'BUY'
+      ? currentPrice * (1 - stopLossPct)
+      : currentPrice * (1 + stopLossPct);
+  const target1 =
+    direction === 'BUY'
+      ? currentPrice * (1 + tp1Pct)
+      : currentPrice * (1 - tp1Pct);
+  const slLabel = `${(stopLossPct * 100).toFixed(0)}%`;
+  const tpLabel = `${(tp1Pct * 100).toFixed(0)}%`;
+  return {
+    stopLoss,
+    target1,
+    extraExit: {
+      stopLossPct,
+      tp1Pct,
+      tp1Position,
+      closeAfterHours,
+      tp1Percent: tp1Pct * 100,
+      executionProfile:
+        direction === 'BUY'
+          ? `SL -${slLabel} | TP1 +${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`
+          : `SL +${slLabel} | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+    },
+  };
+}
+
+const AFASTAMENTO_1H_EXIT_DEFAULTS = {
+  stopLossPct: 0.04,
+  tp1Pct: 0.09,
+  tp1Position: 40,
+  closeAfterHours: 24,
+} as const;
+
+const AFASTAMENTO_30M_EXIT_DEFAULTS = {
+  stopLossPct: 0.06,
+  tp1Pct: 0.09,
+  tp1Position: 50,
+  closeAfterHours: 24,
+} as const;
+
+function afastamento1hExitLevels(
+  currentPrice: number,
+  direction: 'BUY' | 'SELL',
+  params: StrategyParams
+) {
+  return afastamentoExitLevels(currentPrice, direction, params, AFASTAMENTO_1H_EXIT_DEFAULTS);
+}
+
 export async function runAfastamentoMedioStrategy(
   symbol: string,
   timeframe: Timeframe,
@@ -336,8 +404,11 @@ export async function runAfastamentoMedioStrategy(
       currentPrice < meanAtClose &&
       currentPrice < trendAtClose
     ) {
-      const stopLoss = currentPrice * 1.04;
-      const target1 = currentPrice * 0.8;
+      const { stopLoss, target1, extraExit } = afastamento1hExitLevels(
+        currentPrice,
+        'SELL',
+        params
+      );
       const drop = smoothPrev - smoothCurr;
       const strength = Math.min(
         100,
@@ -349,11 +420,10 @@ export async function runAfastamentoMedioStrategy(
         entryPrice: currentPrice,
         stopLoss,
         target1,
-        target2: target1,
-        target3: target1,
         strength,
         extraInfo: JSON.stringify({
           ...extraBase,
+          ...extraExit,
           setup: 'smooth_cross_2_to_2_below_ma80_ma30_1h',
         }),
       };
@@ -368,8 +438,11 @@ export async function runAfastamentoMedioStrategy(
       currentPrice > meanAtClose &&
       currentPrice > trendAtClose
     ) {
-      const stopLoss = currentPrice * 0.96;
-      const target1 = currentPrice * 1.2;
+      const { stopLoss, target1, extraExit } = afastamento1hExitLevels(
+        currentPrice,
+        'BUY',
+        params
+      );
       const rise = smoothCurr - smoothPrev;
       const strength = Math.min(
         100,
@@ -381,11 +454,10 @@ export async function runAfastamentoMedioStrategy(
         entryPrice: currentPrice,
         stopLoss,
         target1,
-        target2: target1,
-        target3: target1,
         strength,
         extraInfo: JSON.stringify({
           ...extraBase,
+          ...extraExit,
           setup: 'smooth_cross_2_to_2_above_ma80_ma30_1h',
         }),
       };
@@ -420,8 +492,6 @@ export async function runAfastamentoMedio30mStrategy(
   const buySmoothCurrMin = Number(params.buySmoothCurrMin ?? 2);
   const sellSmoothPrevMin = Number(params.sellSmoothPrevMin ?? 2);
   const sellSmoothCurrMax = Number(params.sellSmoothCurrMax ?? 2);
-  const stopLossPct = Math.min(0.5, Math.max(0.001, Number(params.stopLossPct ?? 0.06)));
-  const takeProfitPct = Math.min(1, Math.max(0.001, Number(params.takeProfitPct ?? 0.18)));
   const meanLineType =
     String(params.meanLineType || 'EMA').toUpperCase() === 'SMA' ? 'SMA' : 'EMA';
   const trendMaType =
@@ -493,8 +563,12 @@ export async function runAfastamentoMedio30mStrategy(
       currentPrice < meanAtClose &&
       currentPrice < trendAtClose
     ) {
-      const stopLoss = currentPrice * (1 + stopLossPct);
-      const target1 = currentPrice * (1 - takeProfitPct);
+      const { stopLoss, target1, extraExit } = afastamentoExitLevels(
+        currentPrice,
+        'SELL',
+        params,
+        AFASTAMENTO_30M_EXIT_DEFAULTS
+      );
       const drop = smoothPrev - smoothCurr;
       const strength = Math.min(
         100,
@@ -509,9 +583,8 @@ export async function runAfastamentoMedio30mStrategy(
         strength,
         extraInfo: JSON.stringify({
           ...extraBase,
+          ...extraExit,
           setup: 'smooth_cross_2_to_2_below_ma80_ma30_30m',
-          stopLossPct,
-          takeProfitPct,
         }),
       };
     }
@@ -525,8 +598,12 @@ export async function runAfastamentoMedio30mStrategy(
       currentPrice > meanAtClose &&
       currentPrice > trendAtClose
     ) {
-      const stopLoss = currentPrice * (1 - stopLossPct);
-      const target1 = currentPrice * (1 + takeProfitPct);
+      const { stopLoss, target1, extraExit } = afastamentoExitLevels(
+        currentPrice,
+        'BUY',
+        params,
+        AFASTAMENTO_30M_EXIT_DEFAULTS
+      );
       const rise = smoothCurr - smoothPrev;
       const strength = Math.min(
         100,
@@ -541,9 +618,8 @@ export async function runAfastamentoMedio30mStrategy(
         strength,
         extraInfo: JSON.stringify({
           ...extraBase,
-          setup: 'smooth_cross_1_to_2_above_trend_ma_30m',
-          stopLossPct,
-          takeProfitPct,
+          ...extraExit,
+          setup: 'smooth_cross_2_to_2_above_ma80_ma30_30m',
         }),
       };
     }
