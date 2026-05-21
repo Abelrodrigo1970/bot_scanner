@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runAllStrategies } from '@/lib/signalEngine';
+import { runAllStrategies, strategyAllowsAutoExecuteDirection } from '@/lib/signalEngine';
 import { update24hResults, updateMissingHighLow24h } from '@/lib/update24hResults';
 import { prisma } from '@/lib/db';
 import {
@@ -89,6 +89,13 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
                 AND status = 'IN_PROGRESS'
             `;
             console.log(`[Run-Signals BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
+          }
+
+          if (!strategyAllowsAutoExecuteDirection(sig.direction as 'BUY' | 'SELL', ma200Params)) {
+            console.log(
+              `[Run-Signals BG] ⏭️ Auto-exec ${sig.direction} desactivada (allowBuy/allowSell) — sinal mantido: ${sig.symbol}`
+            );
+            continue;
           }
 
           const execResult = await executeSignalReal({

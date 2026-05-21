@@ -402,10 +402,8 @@ function sideEnabled(
   direction: 'BUY' | 'SELL',
   params: StrategyParams
 ): boolean {
-  if (direction === 'BUY') {
-    return params.allowBuy !== false && params.buyEnabled !== false;
-  }
-  return params.allowSell !== false && params.sellEnabled !== false;
+  if (direction === 'BUY') return params.buyEnabled !== false;
+  return params.sellEnabled !== false;
 }
 
 export async function runAfastamentoMedio30mStrategy(

@@ -3,6 +3,7 @@ import { isAuthenticated } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 import { prisma } from '@/lib/db';
+import { strategyAllowsAutoExecuteDirection } from '@/lib/signalEngine';
 import {
   executeSignalReal,
   getExecutorStatus,
@@ -115,6 +116,16 @@ export async function POST(request: NextRequest) {
         WHERE symbol = ${signal.symbol}
           AND status = 'IN_PROGRESS'
       `;
+    }
+
+    if (!strategyAllowsAutoExecuteDirection(signal.direction as 'BUY' | 'SELL', stratParams)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Auto-execução ${signal.direction === 'BUY' ? 'COMPRA' : 'VENDA'} desactivada nesta estratégia`,
+        },
+        { status: 400 }
+      );
     }
 
     const result = await executeSignalReal({

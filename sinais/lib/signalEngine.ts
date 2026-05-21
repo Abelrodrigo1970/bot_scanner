@@ -57,10 +57,10 @@ export interface StrategyParams {
 export const MA_CROSS_5M_SIGNAL_COOLDOWN_MS = 8 * 60 * 60 * 1000;
 
 /**
- * Toggles COMPRA/VENDA (página Estratégias → `params.allowBuy` / `params.allowSell`).
- * Só bloqueiam quando são exactamente `false`; omitidos → ambos permitidos (compatível com registos antigos).
+ * COMPRA/VENDA (Estratégias → `params.allowBuy` / `params.allowSell`) controla só auto-execução na corretora.
+ * Só bloqueiam ordens quando são exactamente `false`; omitidos → ambos permitidos (compatível com registos antigos).
  */
-export function strategyAllowsSignalDirection(
+export function strategyAllowsAutoExecuteDirection(
   direction: 'BUY' | 'SELL',
   params: StrategyParams | Record<string, unknown>
 ): boolean {
@@ -68,14 +68,20 @@ export function strategyAllowsSignalDirection(
   return params.allowSell !== false;
 }
 
-export function strategyHasAnyAllowedDirection(
+/** @deprecated Alias — preferir `strategyAllowsAutoExecuteDirection`. */
+export const strategyAllowsSignalDirection = strategyAllowsAutoExecuteDirection;
+
+export function strategyHasAnyAutoExecuteDirection(
   params: StrategyParams | Record<string, unknown>
 ): boolean {
   return (
-    strategyAllowsSignalDirection('BUY', params) ||
-    strategyAllowsSignalDirection('SELL', params)
+    strategyAllowsAutoExecuteDirection('BUY', params) ||
+    strategyAllowsAutoExecuteDirection('SELL', params)
   );
 }
+
+/** @deprecated Alias — preferir `strategyHasAnyAutoExecuteDirection`. */
+export const strategyHasAnyAllowedDirection = strategyHasAnyAutoExecuteDirection;
 
 /**
  * Estratégia Volume Spike: Gera sinais quando volume é maior que 12 vezes a média das últimas 20 horas
@@ -1465,13 +1471,6 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
     for (const strategy of strategies) {
       const params = JSON.parse(strategy.params || '{}');
 
-      if (!strategyHasAnyAllowedDirection(params)) {
-        console.log(
-          `⏭️ ${strategy.name}: COMPRA e VENDA desactivadas (params.allowBuy/allowSell) — ignorada neste ciclo.`
-        );
-        continue;
-      }
-
       const timeframesToUse: Timeframe[] =
         strategy.name === 'MA_CROSS_5M' ? ['15m'] :
         strategy.name === 'MA_CROSS_1H' ? ['1h'] :
@@ -1601,14 +1600,10 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 continue;
             }
 
-            // Filtrar direção com base em allowBuy / allowSell; log só quando o candidato **passar** ao filtro
             if (signalResult) {
-              const dir = signalResult.direction;
-              if (!strategyAllowsSignalDirection(dir, params)) {
-                signalResult = null;
-              } else {
-                console.log(`✅ Motor: ${strategy.name} candidato válido → ${symbol} ${dir} (${timeframe})`);
-              }
+              console.log(
+                `✅ Motor: ${strategy.name} candidato válido → ${symbol} ${signalResult.direction} (${timeframe})`
+              );
             }
 
             if (signalResult) {

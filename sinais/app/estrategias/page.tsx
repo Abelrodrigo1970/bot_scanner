@@ -550,10 +550,11 @@ export default function EstrategiasPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Estratégias</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 max-w-3xl">
-          Em cada cartão, <strong>Direções permitidas</strong> controla se o motor pode <strong>criar</strong> sinais
-          long (<strong>COMPRA</strong>) e/ou short (<strong>VENDA</strong>): OFF evita novos sinais nessa direcção.
-          Os valores ficam em <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">params.allowBuy</code> e{' '}
-          <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">params.allowSell</code> na base de dados.
+          Estratégia <strong>Ativa</strong> = o motor gera sinais quando as regras batem certo. Em cada cartão,{' '}
+          <strong>COMPRA / VENDA</strong> controla só se ordens são enviadas à corretora (auto-execução no cron ou botão
+          executar): OFF mantém o sinal na app mas não abre posição nessa direcção. Valores em{' '}
+          <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">params.allowBuy</code> e{' '}
+          <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">params.allowSell</code>.
         </p>
 
         {message && (
@@ -663,10 +664,11 @@ export default function EstrategiasPage() {
                 {/* Toggles BUY / SELL — antes da exchange para ficar visível */}
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Direções permitidas
+                    Auto-execução na corretora
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                    Liga ou desliga a geração de sinais nesta direcção (o motor ignora sinais desactivados antes de gravar na BD).
+                    Enviar ordens automáticas (cron) ou manualmente nesta direcção. OFF não impede sinais — só evita
+                    abrir posição COMPRA ou VENDA na exchange seleccionada abaixo.
                     {(strategy.name === 'RSI_15M' ||
                       strategy.name === 'EMA_SCALPING' ||
                       strategy.name === 'EMA_SCALPING_SELL') ? (

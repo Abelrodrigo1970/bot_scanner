@@ -6,8 +6,7 @@ import {
   MA_CROSS_5M_SIGNAL_COOLDOWN_MS,
   runMaCross15mStrategy,
   shouldCloseMaCross5mByDiff,
-  strategyAllowsSignalDirection,
-  strategyHasAnyAllowedDirection,
+  strategyAllowsAutoExecuteDirection,
   type StrategyParams,
 } from '@/lib/signalEngine';
 import { update24hResults } from '@/lib/update24hResults';
@@ -47,13 +46,6 @@ async function runMaCross5mInBackground(
         '[MA Cross 15m BG] Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1.'
       );
     }
-    const canOpenNew = strategyHasAnyAllowedDirection(params);
-    if (!canOpenNew) {
-      console.warn(
-        '[MA Cross 15m BG] COMPRA e VENDA desactivadas na estratégia — sem novos sinais; mantém-se apenas fecho por compressão quando aplicável.'
-      );
-    }
-
     console.log(`[MA Cross 15m BG] Iniciando ${symbols.length} símbolos (15m)…`);
     let signalsCreated = 0;
     const ex = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
@@ -80,15 +72,9 @@ async function runMaCross5mInBackground(
           }
         }
 
-        const signalResult = canOpenNew
-          ? await runMaCross15mStrategy(symbol, TIMEFRAME_15M, params)
-          : null;
+        const signalResult = await runMaCross15mStrategy(symbol, TIMEFRAME_15M, params);
 
-        if (
-          signalResult &&
-          strategyAllowsSignalDirection(signalResult.direction, params) &&
-          signalResult.strength >= MA_CROSS_5M_MIN_STRENGTH
-        ) {
+        if (signalResult && signalResult.strength >= MA_CROSS_5M_MIN_STRENGTH) {
           const posGate = await inspectActivePositionForSymbol(symbol, ex);
           if (
             posGate.inspectable &&
@@ -130,7 +116,10 @@ async function runMaCross5mInBackground(
             signalsCreated++;
 
             const autoMinStrength = getAutoExecuteMinStrength();
-            if (signalResult.strength >= autoMinStrength) {
+            if (
+              signalResult.strength >= autoMinStrength &&
+              strategyAllowsAutoExecuteDirection(signalResult.direction, params)
+            ) {
               console.log(`[MA Cross 15m BG] Auto-exec: ${symbol} força ${signalResult.strength} (>= ${autoMinStrength})`);
               try {
                 const positionState = await inspectActivePositionForSymbol(created.symbol, ex);

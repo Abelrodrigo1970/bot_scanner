@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runAllStrategies } from '@/lib/signalEngine';
+import { runAllStrategies, strategyAllowsAutoExecuteDirection } from '@/lib/signalEngine';
 import { prisma } from '@/lib/db';
 import {
   executeSignalReal,
@@ -94,6 +94,13 @@ async function runMaVolatileInBackground(): Promise<void> {
                 AND status = 'IN_PROGRESS'
             `;
             console.log(`[Run-MA_VOLATILE BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
+          }
+
+          if (!strategyAllowsAutoExecuteDirection(sig.direction as 'BUY' | 'SELL', maParams)) {
+            console.log(
+              `[Run-MA_VOLATILE BG] ⏭️ Auto-exec ${sig.direction} desactivada (allowBuy/allowSell) — sinal mantido: ${sig.symbol}`
+            );
+            continue;
           }
 
           const execResult = await executeSignalReal({
