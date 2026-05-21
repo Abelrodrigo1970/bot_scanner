@@ -33,6 +33,8 @@ const ALLOWED_STRATEGIES = [
   'MA_VOLATILE',
   'MA200_VOLATILE',
   'MA Cross 5m',
+  'MA Cross 15m',
+  'MA12/MA30',
   'MA_CROSS_5M',
   'MA Cross 1h',
   'MA_CROSS_1H',

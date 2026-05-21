@@ -3,12 +3,15 @@ import { prisma } from '@/lib/db';
 import { UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 } from '@/lib/symbolUniverseDefaults';
 import { resolveUniverseScanSymbols } from '@/lib/universeScanPersistence';
 import {
-  MA_CROSS_5M_SIGNAL_COOLDOWN_MS,
   runMaCross15mStrategy,
   shouldCloseMaCross5mByDiff,
   strategyAllowsAutoExecuteDirection,
   type StrategyParams,
 } from '@/lib/signalEngine';
+import {
+  checkMaCross15mSignalGate,
+  isMaCross15mWeekendBlocked,
+} from '@/lib/maCross15mGuard';
 import { update24hResults } from '@/lib/update24hResults';
 import {
   cleanupBybitOrphanOpenOrders,
@@ -31,7 +34,7 @@ const MA_CROSS_5M_MIN_STRENGTH = 70;
  * Cálculo em velas 15m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
  * Universo: Scanner 1 — último scan `UNIVERSE_ABOVE_MA200_1H` (fecho 0–10% acima SMA200 em 1h).
  * Não cria novo sinal se já existir posição real no mesmo sentido (um trade por símbolo até fechar).
- * Cooldown: no máximo um sinal por símbolo/direção a cada 8 h (ver `MA_CROSS_5M_SIGNAL_COOLDOWN_MS`).
+ * Cooldown: no máximo um sinal por símbolo a cada 24 h; máx. 1 por dia (PT); sem fim-de-semana.
  */
 async function runMaCross5mInBackground(
   strategy: StrategyData,
@@ -84,18 +87,12 @@ async function runMaCross5mInBackground(
             continue;
           }
 
-          const cooldownSince = new Date(Date.now() - MA_CROSS_5M_SIGNAL_COOLDOWN_MS);
-          const existingSignal = await prisma.signal.findFirst({
-            where: {
-              symbol,
-              strategyId: strategy.id,
-              timeframe: TIMEFRAME_15M,
-              direction: signalResult.direction,
-              generatedAt: { gte: cooldownSince },
-            },
+          const gate = await checkMaCross15mSignalGate(prisma, {
+            symbol,
+            strategyId: strategy.id,
           });
 
-          if (!existingSignal) {
+          if (gate.allowed) {
             const created = await prisma.signal.create({
               data: {
                 symbol,
@@ -175,6 +172,8 @@ async function runMaCross5mInBackground(
                 console.error(`[MA Cross 15m BG] Erro auto-exec ${created.symbol}:`, err);
               }
             }
+          } else {
+            console.log(`[MA Cross 15m BG] ⏭️ ${symbol}: ${gate.reason}`);
           }
         }
 
@@ -231,6 +230,15 @@ export async function GET(request: NextRequest) {
         { success: false, message: 'Estratégia MA Cross 15m está inactiva' },
         { status: 400 }
       );
+    }
+
+    if (isMaCross15mWeekendBlocked(now)) {
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        message: 'MA Cross 15m inactivo ao fim-de-semana (sáb/dom, horário Portugal)',
+        executedAt: now.toISOString(),
+      });
     }
 
     const params = JSON.parse(strategy.params || '{}') as StrategyParams;

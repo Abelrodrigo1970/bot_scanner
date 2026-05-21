@@ -18,6 +18,10 @@ import {
 } from './symbolUniverseDefaults';
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
 import {
+  checkMaCross15mSignalGate,
+  isMaCross15mWeekendBlocked,
+} from './maCross15mGuard';
+import {
   fetchCandles,
   fetchTopSymbolsBy1hPriceChange,
   fetchTopSymbolsBy24hPriceChange,
@@ -53,8 +57,8 @@ export interface StrategyParams {
   [key: string]: any;
 }
 
-/** Intervalo mínimo entre dois sinais MA12×MA30 (`MA_CROSS_5M`): mesmo símbolo, timeframe e direção. */
-export const MA_CROSS_5M_SIGNAL_COOLDOWN_MS = 8 * 60 * 60 * 1000;
+/** @deprecated Importar de `maCross15mGuard` — re-export por compatibilidade. */
+export { MA_CROSS_5M_SIGNAL_COOLDOWN_MS } from './maCross15mGuard';
 
 /**
  * COMPRA/VENDA (Estratégias → `params.allowBuy` / `params.allowSell`) controla só auto-execução na corretora.
@@ -1471,6 +1475,11 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
     for (const strategy of strategies) {
       const params = JSON.parse(strategy.params || '{}');
 
+      if (strategy.name === 'MA_CROSS_5M' && isMaCross15mWeekendBlocked()) {
+        console.log('⏭️ MA Cross 15m: ignorado ao fim-de-semana (sáb/dom, horário Portugal)');
+        continue;
+      }
+
       const timeframesToUse: Timeframe[] =
         strategy.name === 'MA_CROSS_5M' ? ['15m'] :
         strategy.name === 'MA_CROSS_1H' ? ['1h'] :
@@ -1609,34 +1618,42 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
             if (signalResult) {
               const isMaCross12x30 = strategy.name === 'MA_CROSS_5M';
               const isMacdPmo = strategy.name === 'MACD_HISTOGRAM_PMO';
-              const dedupMs = isMaCross12x30
-                ? MA_CROSS_5M_SIGNAL_COOLDOWN_MS
-                : isMacdPmo
-                  ? Math.max(
-                      1,
-                      Number(params.signalCooldownHours ?? 4)
-                    ) *
-                    60 *
-                    60 *
-                    1000
-                  : 2 * 60 * 60 * 1000;
+              let canCreate = false;
+              let skipReason = '';
 
-              const recentSignal = await prisma.signal.findFirst({
-                where: {
+              if (isMaCross12x30) {
+                const gate = await checkMaCross15mSignalGate(prisma, {
                   symbol,
                   strategyId: strategy.id,
-                  timeframe,
-                  direction: signalResult.direction,
-                  ...(isMaCross12x30 || isMacdPmo
-                    ? {}
-                    : { status: { in: ['NEW', 'IN_PROGRESS'] } }),
-                  generatedAt: {
-                    gte: new Date(Date.now() - dedupMs),
-                  },
-                },
-              });
+                });
+                canCreate = gate.allowed;
+                if (!gate.allowed) skipReason = gate.reason;
+              } else {
+                const dedupMs = isMacdPmo
+                  ? Math.max(1, Number(params.signalCooldownHours ?? 4)) * 60 * 60 * 1000
+                  : 2 * 60 * 60 * 1000;
 
-              if (!recentSignal) {
+                const recentSignal = await prisma.signal.findFirst({
+                  where: {
+                    symbol,
+                    strategyId: strategy.id,
+                    timeframe,
+                    direction: signalResult.direction,
+                    ...(isMacdPmo ? {} : { status: { in: ['NEW', 'IN_PROGRESS'] } }),
+                    generatedAt: {
+                      gte: new Date(Date.now() - dedupMs),
+                    },
+                  },
+                });
+
+                canCreate = !recentSignal;
+                if (recentSignal) {
+                  const h = dedupMs / (60 * 60 * 1000);
+                  skipReason = `cooldown ${h}h`;
+                }
+              }
+
+              if (canCreate) {
                 await prisma.signal.create({
                   data: {
                     symbol,
@@ -1657,10 +1674,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 signalsCreated++;
                 console.log(`✅ Sinal criado: ${symbol} ${signalResult.direction} (${strategy.displayName})`);
               } else {
-                const h = dedupMs / (60 * 60 * 1000);
                 console.log(
                   `⏭️ Sinal duplicado ignorado: ${symbol} ${signalResult.direction}` +
-                    (isMaCross12x30 || isMacdPmo ? ` (cooldown ${h}h)` : '')
+                    (skipReason ? ` (${skipReason})` : '')
                 );
               }
             }
