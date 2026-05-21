@@ -10,6 +10,9 @@ import {
   AFASTAMENTO_MEDIO_30M_DISPLAY,
   RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
   RSI_OVERBOUGHT_DROP_1H_PARAMS,
+  PIVOT_BOSS_BEAR_15M_DESCRIPTION,
+  PIVOT_BOSS_BEAR_15M_PARAMS,
+  PIVOT_BOSS_BEAR_15M_DISPLAY,
   syncAfastamentoMedio1hBuyThresholds,
   syncAfastamentoMedio1hScanner3Description,
   syncAfastamentoMedio30mBuyPrevMax,
@@ -73,6 +76,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(RSI_OVERBOUGHT_DROP_1H_PARAMS),
+  },
+  {
+    name: 'PIVOT_BOSS_BEAR_15M',
+    displayName: PIVOT_BOSS_BEAR_15M_DISPLAY,
+    description: PIVOT_BOSS_BEAR_15M_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(PIVOT_BOSS_BEAR_15M_PARAMS),
   },
 ] as const;
 

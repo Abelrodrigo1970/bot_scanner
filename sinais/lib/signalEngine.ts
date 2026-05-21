@@ -977,6 +977,205 @@ export async function runEmaRibbonScalpingSellStrategy(
 }
 
 /**
+ * Pivot Boss Bear 15m — só VENDA.
+ * Stack bearish 12/30/80/200 (estilo Pivot Boss 4 EMA): pullback, rejeição EMA200 ou breakdown.
+ */
+export async function runPivotBossBear15mStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  if (timeframe !== '15m') return null;
+  if (params.sellEnabled === false || params.allowSell === false) return null;
+
+  const emaFast = Math.max(2, Math.floor(Number(params.emaFastPeriod ?? 12)));
+  const emaMid = Math.max(emaFast + 1, Math.floor(Number(params.emaMidPeriod ?? 30)));
+  const emaSlow = Math.max(emaMid + 1, Math.floor(Number(params.emaSlowPeriod ?? 80)));
+  const emaTrend = Math.max(emaSlow + 1, Math.floor(Number(params.emaTrendPeriod ?? 200)));
+  const atrPeriod = Math.max(2, Math.floor(Number(params.atrPeriod ?? 14)));
+  const slopeLookback = Math.max(2, Math.floor(Number(params.slopeLookback ?? 8)));
+  const minEma200SlopeDownPct = Number(params.minEma200SlopeDownPct ?? 0.15);
+  const pullbackMaxBars = Math.max(3, Math.floor(Number(params.pullbackMaxBars ?? 10)));
+  const rejectionLookback = Math.max(2, Math.floor(Number(params.rejectionLookback ?? 5)));
+  const breakdownLookback = Math.max(5, Math.floor(Number(params.breakdownLookback ?? 12)));
+  const ema200TouchTolerancePct = Number(params.ema200TouchTolerancePct ?? 0.35);
+  const strongBodyOfRangeMin = Number(params.strongBodyOfRangeMin ?? 0.55);
+  const strongBodyMinAtrMult = Number(params.strongBodyMinAtrMult ?? 0.35);
+  const closeLowerThirdMaxFrac = Number(params.closeLowerThirdMaxFrac ?? 0.35);
+  const sellBlockMaxDistBelowEma30Pct = Number(params.sellBlockMaxDistBelowEma30Pct ?? 10);
+  const swingLookback = Math.max(2, Math.floor(Number(params.swingLookback ?? 8)));
+  const swingAboveAtrMult = Number(params.swingAboveAtrMult ?? 0.15);
+  const ema30StopBufferPct = Number(params.ema30StopBufferPct ?? 0.35);
+  const minStopDistancePct = Number(params.minStopDistancePct ?? 2.5);
+  const maxStopDistancePct = Number(params.maxStopDistancePct ?? 10);
+  const stopLossPctCap = Number(params.stopLossPct ?? 0.08);
+  const tp1Pct = Number(params.tp1Pct ?? 0.09);
+  const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 50))));
+  const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
+
+  try {
+    const warm = emaTrend + breakdownLookback + pullbackMaxBars + slopeLookback + atrPeriod + 20;
+    const candlesNeeded = Math.min(1500, Math.max(260, warm));
+    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    if (candles.length < emaTrend + breakdownLookback + 5) return null;
+
+    const closedCandles = candles.slice(0, -1);
+    const lc = closedCandles.length - 1;
+    if (lc < emaTrend + breakdownLookback) return null;
+
+    const closedCloses = closedCandles.map((c) => c.close);
+    const ema12Series = calculateEMA(closedCloses, emaFast);
+    const ema30Series = calculateEMA(closedCloses, emaMid);
+    const ema80Series = calculateEMA(closedCloses, emaSlow);
+    const ema200Series = calculateEMA(closedCloses, emaTrend);
+    if (!ema12Series || !ema30Series || !ema80Series || !ema200Series) return null;
+
+    const e12 = emaValueAtClosedIdx(ema12Series, emaFast, lc);
+    const e30 = emaValueAtClosedIdx(ema30Series, emaMid, lc);
+    const e80 = emaValueAtClosedIdx(ema80Series, emaSlow, lc);
+    const e200 = emaValueAtClosedIdx(ema200Series, emaTrend, lc);
+    if (e12 == null || e30 == null || e80 == null || e200 == null || e80 === 0 || e30 === 0) {
+      return null;
+    }
+
+    const c = closedCandles[lc];
+    const entryPrice = c.close;
+
+    if (!(e200 > e80 && e80 > e30 && e30 > e12)) return null;
+    if (!(entryPrice < e80)) return null;
+    if (!(e12 < e30)) return null;
+
+    const e200ThenIdx = lc - slopeLookback;
+    const e200Then = emaValueAtClosedIdx(ema200Series, emaTrend, e200ThenIdx);
+    if (e200Then == null || e200Then === 0) return null;
+    const ema200SlopePct = ((e200 - e200Then) / e200Then) * 100;
+    if (ema200SlopePct > -minEma200SlopeDownPct) return null;
+
+    if (entryPrice < e30 && sellBlockMaxDistBelowEma30Pct > 0) {
+      const distBelowEma30Pct = ((e30 - entryPrice) / e30) * 100;
+      if (distBelowEma30Pct > sellBlockMaxDistBelowEma30Pct) return null;
+    }
+
+    const atr = calculateATR(closedCandles, atrPeriod);
+    if (atr == null || atr <= 0) return null;
+
+    if (c.close >= c.open) return null;
+    const body = c.open - c.close;
+    const range = Math.max(c.high - c.low, 1e-12);
+    if (body / range < strongBodyOfRangeMin) return null;
+    if (body < atr * strongBodyMinAtrMult) return null;
+    if ((c.close - c.low) / range > closeLowerThirdMaxFrac) return null;
+    if (c.close >= e12) return null;
+
+    let scenarioPullback = false;
+    const pbFrom = Math.max(emaTrend - 1, lc - pullbackMaxBars);
+    for (let j = pbFrom; j <= lc - 1; j++) {
+      const j12 = emaValueAtClosedIdx(ema12Series, emaFast, j);
+      const j30 = emaValueAtClosedIdx(ema30Series, emaMid, j);
+      if (j12 == null || j30 == null) continue;
+      const bar = closedCandles[j];
+      const touch12 = bar.high >= j12 * (1 - 0.002);
+      const touch30 = bar.high >= j30 * (1 - 0.002);
+      if (touch12 || touch30) {
+        scenarioPullback = true;
+        break;
+      }
+    }
+
+    let scenarioRejection200 = false;
+    const rejFrom = Math.max(emaTrend - 1, lc - rejectionLookback);
+    for (let j = rejFrom; j <= lc - 1; j++) {
+      const j200 = emaValueAtClosedIdx(ema200Series, emaTrend, j);
+      if (j200 == null) continue;
+      const bar = closedCandles[j];
+      const touch200 = bar.high >= j200 * (1 - ema200TouchTolerancePct / 100);
+      if (touch200 && bar.close < j200) {
+        scenarioRejection200 = true;
+        break;
+      }
+    }
+
+    let scenarioBreakdown = false;
+    const bdFrom = Math.max(0, lc - breakdownLookback);
+    const priorLow = lowestLow(closedCandles, bdFrom, lc - 1);
+    if (priorLow !== Infinity && c.close < priorLow) {
+      let closesAboveEma12 = 0;
+      for (let j = bdFrom; j <= lc - 1; j++) {
+        const j12 = emaValueAtClosedIdx(ema12Series, emaFast, j);
+        if (j12 == null) continue;
+        if (closedCandles[j].close > j12) closesAboveEma12++;
+      }
+      if (closesAboveEma12 >= 3) scenarioBreakdown = true;
+    }
+
+    if (!scenarioPullback && !scenarioRejection200 && !scenarioBreakdown) return null;
+
+    const scenarios: string[] = [];
+    if (scenarioPullback) scenarios.push('pullback_rejeicao_ema12_30');
+    if (scenarioRejection200) scenarios.push('rejeicao_ema200');
+    if (scenarioBreakdown) scenarios.push('breakdown_consolidacao');
+
+    const swingHi = highestHigh(closedCandles, Math.max(0, lc - swingLookback), lc);
+    const stopFromSwing = swingHi + atr * swingAboveAtrMult;
+    const stopFromEma30 = e30 * (1 + ema30StopBufferPct / 100);
+    let stopLoss = Math.max(stopFromSwing, stopFromEma30);
+
+    const minDist = entryPrice * (minStopDistancePct / 100);
+    if (stopLoss - entryPrice < minDist) stopLoss = entryPrice + minDist;
+    const maxDist = entryPrice * (maxStopDistancePct / 100);
+    if (stopLoss - entryPrice > maxDist) stopLoss = entryPrice + maxDist;
+
+    const capStop = entryPrice * (1 + stopLossPctCap);
+    if (stopLoss > capStop) stopLoss = capStop;
+
+    if (!(stopLoss > entryPrice && stopLoss - entryPrice >= minDist * 0.85)) return null;
+
+    const target1 = entryPrice * (1 - tp1Pct);
+
+    const slopeStrength = Math.min(16, Math.max(0, -ema200SlopePct - minEma200SlopeDownPct) * 4);
+    const bodyBonus = Math.min(
+      12,
+      ((body / range - strongBodyOfRangeMin) / (1 - strongBodyOfRangeMin)) * 12
+    );
+    const scenarioBonus =
+      (scenarioRejection200 ? 6 : 0) +
+      (scenarioPullback && scenarioBreakdown ? 3 : 0);
+    const strength = Math.min(
+      98,
+      Math.max(62, Math.round(62 + slopeStrength + bodyBonus + scenarioBonus))
+    );
+
+    const slLabel = `${((stopLoss / entryPrice - 1) * 100).toFixed(1)}%`;
+    const tpLabel = `${(tp1Pct * 100).toFixed(0)}%`;
+
+    return {
+      direction: 'SELL',
+      entryPrice,
+      stopLoss,
+      target1,
+      target2: undefined,
+      target3: undefined,
+      strength,
+      extraInfo: JSON.stringify({
+        scenarios,
+        emaStack: { ema12: e12, ema30: e30, ema80: e80, ema200: e200 },
+        ema200SlopePct: Number(ema200SlopePct.toFixed(3)),
+        stopLossPctCap,
+        tp1Pct,
+        tp1Position,
+        closeAfterHours,
+        bodyRangePct: Number(((body / range) * 100).toFixed(1)),
+        executionProfile:
+          `SELL apenas | Pivot Boss 4 EMA bear | SL +${slLabel} (swing/EMA30, máx. ${(stopLossPctCap * 100).toFixed(0)}%) | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+      }),
+    };
+  } catch (error) {
+    console.error(`Erro na estratégia Pivot Boss Bear 15m (${symbol}):`, error);
+    return null;
+  }
+}
+
+/**
  * Estratégia RSI 15m — Reversal oversold:
  * BUY quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32
  * Apenas BUY | SL -3% | TP1 +5% | TP2 +14%
@@ -1491,6 +1690,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         strategy.name === 'MA_CROSS_1H' ? ['1h'] :
         strategy.name === 'MA_VOLATILE' ? ['1h'] :
         strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL' ? ['15m'] :
+        strategy.name === 'PIVOT_BOSS_BEAR_15M' ? ['15m'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
         strategy.name === 'AFASTAMENTO_MEDIO_30M' ? ['30m'] :
         strategy.name === 'MACD_HISTOGRAM_PMO' ||
@@ -1505,6 +1705,12 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         symbolsToAnalyze = symbols.slice(0, lim);
         console.log(
           `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
+        );
+      } else if (strategy.name === 'PIVOT_BOSS_BEAR_15M') {
+        const lim = Math.min(250, Math.max(15, Math.floor(Number(params.symbolLimit ?? 80))));
+        symbolsToAnalyze = symbols.slice(0, lim);
+        console.log(
+          `✅ Pivot Boss Bear 15m: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
       } else if (strategy.name === 'MA200_VOLATILE') {
         const maxSymbols = params.symbolLimit ?? 500;
@@ -1588,6 +1794,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 break;
               case 'EMA_SCALPING_SELL':
                 signalResult = await runEmaRibbonScalpingSellStrategy(symbol, timeframe, params);
+                break;
+              case 'PIVOT_BOSS_BEAR_15M':
+                signalResult = await runPivotBossBear15mStrategy(symbol, timeframe, params);
                 break;
               case 'MA_VOLATILE':
                 signalResult = await runMa60VolatileStrategy(symbol, timeframe, params);

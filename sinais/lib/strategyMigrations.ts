@@ -173,6 +173,43 @@ export const AFASTAMENTO_MEDIO_30M_DESCRIPTION =
 /** @deprecated Use AFASTAMENTO_MEDIO_BUY_PARAMS */
 export const AFASTAMENTO_MEDIO_30M_BUY_PARAMS = AFASTAMENTO_MEDIO_BUY_PARAMS;
 
+export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
+
+export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
+  'Universo: Top movers 1h. Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80, EMA200 em queda. Entrada: (A) pullback com rejeição nas EMA12/30; (B) rejeição na EMA200; (C) breakdown de consolidação. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
+
+export const PIVOT_BOSS_BEAR_15M_PARAMS = {
+  emaFastPeriod: 12,
+  emaMidPeriod: 30,
+  emaSlowPeriod: 80,
+  emaTrendPeriod: 200,
+  atrPeriod: 14,
+  slopeLookback: 8,
+  minEma200SlopeDownPct: 0.15,
+  pullbackMaxBars: 10,
+  rejectionLookback: 5,
+  breakdownLookback: 12,
+  ema200TouchTolerancePct: 0.35,
+  strongBodyOfRangeMin: 0.55,
+  strongBodyMinAtrMult: 0.35,
+  closeLowerThirdMaxFrac: 0.35,
+  sellBlockMaxDistBelowEma30Pct: 10,
+  swingLookback: 8,
+  swingAboveAtrMult: 0.15,
+  ema30StopBufferPct: 0.35,
+  minStopDistancePct: 2.5,
+  maxStopDistancePct: 10,
+  stopLossPct: 0.08,
+  tp1Pct: 0.09,
+  tp1Position: 50,
+  closeAfterHours: 24,
+  symbolLimit: 80,
+  allowBuy: false,
+  allowSell: true,
+  sellEnabled: true,
+  exchange: 'binance',
+} as const;
+
 /** Actualiza COMPRA ≤2→≥2 em AFASTAMENTO_MEDIO (1h). */
 export async function syncAfastamentoMedio1hBuyThresholds(
   prisma: PrismaClient

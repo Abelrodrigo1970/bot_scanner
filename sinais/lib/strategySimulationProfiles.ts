@@ -125,6 +125,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     summary:
       'Só VENDA. SL dinâmico (ATR/swing, máx. ~2,9%). TP1 R×1,65 (~4,8%, 55%) | TP2 R×3,2 (~9,3%, 35%).',
   },
+  {
+    strategyName: 'PIVOT_BOSS_BEAR_15M',
+    displayNames: ['Pivot Boss Bear 15m (4 EMA venda)'],
+    buy: null,
+    sell: side(8, 9, 50),
+    summary:
+      'Só VENDA. Stack 12/30/80/200 bearish. SL dinâmico (máx. 8%). TP1 -9% (50%) | restante às 24h.',
+  },
 ];
 
 export function findStrategySimulationProfile(

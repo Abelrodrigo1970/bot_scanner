@@ -50,6 +50,8 @@ const ALLOWED_STRATEGIES = [
   'AFASTAMENTO_MEDIO_30M',
   'RSI queda de 70',
   'RSI_OVERBOUGHT_DROP_1H',
+  'Pivot Boss Bear',
+  'PIVOT_BOSS_BEAR_15M',
 ];
 
 /** Força mínima para executar */
