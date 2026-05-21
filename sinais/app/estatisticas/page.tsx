@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/Header';
 import Disclaimer from '@/components/Disclaimer';
+import {
+  findStrategySimulationProfile,
+  getSimulationSideForSignal,
+  simulationFieldsFromProfile,
+  STRATEGY_SIMULATION_PROFILES,
+  type StrategySimulationSide,
+} from '@/lib/strategySimulationProfiles';
 
 interface Signal {
   id: string;
@@ -121,20 +128,19 @@ export default function EstatisticasPage() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   
-  // Estados para simulação
+  // Estados para simulação (defaults = MA Cross 15m; actualizam ao filtrar estratégia)
   const [useSimulation, setUseSimulation] = useState(false);
-  // BUY (compra): defaults pedidos
-  const [buyStopLoss, setBuyStopLoss] = useState<string>('11');
-  const [buyTakeProfit1, setBuyTakeProfit1] = useState<string>('15');
-  const [buyTakeProfit2, setBuyTakeProfit2] = useState<string>('24');
-  // SELL (venda): manter defaults atuais
-  const [sellStopLoss, setSellStopLoss] = useState<string>('4');
-  const [sellTakeProfit1, setSellTakeProfit1] = useState<string>('9');
-  const [sellTakeProfit2, setSellTakeProfit2] = useState<string>('24');
-  const [buyTp1PositionPercent, setBuyTp1PositionPercent] = useState<string>('35');
-  const [buyTp2PositionPercent, setBuyTp2PositionPercent] = useState<string>('35');
-  const [sellTp1PositionPercent, setSellTp1PositionPercent] = useState<string>('35');
-  const [sellTp2PositionPercent, setSellTp2PositionPercent] = useState<string>('35');
+  const [usePerStrategyProfiles, setUsePerStrategyProfiles] = useState(true);
+  const [buyStopLoss, setBuyStopLoss] = useState<string>('15');
+  const [buyTakeProfit1, setBuyTakeProfit1] = useState<string>('44');
+  const [buyTakeProfit2, setBuyTakeProfit2] = useState<string>('0');
+  const [sellStopLoss, setSellStopLoss] = useState<string>('15');
+  const [sellTakeProfit1, setSellTakeProfit1] = useState<string>('44');
+  const [sellTakeProfit2, setSellTakeProfit2] = useState<string>('0');
+  const [buyTp1PositionPercent, setBuyTp1PositionPercent] = useState<string>('60');
+  const [buyTp2PositionPercent, setBuyTp2PositionPercent] = useState<string>('0');
+  const [sellTp1PositionPercent, setSellTp1PositionPercent] = useState<string>('60');
+  const [sellTp2PositionPercent, setSellTp2PositionPercent] = useState<string>('0');
   const [finalCloseHours, setFinalCloseHours] = useState<string>('24');
   const [simulatedStats, setSimulatedStats] = useState<Statistics | null>(null);
 
@@ -157,6 +163,42 @@ export default function EstatisticasPage() {
   useEffect(() => {
     fetchSignals();
   }, []);
+
+  useEffect(() => {
+    if (!selectedStrategy) return;
+    const profile = findStrategySimulationProfile(selectedStrategy);
+    if (!profile) return;
+    const fields = simulationFieldsFromProfile(profile);
+    setBuyStopLoss(fields.buyStopLoss);
+    setBuyTakeProfit1(fields.buyTakeProfit1);
+    setBuyTakeProfit2(fields.buyTakeProfit2);
+    setBuyTp1PositionPercent(fields.buyTp1PositionPercent);
+    setBuyTp2PositionPercent(fields.buyTp2PositionPercent);
+    setSellStopLoss(fields.sellStopLoss);
+    setSellTakeProfit1(fields.sellTakeProfit1);
+    setSellTakeProfit2(fields.sellTakeProfit2);
+    setSellTp1PositionPercent(fields.sellTp1PositionPercent);
+    setSellTp2PositionPercent(fields.sellTp2PositionPercent);
+    setFinalCloseHours(fields.finalCloseHours);
+  }, [selectedStrategy]);
+
+  const manualBuySide = (): StrategySimulationSide => ({
+    stopLossPct: parseFloat(buyStopLoss) || 15,
+    tp1Pct: parseFloat(buyTakeProfit1) || 44,
+    tp2Pct: parseFloat(buyTakeProfit2) || 0,
+    tp1PositionPct: parseFloat(buyTp1PositionPercent) || 60,
+    tp2PositionPct: parseFloat(buyTp2PositionPercent) || 0,
+    finalCloseHours: parseFloat(finalCloseHours) || 24,
+  });
+
+  const manualSellSide = (): StrategySimulationSide => ({
+    stopLossPct: parseFloat(sellStopLoss) || 15,
+    tp1Pct: parseFloat(sellTakeProfit1) || 44,
+    tp2Pct: parseFloat(sellTakeProfit2) || 0,
+    tp1PositionPct: parseFloat(sellTp1PositionPercent) || 60,
+    tp2PositionPct: parseFloat(sellTp2PositionPercent) || 0,
+    finalCloseHours: parseFloat(finalCloseHours) || 24,
+  });
 
   const fetchSignals = async () => {
     try {
@@ -204,30 +246,26 @@ export default function EstatisticasPage() {
   // Para horas > 24, usa projeção linear a partir do resultado de 24h.
   const simulateTrade = (
     signal: SignalWithResult,
-    buyParams: { stopLossPercent: number; tp1Percent: number; tp2Percent: number },
-    sellParams: { stopLossPercent: number; tp1Percent: number; tp2Percent: number },
-    buyPositionParams: { tp1PosPercent: number; tp2PosPercent: number },
-    sellPositionParams: { tp1PosPercent: number; tp2PosPercent: number },
-    finalHours: number
+    buySide: StrategySimulationSide,
+    sellSide: StrategySimulationSide
   ): number => {
     const FEE_OPEN = 0.0005;
     const FEE_CLOSE = 0.0005;
     const TOTAL_FEE = FEE_OPEN + FEE_CLOSE;
     const feeAmount = 100 * TOTAL_FEE;
 
-    // Calcular preços de stop loss e take profits
+    const activeSide = signal.direction === 'BUY' ? buySide : sellSide;
+    const stopLossPercent = activeSide.stopLossPct;
+    const tp1Percent = activeSide.tp1Pct;
+    const tp2Percent = activeSide.tp2Pct;
+    const tp1Weight = Math.max(0, Math.min(100, activeSide.tp1PositionPct)) / 100;
+    const tp2Weight = Math.max(0, Math.min(100, activeSide.tp2PositionPct)) / 100;
+    const finalWeight = Math.max(0, 1 - tp1Weight - tp2Weight);
+    const finalHours = activeSide.finalCloseHours;
+
     let stopLossPrice: number;
     let takeProfit1Price: number;
     let takeProfit2Price: number;
-
-    const activeParams = signal.direction === 'BUY' ? buyParams : sellParams;
-    const activePositionParams = signal.direction === 'BUY' ? buyPositionParams : sellPositionParams;
-    const stopLossPercent = activeParams.stopLossPercent;
-    const tp1Percent = activeParams.tp1Percent;
-    const tp2Percent = activeParams.tp2Percent;
-    const tp1Weight = Math.max(0, Math.min(100, activePositionParams.tp1PosPercent)) / 100;
-    const tp2Weight = Math.max(0, Math.min(100, activePositionParams.tp2PosPercent)) / 100;
-    const finalWeight = Math.max(0, 1 - tp1Weight - tp2Weight);
 
     if (signal.direction === 'BUY') {
       stopLossPrice = signal.entryPrice * (1 - stopLossPercent / 100);
@@ -252,7 +290,12 @@ export default function EstatisticasPage() {
     if (signal.direction === 'BUY') {
       if (signal.low24h !== null && signal.low24h <= stopLossPrice) {
         grossPercentResult = -stopLossPercent;
-      } else if (signal.high24h !== null && signal.high24h >= takeProfit2Price) {
+      } else if (
+        tp2Percent > 0 &&
+        tp2Weight > 0 &&
+        signal.high24h !== null &&
+        signal.high24h >= takeProfit2Price
+      ) {
         // TP2 atingido -> assume TP1 + TP2 + restante no fechamento final (SL limita restante)
         const cappedFinal = Math.max(finalResultPercent, -stopLossPercent);
         grossPercentResult =
@@ -271,7 +314,12 @@ export default function EstatisticasPage() {
     } else {
       if (signal.high24h !== null && signal.high24h >= stopLossPrice) {
         grossPercentResult = -stopLossPercent;
-      } else if (signal.low24h !== null && signal.low24h <= takeProfit2Price) {
+      } else if (
+        tp2Percent > 0 &&
+        tp2Weight > 0 &&
+        signal.low24h !== null &&
+        signal.low24h <= takeProfit2Price
+      ) {
         // TP2 atingido -> restante no fechamento final (SL limita restante)
         const cappedFinal = Math.max(finalResultPercent, -stopLossPercent);
         grossPercentResult =
@@ -295,45 +343,29 @@ export default function EstatisticasPage() {
 
   // Função para calcular estatísticas simuladas
   const calculateSimulatedStatistics = (sourceSignals?: SignalWithResult[]) => {
-    const buyStopLossNum = parseFloat(buyStopLoss) || 11;
-    const buyTakeProfit1Num = parseFloat(buyTakeProfit1) || 15;
-    const buyTakeProfit2Num = parseFloat(buyTakeProfit2) || 24;
-    const sellStopLossNum = parseFloat(sellStopLoss) || 4;
-    const sellTakeProfit1Num = parseFloat(sellTakeProfit1) || 9;
-    const sellTakeProfit2Num = parseFloat(sellTakeProfit2) || 24;
-    const buyTp1PositionNum = parseFloat(buyTp1PositionPercent) || 35;
-    const buyTp2PositionNum = parseFloat(buyTp2PositionPercent) || 35;
-    const sellTp1PositionNum = parseFloat(sellTp1PositionPercent) || 35;
-    const sellTp2PositionNum = parseFloat(sellTp2PositionPercent) || 35;
-    const finalHoursNum = parseFloat(finalCloseHours) || 24;
+    const buyManual = manualBuySide();
+    const sellManual = manualSellSide();
+    const perStrategy =
+      usePerStrategyProfiles && !selectedStrategy;
 
-    // Simular cada trade
     const baseSignals = sourceSignals ?? filteredSignals;
-    const simulatedSignals: SignalWithResult[] = baseSignals.map((s) => ({
-      ...s,
-      netResult: simulateTrade(
-        s,
-        {
-          stopLossPercent: buyStopLossNum,
-          tp1Percent: buyTakeProfit1Num,
-          tp2Percent: buyTakeProfit2Num,
-        },
-        {
-          stopLossPercent: sellStopLossNum,
-          tp1Percent: sellTakeProfit1Num,
-          tp2Percent: sellTakeProfit2Num,
-        },
-        {
-          tp1PosPercent: buyTp1PositionNum,
-          tp2PosPercent: buyTp2PositionNum,
-        },
-        {
-          tp1PosPercent: sellTp1PositionNum,
-          tp2PosPercent: sellTp2PositionNum,
-        },
-        finalHoursNum
-      ),
-    }));
+    const simulatedSignals: SignalWithResult[] = baseSignals.map((s) => {
+      let buySide = buyManual;
+      let sellSide = sellManual;
+
+      if (perStrategy) {
+        const profileSide = getSimulationSideForSignal(s.strategyName, s.direction);
+        if (profileSide) {
+          if (s.direction === 'BUY') buySide = profileSide;
+          else sellSide = profileSide;
+        }
+      }
+
+      return {
+        ...s,
+        netResult: simulateTrade(s, buySide, sellSide),
+      };
+    });
 
     // Recalcular estatísticas com trades simulados
     const calculatedStats = calculateStatistics(simulatedSignals);
@@ -346,7 +378,7 @@ export default function EstatisticasPage() {
     if (useSimulation) {
       calculateSimulatedStatistics(filteredSignals);
     }
-  }, [filteredSignals, useSimulation]);
+  }, [filteredSignals, useSimulation, usePerStrategyProfiles, selectedStrategy, buyStopLoss, buyTakeProfit1, buyTakeProfit2, sellStopLoss, sellTakeProfit1, sellTakeProfit2, buyTp1PositionPercent, buyTp2PositionPercent, sellTp1PositionPercent, sellTp2PositionPercent, finalCloseHours]);
 
   const calculateStatistics = (signalsToCalculate: SignalWithResult[]): Statistics => {
     const total = signalsToCalculate.length;
@@ -687,6 +719,64 @@ export default function EstatisticasPage() {
           )}
         </div>
 
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mb-6 border border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            SL / TP por estratégia (referência)
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Valores alinhados com as regras actuais do motor. Ao filtrar uma estratégia, os campos de simulação
+            preenchem-se automaticamente. Com «Todas» + simulação, use perfis automáticos por estratégia.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                    Estratégia
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                    COMPRA
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                    VENDA
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                    Notas
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {STRATEGY_SIMULATION_PROFILES.map((p) => {
+                  const fmt = (s: StrategySimulationSide | null) => {
+                    if (!s) return '—';
+                    const tp2 =
+                      s.tp2Pct > 0 ? ` | TP2 ${s.tp2Pct}% (${s.tp2PositionPct}%)` : '';
+                    return `SL ${s.stopLossPct}% | TP1 ${s.tp1Pct}% (${s.tp1PositionPct}%)${tp2}`;
+                  };
+                  return (
+                    <tr
+                      key={p.strategyName ?? p.displayNames[0]}
+                      className={
+                        selectedStrategy &&
+                        findStrategySimulationProfile(selectedStrategy)?.strategyName === p.strategyName
+                          ? 'bg-blue-50 dark:bg-blue-900/20'
+                          : undefined
+                      }
+                    >
+                      <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">
+                        {p.displayNames[0]}
+                      </td>
+                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{fmt(p.buy)}</td>
+                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{fmt(p.sell)}</td>
+                      <td className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{p.summary}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Painel de Simulação */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mb-8 border border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -827,6 +917,20 @@ export default function EstatisticasPage() {
                 </span>
               </label>
             </div>
+            <div className="flex items-center">
+              <label className="flex items-center cursor-pointer mt-6">
+                <input
+                  type="checkbox"
+                  checked={usePerStrategyProfiles}
+                  disabled={!!selectedStrategy}
+                  onChange={(e) => setUsePerStrategyProfiles(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50"
+                />
+                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  Perfis por estratégia (só «Todas»)
+                </span>
+              </label>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -910,7 +1014,30 @@ export default function EstatisticasPage() {
           {useSimulation && (
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Simulação ativa:</strong> BUY [SL {buyStopLoss}% | TP1 {buyTakeProfit1}% ({buyTp1PositionPercent}%) | TP2 {buyTakeProfit2}% ({buyTp2PositionPercent}%)] | SELL [SL {sellStopLoss}% | TP1 {sellTakeProfit1}% ({sellTp1PositionPercent}%) | TP2 {sellTakeProfit2}% ({sellTp2PositionPercent}%)] | Fechamento final em {finalCloseHours}h
+                <strong>Simulação activa:</strong>{' '}
+                {selectedStrategy ? (
+                  <>
+                    perfil de <strong>{selectedStrategy}</strong> — BUY [SL {buyStopLoss}% | TP1{' '}
+                    {buyTakeProfit1}% ({buyTp1PositionPercent}%)
+                    {parseFloat(buyTakeProfit2) > 0
+                      ? ` | TP2 ${buyTakeProfit2}% (${buyTp2PositionPercent}%)`
+                      : ''}
+                    ] | SELL [SL {sellStopLoss}% | TP1 {sellTakeProfit1}% ({sellTp1PositionPercent}%)
+                    {parseFloat(sellTakeProfit2) > 0
+                      ? ` | TP2 ${sellTakeProfit2}% (${sellTp2PositionPercent}%)`
+                      : ''}
+                    ] | Fecho {finalCloseHours}h
+                  </>
+                ) : usePerStrategyProfiles ? (
+                  <>cada sinal usa o SL/TP da sua estratégia (tabela acima). Fecho final 24h por defeito.</>
+                ) : (
+                  <>
+                    BUY [SL {buyStopLoss}% | TP1 {buyTakeProfit1}% ({buyTp1PositionPercent}%) | TP2{' '}
+                    {buyTakeProfit2}% ({buyTp2PositionPercent}%)] | SELL [SL {sellStopLoss}% | TP1{' '}
+                    {sellTakeProfit1}% ({sellTp1PositionPercent}%) | TP2 {sellTakeProfit2}% (
+                    {sellTp2PositionPercent}%)] | Fecho {finalCloseHours}h
+                  </>
+                )}
               </p>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                 As estatísticas abaixo usam 2 take profits + fechamento final do restante. Para horas acima de 24h, o resultado final usa projeção linear baseada no resultado de 24h (simulação).
