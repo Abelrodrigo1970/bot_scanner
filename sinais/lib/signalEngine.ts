@@ -19,6 +19,7 @@ import {
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
 import {
   checkMaCross15mSignalGate,
+  isMaCross15mHourBlocked,
   isMaCross15mWeekendBlocked,
 } from './maCross15mGuard';
 import {
@@ -1480,6 +1481,11 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         continue;
       }
 
+      if (strategy.name === 'MA_CROSS_5M' && isMaCross15mHourBlocked()) {
+        console.log('⏭️ MA Cross 15m: ignorado — horário PT bloqueado');
+        continue;
+      }
+
       const timeframesToUse: Timeframe[] =
         strategy.name === 'MA_CROSS_5M' ? ['15m'] :
         strategy.name === 'MA_CROSS_1H' ? ['1h'] :
@@ -1625,6 +1631,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 const gate = await checkMaCross15mSignalGate(prisma, {
                   symbol,
                   strategyId: strategy.id,
+                  direction: signalResult.direction,
                 });
                 canCreate = gate.allowed;
                 if (!gate.allowed) skipReason = gate.reason;

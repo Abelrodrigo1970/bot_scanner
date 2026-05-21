@@ -10,6 +10,7 @@ import {
 } from '@/lib/signalEngine';
 import {
   checkMaCross15mSignalGate,
+  isMaCross15mHourBlocked,
   isMaCross15mWeekendBlocked,
 } from '@/lib/maCross15mGuard';
 import { update24hResults } from '@/lib/update24hResults';
@@ -34,7 +35,7 @@ const MA_CROSS_5M_MIN_STRENGTH = 70;
  * Cálculo em velas 15m; agendamento típico a cada 15 min (ex.: :00, :15, :30, :45).
  * Universo: Scanner 1 — último scan `UNIVERSE_ABOVE_MA200_1H` (fecho 0–10% acima SMA200 em 1h).
  * Não cria novo sinal se já existir posição real no mesmo sentido (um trade por símbolo até fechar).
- * Cooldown: no máximo um sinal por símbolo a cada 24 h; máx. 1 por dia (PT); sem fim-de-semana.
+ * Cooldown 24h entre dias; máx. 2/dia (2.º só se 1.º verde, mesma dir.); sem FDS; horas 0–2,4,11h PT bloqueadas.
  */
 async function runMaCross5mInBackground(
   strategy: StrategyData,
@@ -90,6 +91,7 @@ async function runMaCross5mInBackground(
           const gate = await checkMaCross15mSignalGate(prisma, {
             symbol,
             strategyId: strategy.id,
+            direction: signalResult.direction,
           });
 
           if (gate.allowed) {
@@ -237,6 +239,15 @@ export async function GET(request: NextRequest) {
         success: true,
         skipped: true,
         message: 'MA Cross 15m inactivo ao fim-de-semana (sáb/dom, horário Portugal)',
+        executedAt: now.toISOString(),
+      });
+    }
+
+    if (isMaCross15mHourBlocked(now)) {
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        message: `MA Cross 15m inactivo neste horário (${now.toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hour12: false })}h PT bloqueada)`,
         executedAt: now.toISOString(),
       });
     }

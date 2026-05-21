@@ -1,13 +1,21 @@
 import type { PrismaClient } from '@prisma/client';
+import { fetchCurrentPrice } from './marketData';
 
 export const MA_CROSS_15M_TIMEFRAME = '15m' as const;
 export const MA_CROSS_15M_TZ = 'Europe/Lisbon';
 
-/** Cooldown mínimo entre sinais MA Cross 15m no mesmo símbolo (qualquer direção). */
+/** Cooldown mínimo entre o 1.º sinal do dia e o último sinal anterior (outro dia). */
 export const MA_CROSS_5M_SIGNAL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+/** Horas PT com lucro líquido negativo recorrente (análise Abr+Mai/2026). */
+export const MA_CROSS_15M_BLOCKED_HOURS_PT: readonly number[] = [0, 1, 2, 4, 11];
 
 export function localDayKey(date: Date, timeZone = MA_CROSS_15M_TZ): string {
   return date.toLocaleDateString('sv-SE', { timeZone });
+}
+
+export function hourInLisbon(date: Date = new Date()): number {
+  return +date.toLocaleString('en-GB', { timeZone: MA_CROSS_15M_TZ, hour: '2-digit', hour12: false });
 }
 
 /** Sábado ou domingo no fuso de Portugal (Europe/Lisbon). */
@@ -16,9 +24,14 @@ export function isMaCross15mWeekendBlocked(now: Date = new Date()): boolean {
   return dow === 'Sat' || dow === 'Sun';
 }
 
+export function isMaCross15mHourBlocked(now: Date = new Date()): boolean {
+  return MA_CROSS_15M_BLOCKED_HOURS_PT.includes(hourInLisbon(now));
+}
+
 export interface MaCross15mSignalGateInput {
   symbol: string;
   strategyId: string;
+  direction: 'BUY' | 'SELL';
   now?: Date;
 }
 
@@ -26,18 +39,113 @@ export type MaCross15mSignalGateResult =
   | { allowed: true }
   | { allowed: false; reason: string };
 
+type DaySignalRow = {
+  generatedAt: Date;
+  direction: string;
+  entryPrice: number;
+  result24h: number | null;
+};
+
+async function isSignalProfitable(
+  signal: DaySignalRow,
+  symbol: string
+): Promise<boolean> {
+  if (signal.result24h != null) {
+    return signal.direction === 'SELL'
+      ? signal.result24h >= 0
+      : signal.result24h >= 0;
+  }
+
+  try {
+    const currentPrice = await fetchCurrentPrice(symbol);
+    if (signal.direction === 'SELL') {
+      return currentPrice <= signal.entryPrice;
+    }
+    return currentPrice >= signal.entryPrice;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Regras de criação de sinal MA Cross 15m (análise Mai/2026):
- * - cooldown 24h por símbolo (qualquer direção)
- * - máx. 1 sinal por símbolo por dia civil (PT)
+ * Regras MA Cross 15m (análise Abr+Mai/2026):
+ * - sem fim-de-semana (cron) e sem horas tóxicas PT
+ * - 1.º sinal do dia: cooldown 24h desde o último sinal do par
+ * - 2.º sinal no mesmo dia: só se 1.º verde e mesma direção
+ * - máx. 2 sinais por símbolo por dia civil (PT)
  */
 export async function checkMaCross15mSignalGate(
   prisma: PrismaClient,
   input: MaCross15mSignalGateInput
 ): Promise<MaCross15mSignalGateResult> {
   const now = input.now ?? new Date();
-  const cooldownSince = new Date(now.getTime() - MA_CROSS_5M_SIGNAL_COOLDOWN_MS);
 
+  if (isMaCross15mHourBlocked(now)) {
+    return {
+      allowed: false,
+      reason: `horário bloqueado (${hourInLisbon(now)}h PT)`,
+    };
+  }
+
+  const dayKey = localDayKey(now);
+  const dayLookback = new Date(now.getTime() - 36 * 60 * 60 * 1000);
+
+  const recentDaySignals = await prisma.signal.findMany({
+    where: {
+      symbol: input.symbol,
+      strategyId: input.strategyId,
+      timeframe: MA_CROSS_15M_TIMEFRAME,
+      generatedAt: { gte: dayLookback },
+    },
+    orderBy: { generatedAt: 'asc' },
+    select: {
+      generatedAt: true,
+      direction: true,
+      entryPrice: true,
+      result24h: true,
+    },
+  });
+
+  const todaySignals = recentDaySignals.filter(
+    (s) => localDayKey(s.generatedAt) === dayKey
+  );
+
+  if (todaySignals.length >= 2) {
+    return {
+      allowed: false,
+      reason: `máx. 2 sinais/dia PT (${input.symbol}, dia ${dayKey})`,
+    };
+  }
+
+  if (todaySignals.length === 1) {
+    const first = todaySignals[0]!;
+
+    if (first.direction !== input.direction) {
+      return {
+        allowed: false,
+        reason: `2.º sinal exige mesma direção (${first.direction} → ${input.direction})`,
+      };
+    }
+
+    const firstGreen = await isSignalProfitable(first, input.symbol);
+    if (!firstGreen) {
+      return {
+        allowed: false,
+        reason: `2.º sinal bloqueado — 1.º do dia não está verde (${input.symbol})`,
+      };
+    }
+
+    if (now.getTime() <= first.generatedAt.getTime()) {
+      return {
+        allowed: false,
+        reason: '2.º sinal deve ser posterior ao 1.º do dia',
+      };
+    }
+
+    return { allowed: true };
+  }
+
+  const cooldownSince = new Date(now.getTime() - MA_CROSS_5M_SIGNAL_COOLDOWN_MS);
   const recentCooldown = await prisma.signal.findFirst({
     where: {
       symbol: input.symbol,
@@ -46,33 +154,13 @@ export async function checkMaCross15mSignalGate(
       generatedAt: { gte: cooldownSince },
     },
     orderBy: { generatedAt: 'desc' },
-    select: { generatedAt: true, symbol: true },
+    select: { generatedAt: true },
   });
 
   if (recentCooldown) {
     return {
       allowed: false,
       reason: `cooldown 24h (${input.symbol}, último ${recentCooldown.generatedAt.toISOString()})`,
-    };
-  }
-
-  const dayKey = localDayKey(now);
-  const dayLookback = new Date(now.getTime() - 36 * 60 * 60 * 1000);
-  const sameDayCandidate = await prisma.signal.findFirst({
-    where: {
-      symbol: input.symbol,
-      strategyId: input.strategyId,
-      timeframe: MA_CROSS_15M_TIMEFRAME,
-      generatedAt: { gte: dayLookback },
-    },
-    orderBy: { generatedAt: 'desc' },
-    select: { generatedAt: true, symbol: true },
-  });
-
-  if (sameDayCandidate && localDayKey(sameDayCandidate.generatedAt) === dayKey) {
-    return {
-      allowed: false,
-      reason: `máx. 1 sinal/dia PT (${input.symbol}, dia ${dayKey})`,
     };
   }
 
