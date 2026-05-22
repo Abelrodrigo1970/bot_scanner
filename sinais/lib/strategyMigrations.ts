@@ -190,7 +190,7 @@ export const AFASTAMENTO_MEDIO_30M_DESCRIPTION =
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80, EMA200 em queda. Entrada: (A) pullback com rejeição na EMA30; (B) rejeição na EMA200; (C) breakdown de consolidação. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80, EMA200 em queda. Entrada: (A) pullback EMA30 nos últimos 5 candles + rejeição bear; (B) rejeição na EMA200; (C) breakdown de consolidação. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
@@ -200,7 +200,7 @@ export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   atrPeriod: 14,
   slopeLookback: 8,
   minEma200SlopeDownPct: 0.15,
-  pullbackMaxBars: 10,
+  pullbackMaxBars: 5,
   rejectionLookback: 5,
   breakdownLookback: 12,
   ema200TouchTolerancePct: 0.35,
@@ -242,19 +242,24 @@ export async function syncPivotBossBear15mUniverse(
 
   const needsDesc =
     row.description?.includes('Top movers') ||
+    row.description?.includes('pullback com rejeição na EMA30') ||
     row.description !== PIVOT_BOSS_BEAR_15M_DESCRIPTION;
   const needsParams = p.symbolLimit != null;
+  const needsPullback =
+    p.pullbackMaxBars == null ||
+    Number(p.pullbackMaxBars) !== PIVOT_BOSS_BEAR_15M_PARAMS.pullbackMaxBars;
 
-  if (!needsDesc && !needsParams) return { updated: false };
+  if (!needsDesc && !needsParams && !needsPullback) return { updated: false };
 
   const next = { ...p };
   if (needsParams) delete next.symbolLimit;
+  if (needsPullback) next.pullbackMaxBars = PIVOT_BOSS_BEAR_15M_PARAMS.pullbackMaxBars;
 
   await prisma.strategy.update({
     where: { name: 'PIVOT_BOSS_BEAR_15M' },
     data: {
       ...(needsDesc ? { description: PIVOT_BOSS_BEAR_15M_DESCRIPTION } : {}),
-      ...(needsParams ? { params: JSON.stringify(next) } : {}),
+      ...(needsParams || needsPullback ? { params: JSON.stringify(next) } : {}),
     },
   });
   return { updated: true };

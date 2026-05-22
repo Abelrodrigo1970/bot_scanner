@@ -995,7 +995,7 @@ export async function runPivotBossBear15mStrategy(
   const atrPeriod = Math.max(2, Math.floor(Number(params.atrPeriod ?? 14)));
   const slopeLookback = Math.max(2, Math.floor(Number(params.slopeLookback ?? 8)));
   const minEma200SlopeDownPct = Number(params.minEma200SlopeDownPct ?? 0.15);
-  const pullbackMaxBars = Math.max(3, Math.floor(Number(params.pullbackMaxBars ?? 10)));
+  const pullbackMaxBars = Math.max(3, Math.floor(Number(params.pullbackMaxBars ?? 5)));
   const rejectionLookback = Math.max(2, Math.floor(Number(params.rejectionLookback ?? 5)));
   const breakdownLookback = Math.max(5, Math.floor(Number(params.breakdownLookback ?? 12)));
   const ema200TouchTolerancePct = Number(params.ema200TouchTolerancePct ?? 0.35);
