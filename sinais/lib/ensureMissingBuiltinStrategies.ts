@@ -17,6 +17,7 @@ import {
   syncAfastamentoMedio1hScanner3Description,
   syncAfastamentoMedio30mBuyPrevMax,
   syncMacdHistogramPmoParams,
+  syncPivotBossBear15mUniverse,
   syncRsiOverboughtDrop1hConfig,
 } from './strategyMigrations';
 
@@ -113,5 +114,9 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const af30mSync = await syncAfastamentoMedio30mBuyPrevMax(prisma);
   if (af30mSync.updated) {
     console.log('✅ AFASTAMENTO_MEDIO_30M: COMPRA/VENDA ≤2↔≥2 (30m)');
+  }
+  const pivotBossSync = await syncPivotBossBear15mUniverse(prisma);
+  if (pivotBossSync.updated) {
+    console.log('✅ PIVOT_BOSS_BEAR_15M: universo Scanner 2 (±10% EMA80, 1h)');
   }
 }

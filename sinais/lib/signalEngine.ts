@@ -1707,11 +1707,15 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
       } else if (strategy.name === 'PIVOT_BOSS_BEAR_15M') {
-        const lim = Math.min(250, Math.max(15, Math.floor(Number(params.symbolLimit ?? 80))));
-        symbolsToAnalyze = symbols.slice(0, lim);
-        console.log(
-          `✅ Pivot Boss Bear 15m: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
-        );
+        console.log('🔍 PIVOT_BOSS_BEAR_15M: universo Scanner 2 (±10% EMA80, 1h); sinais em 15m...');
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2)`);
+        if (symbolsToAnalyze.length === 0) {
+          console.warn(
+            '⚠️ Scanner 2 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 2. Ignorando PIVOT_BOSS_BEAR_15M.'
+          );
+          continue;
+        }
       } else if (strategy.name === 'MA200_VOLATILE') {
         const maxSymbols = params.symbolLimit ?? 500;
         const minQuoteVolume = params.minQuoteVolume ?? 100000;

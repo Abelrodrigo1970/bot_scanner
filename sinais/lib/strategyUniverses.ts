@@ -70,9 +70,10 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     strategyName: 'PIVOT_BOSS_BEAR_15M',
     displayLabel: 'Pivot Boss Bear 15m (4 EMA venda)',
     signalTimeframes: ['15m'],
-    source: 'runtime_top_movers_1h',
-    dataKey: 'fetchTopSymbolsBy1hPriceChange',
-    description: 'Top movers 1h. Stack bearish 12/30/80/200; pullback, rejeição 200 ou breakdown.',
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
+    description: 'Scanner 2: ±10% da EMA80 (1h); sinais em 15m.',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
     strategyName: 'MACD_HISTOGRAM_PMO',

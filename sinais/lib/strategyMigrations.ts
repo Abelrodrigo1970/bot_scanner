@@ -176,7 +176,7 @@ export const AFASTAMENTO_MEDIO_30M_BUY_PARAMS = AFASTAMENTO_MEDIO_BUY_PARAMS;
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
-  'Universo: Top movers 1h. Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80, EMA200 em queda. Entrada: (A) pullback com rejeição nas EMA12/30; (B) rejeição na EMA200; (C) breakdown de consolidação. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80, EMA200 em queda. Entrada: (A) pullback com rejeição nas EMA12/30; (B) rejeição na EMA200; (C) breakdown de consolidação. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
@@ -203,12 +203,48 @@ export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   tp1Pct: 0.09,
   tp1Position: 50,
   closeAfterHours: 24,
-  symbolLimit: 80,
   allowBuy: false,
   allowSell: true,
   sellEnabled: true,
   exchange: 'binance',
 } as const;
+
+/** Actualiza universo/descrição Pivot Boss Bear (Scanner 2). */
+export async function syncPivotBossBear15mUniverse(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'PIVOT_BOSS_BEAR_15M' },
+    select: { params: true, description: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const needsDesc =
+    row.description?.includes('Top movers') ||
+    row.description !== PIVOT_BOSS_BEAR_15M_DESCRIPTION;
+  const needsParams = p.symbolLimit != null;
+
+  if (!needsDesc && !needsParams) return { updated: false };
+
+  const next = { ...p };
+  if (needsParams) delete next.symbolLimit;
+
+  await prisma.strategy.update({
+    where: { name: 'PIVOT_BOSS_BEAR_15M' },
+    data: {
+      ...(needsDesc ? { description: PIVOT_BOSS_BEAR_15M_DESCRIPTION } : {}),
+      ...(needsParams ? { params: JSON.stringify(next) } : {}),
+    },
+  });
+  return { updated: true };
+}
 
 /** Actualiza COMPRA ≤2→≥2 em AFASTAMENTO_MEDIO (1h). */
 export async function syncAfastamentoMedio1hBuyThresholds(

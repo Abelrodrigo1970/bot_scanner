@@ -53,7 +53,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 2 — Até ±10% da EMA80 (1h)',
     description:
       'Preço dentro de ±10% da EMA80 em 1h. Universo: RSI queda de 70 + afastamento >12%.',
-    strategyNames: 'RSI_OVERBOUGHT_DROP_1H',
+    strategyNames: 'RSI_OVERBOUGHT_DROP_1H, PIVOT_BOSS_BEAR_15M',
   },
   UNIVERSE_NEAR_MA200_PCT4_1H: {
     displayName: 'Scanner 3 — Até ±4% da MA80 (1h)',
