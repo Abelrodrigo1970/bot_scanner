@@ -978,7 +978,7 @@ export async function runEmaRibbonScalpingSellStrategy(
 
 /**
  * Pivot Boss Bear 15m — só VENDA.
- * Stack bearish 12/30/80/200 (estilo Pivot Boss 4 EMA): pullback, rejeição EMA200 ou breakdown.
+ * Stack bearish 12/30/80/200 (estilo Pivot Boss 4 EMA): pullback EMA30, rejeição EMA200 ou breakdown.
  */
 export async function runPivotBossBear15mStrategy(
   symbol: string,
@@ -1070,13 +1070,11 @@ export async function runPivotBossBear15mStrategy(
     let scenarioPullback = false;
     const pbFrom = Math.max(emaTrend - 1, lc - pullbackMaxBars);
     for (let j = pbFrom; j <= lc - 1; j++) {
-      const j12 = emaValueAtClosedIdx(ema12Series, emaFast, j);
       const j30 = emaValueAtClosedIdx(ema30Series, emaMid, j);
-      if (j12 == null || j30 == null) continue;
+      if (j30 == null) continue;
       const bar = closedCandles[j];
-      const touch12 = bar.high >= j12 * (1 - 0.002);
       const touch30 = bar.high >= j30 * (1 - 0.002);
-      if (touch12 || touch30) {
+      if (touch30) {
         scenarioPullback = true;
         break;
       }
@@ -1111,7 +1109,7 @@ export async function runPivotBossBear15mStrategy(
     if (!scenarioPullback && !scenarioRejection200 && !scenarioBreakdown) return null;
 
     const scenarios: string[] = [];
-    if (scenarioPullback) scenarios.push('pullback_rejeicao_ema12_30');
+    if (scenarioPullback) scenarios.push('pullback_rejeicao_ema30');
     if (scenarioRejection200) scenarios.push('rejeicao_ema200');
     if (scenarioBreakdown) scenarios.push('breakdown_consolidacao');
 
@@ -1730,7 +1728,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top movers 1h:`, err);
         }
       } else if (strategy.name === 'MA_CROSS_5M' || strategy.name === 'MA_CROSS_1H') {
-        console.log(`🔍 ${strategy.name}: universo Scanner 1 (0–10% acima SMA200, 1h)...`);
+        console.log(`🔍 ${strategy.name}: universo Scanner 1 (+2–10% acima SMA200, 1h)...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
         if (symbolsToAnalyze.length === 0) {

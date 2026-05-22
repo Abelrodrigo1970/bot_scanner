@@ -10,6 +10,8 @@ export interface UniverseScanDefinition {
   maPeriod: number;
   /** SMA (defeito) ou EMA — alinhar com a estratégia que usa o scan. */
   maType?: 'SMA' | 'EMA';
+  /** Mínimo % acima da MA (só ABOVE_MA). */
+  minDistancePct?: number | null;
   maxDistancePct: number | null;
   timeframe: string;
   minQuoteVolume: number;
@@ -59,6 +61,7 @@ export async function scanSymbolUniverse(
 
           if (def.ruleType === 'ABOVE_MA') {
             if (close < ma) return null;
+            if (def.minDistancePct != null && pctFromMa < def.minDistancePct) return null;
             if (def.maxDistancePct != null && pctFromMa > def.maxDistancePct) return null;
             return { symbol, close, ma, pctFromMa };
           }

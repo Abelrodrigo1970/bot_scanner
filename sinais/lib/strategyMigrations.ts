@@ -71,10 +71,10 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 (fecho 0–10% acima SMA200 em 1h, Binance Futures). Máx. um trade aberto por símbolo no cron (não empilha o mesmo sentido).';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 (fecho +2–10% acima SMA200 em 1h, Binance Futures). Máx. um trade aberto por símbolo no cron (não empilha o mesmo sentido).';
 
 export const MA_CROSS_1H_DESC =
-  'MA12/MA30 em 1h: entrada por spread (>1,2%). Só entra se |MA30−MA200|/MA200 ≤ 8% (MA200 período 200 em 1h). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro BUY e SELL: só se |preço−MA30|/MA30 ≤ 8%. Universo = Scanner 1 (fecho 0–10% acima SMA200 em 1h).';
+  'MA12/MA30 em 1h: entrada por spread (>1,2%). Só entra se |MA30−MA200|/MA200 ≤ 8% (MA200 período 200 em 1h). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro BUY e SELL: só se |preço−MA30|/MA30 ≤ 8%. Universo = Scanner 1 (fecho +2–10% acima SMA200 em 1h).';
 
 /** MA30/MA200 em 15m — mesma lógica de spread que MA12/MA30 (universo = scan Ma30Near6PriceBetween). */
 export const MA_CROSS_15M_STRATEGY_DESCRIPTION =
@@ -132,10 +132,10 @@ export const RSI_OVERBOUGHT_DROP_1H_PARAMS = {
 export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
   'Universo: Scanner 2 (±10% EMA80, 1h). VENDA: RSI cai de ≥70 (≥4 pts) e afastamento à EMA80 >12%. SL +8%. TP1 -9% (30% pos.) | TP2 -19% (40% pos.) | restante fecho manual.';
 
-export const AFASTAMENTO_MEDIO_DISPLAY = 'Afastamento médio 1h (≤2→≥2)';
+export const AFASTAMENTO_MEDIO_DISPLAY = 'Afastamento médio 1h (≤1,5→≥2,5)';
 
 export const AFASTAMENTO_MEDIO_DESCRIPTION =
-  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 1h. COMPRA: linha ≤2%→≥2%, preço > EMA80 e > EMA30 (SL -4%, TP1 +9% (40%) | restante às 24h). VENDA: linha ≥2%→≤2%, preço < EMA80 e < EMA30 (SL +4%, TP1 -9% (40%) | restante às 24h).';
+  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 1h. COMPRA: linha ≤1,5%→≥2,5%, preço > EMA80 e > EMA30 (SL -4%, TP1 +9% (40%) | restante às 24h). VENDA: linha ≥2,5%→≤1,5%, preço < EMA80 e < EMA30 (SL +4%, TP1 -9% (40%) | restante às 24h). Não emite se força >75.';
 
 /** SL/TP 1h: TP parcial + restante ao fecho 24h. */
 export const AFASTAMENTO_MEDIO_EXIT_PARAMS = {
@@ -145,19 +145,36 @@ export const AFASTAMENTO_MEDIO_EXIT_PARAMS = {
   closeAfterHours: 24,
 } as const;
 
-/** COMPRA 1h/30m: smooth anterior ≤2% e actual ≥2%. */
+/** COMPRA 1h: smooth anterior ≤1,5% e actual ≥2,5%. */
 export const AFASTAMENTO_MEDIO_BUY_PARAMS = {
-  buySmoothPrevMax: 2,
-  buySmoothCurrMin: 2,
+  buySmoothPrevMax: 1.5,
+  buySmoothCurrMin: 2.5,
 } as const;
 
-/** VENDA 1h/30m: espelho da compra — smooth anterior ≥2% e actual ≤2%. */
+/** VENDA 1h: espelho da compra — smooth anterior ≥2,5% e actual ≤1,5%. */
 export const AFASTAMENTO_MEDIO_SELL_PARAMS = {
-  sellSmoothPrevMin: 2,
+  sellSmoothPrevMin: 2.5,
+  sellSmoothCurrMax: 1.5,
+} as const;
+
+/** Tecto de força: não emitir sinal se força > maxStrength (1h + 30m). 0 = off. */
+export const AFASTAMENTO_STRENGTH_FILTER_PARAMS = {
+  maxStrength: 75,
+} as const;
+
+export const AFASTAMENTO_MEDIO_30M_DISPLAY = 'Afastamento médio 30m (≤2→≥2,3)';
+
+/** COMPRA 30m: smooth anterior ≤2% e actual ≥2,3%. */
+export const AFASTAMENTO_MEDIO_30M_BUY_PARAMS = {
+  buySmoothPrevMax: 2,
+  buySmoothCurrMin: 2.3,
+} as const;
+
+/** VENDA 30m: espelho — smooth anterior ≥2,3% e actual ≤2%. */
+export const AFASTAMENTO_MEDIO_30M_SELL_PARAMS = {
+  sellSmoothPrevMin: 2.3,
   sellSmoothCurrMax: 2,
 } as const;
-
-export const AFASTAMENTO_MEDIO_30M_DISPLAY = 'Afastamento médio 30m (≤2↔≥2)';
 
 /** SL/TP 30m: TP parcial + restante ao fecho 24h. */
 export const AFASTAMENTO_MEDIO_30M_EXIT_PARAMS = {
@@ -168,15 +185,12 @@ export const AFASTAMENTO_MEDIO_30M_EXIT_PARAMS = {
 } as const;
 
 export const AFASTAMENTO_MEDIO_30M_DESCRIPTION =
-  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 30m. COMPRA: linha ≤2%→≥2%, preço > EMA80 e > EMA30 (SL -6%, TP1 +9% (50%) | restante às 24h). VENDA: linha ≥2%→≤2%, preço < EMA80 e < EMA30 (SL +6%, TP1 -9% (50%) | restante às 24h).';
-
-/** @deprecated Use AFASTAMENTO_MEDIO_BUY_PARAMS */
-export const AFASTAMENTO_MEDIO_30M_BUY_PARAMS = AFASTAMENTO_MEDIO_BUY_PARAMS;
+  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 30m. COMPRA: linha ≤2%→≥2,3%, preço > EMA80 e > EMA30 (SL -6%, TP1 +9% (50%) | restante às 24h). VENDA: linha ≥2,3%→≤2%, preço < EMA80 e < EMA30 (SL +6%, TP1 -9% (50%) | restante às 24h). Não emite se força >75.';
 
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80, EMA200 em queda. Entrada: (A) pullback com rejeição nas EMA12/30; (B) rejeição na EMA200; (C) breakdown de consolidação. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80, EMA200 em queda. Entrada: (A) pullback com rejeição na EMA30; (B) rejeição na EMA200; (C) breakdown de consolidação. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
@@ -246,7 +260,7 @@ export async function syncPivotBossBear15mUniverse(
   return { updated: true };
 }
 
-/** Actualiza COMPRA ≤2→≥2 em AFASTAMENTO_MEDIO (1h). */
+/** Actualiza limiares COMPRA/VENDA em AFASTAMENTO_MEDIO (1h). */
 export async function syncAfastamentoMedio1hBuyThresholds(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -263,42 +277,46 @@ export async function syncAfastamentoMedio1hBuyThresholds(
     p = {};
   }
 
-  const currMin = Number(p.buySmoothCurrMin);
-  const prevMax = Number(p.buySmoothPrevMax);
   const needsBuy =
     p.buySmoothCurrMin == null ||
-    currMin === 3 ||
-    currMin > 2 ||
+    Number(p.buySmoothCurrMin) !== AFASTAMENTO_MEDIO_BUY_PARAMS.buySmoothCurrMin ||
     p.buySmoothPrevMax == null ||
-    prevMax === 1 ||
-    prevMax < 2;
+    Number(p.buySmoothPrevMax) !== AFASTAMENTO_MEDIO_BUY_PARAMS.buySmoothPrevMax;
   const needsSell =
     p.sellSmoothPrevMin == null ||
     p.sellSmoothCurrMax == null ||
+    Number(p.sellSmoothPrevMin) !== AFASTAMENTO_MEDIO_SELL_PARAMS.sellSmoothPrevMin ||
+    Number(p.sellSmoothCurrMax) !== AFASTAMENTO_MEDIO_SELL_PARAMS.sellSmoothCurrMax ||
     p.sellSmoothCurrMin != null ||
-    p.sellSmoothPrevMax != null ||
-    Number(p.sellSmoothCurrMin) === 2.5;
+    p.sellSmoothPrevMax != null;
   const needsMeta =
     row.displayName?.includes('(80/7)') ||
+    row.displayName?.includes('≤2') ||
     row.description?.includes('≥3') ||
     row.description?.includes('para ≥3') ||
     row.description?.includes('>60%') ||
     row.description?.includes('TP +20%') ||
     row.description?.includes('TP -20%') ||
+    row.description?.includes('≤2%→≥2%') ||
+    row.description?.includes('≥2%→≤2%') ||
     row.description !== AFASTAMENTO_MEDIO_DESCRIPTION;
   const needsExit =
     Number(p.stopLossPct ?? 0) !== AFASTAMENTO_MEDIO_EXIT_PARAMS.stopLossPct ||
     Number(p.tp1Pct ?? 0) !== AFASTAMENTO_MEDIO_EXIT_PARAMS.tp1Pct ||
     Number(p.tp1Position ?? 0) !== AFASTAMENTO_MEDIO_EXIT_PARAMS.tp1Position ||
     Number(p.closeAfterHours ?? 0) !== AFASTAMENTO_MEDIO_EXIT_PARAMS.closeAfterHours;
+  const needsStrength =
+    p.maxStrength == null ||
+    Number(p.maxStrength) !== AFASTAMENTO_STRENGTH_FILTER_PARAMS.maxStrength;
 
-  if (!needsBuy && !needsSell && !needsMeta && !needsExit) return { updated: false };
+  if (!needsBuy && !needsSell && !needsMeta && !needsExit && !needsStrength) return { updated: false };
 
   const next: Record<string, unknown> = {
     ...p,
     ...(needsBuy ? AFASTAMENTO_MEDIO_BUY_PARAMS : {}),
     ...(needsSell ? AFASTAMENTO_MEDIO_SELL_PARAMS : {}),
     ...(needsExit || needsMeta ? AFASTAMENTO_MEDIO_EXIT_PARAMS : {}),
+    ...(needsStrength || needsMeta ? AFASTAMENTO_STRENGTH_FILTER_PARAMS : {}),
   };
   if (needsSell) {
     delete next.sellSmoothPrevMax;
@@ -316,7 +334,7 @@ export async function syncAfastamentoMedio1hBuyThresholds(
   return { updated: true };
 }
 
-/** Actualiza buySmoothPrevMax 1→2 em AFASTAMENTO_MEDIO_30M (deploy / cron). */
+/** Actualiza limiares COMPRA/VENDA em AFASTAMENTO_MEDIO_30M (deploy / cron). */
 export async function syncAfastamentoMedio30mBuyPrevMax(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -333,19 +351,29 @@ export async function syncAfastamentoMedio30mBuyPrevMax(
     p = {};
   }
 
-  const prevMax = Number(p.buySmoothPrevMax);
-  const needsBuyPrev =
-    p.buySmoothPrevMax == null || prevMax === 1 || prevMax < 2;
+  const needsBuy =
+    p.buySmoothPrevMax == null ||
+    Number(p.buySmoothPrevMax) !== AFASTAMENTO_MEDIO_30M_BUY_PARAMS.buySmoothPrevMax ||
+    p.buySmoothCurrMin == null ||
+    Number(p.buySmoothCurrMin) !== AFASTAMENTO_MEDIO_30M_BUY_PARAMS.buySmoothCurrMin;
   const needsSell =
     p.sellSmoothPrevMin == null ||
     p.sellSmoothCurrMax == null ||
+    Number(p.sellSmoothPrevMin) !== AFASTAMENTO_MEDIO_30M_SELL_PARAMS.sellSmoothPrevMin ||
+    Number(p.sellSmoothCurrMax) !== AFASTAMENTO_MEDIO_30M_SELL_PARAMS.sellSmoothCurrMax ||
     p.sellSmoothCurrMin != null ||
-    Number(p.sellSmoothCurrMin) === 2.5;
+    p.sellSmoothPrevMax != null;
   const needsMeta =
     row.displayName?.includes('1→2') ||
+    row.displayName?.includes('≤1,5') ||
+    row.displayName?.includes('≤2↔') ||
     row.description?.includes('linha 1→2') ||
+    row.description?.includes('≤1,5%') ||
+    row.description?.includes('≥2,5%→≤1,5%') ||
     row.description?.includes('2→2,5') ||
     row.description?.includes('TP 18%') ||
+    row.description?.includes('≤2%→≥2%') ||
+    row.description?.includes('≥2%→≤2%') ||
     row.description !== AFASTAMENTO_MEDIO_30M_DESCRIPTION;
   const needsExit =
     Number(p.stopLossPct ?? 0) !== AFASTAMENTO_MEDIO_30M_EXIT_PARAMS.stopLossPct ||
@@ -353,14 +381,18 @@ export async function syncAfastamentoMedio30mBuyPrevMax(
     Number(p.tp1Position ?? 0) !== AFASTAMENTO_MEDIO_30M_EXIT_PARAMS.tp1Position ||
     Number(p.closeAfterHours ?? 0) !== AFASTAMENTO_MEDIO_30M_EXIT_PARAMS.closeAfterHours ||
     p.takeProfitPct != null;
+  const needsStrength =
+    p.maxStrength == null ||
+    Number(p.maxStrength) !== AFASTAMENTO_STRENGTH_FILTER_PARAMS.maxStrength;
 
-  if (!needsBuyPrev && !needsSell && !needsMeta && !needsExit) return { updated: false };
+  if (!needsBuy && !needsSell && !needsMeta && !needsExit && !needsStrength) return { updated: false };
 
   const next: Record<string, unknown> = {
     ...p,
-    ...(needsBuyPrev ? AFASTAMENTO_MEDIO_BUY_PARAMS : {}),
-    ...(needsSell ? AFASTAMENTO_MEDIO_SELL_PARAMS : {}),
+    ...(needsBuy ? AFASTAMENTO_MEDIO_30M_BUY_PARAMS : {}),
+    ...(needsSell ? AFASTAMENTO_MEDIO_30M_SELL_PARAMS : {}),
     ...(needsExit || needsMeta ? AFASTAMENTO_MEDIO_30M_EXIT_PARAMS : {}),
+    ...(needsStrength || needsMeta ? AFASTAMENTO_STRENGTH_FILTER_PARAMS : {}),
   };
   if (needsExit) {
     delete next.takeProfitPct;

@@ -81,7 +81,11 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   },
   {
     strategyName: 'AFASTAMENTO_MEDIO',
-    displayNames: ['Afastamento médio 1h (≤2→≥2)', 'Afastamento médio 1h (≤2↔≥2)'],
+    displayNames: [
+      'Afastamento médio 1h (≤1,5→≥2,5)',
+      'Afastamento médio 1h (≤2→≥2)',
+      'Afastamento médio 1h (≤2↔≥2)',
+    ],
     buy: side(4, 9, 40),
     sell: side(4, 9, 40),
     summary:
@@ -89,7 +93,11 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   },
   {
     strategyName: 'AFASTAMENTO_MEDIO_30M',
-    displayNames: ['Afastamento médio 30m (≤2↔≥2)'],
+    displayNames: [
+      'Afastamento médio 30m (≤2→≥2,3)',
+      'Afastamento médio 30m (≤1,5↔≥2,5)',
+      'Afastamento médio 30m (≤2↔≥2)',
+    ],
     buy: side(6, 9, 50),
     sell: side(6, 9, 50),
     summary: 'SL 6%. TP1 ±9% (50% pos.). Restante às 24h.',

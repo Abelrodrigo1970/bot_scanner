@@ -4,6 +4,9 @@ import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
 import { getPositionSizeUsdt } from '@/lib/binanceConfig';
 
+/** Alinhado ao mínimo de execução automática (tradingRules MIN_STRENGTH = 60). */
+export const REPORT_DEFAULT_MIN_STRENGTH = 60;
+
 type Direction = 'BUY' | 'SELL';
 
 interface DirectionStats {
@@ -78,6 +81,14 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
     const strategy = (searchParams.get('strategy') || '').trim();
+    const minStrengthParam = searchParams.get('minStrength');
+    const minStrengthParsed =
+      minStrengthParam != null && minStrengthParam !== ''
+        ? parseInt(minStrengthParam, 10)
+        : REPORT_DEFAULT_MIN_STRENGTH;
+    const minStrength = Number.isFinite(minStrengthParsed)
+      ? Math.min(100, Math.max(0, minStrengthParsed))
+      : REPORT_DEFAULT_MIN_STRENGTH;
 
     if (!dateFrom || !dateTo) {
       return NextResponse.json(
@@ -112,7 +123,7 @@ export async function GET(request: NextRequest) {
         },
         status24h: 'CLOSED',
         result24h: { not: null },
-        strength: { gte: 70 },
+        strength: { gte: minStrength },
         ...(strategy
           ? {
               strategyName: {
@@ -168,6 +179,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       range: { dateFrom, dateTo },
+      minStrength,
       totalSignals: rows.length,
       rows: reportRows,
     });

@@ -7,10 +7,13 @@ export const UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80 =
 
 export const UNIVERSE_CODE_SCANNER_3_MA80_PCT4 = 'UNIVERSE_NEAR_MA200_PCT4_1H' as const;
 
+export const SCANNER_1_MIN_DISTANCE_PCT = 2;
+
 export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
   UNIVERSE_ABOVE_MA200_1H: {
     ruleType: 'ABOVE_MA',
     maPeriod: 200,
+    minDistancePct: SCANNER_1_MIN_DISTANCE_PCT,
     maxDistancePct: 10,
     timeframe: '1h',
     minQuoteVolume: 100000,
@@ -44,9 +47,9 @@ export const BUILTIN_UNIVERSE_META: Record<
   { displayName: string; description: string; strategyNames: string }
 > = {
   UNIVERSE_ABOVE_MA200_1H: {
-    displayName: 'Scanner 1 — 0–10% acima SMA200 (1h)',
+    displayName: 'Scanner 1 — 2–10% acima SMA200 (1h)',
     description:
-      'Perpétuos USDT (top volume) com fecho entre 0% e +10% acima da SMA200 em 1h. Universo: MA Cross 15m / 1h.',
+      'Perpétuos USDT (top volume) com fecho entre +2% e +10% acima da SMA200 em 1h. Universo: MA Cross 15m / 1h.',
     strategyNames: 'MA_CROSS_5M, MA_CROSS_1H',
   },
   UNIVERSE_NEAR_MA200_PCT10_1H: {

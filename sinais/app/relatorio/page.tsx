@@ -106,7 +106,9 @@ export default function RelatorioPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Relatório por intervalo</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-          Formato diário por estratégia (lógica de execução): só sinais fechados, força &gt;= 70 e lucro líquido em USD ($) com fees.
+          Formato diário por estratégia (lógica de execução): só sinais fechados, força &gt;= 60 (mínimo de
+          auto-exec) e lucro líquido em USD ($) com fees. Inclui Afastamento 65–69, antes omitidos com o
+          filtro 70.
         </p>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mb-6 border border-gray-200 dark:border-gray-700">

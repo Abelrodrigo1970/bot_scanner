@@ -22,6 +22,21 @@ function paramFlag(value: unknown, defaultTrue: boolean): boolean {
   return defaultTrue;
 }
 
+/** Força Afastamento: 65 + 10×salto smooth (mín. 60, máx. 90). */
+function afastamentoStrengthFromSmoothJump(jump: number): number {
+  return Math.min(
+    100,
+    Math.max(60, Math.round(65 + Math.min(Math.max(jump, 0) * 10, 25)))
+  );
+}
+
+/** Bloqueia sinais com força acima do tecto (0 = desactiva). Default 75. */
+function afastamentoStrengthAllowed(strength: number, params: StrategyParams): boolean {
+  const maxStrength = Number(params.maxStrength ?? 75);
+  if (!Number.isFinite(maxStrength) || maxStrength <= 0) return true;
+  return strength <= maxStrength;
+}
+
 export async function runMacdHistogramPmoStrategy(
   symbol: string,
   timeframe: Timeframe,
@@ -326,10 +341,10 @@ export async function runAfastamentoMedioStrategy(
   const maPeriod = Math.max(2, Number(params.maPeriod) || 80);
   const smoothPeriod = Math.max(2, Number(params.smoothPeriod) || 7);
   const buyTrendMaPeriod = Math.max(2, Number(params.buyTrendMaPeriod) || 30);
-  const buySmoothPrevMax = Number(params.buySmoothPrevMax ?? 2);
-  const buySmoothCurrMin = Number(params.buySmoothCurrMin ?? 2);
-  const sellSmoothPrevMin = Number(params.sellSmoothPrevMin ?? 2);
-  const sellSmoothCurrMax = Number(params.sellSmoothCurrMax ?? 2);
+  const buySmoothPrevMax = Number(params.buySmoothPrevMax ?? 1.5);
+  const buySmoothCurrMin = Number(params.buySmoothCurrMin ?? 2.5);
+  const sellSmoothPrevMin = Number(params.sellSmoothPrevMin ?? 2.5);
+  const sellSmoothCurrMax = Number(params.sellSmoothCurrMax ?? 1.5);
   const meanLineType =
     String(params.meanLineType || 'EMA').toUpperCase() === 'SMA' ? 'SMA' : 'EMA';
   const trendMaType =
@@ -410,10 +425,8 @@ export async function runAfastamentoMedioStrategy(
         params
       );
       const drop = smoothPrev - smoothCurr;
-      const strength = Math.min(
-        100,
-        Math.max(60, Math.round(65 + Math.min(Math.max(drop, 0) * 10, 25)))
-      );
+      const strength = afastamentoStrengthFromSmoothJump(drop);
+      if (!afastamentoStrengthAllowed(strength, params)) return null;
 
       return {
         direction: 'SELL',
@@ -444,10 +457,8 @@ export async function runAfastamentoMedioStrategy(
         params
       );
       const rise = smoothCurr - smoothPrev;
-      const strength = Math.min(
-        100,
-        Math.max(60, Math.round(65 + Math.min(Math.max(rise, 0) * 10, 25)))
-      );
+      const strength = afastamentoStrengthFromSmoothJump(rise);
+      if (!afastamentoStrengthAllowed(strength, params)) return null;
 
       return {
         direction: 'BUY',
@@ -489,8 +500,8 @@ export async function runAfastamentoMedio30mStrategy(
   const smoothPeriod = Math.max(2, Number(params.smoothPeriod) || 7);
   const buyTrendMaPeriod = Math.max(2, Number(params.buyTrendMaPeriod) || 30);
   const buySmoothPrevMax = Number(params.buySmoothPrevMax ?? 2);
-  const buySmoothCurrMin = Number(params.buySmoothCurrMin ?? 2);
-  const sellSmoothPrevMin = Number(params.sellSmoothPrevMin ?? 2);
+  const buySmoothCurrMin = Number(params.buySmoothCurrMin ?? 2.3);
+  const sellSmoothPrevMin = Number(params.sellSmoothPrevMin ?? 2.3);
   const sellSmoothCurrMax = Number(params.sellSmoothCurrMax ?? 2);
   const meanLineType =
     String(params.meanLineType || 'EMA').toUpperCase() === 'SMA' ? 'SMA' : 'EMA';
@@ -570,10 +581,8 @@ export async function runAfastamentoMedio30mStrategy(
         AFASTAMENTO_30M_EXIT_DEFAULTS
       );
       const drop = smoothPrev - smoothCurr;
-      const strength = Math.min(
-        100,
-        Math.max(60, Math.round(65 + Math.min(Math.max(drop, 0) * 10, 25)))
-      );
+      const strength = afastamentoStrengthFromSmoothJump(drop);
+      if (!afastamentoStrengthAllowed(strength, params)) return null;
 
       return {
         direction: 'SELL',
@@ -605,10 +614,8 @@ export async function runAfastamentoMedio30mStrategy(
         AFASTAMENTO_30M_EXIT_DEFAULTS
       );
       const rise = smoothCurr - smoothPrev;
-      const strength = Math.min(
-        100,
-        Math.max(60, Math.round(65 + Math.min(Math.max(rise, 0) * 10, 25)))
-      );
+      const strength = afastamentoStrengthFromSmoothJump(rise);
+      if (!afastamentoStrengthAllowed(strength, params)) return null;
 
       return {
         direction: 'BUY',
