@@ -113,7 +113,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   }
   const af1hBuySync = await syncAfastamentoMedio1hBuyThresholds(prisma);
   if (af1hBuySync.updated) {
-    console.log('✅ AFASTAMENTO_MEDIO: COMPRA/VENDA ≤1,5↔≥2,5 (1h) + maxStrength 75');
+    console.log('✅ AFASTAMENTO_MEDIO: COMPRA/VENDA ≤1,9↔≥2,4 (1h) + maxStrength 75');
   }
   const af30mSync = await syncAfastamentoMedio30mBuyPrevMax(prisma);
   if (af30mSync.updated) {

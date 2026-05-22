@@ -82,6 +82,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   {
     strategyName: 'AFASTAMENTO_MEDIO',
     displayNames: [
+      'Afastamento médio 1h (≤1,9→≥2,4)',
       'Afastamento médio 1h (≤1,5→≥2,5)',
       'Afastamento médio 1h (≤2→≥2)',
       'Afastamento médio 1h (≤2↔≥2)',

@@ -341,10 +341,10 @@ export async function runAfastamentoMedioStrategy(
   const maPeriod = Math.max(2, Number(params.maPeriod) || 80);
   const smoothPeriod = Math.max(2, Number(params.smoothPeriod) || 7);
   const buyTrendMaPeriod = Math.max(2, Number(params.buyTrendMaPeriod) || 30);
-  const buySmoothPrevMax = Number(params.buySmoothPrevMax ?? 1.5);
-  const buySmoothCurrMin = Number(params.buySmoothCurrMin ?? 2.5);
-  const sellSmoothPrevMin = Number(params.sellSmoothPrevMin ?? 2.5);
-  const sellSmoothCurrMax = Number(params.sellSmoothCurrMax ?? 1.5);
+  const buySmoothPrevMax = Number(params.buySmoothPrevMax ?? 1.9);
+  const buySmoothCurrMin = Number(params.buySmoothCurrMin ?? 2.4);
+  const sellSmoothPrevMin = Number(params.sellSmoothPrevMin ?? 2.4);
+  const sellSmoothCurrMax = Number(params.sellSmoothCurrMax ?? 1.9);
   const meanLineType =
     String(params.meanLineType || 'EMA').toUpperCase() === 'SMA' ? 'SMA' : 'EMA';
   const trendMaType =

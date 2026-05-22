@@ -132,10 +132,10 @@ export const RSI_OVERBOUGHT_DROP_1H_PARAMS = {
 export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
   'Universo: Scanner 2 (±10% EMA80, 1h). VENDA: RSI cai de ≥70 (≥4 pts) e afastamento à EMA80 >12%. SL +8%. TP1 -9% (30% pos.) | TP2 -19% (40% pos.) | restante fecho manual.';
 
-export const AFASTAMENTO_MEDIO_DISPLAY = 'Afastamento médio 1h (≤1,5→≥2,5)';
+export const AFASTAMENTO_MEDIO_DISPLAY = 'Afastamento médio 1h (≤1,9→≥2,4)';
 
 export const AFASTAMENTO_MEDIO_DESCRIPTION =
-  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 1h. COMPRA: linha ≤1,5%→≥2,5%, preço > EMA80 e > EMA30 (SL -4%, TP1 +9% (40%) | restante às 24h). VENDA: linha ≥2,5%→≤1,5%, preço < EMA80 e < EMA30 (SL +4%, TP1 -9% (40%) | restante às 24h). Não emite se força >75.';
+  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 1h. COMPRA: linha ≤1,9%→≥2,4%, preço > EMA80 e > EMA30 (SL -4%, TP1 +9% (40%) | restante às 24h). VENDA: linha ≥2,4%→≤1,9%, preço < EMA80 e < EMA30 (SL +4%, TP1 -9% (40%) | restante às 24h). Não emite se força >75.';
 
 /** SL/TP 1h: TP parcial + restante ao fecho 24h. */
 export const AFASTAMENTO_MEDIO_EXIT_PARAMS = {
@@ -145,16 +145,16 @@ export const AFASTAMENTO_MEDIO_EXIT_PARAMS = {
   closeAfterHours: 24,
 } as const;
 
-/** COMPRA 1h: smooth anterior ≤1,5% e actual ≥2,5%. */
+/** COMPRA 1h: smooth anterior ≤1,9% e actual ≥2,4%. */
 export const AFASTAMENTO_MEDIO_BUY_PARAMS = {
-  buySmoothPrevMax: 1.5,
-  buySmoothCurrMin: 2.5,
+  buySmoothPrevMax: 1.9,
+  buySmoothCurrMin: 2.4,
 } as const;
 
-/** VENDA 1h: espelho da compra — smooth anterior ≥2,5% e actual ≤1,5%. */
+/** VENDA 1h: espelho da compra — smooth anterior ≥2,4% e actual ≤1,9%. */
 export const AFASTAMENTO_MEDIO_SELL_PARAMS = {
-  sellSmoothPrevMin: 2.5,
-  sellSmoothCurrMax: 1.5,
+  sellSmoothPrevMin: 2.4,
+  sellSmoothCurrMax: 1.9,
 } as const;
 
 /** Tecto de força: não emitir sinal se força > maxStrength (1h + 30m). 0 = off. */
@@ -291,7 +291,10 @@ export async function syncAfastamentoMedio1hBuyThresholds(
     p.sellSmoothPrevMax != null;
   const needsMeta =
     row.displayName?.includes('(80/7)') ||
+    row.displayName?.includes('≤1,5→≥2,5') ||
     row.displayName?.includes('≤2') ||
+    row.description?.includes('≤1,5%→≥2,5%') ||
+    row.description?.includes('≥2,5%→≤1,5%') ||
     row.description?.includes('≥3') ||
     row.description?.includes('para ≥3') ||
     row.description?.includes('>60%') ||
