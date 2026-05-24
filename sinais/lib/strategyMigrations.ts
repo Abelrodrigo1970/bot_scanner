@@ -48,6 +48,36 @@ export async function removeDeprecatedStrategies(
   return { removed, signalsDeleted };
 }
 
+export interface ClearStrategySignalsResult {
+  strategyName: string;
+  displayName: string | null;
+  deleted: number;
+}
+
+/** Apaga todos os sinais de uma estratégia (mantém a estratégia activa). */
+export async function clearStrategySignals(
+  prisma: PrismaClient,
+  strategyName: string
+): Promise<ClearStrategySignalsResult> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: strategyName },
+    select: { id: true, displayName: true },
+  });
+  if (!row) {
+    return { strategyName, displayName: null, deleted: 0 };
+  }
+
+  const { count } = await prisma.signal.deleteMany({
+    where: { strategyId: row.id },
+  });
+
+  return {
+    strategyName,
+    displayName: row.displayName,
+    deleted: count,
+  };
+}
+
 export const MA_CROSS_5M_PARAMS = {
   ma30Period: 12,
   ma200Period: 30,
@@ -190,7 +220,7 @@ export const AFASTAMENTO_MEDIO_30M_DESCRIPTION =
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80, EMA200 em queda. Entrada: (A) pullback EMA30 nos últimos 5 candles + rejeição bear; (B) rejeição na EMA200; (C) breakdown de consolidação. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80 (não >5% abaixo EMA80), EMA200 em queda. Entrada: (A) pullback EMA30 nos últimos 5 candles + rejeição bear; (B) rejeição na EMA200. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
@@ -202,12 +232,11 @@ export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   minEma200SlopeDownPct: 0.15,
   pullbackMaxBars: 5,
   rejectionLookback: 5,
-  breakdownLookback: 12,
   ema200TouchTolerancePct: 0.35,
   strongBodyOfRangeMin: 0.55,
   strongBodyMinAtrMult: 0.35,
   closeLowerThirdMaxFrac: 0.35,
-  sellBlockMaxDistBelowEma30Pct: 10,
+  sellBlockMaxDistBelowEma80Pct: 5,
   swingLookback: 8,
   swingAboveAtrMult: 0.15,
   ema30StopBufferPct: 0.35,
@@ -243,23 +272,39 @@ export async function syncPivotBossBear15mUniverse(
   const needsDesc =
     row.description?.includes('Top movers') ||
     row.description?.includes('pullback com rejeição na EMA30') ||
+    row.description?.includes('breakdown de consolidação') ||
+    row.description?.includes('(C)') ||
     row.description !== PIVOT_BOSS_BEAR_15M_DESCRIPTION;
   const needsParams = p.symbolLimit != null;
   const needsPullback =
     p.pullbackMaxBars == null ||
     Number(p.pullbackMaxBars) !== PIVOT_BOSS_BEAR_15M_PARAMS.pullbackMaxBars;
+  const needsSellBlock =
+    p.sellBlockMaxDistBelowEma80Pct == null ||
+    Number(p.sellBlockMaxDistBelowEma80Pct) !==
+      PIVOT_BOSS_BEAR_15M_PARAMS.sellBlockMaxDistBelowEma80Pct ||
+    p.sellBlockMaxDistBelowEma30Pct != null ||
+    p.breakdownLookback != null;
 
-  if (!needsDesc && !needsParams && !needsPullback) return { updated: false };
+  if (!needsDesc && !needsParams && !needsPullback && !needsSellBlock) return { updated: false };
 
   const next = { ...p };
   if (needsParams) delete next.symbolLimit;
   if (needsPullback) next.pullbackMaxBars = PIVOT_BOSS_BEAR_15M_PARAMS.pullbackMaxBars;
+  if (needsSellBlock) {
+    next.sellBlockMaxDistBelowEma80Pct =
+      PIVOT_BOSS_BEAR_15M_PARAMS.sellBlockMaxDistBelowEma80Pct;
+    delete next.sellBlockMaxDistBelowEma30Pct;
+    delete next.breakdownLookback;
+  }
 
   await prisma.strategy.update({
     where: { name: 'PIVOT_BOSS_BEAR_15M' },
     data: {
       ...(needsDesc ? { description: PIVOT_BOSS_BEAR_15M_DESCRIPTION } : {}),
-      ...(needsParams || needsPullback ? { params: JSON.stringify(next) } : {}),
+      ...(needsParams || needsPullback || needsSellBlock
+        ? { params: JSON.stringify(next) }
+        : {}),
     },
   });
   return { updated: true };

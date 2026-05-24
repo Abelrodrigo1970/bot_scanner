@@ -978,7 +978,7 @@ export async function runEmaRibbonScalpingSellStrategy(
 
 /**
  * Pivot Boss Bear 15m — só VENDA.
- * Stack bearish 12/30/80/200 (estilo Pivot Boss 4 EMA): pullback EMA30, rejeição EMA200 ou breakdown.
+ * Stack bearish 12/30/80/200: pullback EMA30 ou rejeição EMA200.
  */
 export async function runPivotBossBear15mStrategy(
   symbol: string,
@@ -997,12 +997,13 @@ export async function runPivotBossBear15mStrategy(
   const minEma200SlopeDownPct = Number(params.minEma200SlopeDownPct ?? 0.15);
   const pullbackMaxBars = Math.max(3, Math.floor(Number(params.pullbackMaxBars ?? 5)));
   const rejectionLookback = Math.max(2, Math.floor(Number(params.rejectionLookback ?? 5)));
-  const breakdownLookback = Math.max(5, Math.floor(Number(params.breakdownLookback ?? 12)));
   const ema200TouchTolerancePct = Number(params.ema200TouchTolerancePct ?? 0.35);
   const strongBodyOfRangeMin = Number(params.strongBodyOfRangeMin ?? 0.55);
   const strongBodyMinAtrMult = Number(params.strongBodyMinAtrMult ?? 0.35);
   const closeLowerThirdMaxFrac = Number(params.closeLowerThirdMaxFrac ?? 0.35);
-  const sellBlockMaxDistBelowEma30Pct = Number(params.sellBlockMaxDistBelowEma30Pct ?? 10);
+  const sellBlockMaxDistBelowEma80Pct = Number(
+    params.sellBlockMaxDistBelowEma80Pct ?? 5
+  );
   const swingLookback = Math.max(2, Math.floor(Number(params.swingLookback ?? 8)));
   const swingAboveAtrMult = Number(params.swingAboveAtrMult ?? 0.15);
   const ema30StopBufferPct = Number(params.ema30StopBufferPct ?? 0.35);
@@ -1014,14 +1015,15 @@ export async function runPivotBossBear15mStrategy(
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
 
   try {
-    const warm = emaTrend + breakdownLookback + pullbackMaxBars + slopeLookback + atrPeriod + 20;
+    const historyBars = Math.max(pullbackMaxBars, rejectionLookback, swingLookback) + 5;
+    const warm = emaTrend + historyBars + slopeLookback + atrPeriod + 20;
     const candlesNeeded = Math.min(1500, Math.max(260, warm));
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
-    if (candles.length < emaTrend + breakdownLookback + 5) return null;
+    if (candles.length < emaTrend + historyBars + 5) return null;
 
     const closedCandles = candles.slice(0, -1);
     const lc = closedCandles.length - 1;
-    if (lc < emaTrend + breakdownLookback) return null;
+    if (lc < emaTrend + historyBars) return null;
 
     const closedCloses = closedCandles.map((c) => c.close);
     const ema12Series = calculateEMA(closedCloses, emaFast);
@@ -1051,9 +1053,9 @@ export async function runPivotBossBear15mStrategy(
     const ema200SlopePct = ((e200 - e200Then) / e200Then) * 100;
     if (ema200SlopePct > -minEma200SlopeDownPct) return null;
 
-    if (entryPrice < e30 && sellBlockMaxDistBelowEma30Pct > 0) {
-      const distBelowEma30Pct = ((e30 - entryPrice) / e30) * 100;
-      if (distBelowEma30Pct > sellBlockMaxDistBelowEma30Pct) return null;
+    if (entryPrice < e80 && sellBlockMaxDistBelowEma80Pct > 0) {
+      const distBelowEma80Pct = ((e80 - entryPrice) / e80) * 100;
+      if (distBelowEma80Pct > sellBlockMaxDistBelowEma80Pct) return null;
     }
 
     const atr = calculateATR(closedCandles, atrPeriod);
@@ -1093,25 +1095,11 @@ export async function runPivotBossBear15mStrategy(
       }
     }
 
-    let scenarioBreakdown = false;
-    const bdFrom = Math.max(0, lc - breakdownLookback);
-    const priorLow = lowestLow(closedCandles, bdFrom, lc - 1);
-    if (priorLow !== Infinity && c.close < priorLow) {
-      let closesAboveEma12 = 0;
-      for (let j = bdFrom; j <= lc - 1; j++) {
-        const j12 = emaValueAtClosedIdx(ema12Series, emaFast, j);
-        if (j12 == null) continue;
-        if (closedCandles[j].close > j12) closesAboveEma12++;
-      }
-      if (closesAboveEma12 >= 3) scenarioBreakdown = true;
-    }
-
-    if (!scenarioPullback && !scenarioRejection200 && !scenarioBreakdown) return null;
+    if (!scenarioPullback && !scenarioRejection200) return null;
 
     const scenarios: string[] = [];
     if (scenarioPullback) scenarios.push('pullback_rejeicao_ema30');
     if (scenarioRejection200) scenarios.push('rejeicao_ema200');
-    if (scenarioBreakdown) scenarios.push('breakdown_consolidacao');
 
     const swingHi = highestHigh(closedCandles, Math.max(0, lc - swingLookback), lc);
     const stopFromSwing = swingHi + atr * swingAboveAtrMult;
@@ -1135,9 +1123,7 @@ export async function runPivotBossBear15mStrategy(
       12,
       ((body / range - strongBodyOfRangeMin) / (1 - strongBodyOfRangeMin)) * 12
     );
-    const scenarioBonus =
-      (scenarioRejection200 ? 6 : 0) +
-      (scenarioPullback && scenarioBreakdown ? 3 : 0);
+    const scenarioBonus = scenarioRejection200 ? 6 : 0;
     const strength = Math.min(
       98,
       Math.max(62, Math.round(62 + slopeStrength + bodyBonus + scenarioBonus))
