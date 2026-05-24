@@ -8,7 +8,7 @@ Sistema de sinais. Executa automaticamente entre 8:00 e 23:59 (ajuste o timezone
 |----------|-------------|------------------------|
 | `/api/cron/run-15m` | MA Cross 15m + EMA Ribbon 15m | `*/15 8-23 * * *` |
 | `/api/cron/run-30m` | **Afastamento médio 30m** | `*/30 8-23 * * *` |
-| `/api/cron/run-1h` | RSI 1h, MA200 4h, MA Cross 1h, MACD+PMO, **Afastamento 1h**, MA_VOLATILE | `0 8-23 * * *` |
+| `/api/cron/run-1h` | RSI 1h, MA200 4h, MACD+PMO, **Afastamento 1h**, MA_VOLATILE | `0 8-23 * * *` |
 | `/api/cron/run-universe-scans` | Scanners 1, 2 e 3 (universo) | `0 */4 8-23 * * *` (de 4 em 4 h) |
 
 **Importante:** `AFASTAMENTO_MEDIO_30M` **não** corre no `run-1h` nem no `run-signals`. Precisa do job **30m** separado.

@@ -36,8 +36,6 @@ const ALLOWED_STRATEGIES = [
   'MA Cross 15m',
   'MA12/MA30',
   'MA_CROSS_5M',
-  'MA Cross 1h',
-  'MA_CROSS_1H',
   'EMA_SCALPING',
   'EMA_SCALPING_SELL',
   'EMA Ribbon Scalping',
@@ -48,10 +46,12 @@ const ALLOWED_STRATEGIES = [
   'AFASTAMENTO_MEDIO',
   'Afastamento médio 30m',
   'AFASTAMENTO_MEDIO_30M',
+  'RSI pullback bear 1h',
   'RSI queda de 70',
   'RSI_OVERBOUGHT_DROP_1H',
   'Pivot Boss Bear',
   'PIVOT_BOSS_BEAR_15M',
+  'PIVOT_BOSS_BEAR_1H',
 ];
 
 /** Força mínima para executar */

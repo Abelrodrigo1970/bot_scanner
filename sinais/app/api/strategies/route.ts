@@ -7,7 +7,6 @@ import {
   backfillMaCross5mSignalNames,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
-  MA_CROSS_1H_DESC,
   removeDeprecatedStrategies,
   syncAfastamentoMedio1hBuyThresholds,
   syncAfastamentoMedio1hScanner3Description,
@@ -37,24 +36,6 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   allowBuy: true,
   allowSell: true,
   exchange: 'binance' as const,
-};
-
-const MA_CROSS_1H_DEFAULT_PARAMS = {
-  ...MA_CROSS_5M_DEFAULT_PARAMS,
-  useDiffMode: true,
-  entryDiffPct: 1.2,
-  /** Fecho quando |MA12−MA30|/MA30×100 &lt; este valor */
-  exitDiffPct: 0.8,
-  stopPercent: 7,
-  exchange: 'bybit' as const,
-  /** true = entrada só por spread na vela fechada (sem exigir transição na vela anterior) */
-  ma12x30RepeatWhileTrend: true,
-  /** COMPRA só se |preço−MA30|/MA30 ≤ N%; 0 desactiva */
-  buyBlockAbsCloseDistanceFromMa200Pct: 8,
-  /** VENDA só se |preço−MA30|/MA30 ≤ N%; 0 desactiva */
-  sellBlockAbsCloseDistanceFromMa200Pct: 8,
-  /** Entrada só se |MA30−MA200|/MA200×100 ≤ N (MA200 período 200, mesmo TF); 0 desactiva */
-  entryMaxAbsPctMa30VsMa200: 8,
 };
 
 const EMA_SCALPING_DEFAULT_PARAMS = {
@@ -204,77 +185,6 @@ async function ensureMissingStrategies() {
     console.log(
       `✅ MA_CROSS_5M: ${relabeled} sinal(is) com strategyName actualizado → "${MA_CROSS_5M_DISPLAY}"`
     );
-  }
-
-  const existingMaCross1h = await prisma.strategy.findUnique({
-    where: { name: 'MA_CROSS_1H' },
-    select: { id: true, params: true, displayName: true, description: true },
-  });
-
-  if (!existingMaCross1h) {
-    await prisma.strategy.create({
-      data: {
-        name: 'MA_CROSS_1H',
-        displayName: 'MA Cross 1h (MA12/MA30)',
-        description: MA_CROSS_1H_DESC,
-        isActive: true,
-        params: JSON.stringify(MA_CROSS_1H_DEFAULT_PARAMS),
-      },
-    });
-  } else {
-    try {
-      const p = existingMaCross1h.params ? JSON.parse(existingMaCross1h.params) : {};
-      const next: Record<string, unknown> = { ...p };
-      if (p.maType !== 'SMA' && p.maType !== 'EMA') {
-        next.maType = 'EMA';
-      }
-      next.useDiffMode = true;
-      next.ma30Period = 12;
-      next.ma200Period = 30;
-      next.entryDiffPct = 1.2;
-      next.exitDiffPct = 0.8;
-      next.ma12x30RepeatWhileTrend = true;
-      next.buyBlockAbsCloseDistanceFromMa200Pct = 8;
-      next.sellBlockAbsCloseDistanceFromMa200Pct = 8;
-      if (
-        next.entryMaxAbsPctMa30VsMa200 == null ||
-        next.entryMaxAbsPctMa30VsMa200 === ''
-      ) {
-        next.entryMaxAbsPctMa30VsMa200 = 8;
-      }
-      if (next.ma12x30GainTpPct == null || next.ma12x30GainTpPct === '') {
-        next.ma12x30GainTpPct = 44;
-      }
-      if (next.ma12x30GainTpPositionPct == null || next.ma12x30GainTpPositionPct === '') {
-        next.ma12x30GainTpPositionPct = 60;
-      }
-      next.stopPercent = 7;
-      delete next.entryDiffPctBuy;
-      delete next.entryDiffPctSell;
-      delete next.buyStopPercent;
-      delete next.sellStopPercent;
-      delete next.sellTp1Percent;
-      delete next.sellTp1Position;
-      delete next.sellTp2Percent;
-      delete next.sellTp2Position;
-      next.exchange = p.exchange === 'binance' ? 'binance' : 'bybit';
-      const needParams = JSON.stringify(next) !== JSON.stringify(p);
-      const needMeta =
-        existingMaCross1h.displayName !== 'MA Cross 1h (MA12/MA30)' ||
-        existingMaCross1h.description !== MA_CROSS_1H_DESC;
-      if (needParams || needMeta) {
-        await prisma.strategy.update({
-          where: { name: 'MA_CROSS_1H' },
-          data: {
-            params: needParams ? JSON.stringify(next) : existingMaCross1h.params!,
-            displayName: 'MA Cross 1h (MA12/MA30)',
-            description: MA_CROSS_1H_DESC,
-          },
-        });
-      }
-    } catch (e) {
-      console.warn('⚠️ MA_CROSS_1H: falha ao migrar params:', e);
-    }
   }
 
   const existingEmaScalping = await prisma.strategy.findUnique({

@@ -7,6 +7,7 @@ export const REMOVED_DEPRECATED_STRATEGY_NAMES = [
   'RSI_15M',
   'RSI_BYBIT_15M',
   'MA_CROSS_15M',
+  'MA_CROSS_1H',
 ] as const;
 
 export interface RemoveDeprecatedStrategiesResult {
@@ -101,11 +102,7 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 (fecho +2–10% acima SMA200 em 1h, Binance Futures). Máx. um trade aberto por símbolo no cron (não empilha o mesmo sentido).';
-
-export const MA_CROSS_1H_DESC =
-  'MA12/MA30 em 1h: entrada por spread (>1,2%). Só entra se |MA30−MA200|/MA200 ≤ 8% (MA200 período 200 em 1h). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada. Restante: fecho se spread <0,8%. SL 7%. Filtro BUY e SELL: só se |preço−MA30|/MA30 ≤ 8%. Universo = Scanner 1 (fecho +2–10% acima SMA200 em 1h).';
-
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 (fecho +2–10% acima SMA200 em 1h, Binance Futures). Regras de frequência (análise Abr+Mai/2026): inactivo sáb/dom; horas 0–2, 4 e 11h PT bloqueadas; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde (líquido ≥0), mesma direção; sem posição aberta no mesmo sentido.';
 /** MA30/MA200 em 15m — mesma lógica de spread que MA12/MA30 (universo = scan Ma30Near6PriceBetween). */
 export const MA_CROSS_15M_STRATEGY_DESCRIPTION =
   'MA30 / MA200 em 15m: mesma lógica que MA12/MA30 (spread |rápida−lenta|/lenta). Entrada quando o spread ultrapassa o limiar na direção; modo repetir tendência com Δ mínimo opcional; TP parcial quando o preço favorece N% vs entrada; restante fecha quando o spread comprime abaixo do limiar de saída. SL 5%. Filtro SELL por distância do preço à MA200. Universo = scan MA30 entre −6% e +1% vs MA200 (1h) — menu Ma30Near6PriceBetween; actualiza esse scan antes de gerar sinais.';
@@ -143,13 +140,25 @@ export const MACD_HISTOGRAM_PMO_PARAMS = {
 export const MACD_HISTOGRAM_PMO_DESCRIPTION =
   'MACD histograma (1h, vela fechada) + PMO. COMPRA: histograma cruza para cima, linha MACD > signal, PMO > 0 e a subir. VENDA: histograma cruza para baixo, MACD < signal, PMO < 0 e a descer. Top 50 movers 1h; cooldown 4 h por símbolo/direcção.';
 
+export const RSI_OVERBOUGHT_DROP_1H_DISPLAY =
+  'RSI pullback bear 1h (queda pós-rally EMA30)';
+
 export const RSI_OVERBOUGHT_DROP_1H_PARAMS = {
   rsiPeriod: 14,
-  overboughtLevel: 70,
-  minDropPoints: 4,
-  minDistancePct: 12,
-  maPeriod: 80,
-  meanLineType: 'EMA',
+  overboughtLevel: 55,
+  minDropPoints: 3,
+  rsiPullbackLookback: 10,
+  rsiPullbackMinPeak: 50,
+  emaFastPeriod: 12,
+  emaMidPeriod: 30,
+  emaSlowPeriod: 80,
+  emaTrendPeriod: 200,
+  pullbackMaxBars: 8,
+  maxDistBelowEma80Pct: 10,
+  slopeLookback: 8,
+  minEma200SlopeDownPct: 0.1,
+  requireBearStack: true,
+  requireBearCandle: true,
   stopLossPct: 0.08,
   sellTp1Percent: 9,
   sellTp2Percent: 19,
@@ -160,12 +169,12 @@ export const RSI_OVERBOUGHT_DROP_1H_PARAMS = {
 } as const;
 
 export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). VENDA: RSI cai de ≥70 (≥4 pts) e afastamento à EMA80 >12%. SL +8%. TP1 -9% (30% pos.) | TP2 -19% (40% pos.) | restante fecho manual.';
+  'Universo: Scanner 2 (±10% EMA80, 1h). VENDA: tendência bear (preço < EMA80, stack 200>80>30>12, EMA200 a descer). Pullback à EMA30 nos últimos 8 velas; RSI ≥50 no rally e queda ≥3 pts (≥55→abaixo). Entrada: vela bear a fechar abaixo EMA12. Não emite se >10% abaixo EMA80. SL +8%. TP1 -9% (30%) | TP2 -19% (40%) | restante fecho manual.';
 
 export const AFASTAMENTO_MEDIO_DISPLAY = 'Afastamento médio 1h (≤1,9→≥2,4)';
 
 export const AFASTAMENTO_MEDIO_DESCRIPTION =
-  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 1h. COMPRA: linha ≤1,9%→≥2,4%, preço > EMA80 e > EMA30 (SL -4%, TP1 +9% (40%) | restante às 24h). VENDA: linha ≥2,4%→≤1,9%, preço < EMA80 e < EMA30 (SL +4%, TP1 -9% (40%) | restante às 24h). Não emite se força >75.';
+  'Universo: Scanner 3 (±4% MA80 em 4h). EMA80 + SMA(7) em 1h. COMPRA: linha ≤1,9%→≥2,4%, preço > EMA80 e > EMA30 (SL -4%, TP1 +9% (40%) | restante às 24h). VENDA: linha ≥2,4%→≤1,9%, preço < EMA80 e < EMA30 (SL +4%, TP1 -9% (40%) | restante às 24h). Não emite se força >75.';
 
 /** SL/TP 1h: TP parcial + restante ao fecho 24h. */
 export const AFASTAMENTO_MEDIO_EXIT_PARAMS = {
@@ -215,12 +224,17 @@ export const AFASTAMENTO_MEDIO_30M_EXIT_PARAMS = {
 } as const;
 
 export const AFASTAMENTO_MEDIO_30M_DESCRIPTION =
-  'Universo: Scanner 3 (±4% MA80 em 1h). EMA80 + SMA(7) em 30m. COMPRA: linha ≤2%→≥2,3%, preço > EMA80 e > EMA30 (SL -6%, TP1 +9% (50%) | restante às 24h). VENDA: linha ≥2,3%→≤2%, preço < EMA80 e < EMA30 (SL +6%, TP1 -9% (50%) | restante às 24h). Não emite se força >75.';
+  'Universo: Scanner 3 (±4% MA80 em 4h). EMA80 + SMA(7) em 30m. COMPRA: linha ≤2%→≥2,3%, preço > EMA80 e > EMA30 (SL -6%, TP1 +9% (50%) | restante às 24h). VENDA: linha ≥2,3%→≤2%, preço < EMA80 e < EMA30 (SL +6%, TP1 -9% (50%) | restante às 24h). Não emite se força >75.';
 
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
   'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80 (não >5% abaixo EMA80), EMA200 em queda. Entrada: (A) pullback EMA30 nos últimos 5 candles + rejeição bear; (B) rejeição na EMA200. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
+
+export const PIVOT_BOSS_BEAR_1H_DISPLAY = 'Pivot Boss Bear 1h (4 EMA venda)';
+
+export const PIVOT_BOSS_BEAR_1H_DESCRIPTION =
+  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 1h, só VENDA. Mesma lógica que a versão 15m: stack bearish, preço abaixo EMA80 (não >5% abaixo EMA80), EMA200 em queda. Entrada: (A) pullback EMA30 nos últimos 5 candles + rejeição bear; (B) rejeição na EMA200. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
@@ -250,6 +264,11 @@ export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   allowSell: true,
   sellEnabled: true,
   exchange: 'binance',
+} as const;
+
+/** Mesmos parâmetros base; velas 1h. */
+export const PIVOT_BOSS_BEAR_1H_PARAMS = {
+  ...PIVOT_BOSS_BEAR_15M_PARAMS,
 } as const;
 
 /** Actualiza universo/descrição Pivot Boss Bear (Scanner 2). */
@@ -478,6 +497,7 @@ export async function syncAfastamentoMedio1hScanner3Description(
   if (
     !row.description?.includes('Scanner 1') &&
     !row.description?.includes('SMA200') &&
+    !row.description?.includes('MA80 em 1h') &&
     row.description === AFASTAMENTO_MEDIO_DESCRIPTION
   ) {
     return { updated: false };
@@ -489,13 +509,13 @@ export async function syncAfastamentoMedio1hScanner3Description(
   return { updated: true };
 }
 
-/** Actualiza descrição e params RSI (Scanner 2 EMA80, SL/TP %). */
+/** Actualiza descrição, displayName e params RSI (pullback bear 1h). */
 export async function syncRsiOverboughtDrop1hConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
   const row = await prisma.strategy.findUnique({
     where: { name: 'RSI_OVERBOUGHT_DROP_1H' },
-    select: { params: true, description: true },
+    select: { params: true, description: true, displayName: true },
   });
   if (!row) return { updated: false };
 
@@ -506,6 +526,10 @@ export async function syncRsiOverboughtDrop1hConfig(
     p = {};
   }
 
+  const isLegacyExtensionShort =
+    p.minDistancePct != null ||
+    p.meanLineType != null ||
+    (p.overboughtLevel === 70 && p.pullbackMaxBars == null);
   const needsSlTp =
     p.stopLossPct === 0.06 ||
     p.stopLossPct === '0.06' ||
@@ -515,27 +539,38 @@ export async function syncRsiOverboughtDrop1hConfig(
     row.description?.includes('SMA80') ||
     row.description?.includes('TP na EMA80') ||
     row.description?.includes('SL 6%') ||
+    row.description?.includes('afastamento à EMA80 >12%') ||
     row.description !== RSI_OVERBOUGHT_DROP_1H_DESCRIPTION;
+  const needsDisplay =
+    row.displayName !== RSI_OVERBOUGHT_DROP_1H_DISPLAY &&
+    (row.displayName?.includes('afastamento >12%') ||
+      row.displayName?.includes('queda de 70') ||
+      row.displayName == null);
 
-  if (!needsSlTp && !needsDesc) return { updated: false };
+  if (!isLegacyExtensionShort && !needsSlTp && !needsDesc && !needsDisplay) {
+    return { updated: false };
+  }
 
-  const next = {
-    ...RSI_OVERBOUGHT_DROP_1H_PARAMS,
-    ...p,
-    ...(needsSlTp
-      ? {
-          stopLossPct: 0.08,
-          sellTp1Percent: 9,
-          sellTp2Percent: 19,
-          sellTp1Position: 30,
-          sellTp2Position: 40,
-        }
-      : {}),
-  };
+  const next = isLegacyExtensionShort
+    ? { ...RSI_OVERBOUGHT_DROP_1H_PARAMS }
+    : {
+        ...RSI_OVERBOUGHT_DROP_1H_PARAMS,
+        ...p,
+        ...(needsSlTp
+          ? {
+              stopLossPct: 0.08,
+              sellTp1Percent: 9,
+              sellTp2Percent: 19,
+              sellTp1Position: 30,
+              sellTp2Position: 40,
+            }
+          : {}),
+      };
 
   await prisma.strategy.update({
     where: { name: 'RSI_OVERBOUGHT_DROP_1H' },
     data: {
+      displayName: RSI_OVERBOUGHT_DROP_1H_DISPLAY,
       params: JSON.stringify(next),
       description: RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
     },
@@ -627,10 +662,7 @@ export async function syncMaCrossScanner1UniverseDescriptions(
 ): Promise<{ updated: string[] }> {
   const updated: string[] = [];
 
-  for (const [name, description] of [
-    ['MA_CROSS_5M', MA_CROSS_5M_DESC] as const,
-    ['MA_CROSS_1H', MA_CROSS_1H_DESC] as const,
-  ]) {
+  for (const [name, description] of [['MA_CROSS_5M', MA_CROSS_5M_DESC] as const]) {
     const row = await prisma.strategy.findUnique({
       where: { name },
       select: { description: true },

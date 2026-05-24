@@ -10,6 +10,9 @@ export const MA_CROSS_5M_SIGNAL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 /** Horas PT com lucro líquido negativo recorrente (análise Abr+Mai/2026). */
 export const MA_CROSS_15M_BLOCKED_HOURS_PT: readonly number[] = [0, 1, 2, 4, 11];
 
+/** Taxa round-trip usada na simulação Abr+Mai/2026 (alinhada com `simulate-2nd-if-green.mjs`). */
+export const MA_CROSS_15M_ROUND_TRIP_FEE_PCT = 0.1;
+
 export function localDayKey(date: Date, timeZone = MA_CROSS_15M_TZ): string {
   return date.toLocaleDateString('sv-SE', { timeZone });
 }
@@ -44,24 +47,39 @@ type DaySignalRow = {
   direction: string;
   entryPrice: number;
   result24h: number | null;
+  status: string;
+  status24h: string | null;
 };
+
+function isClosedSignal(signal: DaySignalRow): boolean {
+  return signal.status === 'EXPIRED' || signal.status24h === 'CLOSED';
+}
+
+/** Lucro líquido ≥ 0 vs entrada (mesma fórmula da simulação: result24h/entry em % − taxa). */
+function isNetProfitable(entryPrice: number, result24h: number): boolean {
+  if (entryPrice <= 0) return false;
+  return (result24h / entryPrice) * 100 - MA_CROSS_15M_ROUND_TRIP_FEE_PCT >= 0;
+}
 
 async function isSignalProfitable(
   signal: DaySignalRow,
   symbol: string
 ): Promise<boolean> {
   if (signal.result24h != null) {
-    return signal.direction === 'SELL'
-      ? signal.result24h >= 0
-      : signal.result24h >= 0;
+    return isNetProfitable(signal.entryPrice, signal.result24h);
+  }
+
+  if (!isClosedSignal(signal)) {
+    return false;
   }
 
   try {
     const currentPrice = await fetchCurrentPrice(symbol);
-    if (signal.direction === 'SELL') {
-      return currentPrice <= signal.entryPrice;
-    }
-    return currentPrice >= signal.entryPrice;
+    const result =
+      signal.direction === 'SELL'
+        ? signal.entryPrice - currentPrice
+        : currentPrice - signal.entryPrice;
+    return isNetProfitable(signal.entryPrice, result);
   } catch {
     return false;
   }
@@ -71,7 +89,7 @@ async function isSignalProfitable(
  * Regras MA Cross 15m (análise Abr+Mai/2026):
  * - sem fim-de-semana (cron) e sem horas tóxicas PT
  * - 1.º sinal do dia: cooldown 24h desde o último sinal do par
- * - 2.º sinal no mesmo dia: só se 1.º verde e mesma direção
+ * - 2.º sinal no mesmo dia: só se 1.º fechado, verde (líquido) e mesma direção
  * - máx. 2 sinais por símbolo por dia civil (PT)
  */
 export async function checkMaCross15mSignalGate(
@@ -103,10 +121,12 @@ export async function checkMaCross15mSignalGate(
       direction: true,
       entryPrice: true,
       result24h: true,
+      status: true,
+      status24h: true,
     },
   });
 
-  const todaySignals = recentDaySignals.filter(
+  const todaySignals: DaySignalRow[] = recentDaySignals.filter(
     (s) => localDayKey(s.generatedAt) === dayKey
   );
 
@@ -119,6 +139,13 @@ export async function checkMaCross15mSignalGate(
 
   if (todaySignals.length === 1) {
     const first = todaySignals[0]!;
+
+    if (!isClosedSignal(first)) {
+      return {
+        allowed: false,
+        reason: `2.º sinal aguarda fecho do 1.º (${input.symbol}, status ${first.status})`,
+      };
+    }
 
     if (first.direction !== input.direction) {
       return {

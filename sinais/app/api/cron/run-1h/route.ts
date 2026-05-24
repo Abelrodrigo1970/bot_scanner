@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Cron agregado 1h:
  * - run-scans-ma: MaCrossBelow + Bybit Vol1h/MA200 (MA_VOLATILE, MA Cross)
- * - run-signals: MA200 4h + MA_CROSS_1H + MACD/PMO + afastamento 1h + RSI queda 70
+ * - run-signals: MA200 4h + MACD/PMO + afastamento 1h + RSI queda 70
  *   (AFASTAMENTO_MEDIO_30M → cron separado /api/cron/run-30m)
  * - run-ma-volatile: MA_VOLATILE (MA60 1h; universo MaCrossBelow)
  *
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message:
-        'Processamento agregado 1h: MA Cross/Bybit scan + MA200 + MA Cross 1h + estratégias importadas + MA60 1h (Scanners 1–3: cron 4h separado)',
+        'Processamento agregado 1h: MA Cross/Bybit scan + MA200 + estratégias importadas + MA60 1h (Scanners 1–3: cron 4h separado)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

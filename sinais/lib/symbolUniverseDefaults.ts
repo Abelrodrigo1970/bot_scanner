@@ -5,7 +5,7 @@ export const UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 = 'UNIVERSE_ABOVE_MA200_1H' as 
 export const UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80 =
   'UNIVERSE_NEAR_MA200_PCT10_1H' as const;
 
-export const UNIVERSE_CODE_SCANNER_3_MA80_PCT4 = 'UNIVERSE_NEAR_MA200_PCT4_1H' as const;
+export const UNIVERSE_CODE_SCANNER_3_MA80_PCT4 = 'UNIVERSE_NEAR_MA200_PCT4_4H' as const;
 
 export const SCANNER_1_MIN_DISTANCE_PCT = 2;
 
@@ -28,18 +28,20 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     minQuoteVolume: 100000,
     candidateLimit: 400,
   },
-  UNIVERSE_NEAR_MA200_PCT4_1H: {
+  UNIVERSE_NEAR_MA200_PCT4_4H: {
     ruleType: 'WITHIN_PCT_OF_MA',
     maPeriod: 80,
     maxDistancePct: 4,
-    timeframe: '1h',
+    timeframe: '4h',
     minQuoteVolume: 100000,
     candidateLimit: 400,
   },
 };
 
 export function getBuiltinScanDefinition(code: string): UniverseScanDefinition | null {
-  return BUILTIN_UNIVERSE_SCAN[code] ?? null;
+  const resolved =
+    code === 'UNIVERSE_NEAR_MA200_PCT4_1H' ? UNIVERSE_CODE_SCANNER_3_MA80_PCT4 : code;
+  return BUILTIN_UNIVERSE_SCAN[resolved] ?? null;
 }
 
 export const BUILTIN_UNIVERSE_META: Record<
@@ -50,18 +52,18 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 1 — 2–10% acima SMA200 (1h)',
     description:
       'Perpétuos USDT (top volume) com fecho entre +2% e +10% acima da SMA200 em 1h. Universo: MA Cross 15m / 1h.',
-    strategyNames: 'MA_CROSS_5M, MA_CROSS_1H',
+    strategyNames: 'MA_CROSS_5M',
   },
   UNIVERSE_NEAR_MA200_PCT10_1H: {
     displayName: 'Scanner 2 — Até ±10% da EMA80 (1h)',
     description:
-      'Preço dentro de ±10% da EMA80 em 1h. Universo: RSI queda de 70 + afastamento >12%.',
-    strategyNames: 'RSI_OVERBOUGHT_DROP_1H, PIVOT_BOSS_BEAR_15M',
+      'Preço dentro de ±10% da EMA80 em 1h. Universo: RSI pullback bear, Pivot Boss Bear 15m e 1h.',
+    strategyNames: 'RSI_OVERBOUGHT_DROP_1H, PIVOT_BOSS_BEAR_15M, PIVOT_BOSS_BEAR_1H',
   },
-  UNIVERSE_NEAR_MA200_PCT4_1H: {
-    displayName: 'Scanner 3 — Até ±4% da MA80 (1h)',
+  UNIVERSE_NEAR_MA200_PCT4_4H: {
+    displayName: 'Scanner 3 — Até ±4% da MA80 (4h)',
     description:
-      'Preço dentro de ±4% da MA80 em 1h. Universo: Afastamento médio 1h e Afastamento médio 30m.',
+      'Preço dentro de ±4% da MA80 em 4h. Universo: Afastamento médio 1h e Afastamento médio 30m.',
     strategyNames: 'AFASTAMENTO_MEDIO, AFASTAMENTO_MEDIO_30M',
   },
 };

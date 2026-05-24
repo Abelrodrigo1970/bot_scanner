@@ -42,15 +42,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
-    strategyName: 'MA_CROSS_1H',
-    displayLabel: 'MA Cross 1h (MA12/MA30)',
-    signalTimeframes: ['1h'],
-    source: 'universe_scan',
-    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-    description: 'Scanner 1: fecho +2–10% acima SMA200 (1h).',
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-  },
-  {
     strategyName: 'MA200_VOLATILE',
     displayLabel: 'MA200 Top Voláteis',
     signalTimeframes: ['4h'],
@@ -76,6 +67,15 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
+    strategyName: 'PIVOT_BOSS_BEAR_1H',
+    displayLabel: 'Pivot Boss Bear 1h (4 EMA venda)',
+    signalTimeframes: ['1h'],
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
+    description: 'Scanner 2: ±10% da EMA80 (1h); sinais em 1h.',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+  },
+  {
     strategyName: 'MACD_HISTOGRAM_PMO',
     displayLabel: 'MACD Histogram 1h + PMO',
     signalTimeframes: ['1h'],
@@ -88,13 +88,13 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     displayLabel: 'Afastamento médio 1h (≤1,9→≥2,4)',
     signalTimeframes: ['1h'],
     source: 'universe_scan',
-    dataKey: 'UNIVERSE_NEAR_MA200_PCT4_1H',
-    description: 'Scanner 3: ±4% da MA80 (1h).',
+    dataKey: 'UNIVERSE_NEAR_MA200_PCT4_4H',
+    description: 'Scanner 3: ±4% da MA80 (4h).',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
     strategyName: 'RSI_OVERBOUGHT_DROP_1H',
-    displayLabel: 'RSI queda 70 + afastamento',
+    displayLabel: 'RSI pullback bear 1h',
     signalTimeframes: ['1h'],
     source: 'universe_scan',
     dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
@@ -106,8 +106,8 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     displayLabel: 'Afastamento médio 30m',
     signalTimeframes: ['30m'],
     source: 'universe_scan',
-    dataKey: 'UNIVERSE_NEAR_MA200_PCT4_1H',
-    description: 'Scanner 3: ±4% da SMA80 (1h); sinais em 30m.',
+    dataKey: 'UNIVERSE_NEAR_MA200_PCT4_4H',
+    description: 'Scanner 3: ±4% da SMA80 (4h); sinais em 30m.',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
 ];
@@ -132,6 +132,6 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/3',
-    label: 'Scanner 3 — ±4% MA80 (Afastamento 1h + 30m)',
+    label: 'Scanner 3 — ±4% MA80 (4h, Afastamento 1h + 30m)',
   },
 ] as const;

@@ -14,10 +14,14 @@ import {
   AFASTAMENTO_MEDIO_30M_SELL_PARAMS,
   AFASTAMENTO_STRENGTH_FILTER_PARAMS,
   RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
+  RSI_OVERBOUGHT_DROP_1H_DISPLAY,
   RSI_OVERBOUGHT_DROP_1H_PARAMS,
   PIVOT_BOSS_BEAR_15M_DESCRIPTION,
   PIVOT_BOSS_BEAR_15M_PARAMS,
   PIVOT_BOSS_BEAR_15M_DISPLAY,
+  PIVOT_BOSS_BEAR_1H_DESCRIPTION,
+  PIVOT_BOSS_BEAR_1H_PARAMS,
+  PIVOT_BOSS_BEAR_1H_DISPLAY,
   syncAfastamentoMedio1hBuyThresholds,
   syncAfastamentoMedio1hScanner3Description,
   syncAfastamentoMedio30mBuyPrevMax,
@@ -77,7 +81,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
   },
   {
     name: 'RSI_OVERBOUGHT_DROP_1H',
-    displayName: 'RSI queda de 70 (mín. 4 pts) + afastamento >12% (1h)',
+    displayName: RSI_OVERBOUGHT_DROP_1H_DISPLAY,
     description: RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(RSI_OVERBOUGHT_DROP_1H_PARAMS),
@@ -88,6 +92,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: PIVOT_BOSS_BEAR_15M_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(PIVOT_BOSS_BEAR_15M_PARAMS),
+  },
+  {
+    name: 'PIVOT_BOSS_BEAR_1H',
+    displayName: PIVOT_BOSS_BEAR_1H_DISPLAY,
+    description: PIVOT_BOSS_BEAR_1H_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(PIVOT_BOSS_BEAR_1H_PARAMS),
   },
 ] as const;
 
@@ -105,7 +116,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   }
   const rsiSync = await syncRsiOverboughtDrop1hConfig(prisma);
   if (rsiSync.updated) {
-    console.log('✅ RSI_OVERBOUGHT_DROP_1H: params/descrição actualizados (SL 8%, TP1/TP2 %)');
+    console.log('✅ RSI_OVERBOUGHT_DROP_1H: params/descrição actualizados (pullback bear 1h)');
   }
   const af1hSync = await syncAfastamentoMedio1hScanner3Description(prisma);
   if (af1hSync.updated) {

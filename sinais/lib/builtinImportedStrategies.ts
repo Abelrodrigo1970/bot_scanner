@@ -7,6 +7,7 @@ import {
   calculateMACD,
   calculatePMO,
   calculateRSI,
+  calculateRSISeries,
   calculateSMA,
   calculateEMA,
   getCloses,
@@ -35,6 +36,20 @@ function afastamentoStrengthAllowed(strength: number, params: StrategyParams): b
   const maxStrength = Number(params.maxStrength ?? 75);
   if (!Number.isFinite(maxStrength) || maxStrength <= 0) return true;
   return strength <= maxStrength;
+}
+
+function emaValueAtClosedIdx(emaSeries: number[], period: number, closedIdx: number): number | null {
+  const off = period - 1;
+  const j = closedIdx - off;
+  if (j < 0 || j >= emaSeries.length) return null;
+  return emaSeries[j];
+}
+
+function rsiAtClosedIdx(rsiSeries: number[], rsiPeriod: number, closedIdx: number): number | null {
+  const j = closedIdx - rsiPeriod;
+  if (j < 0 || j >= rsiSeries.length) return null;
+  const v = rsiSeries[j];
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
 }
 
 export async function runMacdHistogramPmoStrategy(
@@ -166,12 +181,20 @@ export async function runRsiOverboughtDrop1hStrategy(
   if (timeframe !== '1h') return null;
 
   const rsiPeriod = Math.max(2, Number(params.rsiPeriod) || 14);
-  const overboughtLevel = Number(params.overboughtLevel ?? 70);
-  const minDropPoints = Math.max(1, Number(params.minDropPoints) || 4);
-  const minDistancePct = Number(params.minDistancePct ?? 12);
-  const maPeriod = Math.max(2, Number(params.maPeriod) || 80);
-  const meanLineType =
-    String(params.meanLineType || 'EMA').toUpperCase() === 'SMA' ? 'SMA' : 'EMA';
+  const overboughtLevel = Number(params.overboughtLevel ?? 55);
+  const minDropPoints = Math.max(1, Number(params.minDropPoints) || 3);
+  const rsiPullbackLookback = Math.max(3, Number(params.rsiPullbackLookback) || 10);
+  const rsiPullbackMinPeak = Number(params.rsiPullbackMinPeak ?? 50);
+  const emaFast = Math.max(2, Math.floor(Number(params.emaFastPeriod ?? 12)));
+  const emaMid = Math.max(emaFast + 1, Math.floor(Number(params.emaMidPeriod ?? 30)));
+  const emaSlow = Math.max(emaMid + 1, Math.floor(Number(params.emaSlowPeriod ?? 80)));
+  const emaTrend = Math.max(emaSlow + 1, Math.floor(Number(params.emaTrendPeriod ?? 200)));
+  const pullbackMaxBars = Math.max(3, Math.floor(Number(params.pullbackMaxBars) || 8));
+  const maxDistBelowEma80Pct = Number(params.maxDistBelowEma80Pct ?? 10);
+  const slopeLookback = Math.max(2, Math.floor(Number(params.slopeLookback) || 8));
+  const minEma200SlopeDownPct = Number(params.minEma200SlopeDownPct ?? 0.1);
+  const requireBearStack = paramFlag(params.requireBearStack, true);
+  const requireBearCandle = paramFlag(params.requireBearCandle, true);
   const stopLossPct = Number(params.stopLossPct ?? 0.08);
   const sellTp1Percent = Number(params.sellTp1Percent ?? 9);
   const sellTp2Percent = Number(params.sellTp2Percent ?? 19);
@@ -179,50 +202,92 @@ export async function runRsiOverboughtDrop1hStrategy(
   const sellTp2Position = Math.min(100, Math.max(1, Number(params.sellTp2Position ?? 40)));
 
   try {
-    const candlesNeeded = Math.max(maPeriod, rsiPeriod) + 50;
+    const historyBars = Math.max(pullbackMaxBars, rsiPullbackLookback, slopeLookback) + 5;
+    const warm = emaTrend + historyBars + rsiPeriod + 20;
+    const candlesNeeded = Math.min(1500, Math.max(260, warm));
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
-    if (candles.length < Math.max(maPeriod, rsiPeriod) + 5) return null;
+    if (candles.length < emaTrend + historyBars + 5) return null;
 
-    const closes = getCloses(candles);
-    const rsiCurr = calculateRSI(closes, rsiPeriod);
-    const rsiPrev = calculateRSI(closes.slice(0, -1), rsiPeriod);
-    if (rsiCurr === null || rsiPrev === null) return null;
+    const closedCandles = candles.slice(0, -1);
+    const lc = closedCandles.length - 1;
+    if (lc < emaTrend + historyBars) return null;
+
+    const closedCloses = closedCandles.map((c) => c.close);
+    const ema12Series = calculateEMA(closedCloses, emaFast);
+    const ema30Series = calculateEMA(closedCloses, emaMid);
+    const ema80Series = calculateEMA(closedCloses, emaSlow);
+    const ema200Series = calculateEMA(closedCloses, emaTrend);
+    if (!ema12Series || !ema30Series || !ema80Series || !ema200Series) return null;
+
+    const e12 = emaValueAtClosedIdx(ema12Series, emaFast, lc);
+    const e30 = emaValueAtClosedIdx(ema30Series, emaMid, lc);
+    const e80 = emaValueAtClosedIdx(ema80Series, emaSlow, lc);
+    const e200 = emaValueAtClosedIdx(ema200Series, emaTrend, lc);
+    if (e12 == null || e30 == null || e80 == null || e200 == null || e80 === 0) return null;
+
+    const c = closedCandles[lc];
+    const currentPrice = c.close;
+
+    if (requireBearStack && !(e200 > e80 && e80 > e30 && e30 > e12)) return null;
+    if (!(currentPrice < e80)) return null;
+
+    if (maxDistBelowEma80Pct > 0) {
+      const distBelowEma80Pct = ((e80 - currentPrice) / e80) * 100;
+      if (distBelowEma80Pct > maxDistBelowEma80Pct) return null;
+    }
+
+    const e200Then = emaValueAtClosedIdx(ema200Series, emaTrend, lc - slopeLookback);
+    if (e200Then == null || e200Then === 0) return null;
+    const ema200SlopePct = ((e200 - e200Then) / e200Then) * 100;
+    if (minEma200SlopeDownPct > 0 && ema200SlopePct > -minEma200SlopeDownPct) return null;
+
+    let hadPullback = false;
+    const pbFrom = Math.max(emaTrend - 1, lc - pullbackMaxBars);
+    for (let j = pbFrom; j <= lc - 1; j++) {
+      const j30 = emaValueAtClosedIdx(ema30Series, emaMid, j);
+      if (j30 == null) continue;
+      const bar = closedCandles[j];
+      if (bar.high >= j30 * (1 - 0.002)) {
+        hadPullback = true;
+        break;
+      }
+    }
+    if (!hadPullback) return null;
+
+    const rsiSeries = calculateRSISeries(closedCloses, rsiPeriod);
+    if (rsiSeries.length < rsiPeriod + 3) return null;
+
+    const rsiCurr = rsiAtClosedIdx(rsiSeries, rsiPeriod, lc);
+    const rsiPrev = rsiAtClosedIdx(rsiSeries, rsiPeriod, lc - 1);
+    if (rsiCurr == null || rsiPrev == null) return null;
 
     const drop = rsiPrev - rsiCurr;
-    const crossedDownFromOverbought =
-      rsiPrev >= overboughtLevel && rsiCurr < overboughtLevel && drop >= minDropPoints;
-    if (!crossedDownFromOverbought) return null;
+    if (!(drop >= minDropPoints && rsiPrev >= overboughtLevel && rsiCurr < rsiPrev)) return null;
 
-    const distances =
-      meanLineType === 'SMA'
-        ? getSmaPercentDistanceSeries(closes, maPeriod)
-        : getEmaPercentDistanceSeries(closes, maPeriod);
-    if (distances.length < 1) return null;
-    const currDist = distances[distances.length - 1];
-    if (!(currDist > minDistancePct)) return null;
-
-    let meanAtClose: number | null = null;
-    if (meanLineType === 'EMA') {
-      const em = calculateEMA(closes, maPeriod);
-      meanAtClose = em?.length ? em[em.length - 1]! : null;
-    } else {
-      meanAtClose = calculateSMA(closes, maPeriod);
+    let rsiPeak = rsiPrev;
+    const peakFrom = Math.max(rsiPeriod, lc - rsiPullbackLookback);
+    for (let j = peakFrom; j <= lc; j++) {
+      const r = rsiAtClosedIdx(rsiSeries, rsiPeriod, j);
+      if (r != null) rsiPeak = Math.max(rsiPeak, r);
     }
-    if (meanAtClose === null || meanAtClose === 0) return null;
+    if (rsiPeak < rsiPullbackMinPeak) return null;
 
-    const currentPrice = candles[candles.length - 1].close;
+    if (requireBearCandle && c.close >= c.open) return null;
+    if (!(c.close < e12)) return null;
+
     const stopLoss = currentPrice * (1 + stopLossPct);
     const target1 = currentPrice * (1 - sellTp1Percent / 100);
     const target2 = currentPrice * (1 - sellTp2Percent / 100);
+
+    const distBelowEma80Pct = ((e80 - currentPrice) / e80) * 100;
+    const slopeStrength = Math.min(12, Math.max(0, -ema200SlopePct - minEma200SlopeDownPct) * 3);
+    const rsiStrength = Math.min(14, Math.max(0, drop - minDropPoints) * 2.5);
+    const peakStrength = Math.min(8, Math.max(0, rsiPeak - rsiPullbackMinPeak) * 0.4);
     const strength = Math.min(
-      100,
+      98,
       Math.max(
-        70,
-        Math.round(
-          70 +
-            Math.min(drop - minDropPoints, 8) * 2 +
-            Math.min(Math.max(currDist - minDistancePct, 0), 18)
-        )
+        65,
+        Math.round(65 + slopeStrength + rsiStrength + peakStrength + Math.min(distBelowEma80Pct, 6))
       )
     );
 
@@ -234,18 +299,18 @@ export async function runRsiOverboughtDrop1hStrategy(
       target2,
       strength,
       extraInfo: JSON.stringify({
-        setup: 'rsi_overbought_drop_distance_ma',
+        setup: 'rsi_pullback_bear_breakdown',
         rsiPeriod,
         overboughtLevel,
         minDropPoints,
-        minDistancePct,
+        rsiPullbackMinPeak,
         rsiPrev: rsiPrev.toFixed(2),
         rsiCurr: rsiCurr.toFixed(2),
+        rsiPeak: rsiPeak.toFixed(2),
         drop: drop.toFixed(2),
-        distancePct: currDist.toFixed(3),
-        meanLineType,
-        maPeriod,
-        meanAtClose: meanAtClose.toFixed(8),
+        distBelowEma80Pct: distBelowEma80Pct.toFixed(3),
+        ema200SlopePct: ema200SlopePct.toFixed(3),
+        emaStack: { ema12: e12, ema30: e30, ema80: e80, ema200: e200 },
         stopLossPct,
         sellTp1Percent,
         sellTp2Percent,
@@ -258,7 +323,7 @@ export async function runRsiOverboughtDrop1hStrategy(
       }),
     };
   } catch (error) {
-    console.error(`Erro RSI queda 70 + afastamento ${symbol}:`, error);
+    console.error(`Erro RSI pullback bear 1h ${symbol}:`, error);
     return null;
   }
 }

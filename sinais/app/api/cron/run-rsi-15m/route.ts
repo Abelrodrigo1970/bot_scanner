@@ -13,13 +13,13 @@ async function runCron15mStrategiesInBackground(): Promise<void> {
     const signalsCreated = await runAllStrategies({
       exclude: [
         'MA_CROSS_5M',
-        'MA_CROSS_1H',
         'MA200_VOLATILE',
         'MA_VOLATILE',
         'MACD_HISTOGRAM_PMO',
         'AFASTAMENTO_MEDIO',
         'AFASTAMENTO_MEDIO_30M',
         'RSI_OVERBOUGHT_DROP_1H',
+        'PIVOT_BOSS_BEAR_1H',
       ],
     });
 

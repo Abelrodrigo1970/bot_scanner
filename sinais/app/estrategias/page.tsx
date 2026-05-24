@@ -295,21 +295,23 @@ export default function EstrategiasPage() {
           </div>
         );
 
-      case 'MA_CROSS_5M':
-      case 'MA_CROSS_1H': {
-        const is1h = strategy.name === 'MA_CROSS_1H';
-        const defaultSlSpread = is1h ? 7 : 15;
+      case 'MA_CROSS_5M': {
         const maPairLabel = 'MA12 / MA30';
         const diffLabel = 'MA12 / MA30';
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Velas <strong>{is1h ? '1h' : '15m'}</strong> — <strong>{maPairLabel}</strong>. Mesma lógica de spread: rápida&gt;lenta (ou &lt;) e |rápida−lenta|/lenta &gt; limiar de entrada; fecho quando a diferença comprime abaixo do limiar de saída (compressão).
+              Velas <strong>15m</strong> — <strong>{maPairLabel}</strong>. Mesma lógica de spread: rápida&gt;lenta (ou &lt;) e |rápida−lenta|/lenta &gt; limiar de entrada; fecho quando a diferença comprime abaixo do limiar de saída (compressão).
               <>
-                {!is1h && ' O cron corre a cada 15 min.'} Símbolos ={' '}
+                {' O cron corre a cada 15 min.'} Símbolos ={' '}
                 <strong>Scanner 1</strong> (fecho +2–10% acima SMA200 em 1h); actualize em Origem de dados → Scanner 1
                 ou aguarde o cron <strong>run-universe-scans</strong> (cada 4 h).
               </>
+            </p>
+            <p className="text-xs text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-md px-3 py-2">
+              <strong>Frequência (híbrida):</strong> sem sáb/dom; horas 0–2, 4 e 11h PT bloqueadas; cooldown 24h entre dias;
+              máx. <strong>2 sinais/símbolo/dia</strong> — o 2.º só após o 1.º <strong>fechado e verde</strong> (mesma direção).
+              Não abre posição nova se já existir trade aberto no mesmo sentido.
             </p>
             <div className="max-w-md">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média</label>
@@ -325,9 +327,9 @@ export default function EstrategiasPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período MA rápida (ex. 12)', p.ma30Period ?? 12, (v) => upd({ ma30Period: v }))}
               {numField('Período MA lenta (ex. 30)', p.ma200Period ?? 30, (v) => upd({ ma200Period: v }))}
-              {numField(`Entrada: dif. ${diffLabel} (%)`, p.entryDiffPct ?? (is1h ? 1.2 : 0.9), (v) => upd({ entryDiffPct: v }), 0.1)}
-              {numField(`Saída/fecho: dif. ${diffLabel} (%)`, p.exitDiffPct ?? (is1h ? 0.8 : 0.5), (v) => upd({ exitDiffPct: v }), 0.1)}
-              {numField('SL (%)', p.stopPercent ?? defaultSlSpread, (v) => upd({ stopPercent: v }), 0.5)}
+              {numField(`Entrada: dif. ${diffLabel} (%)`, p.entryDiffPct ?? 0.9, (v) => upd({ entryDiffPct: v }), 0.1)}
+              {numField(`Saída/fecho: dif. ${diffLabel} (%)`, p.exitDiffPct ?? 0.5, (v) => upd({ exitDiffPct: v }), 0.1)}
+              {numField('SL (%)', p.stopPercent ?? 15, (v) => upd({ stopPercent: v }), 0.5)}
               {numField(
                 'TP parcial: valorização vs entrada (%)',
                 p.ma12x30GainTpPct ?? 44,
@@ -344,13 +346,13 @@ export default function EstrategiasPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
               {numField(
                 `BUY: máx. |preço − MA lenta| / MA lenta (${'MA30'}) (%)`,
-                p.buyBlockAbsCloseDistanceFromMa200Pct ?? (is1h ? 8 : 0),
+                p.buyBlockAbsCloseDistanceFromMa200Pct ?? 0,
                 (v) => upd({ buyBlockAbsCloseDistanceFromMa200Pct: v }),
                 0.5
               )}
               {numField(
                 `SELL: máx. |preço − MA lenta| / MA lenta (${'MA30'}) (%)`,
-                p.sellBlockAbsCloseDistanceFromMa200Pct ?? (is1h ? 8 : 6),
+                p.sellBlockAbsCloseDistanceFromMa200Pct ?? 6,
                 (v) => upd({ sellBlockAbsCloseDistanceFromMa200Pct: v }),
                 0.5
               )}
@@ -358,7 +360,7 @@ export default function EstrategiasPage() {
             <div className="max-w-md">
               {numField(
                 'Entrada: máx. |MA30 − MA200| / MA200 (%)',
-                p.entryMaxAbsPctMa30VsMa200 ?? (is1h ? 8 : 0),
+                p.entryMaxAbsPctMa30VsMa200 ?? 0,
                 (v) => upd({ entryMaxAbsPctMa30VsMa200: v }),
                 0.5
               )}
@@ -480,14 +482,19 @@ export default function EstrategiasPage() {
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Timeframe <strong>1h</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 2</strong> (±10%
-              EMA80). Entrada: RSI cruza de ≥70 para baixo (queda ≥4 pts) com preço &gt;12% acima da EMA80. SL/TP em
-              % vs entrada (short).
+              EMA80). Tendência bear: preço abaixo EMA80, stack 200&gt;80&gt;30&gt;12, EMA200 a descer. Entrada após
+              pullback à EMA30, RSI ≥50 no rally e queda ≥3 pts, vela bear a fechar abaixo EMA12 (como nos breakdowns
+              pós-rejeição nas EMAs).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período RSI', p.rsiPeriod ?? 14, (v) => upd({ rsiPeriod: v }))}
-              {numField('Nível sobrecompra', p.overboughtLevel ?? 70, (v) => upd({ overboughtLevel: v }))}
-              {numField('Queda mín. RSI (pts)', p.minDropPoints ?? 4, (v) => upd({ minDropPoints: v }))}
-              {numField('Afastamento mín. EMA80 (%)', p.minDistancePct ?? 12, (v) => upd({ minDistancePct: v }), 0.5)}
+              {numField('RSI mín. vela anterior', p.overboughtLevel ?? 55, (v) => upd({ overboughtLevel: v }))}
+              {numField('Queda mín. RSI (pts)', p.minDropPoints ?? 3, (v) => upd({ minDropPoints: v }))}
+              {numField('Pico RSI mín. no pullback', p.rsiPullbackMinPeak ?? 50, (v) => upd({ rsiPullbackMinPeak: v }))}
+              {numField('Lookback pico RSI (velas)', p.rsiPullbackLookback ?? 10, (v) => upd({ rsiPullbackLookback: v }))}
+              {numField('Pullback EMA30 (velas)', p.pullbackMaxBars ?? 8, (v) => upd({ pullbackMaxBars: v }))}
+              {numField('Máx. abaixo EMA80 (%)', p.maxDistBelowEma80Pct ?? 10, (v) => upd({ maxDistBelowEma80Pct: v }), 0.5)}
+              {numField('Inclinação mín. EMA200 (queda, %)', p.minEma200SlopeDownPct ?? 0.1, (v) => upd({ minEma200SlopeDownPct: v }), 0.05)}
             </div>
             <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">SELL — SL / TP</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

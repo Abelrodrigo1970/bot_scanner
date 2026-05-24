@@ -4,7 +4,6 @@ import {
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_5M_PARAMS,
-  MA_CROSS_1H_DESC,
   MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION,
   migrateVolumeSpike15mToMaCross5m,
   removeDeprecatedStrategies,
@@ -93,57 +92,6 @@ async function main() {
       description: MA_CROSS_5M_DESC,
       isActive: true,
       params: JSON.stringify(MA_CROSS_5M_PARAMS),
-    },
-  });
-
-  const maCross1hStrategy = await prisma.strategy.upsert({
-    where: { name: 'MA_CROSS_1H' },
-    update: {
-      isActive: true,
-      displayName: 'MA Cross 1h (MA12/MA30)',
-      description: MA_CROSS_1H_DESC,
-      params: JSON.stringify({
-        ma30Period: 12,
-        ma200Period: 30,
-        maType: 'EMA',
-        useDiffMode: true,
-        entryDiffPct: 1.2,
-        exitDiffPct: 0.8,
-        stopPercent: 7,
-        buyBlockAbsCloseDistanceFromMa200Pct: 8,
-        sellBlockAbsCloseDistanceFromMa200Pct: 8,
-        entryMaxAbsPctMa30VsMa200: 8,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'bybit',
-        ma12x30RepeatWhileTrend: true,
-        ma12x30GainTpPct: 44,
-        ma12x30GainTpPositionPct: 60,
-      }),
-    },
-    create: {
-      name: 'MA_CROSS_1H',
-      displayName: 'MA Cross 1h (MA12/MA30)',
-      description: MA_CROSS_1H_DESC,
-      isActive: true,
-      params: JSON.stringify({
-        ma30Period: 12,
-        ma200Period: 30,
-        maType: 'EMA',
-        useDiffMode: true,
-        entryDiffPct: 1.2,
-        exitDiffPct: 0.8,
-        stopPercent: 7,
-        buyBlockAbsCloseDistanceFromMa200Pct: 8,
-        sellBlockAbsCloseDistanceFromMa200Pct: 8,
-        entryMaxAbsPctMa30VsMa200: 8,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'bybit',
-        ma12x30RepeatWhileTrend: true,
-        ma12x30GainTpPct: 44,
-        ma12x30GainTpPositionPct: 60,
-      }),
     },
   });
 
@@ -354,7 +302,6 @@ async function main() {
   console.log('Seed concluído!');
   console.log('Estratégias (ids):', {
     maCross5m: maCross5mStrategy.id,
-    maCross1h: maCross1hStrategy.id,
     maVolatile: maVolatileStrategy.id,
     ma200Volatile: ma200VolatileStrategy.id,
   });

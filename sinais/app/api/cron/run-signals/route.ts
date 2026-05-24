@@ -12,13 +12,13 @@ import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 
 /**
  * Executa sinais em background (fire-and-forget):
- * MA200_VOLATILE 4h + MA_CROSS_1H (se activa), conforme estratégias ativas na BD.
+ * MA200_VOLATILE 4h e restantes estratégias 1h activas na BD.
  * RSI 1h, Volume Spike 1h, MA_CROSS_15M e RSI 15m foram removidas.
- * Auto-executa ordens: MA200_VOLATILE (não MA_CROSS_1H por defeito).
+ * Auto-executa ordens: MA200_VOLATILE.
  */
 async function runSignalsInBackground(hour: number, minute: number): Promise<void> {
   try {
-    console.log('[Run-Signals BG] Iniciando estratégias (MA200 4h + MA_CROSS_1H se ativo, …)...');
+    console.log('[Run-Signals BG] Iniciando estratégias 1h (MA200 4h, …)...');
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
@@ -187,7 +187,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
 }
 
 /**
- * Endpoint de cron para MA200 4h + MA_CROSS_1H (se activa).
+ * Endpoint de cron para MA200 4h e restantes estratégias 1h activas.
  * MA Cross 15m (MA12/30): /api/cron/run-volume-spike-15m. EMA 15m: /api/cron/run-rsi-15m.
  */
 export async function GET(request: NextRequest) {
@@ -207,7 +207,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento iniciado em background (MA200 4h + MA Cross 1h MA12/30 se estratégia ativa)',
+      message: 'Processamento iniciado em background (MA200 4h e estratégias 1h activas)',
       executedAt: now.toISOString(),
       nextExecution: `${(hour + 1) % 24}:00`,
     });

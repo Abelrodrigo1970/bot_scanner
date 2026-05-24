@@ -20,7 +20,7 @@ const dataSourceItems = [
   { href: '/bybit-ma200-mc20m', label: 'Bybit Vol 1h + MA200 → MA12×MA30' },
   { href: '/scanners/1', label: 'Scanner 1 — 2–10% SMA200 (MA Cross)' },
   { href: '/scanners/2', label: 'Scanner 2 — ±10% EMA80 (RSI queda 70)' },
-  { href: '/scanners/3', label: 'Scanner 3 — ±4% MA80 (Afastamento 1h + 30m)' },
+  { href: '/scanners/3', label: 'Scanner 3 — ±4% MA80 (4h, Afastamento 1h + 30m)' },
 ];
 
 export default function Header() {

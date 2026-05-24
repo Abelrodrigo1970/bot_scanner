@@ -977,15 +977,14 @@ export async function runEmaRibbonScalpingSellStrategy(
 }
 
 /**
- * Pivot Boss Bear 15m — só VENDA.
+ * Pivot Boss Bear — só VENDA (15m ou 1h).
  * Stack bearish 12/30/80/200: pullback EMA30 ou rejeição EMA200.
  */
-export async function runPivotBossBear15mStrategy(
+async function runPivotBossBearOnTimeframe(
   symbol: string,
-  timeframe: Timeframe,
+  timeframe: '15m' | '1h',
   params: StrategyParams
 ): Promise<SignalResult | null> {
-  if (timeframe !== '15m') return null;
   if (params.sellEnabled === false || params.allowSell === false) return null;
 
   const emaFast = Math.max(2, Math.floor(Number(params.emaFastPeriod ?? 12)));
@@ -1150,13 +1149,31 @@ export async function runPivotBossBear15mStrategy(
         closeAfterHours,
         bodyRangePct: Number(((body / range) * 100).toFixed(1)),
         executionProfile:
-          `SELL apenas | Pivot Boss 4 EMA bear | SL +${slLabel} (swing/EMA30, máx. ${(stopLossPctCap * 100).toFixed(0)}%) | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+          `SELL apenas | Pivot Boss 4 EMA bear ${timeframe} | SL +${slLabel} (swing/EMA30, máx. ${(stopLossPctCap * 100).toFixed(0)}%) | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
       }),
     };
   } catch (error) {
-    console.error(`Erro na estratégia Pivot Boss Bear 15m (${symbol}):`, error);
+    console.error(`Erro na estratégia Pivot Boss Bear ${timeframe} (${symbol}):`, error);
     return null;
   }
+}
+
+export async function runPivotBossBear15mStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  if (timeframe !== '15m') return null;
+  return runPivotBossBearOnTimeframe(symbol, '15m', params);
+}
+
+export async function runPivotBossBear1hStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  if (timeframe !== '1h') return null;
+  return runPivotBossBearOnTimeframe(symbol, '1h', params);
 }
 
 /**
@@ -1537,21 +1554,13 @@ async function runMaCrossM30M200OnTimeframe(
   }
 }
 
+/** MA12 / MA30 em 15m (modo spread por diferença entre médias). */
 export async function runMaCross15mStrategy(
   symbol: string,
   timeframe: Timeframe,
   params: StrategyParams
 ): Promise<SignalResult | null> {
   return runMaCrossM30M200OnTimeframe(symbol, timeframe, params, '15m');
-}
-
-/** MA12 / MA30 em 1h (modo spread por diferença entre médias). */
-export async function runMaCross1hStrategy(
-  symbol: string,
-  timeframe: Timeframe,
-  params: StrategyParams
-): Promise<SignalResult | null> {
-  return runMaCrossM30M200OnTimeframe(symbol, timeframe, params, '1h');
 }
 
 /** MA12 / MA30 por defeito em velas 5m — cron 15m no endpoint dedicado. */
@@ -1671,10 +1680,10 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
       const timeframesToUse: Timeframe[] =
         strategy.name === 'MA_CROSS_5M' ? ['15m'] :
-        strategy.name === 'MA_CROSS_1H' ? ['1h'] :
         strategy.name === 'MA_VOLATILE' ? ['1h'] :
         strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL' ? ['15m'] :
         strategy.name === 'PIVOT_BOSS_BEAR_15M' ? ['15m'] :
+        strategy.name === 'PIVOT_BOSS_BEAR_1H' ? ['1h'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
         strategy.name === 'AFASTAMENTO_MEDIO_30M' ? ['30m'] :
         strategy.name === 'MACD_HISTOGRAM_PMO' ||
@@ -1690,13 +1699,17 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         console.log(
           `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
-      } else if (strategy.name === 'PIVOT_BOSS_BEAR_15M') {
-        console.log('🔍 PIVOT_BOSS_BEAR_15M: universo Scanner 2 (±10% EMA80, 1h); sinais em 15m...');
+      } else if (
+        strategy.name === 'PIVOT_BOSS_BEAR_15M' ||
+        strategy.name === 'PIVOT_BOSS_BEAR_1H'
+      ) {
+        const tfLabel = strategy.name === 'PIVOT_BOSS_BEAR_1H' ? '1h' : '15m';
+        console.log(`🔍 ${strategy.name}: universo Scanner 2 (±10% EMA80, 1h); sinais em ${tfLabel}...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2)`);
         if (symbolsToAnalyze.length === 0) {
           console.warn(
-            '⚠️ Scanner 2 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 2. Ignorando PIVOT_BOSS_BEAR_15M.'
+            `⚠️ Scanner 2 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 2. Ignorando ${strategy.name}.`
           );
           continue;
         }
@@ -1713,7 +1726,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         } catch (err) {
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top movers 1h:`, err);
         }
-      } else if (strategy.name === 'MA_CROSS_5M' || strategy.name === 'MA_CROSS_1H') {
+      } else if (strategy.name === 'MA_CROSS_5M') {
         console.log(`🔍 ${strategy.name}: universo Scanner 1 (+2–10% acima SMA200, 1h)...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
@@ -1742,7 +1755,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         const signalTf =
           strategy.name === 'AFASTAMENTO_MEDIO_30M' ? 'sinais em 30m' : 'sinais em 1h';
         console.log(
-          `🔍 ${strategy.name}: universo Scanner 3 (±4% MA80, 1h); ${signalTf}...`
+          `🔍 ${strategy.name}: universo Scanner 3 (±4% MA80, 4h); ${signalTf}...`
         );
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_3_MA80_PCT4);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 3)`);
@@ -1774,9 +1787,6 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
               case 'MA_CROSS_5M':
                 signalResult = await runMaCross15mStrategy(symbol, timeframe, params);
                 break;
-              case 'MA_CROSS_1H':
-                signalResult = await runMaCross1hStrategy(symbol, timeframe, params);
-                break;
               case 'EMA_SCALPING':
                 signalResult = await runEmaRibbonScalpingStrategy(symbol, timeframe, params);
                 break;
@@ -1785,6 +1795,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 break;
               case 'PIVOT_BOSS_BEAR_15M':
                 signalResult = await runPivotBossBear15mStrategy(symbol, timeframe, params);
+                break;
+              case 'PIVOT_BOSS_BEAR_1H':
+                signalResult = await runPivotBossBear1hStrategy(symbol, timeframe, params);
                 break;
               case 'MA_VOLATILE':
                 signalResult = await runMa60VolatileStrategy(symbol, timeframe, params);

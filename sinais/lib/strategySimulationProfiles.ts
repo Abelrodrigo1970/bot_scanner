@@ -57,14 +57,6 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA30 < 0,5%.',
   },
   {
-    strategyName: 'MA_CROSS_1H',
-    displayNames: ['MA Cross 1h (MA12/MA30)'],
-    buy: side(7, 44, 60),
-    sell: side(7, 44, 60),
-    summary:
-      'SL 7%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread < 0,8%.',
-  },
-  {
     strategyName: 'MA200_VOLATILE',
     displayNames: ['MA200 Top Voláteis'],
     buy: side(4, 80, 70),
@@ -105,7 +97,10 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   },
   {
     strategyName: 'RSI_OVERBOUGHT_DROP_1H',
-    displayNames: ['RSI queda de 70 (mín. 4 pts) + afastamento >12% (1h)'],
+    displayNames: [
+      'RSI pullback bear 1h (queda pós-rally EMA30)',
+      'RSI queda de 70 (mín. 4 pts) + afastamento >12% (1h)',
+    ],
     buy: null,
     sell: side(8, 9, 30, 19, 40),
     summary:
@@ -141,6 +136,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     sell: side(8, 9, 50),
     summary:
       'Só VENDA. Stack 12/30/80/200 bearish. SL dinâmico (máx. 8%). TP1 -9% (50%) | restante às 24h.',
+  },
+  {
+    strategyName: 'PIVOT_BOSS_BEAR_1H',
+    displayNames: ['Pivot Boss Bear 1h (4 EMA venda)'],
+    buy: null,
+    sell: side(8, 9, 50),
+    summary:
+      'Só VENDA. Stack 12/30/80/200 bearish em 1h. SL dinâmico (máx. 8%). TP1 -9% (50%) | restante às 24h.',
   },
 ];
 
