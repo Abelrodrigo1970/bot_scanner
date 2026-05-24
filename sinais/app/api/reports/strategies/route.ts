@@ -5,7 +5,7 @@ import { ensureDatabase } from '@/lib/db-init';
 import { getPositionSizeUsdt } from '@/lib/binanceConfig';
 
 /** Alinhado ao mínimo de execução automática (tradingRules MIN_STRENGTH = 60). */
-export const REPORT_DEFAULT_MIN_STRENGTH = 60;
+const REPORT_DEFAULT_MIN_STRENGTH = 60;
 
 type Direction = 'BUY' | 'SELL';
 
