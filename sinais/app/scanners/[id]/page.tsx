@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import Disclaimer from '@/components/Disclaimer';
 import {
   BUILTIN_UNIVERSE_META,
+  getBuiltinScanDefinition,
   getScannerByUiId,
 } from '@/lib/symbolUniverseDefaults';
 
@@ -23,6 +24,10 @@ export default function UniverseScannerPage() {
   const scanner = getScannerByUiId(scannerId);
   const code = scanner?.code ?? '';
   const meta = code ? BUILTIN_UNIVERSE_META[code] : null;
+  const scanDef = code ? getBuiltinScanDefinition(code) : null;
+  const maLabel =
+    scanDef?.maType === 'EMA' ? `EMA${scanDef.maPeriod}` : `SMA${scanDef?.maPeriod ?? 200}`;
+  const timeframeLabel = scanDef?.timeframe ?? '1h';
 
   const [items, setItems] = useState<ScanRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +84,7 @@ export default function UniverseScannerPage() {
   useEffect(() => {
     if (!scanner) {
       setLoading(false);
-      setError('Scanner inválido. Use /scanners/1, /scanners/2 ou /scanners/3.');
+      setError('Scanner inválido. Use /scanners/1, /scanners/2, /scanners/3 ou /scanners/4.');
       return;
     }
     setLoading(true);
@@ -97,14 +102,11 @@ export default function UniverseScannerPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header />
         <main className="max-w-7xl mx-auto px-4 py-12 text-center text-red-600 dark:text-red-400">
-          Scanner não encontrado. Use /scanners/1, /scanners/2 ou /scanners/3.
+          Scanner não encontrado. Use /scanners/1, /scanners/2, /scanners/3 ou /scanners/4.
         </main>
       </div>
     );
   }
-
-  const maLabel =
-    scannerId === '1' ? 'SMA200' : scannerId === '2' ? 'EMA80' : 'SMA80';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -134,7 +136,7 @@ export default function UniverseScannerPage() {
             Regra do scan
           </h2>
           <ul className="text-xs text-violet-700 dark:text-violet-400 space-y-1 list-disc list-inside">
-            <li>Top 400 por volume 24h (mín. 100k USDT) — Binance Futures, velas 1h</li>
+            <li>Top 400 por volume 24h (mín. 100k USDT) — Binance Futures, velas {timeframeLabel}</li>
             <li>{meta.description}</li>
             <li>
               Estratégia: <strong>{meta.strategyNames}</strong>

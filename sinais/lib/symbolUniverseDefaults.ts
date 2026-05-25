@@ -7,6 +7,8 @@ export const UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80 =
 
 export const UNIVERSE_CODE_SCANNER_3_MA80_PCT4 = 'UNIVERSE_NEAR_MA200_PCT4_4H' as const;
 
+export const UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D = 'UNIVERSE_ABOVE_MA200_1D' as const;
+
 export const SCANNER_1_MIN_DISTANCE_PCT = 2;
 export const SCANNER_1_MAX_DISTANCE_PCT = 20;
 
@@ -34,6 +36,15 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     maPeriod: 80,
     maxDistancePct: 4,
     timeframe: '4h',
+    minQuoteVolume: 100000,
+    candidateLimit: 400,
+  },
+  UNIVERSE_ABOVE_MA200_1D: {
+    ruleType: 'ABOVE_MA',
+    maPeriod: 200,
+    minDistancePct: null,
+    maxDistancePct: null,
+    timeframe: '1d',
     minQuoteVolume: 100000,
     candidateLimit: 400,
   },
@@ -67,13 +78,20 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Preço dentro de ±4% da MA80 em 4h. Universo: Afastamento médio 1h e Afastamento médio 30m.',
     strategyNames: 'AFASTAMENTO_MEDIO, AFASTAMENTO_MEDIO_30M',
   },
+  UNIVERSE_ABOVE_MA200_1D: {
+    displayName: 'Scanner 4 — Acima SMA200 (1d)',
+    description:
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em velas diárias (1d). Sem limite máximo de afastamento.',
+    strategyNames: '—',
+  },
 };
 
-/** Rotas UI `/scanners/1` … `/scanners/3` */
+/** Rotas UI `/scanners/1` … `/scanners/4` */
 export const SCANNER_UI_ROUTES = [
   { scannerId: '1', code: UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 },
   { scannerId: '2', code: UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80 },
   { scannerId: '3', code: UNIVERSE_CODE_SCANNER_3_MA80_PCT4 },
+  { scannerId: '4', code: UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D },
 ] as const;
 
 export function getScannerByUiId(scannerId: string) {

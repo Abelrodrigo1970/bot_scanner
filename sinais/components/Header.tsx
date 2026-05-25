@@ -21,6 +21,7 @@ const dataSourceItems = [
   { href: '/scanners/1', label: 'Scanner 1 — 2–20% SMA200 (MA Cross + RSI legado)' },
   { href: '/scanners/2', label: 'Scanner 2 — ±10% EMA80 (RSI queda 70)' },
   { href: '/scanners/3', label: 'Scanner 3 — ±4% MA80 (4h, Afastamento 1h + 30m)' },
+  { href: '/scanners/4', label: 'Scanner 4 — Acima SMA200 (1d)' },
 ];
 
 export default function Header() {

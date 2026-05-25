@@ -4,7 +4,7 @@ import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
 
 /**
- * Executa os 3 scanners de universo (MA200+, ±10% MA80, ±4% MA80) e grava na BD.
+ * Executa os scanners de universo (MA200 1h/1d, ±10% EMA80, ±4% MA80) e grava na BD.
  * Resposta imediata 202 — trabalho pesado em background (evita timeout do cron-job.org).
  * Agendar de 4 em 4 horas (00:00, 04:00, 08:00, …).
  */
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
           accepted: false,
           busy: true,
           message:
-            'Scanners 1/2/3 já em execução em background. Aguarde a conclusão (pode demorar 15–30 min).',
+            'Scanners 1/2/3/4 já em execução em background. Aguarde a conclusão (pode demorar 15–30 min).',
           startedAt: new Date().toISOString(),
         },
         { status: 202 }
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scanners 1, 2 e 3 iniciados em background. O teste no cron-job.org deve responder já; verifique os logs no Railway para conclusão.',
+          'Scanners 1, 2, 3 e 4 iniciados em background. O teste no cron-job.org deve responder já; verifique os logs no Railway para conclusão.',
         startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN),
       },

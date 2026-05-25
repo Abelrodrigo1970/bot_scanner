@@ -143,4 +143,8 @@ export const DATA_SOURCE_MENU_ITEMS = [
     href: '/scanners/3',
     label: 'Scanner 3 — ±4% MA80 (4h, Afastamento 1h + 30m)',
   },
+  {
+    href: '/scanners/4',
+    label: 'Scanner 4 — Acima SMA200 (1d)',
+  },
 ] as const;
