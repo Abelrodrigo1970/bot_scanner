@@ -38,7 +38,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     signalTimeframes: ['15m'],
     source: 'universe_scan',
     dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-    description: 'Scanner 1: fecho +2–10% acima SMA200 (1h).',
+    description: 'Scanner 1: fecho +2–20% acima SMA200 (1h).',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
@@ -102,6 +102,15 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
+    strategyName: 'RSI_OVERBOUGHT_DROP_LEGACY_1H',
+    displayLabel: 'RSI queda de 70 (mín. 4 pts) + afastamento >10% (1h)',
+    signalTimeframes: ['1h'],
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+    description: 'Scanner 1: fecho +2–20% acima SMA200 (1h).',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+  },
+  {
     strategyName: 'AFASTAMENTO_MEDIO_30M',
     displayLabel: 'Afastamento médio 30m',
     signalTimeframes: ['30m'],
@@ -124,7 +133,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — 2–10% SMA200 (MA Cross)',
+    label: 'Scanner 1 — 2–20% SMA200 (MA Cross + RSI legado)',
   },
   {
     href: '/scanners/2',

@@ -173,6 +173,112 @@ export async function runMacdHistogramPmoStrategy(
   }
 }
 
+export async function runRsiOverboughtDropLegacy1hStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  if (timeframe !== '1h') return null;
+
+  const rsiPeriod = Math.max(2, Number(params.rsiPeriod) || 14);
+  const overboughtLevel = Number(params.overboughtLevel ?? 70);
+  const minDropPoints = Math.max(1, Number(params.minDropPoints) || 4);
+  const minDistancePct = Number(params.minDistancePct ?? 10);
+  const maPeriod = Math.max(2, Number(params.maPeriod) || 80);
+  const meanLineType =
+    String(params.meanLineType || 'EMA').toUpperCase() === 'SMA' ? 'SMA' : 'EMA';
+  const stopLossPct = Number(params.stopLossPct ?? 0.08);
+  const sellTp1Percent = Number(params.sellTp1Percent ?? 9);
+  const sellTp2Percent = Number(params.sellTp2Percent ?? 19);
+  const sellTp1Position = Math.min(100, Math.max(1, Number(params.sellTp1Position ?? 30)));
+  const sellTp2Position = Math.min(100, Math.max(1, Number(params.sellTp2Position ?? 40)));
+
+  try {
+    const candlesNeeded = Math.max(maPeriod, rsiPeriod) + 50;
+    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    const closedCandles = dropFormingCandle(candles, timeframe);
+    if (closedCandles.length < Math.max(maPeriod, rsiPeriod) + 5) return null;
+
+    const closes = getCloses(closedCandles);
+    const rsiCurr = calculateRSI(closes, rsiPeriod);
+    const rsiPrev = calculateRSI(closes.slice(0, -1), rsiPeriod);
+    if (rsiCurr === null || rsiPrev === null) return null;
+
+    const drop = rsiPrev - rsiCurr;
+    const crossedDownFromOverbought =
+      rsiPrev >= overboughtLevel && rsiCurr < overboughtLevel && drop >= minDropPoints;
+    if (!crossedDownFromOverbought) return null;
+
+    const distances =
+      meanLineType === 'SMA'
+        ? getSmaPercentDistanceSeries(closes, maPeriod)
+        : getEmaPercentDistanceSeries(closes, maPeriod);
+    if (distances.length < 1) return null;
+    const currDist = distances[distances.length - 1];
+    if (!(currDist > minDistancePct)) return null;
+
+    let meanAtClose: number | null = null;
+    if (meanLineType === 'EMA') {
+      const em = calculateEMA(closes, maPeriod);
+      meanAtClose = em?.length ? em[em.length - 1]! : null;
+    } else {
+      meanAtClose = calculateSMA(closes, maPeriod);
+    }
+    if (meanAtClose === null || meanAtClose === 0) return null;
+
+    const currentPrice = closedCandles[closedCandles.length - 1]!.close;
+    const stopLoss = currentPrice * (1 + stopLossPct);
+    const target1 = currentPrice * (1 - sellTp1Percent / 100);
+    const target2 = currentPrice * (1 - sellTp2Percent / 100);
+    const strength = Math.min(
+      100,
+      Math.max(
+        70,
+        Math.round(
+          70 +
+            Math.min(drop - minDropPoints, 8) * 2 +
+            Math.min(Math.max(currDist - minDistancePct, 0), 18)
+        )
+      )
+    );
+
+    return {
+      direction: 'SELL',
+      entryPrice: currentPrice,
+      stopLoss,
+      target1,
+      target2,
+      strength,
+      extraInfo: JSON.stringify({
+        setup: 'rsi_overbought_drop_distance_ma',
+        rsiPeriod,
+        overboughtLevel,
+        minDropPoints,
+        minDistancePct,
+        rsiPrev: rsiPrev.toFixed(2),
+        rsiCurr: rsiCurr.toFixed(2),
+        drop: drop.toFixed(2),
+        distancePct: currDist.toFixed(3),
+        meanLineType,
+        maPeriod,
+        meanAtClose: meanAtClose.toFixed(8),
+        stopLossPct,
+        sellTp1Percent,
+        sellTp2Percent,
+        sellTp1Position,
+        sellTp2Position,
+        tp1Position: sellTp1Position,
+        tp2Position: sellTp2Position,
+        manualRemainderPct: Math.max(0, 100 - sellTp1Position - sellTp2Position),
+        executionProfile: `SL +${(stopLossPct * 100).toFixed(0)}% | TP1 -${sellTp1Percent}% (${sellTp1Position}% pos.) | TP2 -${sellTp2Percent}% (${sellTp2Position}% pos.) | restante fecho manual`,
+      }),
+    };
+  } catch (error) {
+    console.error(`Erro RSI queda 70 legado ${symbol}:`, error);
+    return null;
+  }
+}
+
 export async function runRsiOverboughtDrop1hStrategy(
   symbol: string,
   timeframe: Timeframe,

@@ -49,6 +49,8 @@ const ALLOWED_STRATEGIES = [
   'RSI pullback bear 1h',
   'RSI queda de 70',
   'RSI_OVERBOUGHT_DROP_1H',
+  'RSI queda de 70 (mín. 4 pts) + afastamento >10% (1h)',
+  'RSI_OVERBOUGHT_DROP_LEGACY_1H',
   'Pivot Boss Bear',
   'PIVOT_BOSS_BEAR_15M',
   'PIVOT_BOSS_BEAR_1H',

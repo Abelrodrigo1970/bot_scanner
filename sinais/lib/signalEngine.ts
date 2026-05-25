@@ -6,6 +6,7 @@ import { prisma } from './db';
 import { ensureMissingBuiltinStrategies } from './ensureMissingBuiltinStrategies';
 import {
   runMacdHistogramPmoStrategy,
+  runRsiOverboughtDropLegacy1hStrategy,
   runRsiOverboughtDrop1hStrategy,
   runAfastamentoMedioStrategy,
   runAfastamentoMedio30mStrategy,
@@ -1688,7 +1689,8 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         strategy.name === 'AFASTAMENTO_MEDIO_30M' ? ['30m'] :
         strategy.name === 'MACD_HISTOGRAM_PMO' ||
         strategy.name === 'AFASTAMENTO_MEDIO' ||
-        strategy.name === 'RSI_OVERBOUGHT_DROP_1H'
+        strategy.name === 'RSI_OVERBOUGHT_DROP_1H' ||
+        strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H'
           ? ['1h']
           : timeframes;
 
@@ -1726,8 +1728,8 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         } catch (err) {
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top movers 1h:`, err);
         }
-      } else if (strategy.name === 'MA_CROSS_5M') {
-        console.log(`🔍 ${strategy.name}: universo Scanner 1 (+2–10% acima SMA200, 1h)...`);
+      } else if (strategy.name === 'MA_CROSS_5M' || strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H') {
+        console.log(`🔍 ${strategy.name}: universo Scanner 1 (+2–20% acima SMA200, 1h)...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
         if (symbolsToAnalyze.length === 0) {
@@ -1816,6 +1818,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 break;
               case 'RSI_OVERBOUGHT_DROP_1H':
                 signalResult = await runRsiOverboughtDrop1hStrategy(symbol, timeframe, params);
+                break;
+              case 'RSI_OVERBOUGHT_DROP_LEGACY_1H':
+                signalResult = await runRsiOverboughtDropLegacy1hStrategy(symbol, timeframe, params);
                 break;
               default:
                 if (!unknownStrategiesLogged.has(strategy.name)) {

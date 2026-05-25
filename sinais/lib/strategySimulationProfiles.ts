@@ -107,6 +107,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Só VENDA. SL +8%. TP1 -9% (30%) | TP2 -19% (40%) | restante fecho manual.',
   },
   {
+    strategyName: 'RSI_OVERBOUGHT_DROP_LEGACY_1H',
+    displayNames: ['RSI queda de 70 (mín. 4 pts) + afastamento >10% (1h)'],
+    buy: null,
+    sell: side(8, 9, 30, 19, 40),
+    summary:
+      'Só VENDA. SL +8%. TP1 -9% (30%) | TP2 -19% (40%) | restante fecho manual.',
+  },
+  {
     strategyName: 'MACD_HISTOGRAM_PMO',
     displayNames: ['MACD Histogram 1h + PMO'],
     buy: side(4, 20, 100),

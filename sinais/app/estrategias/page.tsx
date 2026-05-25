@@ -304,7 +304,7 @@ export default function EstrategiasPage() {
               Velas <strong>15m</strong> — <strong>{maPairLabel}</strong>. Mesma lógica de spread: rápida&gt;lenta (ou &lt;) e |rápida−lenta|/lenta &gt; limiar de entrada; fecho quando a diferença comprime abaixo do limiar de saída (compressão).
               <>
                 {' O cron corre a cada 15 min.'} Símbolos ={' '}
-                <strong>Scanner 1</strong> (fecho +2–10% acima SMA200 em 1h); actualize em Origem de dados → Scanner 1
+                <strong>Scanner 1</strong> (fecho +2–20% acima SMA200 em 1h); actualize em Origem de dados → Scanner 1
                 ou aguarde o cron <strong>run-universe-scans</strong> (cada 4 h).
               </>
             </p>
@@ -495,6 +495,36 @@ export default function EstrategiasPage() {
               {numField('Pullback EMA30 (velas)', p.pullbackMaxBars ?? 8, (v) => upd({ pullbackMaxBars: v }))}
               {numField('Máx. abaixo EMA80 (%)', p.maxDistBelowEma80Pct ?? 10, (v) => upd({ maxDistBelowEma80Pct: v }), 0.5)}
               {numField('Inclinação mín. EMA200 (queda, %)', p.minEma200SlopeDownPct ?? 0.1, (v) => upd({ minEma200SlopeDownPct: v }), 0.05)}
+            </div>
+            <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">SELL — SL / TP</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {numField('SL (%) acima entrada', (p.stopLossPct ?? 0.08) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('TP1 (%) abaixo entrada', p.sellTp1Percent ?? 9, (v) => upd({ sellTp1Percent: v }), 0.5)}
+              {numField('TP1 — % da posição', p.sellTp1Position ?? 30, (v) => upd({ sellTp1Position: v }))}
+              {numField('TP2 (%) abaixo entrada', p.sellTp2Percent ?? 19, (v) => upd({ sellTp2Percent: v }), 0.5)}
+              {numField('TP2 — % da posição', p.sellTp2Position ?? 40, (v) => upd({ sellTp2Position: v }))}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Restante da posição ({Math.max(0, 100 - Number(p.sellTp1Position ?? 30) - Number(p.sellTp2Position ?? 40))}
+              %) — fecho manual.
+            </p>
+          </div>
+        );
+
+      case 'RSI_OVERBOUGHT_DROP_LEGACY_1H':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Timeframe <strong>1h</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 1</strong> (fecho
+              +2–20% acima SMA200). Entrada: RSI(14) cruza de ≥70 para baixo (queda ≥4 pts) com preço &gt;10% acima da
+              EMA80 (mean-reversion short).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Período RSI', p.rsiPeriod ?? 14, (v) => upd({ rsiPeriod: v }))}
+              {numField('Nível sobrecompra', p.overboughtLevel ?? 70, (v) => upd({ overboughtLevel: v }))}
+              {numField('Queda mín. RSI (pts)', p.minDropPoints ?? 4, (v) => upd({ minDropPoints: v }))}
+              {numField('Afastamento mín. EMA80 (%)', p.minDistancePct ?? 10, (v) => upd({ minDistancePct: v }), 0.5)}
+              {numField('Período média', p.maPeriod ?? 80, (v) => upd({ maPeriod: v }))}
             </div>
             <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">SELL — SL / TP</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
