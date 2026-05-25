@@ -1729,7 +1729,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top movers 1h:`, err);
         }
       } else if (strategy.name === 'MA_CROSS_5M' || strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H') {
-        console.log(`🔍 ${strategy.name}: universo Scanner 1 (+2–20% acima SMA200, 1h)...`);
+        console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima SMA200, 1h)...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
         if (symbolsToAnalyze.length === 0) {

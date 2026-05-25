@@ -304,7 +304,7 @@ export default function EstrategiasPage() {
               Velas <strong>15m</strong> — <strong>{maPairLabel}</strong>. Mesma lógica de spread: rápida&gt;lenta (ou &lt;) e |rápida−lenta|/lenta &gt; limiar de entrada; fecho quando a diferença comprime abaixo do limiar de saída (compressão).
               <>
                 {' O cron corre a cada 15 min.'} Símbolos ={' '}
-                <strong>Scanner 1</strong> (fecho +2–20% acima SMA200 em 1h); actualize em Origem de dados → Scanner 1
+                <strong>Scanner 1</strong> (fecho acima SMA200 em 1h); actualize em Origem de dados → Scanner 1
                 ou aguarde o cron <strong>run-universe-scans</strong> (cada 4 h).
               </>
             </p>
@@ -516,7 +516,7 @@ export default function EstrategiasPage() {
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Timeframe <strong>1h</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 1</strong> (fecho
-              +2–20% acima SMA200). Entrada: RSI(14) cruza de ≥70 para baixo (queda ≥4 pts) com preço &gt;10% acima da
+              acima SMA200). Entrada: RSI(14) cruza de ≥70 para baixo (queda ≥4 pts) com preço &gt;10% acima da
               EMA80 (mean-reversion short).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

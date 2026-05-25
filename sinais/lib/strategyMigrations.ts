@@ -102,7 +102,7 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 (fecho +2–20% acima SMA200 em 1h, Binance Futures). Regras de frequência (análise Abr+Mai/2026): inactivo sáb/dom; horas 0–2, 4 e 11h PT bloqueadas; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde (líquido ≥0), mesma direção; sem posição aberta no mesmo sentido.';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 (fecho acima SMA200 em 1h, Binance Futures). Regras de frequência (análise Abr+Mai/2026): inactivo sáb/dom; horas 0–2, 4 e 11h PT bloqueadas; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde (líquido ≥0), mesma direção; sem posição aberta no mesmo sentido.';
 /** MA30/MA200 em 15m — mesma lógica de spread que MA12/MA30 (universo = scan Ma30Near6PriceBetween). */
 export const MA_CROSS_15M_STRATEGY_DESCRIPTION =
   'MA30 / MA200 em 15m: mesma lógica que MA12/MA30 (spread |rápida−lenta|/lenta). Entrada quando o spread ultrapassa o limiar na direção; modo repetir tendência com Δ mínimo opcional; TP parcial quando o preço favorece N% vs entrada; restante fecha quando o spread comprime abaixo do limiar de saída. SL 5%. Filtro SELL por distância do preço à MA200. Universo = scan MA30 entre −6% e +1% vs MA200 (1h) — menu Ma30Near6PriceBetween; actualiza esse scan antes de gerar sinais.';
@@ -191,7 +191,7 @@ export const RSI_OVERBOUGHT_DROP_LEGACY_1H_PARAMS = {
 } as const;
 
 export const RSI_OVERBOUGHT_DROP_LEGACY_1H_DESCRIPTION =
-  'Universo: Scanner 1 (+2–20% acima SMA200, 1h). VENDA: RSI(14) cai de ≥70 com queda ≥4 pts e preço >10% acima da EMA80. SL +8%. TP1 -9% (30%) | TP2 -19% (40%) | restante fecho manual.';
+  'Universo: Scanner 1 (acima SMA200, 1h). VENDA: RSI(14) cai de ≥70 com queda ≥4 pts e preço >10% acima da EMA80. SL +8%. TP1 -9% (30%) | TP2 -19% (40%) | restante fecho manual.';
 
 export const AFASTAMENTO_MEDIO_DISPLAY = 'Afastamento médio 1h (≤1,9→≥2,4)';
 
@@ -677,14 +677,17 @@ export async function syncMacdHistogramPmoParams(
 }
 
 /**
- * Actualiza descrições MA Cross se ainda referirem universo Bybit (legado).
+ * Actualiza descrições das estratégias Scanner 1 se ainda referirem universo legado.
  */
 export async function syncMaCrossScanner1UniverseDescriptions(
   prisma: PrismaClient
 ): Promise<{ updated: string[] }> {
   const updated: string[] = [];
 
-  for (const [name, description] of [['MA_CROSS_5M', MA_CROSS_5M_DESC] as const]) {
+  for (const [name, description] of [
+    ['MA_CROSS_5M', MA_CROSS_5M_DESC] as const,
+    ['RSI_OVERBOUGHT_DROP_LEGACY_1H', RSI_OVERBOUGHT_DROP_LEGACY_1H_DESCRIPTION] as const,
+  ]) {
     const row = await prisma.strategy.findUnique({
       where: { name },
       select: { description: true },
@@ -693,6 +696,8 @@ export async function syncMaCrossScanner1UniverseDescriptions(
     const needsUpdate =
       row.description?.includes('Bybit') ||
       row.description?.includes('bybit') ||
+      row.description?.includes('+2–20%') ||
+      row.description?.includes('+2-20%') ||
       row.description !== description;
     if (needsUpdate) {
       await prisma.strategy.update({

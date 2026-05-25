@@ -38,7 +38,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     signalTimeframes: ['15m'],
     source: 'universe_scan',
     dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-    description: 'Scanner 1: fecho +2–20% acima SMA200 (1h).',
+    description: 'Scanner 1: fecho acima SMA200 (1h).',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
@@ -107,7 +107,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     signalTimeframes: ['1h'],
     source: 'universe_scan',
     dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-    description: 'Scanner 1: fecho +2–20% acima SMA200 (1h).',
+    description: 'Scanner 1: fecho acima SMA200 (1h).',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
@@ -133,7 +133,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — 2–20% SMA200 (MA Cross + RSI legado)',
+    label: 'Scanner 1 — Acima SMA200 (MA Cross + RSI legado)',
   },
   {
     href: '/scanners/2',
