@@ -64,14 +64,14 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA200_1H: {
     displayName: 'Scanner 1 — Acima SMA200 (1h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Universo: MA Cross 15m e RSI queda de 70 legado.',
-    strategyNames: 'MA_CROSS_5M, RSI_OVERBOUGHT_DROP_LEGACY_1H',
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Universo: MA Cross 15m, RSI queda de 70 legado e Pivot Boss Bear 15m.',
+    strategyNames: 'MA_CROSS_5M, RSI_OVERBOUGHT_DROP_LEGACY_1H, PIVOT_BOSS_BEAR_15M',
   },
   UNIVERSE_NEAR_MA200_PCT10_1H: {
     displayName: 'Scanner 2 — Até ±10% da EMA80 (1h)',
     description:
-      'Preço dentro de ±10% da EMA80 em 1h. Universo: RSI pullback bear, Pivot Boss Bear 15m e 1h.',
-    strategyNames: 'RSI_OVERBOUGHT_DROP_1H, PIVOT_BOSS_BEAR_15M, PIVOT_BOSS_BEAR_1H',
+      'Preço dentro de ±10% da EMA80 em 1h. Universo: RSI pullback bear e Pivot Boss Bear 1h.',
+    strategyNames: 'RSI_OVERBOUGHT_DROP_1H, PIVOT_BOSS_BEAR_1H',
   },
   UNIVERSE_NEAR_MA200_PCT4_4H: {
     displayName: 'Scanner 3 — Até ±4% da MA80 (4h)',

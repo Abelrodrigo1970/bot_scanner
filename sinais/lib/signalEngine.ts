@@ -1724,12 +1724,18 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         console.log(
           `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
-      } else if (
-        strategy.name === 'PIVOT_BOSS_BEAR_15M' ||
-        strategy.name === 'PIVOT_BOSS_BEAR_1H'
-      ) {
-        const tfLabel = strategy.name === 'PIVOT_BOSS_BEAR_1H' ? '1h' : '15m';
-        console.log(`🔍 ${strategy.name}: universo Scanner 2 (±10% EMA80, 1h); sinais em ${tfLabel}...`);
+      } else if (strategy.name === 'PIVOT_BOSS_BEAR_15M') {
+        console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima SMA200, 1h); sinais em 15m...`);
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
+        if (symbolsToAnalyze.length === 0) {
+          console.warn(
+            `⚠️ Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
+          );
+          continue;
+        }
+      } else if (strategy.name === 'PIVOT_BOSS_BEAR_1H') {
+        console.log(`🔍 ${strategy.name}: universo Scanner 2 (±10% EMA80, 1h); sinais em 1h...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2)`);
         if (symbolsToAnalyze.length === 0) {

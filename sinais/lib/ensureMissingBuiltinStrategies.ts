@@ -142,6 +142,6 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   }
   const pivotBossSync = await syncPivotBossBear15mUniverse(prisma);
   if (pivotBossSync.updated) {
-    console.log('✅ PIVOT_BOSS_BEAR_15M: universo Scanner 2 (±10% EMA80, 1h)');
+    console.log('✅ PIVOT_BOSS_BEAR: universo/descrição actualizados (15m → Scanner 1; 1h → Scanner 2)');
   }
 }

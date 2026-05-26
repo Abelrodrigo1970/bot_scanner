@@ -62,8 +62,8 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     displayLabel: 'Pivot Boss Bear 15m (4 EMA venda)',
     signalTimeframes: ['15m'],
     source: 'universe_scan',
-    dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
-    description: 'Scanner 2: ±10% da EMA80 (1h); sinais em 15m.',
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+    description: 'Scanner 1: fecho acima SMA200 (1h); sinais em 15m.',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
@@ -133,7 +133,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — Acima SMA200 (MA Cross + RSI legado)',
+    label: 'Scanner 1 — Acima SMA200 (MA Cross + RSI legado + Pivot Boss 15m)',
   },
   {
     href: '/scanners/2',
