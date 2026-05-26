@@ -1301,6 +1301,11 @@ async function runMaCrossM30M200OnTimeframe(
    * 0 = desactiva. Só aplicável quando MA lenta ≠ MA200 (ex. MA12/MA30 com lenta período 30).
    */
   const entryMaxAbsPctMa30VsMa200 = Number(params.entryMaxAbsPctMa30VsMa200 ?? 0);
+  /** |MA80 − MA200|/MA200×100 ≤ N nas velas do sinal (15m). 0 = desactiva. */
+  const ma80Period = Math.max(2, Math.floor(Number(params.ma80Period ?? 80)));
+  const entryMaxAbsPctMa80VsMa200 = Number(
+    params.entryMaxAbsPctMa80VsMa200 ?? (bar === '15m' ? 3 : 0)
+  );
   const ma200LongPeriod = 200;
 
   const ma = (arr: number[], p: number) =>
@@ -1318,10 +1323,15 @@ async function runMaCrossM30M200OnTimeframe(
         : (requested ?? emaCandles);
     if (
       isMa12x30Mode &&
-      entryMaxAbsPctMa30VsMa200 > 0 &&
+      (entryMaxAbsPctMa30VsMa200 > 0 ||
+        entryMaxAbsPctMa80VsMa200 > 0) &&
       maSlowPeriod < ma200LongPeriod
     ) {
-      candlesNeeded = Math.max(candlesNeeded, ma200LongPeriod + 5);
+      candlesNeeded = Math.max(
+        candlesNeeded,
+        ma200LongPeriod + 5,
+        entryMaxAbsPctMa80VsMa200 > 0 ? ma80Period + 5 : 0
+      );
     }
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
     if (candles.length < maSlowPeriod + 3) return null;
@@ -1339,11 +1349,11 @@ async function runMaCrossM30M200OnTimeframe(
     if (prevMa30 === null || prevMaSlow === null) return null;
 
     let absPctMaSlowVsMa200: number | undefined;
-    if (
+    let absPctMa80VsMa200: number | undefined;
+    const needsMa200Long =
       isMa12x30Mode &&
-      entryMaxAbsPctMa30VsMa200 > 0 &&
-      maSlowPeriod < ma200LongPeriod
-    ) {
+      (entryMaxAbsPctMa30VsMa200 > 0 || entryMaxAbsPctMa80VsMa200 > 0);
+    if (needsMa200Long) {
       const ma200Long = ma(closedCloses, ma200LongPeriod);
       if (
         ma200Long === null ||
@@ -1352,9 +1362,23 @@ async function runMaCrossM30M200OnTimeframe(
       ) {
         return null;
       }
-      absPctMaSlowVsMa200 = Math.abs((maSlow - ma200Long) / ma200Long) * 100;
-      if (absPctMaSlowVsMa200 > entryMaxAbsPctMa30VsMa200) {
-        return null;
+
+      if (entryMaxAbsPctMa30VsMa200 > 0 && maSlowPeriod < ma200LongPeriod) {
+        absPctMaSlowVsMa200 = Math.abs((maSlow - ma200Long) / ma200Long) * 100;
+        if (absPctMaSlowVsMa200 > entryMaxAbsPctMa30VsMa200) {
+          return null;
+        }
+      }
+
+      if (entryMaxAbsPctMa80VsMa200 > 0) {
+        const ma80 = ma(closedCloses, ma80Period);
+        if (ma80 === null || !Number.isFinite(ma80)) {
+          return null;
+        }
+        absPctMa80VsMa200 = Math.abs((ma80 - ma200Long) / ma200Long) * 100;
+        if (absPctMa80VsMa200 > entryMaxAbsPctMa80VsMa200) {
+          return null;
+        }
       }
     }
 
@@ -1441,6 +1465,13 @@ async function runMaCrossM30M200OnTimeframe(
                       absPctMaSlowVsMa200: absPctMaSlowVsMa200.toFixed(2),
                     }
                   : {}),
+                ...(absPctMa80VsMa200 !== undefined
+                  ? {
+                      entryMaxAbsPctMa80VsMa200,
+                      ma80Period,
+                      absPctMa80VsMa200: absPctMa80VsMa200.toFixed(2),
+                    }
+                  : {}),
                 executionProfile: `SL -${stopPercent}% | TP1 +${ma12x30GainTpPct}% (${ma12x30GainTpPositionPct}% posição) | restante: fecho dinâmico se spread < ${exitDiffPct}%`,
               }
             : {
@@ -1518,6 +1549,13 @@ async function runMaCrossM30M200OnTimeframe(
                   ? {
                       entryMaxAbsPctMa30VsMa200,
                       absPctMaSlowVsMa200: absPctMaSlowVsMa200.toFixed(2),
+                    }
+                  : {}),
+                ...(absPctMa80VsMa200 !== undefined
+                  ? {
+                      entryMaxAbsPctMa80VsMa200,
+                      ma80Period,
+                      absPctMa80VsMa200: absPctMa80VsMa200.toFixed(2),
                     }
                   : {}),
                 executionProfile: `SL +${stopPercent}% | TP1 -${ma12x30GainTpPct}% (${ma12x30GainTpPositionPct}% posição) | restante: fecho dinâmico se spread < ${exitDiffPct}%`,

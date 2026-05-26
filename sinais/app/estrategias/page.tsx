@@ -368,6 +368,17 @@ export default function EstrategiasPage() {
                 MA200 = período 200 nas mesmas velas que o par MA12/MA30. Só emite BUY/SELL se esta distância for ≤ ao limiar; 0 desactiva.
               </p>
             </div>
+            <div className="max-w-md">
+              {numField(
+                'Entrada: máx. |MA80 − MA200| / MA200 (%)',
+                p.entryMaxAbsPctMa80VsMa200 ?? 3,
+                (v) => upd({ entryMaxAbsPctMa80VsMa200: v }),
+                0.5
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                EMA80 e EMA200 em 15m. Só emite se |MA80−MA200|/MA200 ≤ limiar (ex. 3%); 0 desactiva.
+              </p>
+            </div>
             <label className="flex items-center gap-2 max-w-md text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
               <input
                 type="checkbox"

@@ -27,6 +27,8 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   exitDiffPct: 0.5,
   stopPercent: 15,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
+  ma80Period: 80,
+  entryMaxAbsPctMa80VsMa200: 3,
   ma12x30RepeatWhileTrend: true,
   ma12x30RepeatMinSpreadDeltaPct: 0.06,
   ma12x30GainTpPct: 44,
@@ -150,6 +152,12 @@ async function ensureMissingStrategies() {
       }
       if (next.ma12x30GainTpPositionPct == null || next.ma12x30GainTpPositionPct === '') {
         next.ma12x30GainTpPositionPct = 60;
+      }
+      if (next.ma80Period == null) {
+        next.ma80Period = 80;
+      }
+      if (next.entryMaxAbsPctMa80VsMa200 == null || next.entryMaxAbsPctMa80VsMa200 === '') {
+        next.entryMaxAbsPctMa80VsMa200 = 3;
       }
       if (
         p.ma200Period === 200 ||

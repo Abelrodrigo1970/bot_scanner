@@ -87,6 +87,9 @@ export const MA_CROSS_5M_PARAMS = {
   exitDiffPct: 0.5,
   stopPercent: 15,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
+  /** Entrada só se |MA80 − MA200|/MA200×100 ≤ N (velas 15m). 0 = desactiva. */
+  ma80Period: 80,
+  entryMaxAbsPctMa80VsMa200: 3,
   /** Se true: re-entradas quando spread > limiar e alinhado, desde que haja novo impulso (cruzamento de limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). */
   ma12x30RepeatWhileTrend: true,
   /** No modo repetir tendência: mínimo (em pts %) que o spread |MA12−MA30|/MA30 deve aumentar vs a vela anterior para contar como «novidade». */
@@ -102,7 +105,7 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 (fecho acima SMA200 em 1h, Binance Futures). Regras de frequência (análise Abr+Mai/2026): inactivo sáb/dom; horas 0–2, 4 e 11h PT bloqueadas; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde (líquido ≥0), mesma direção; sem posição aberta no mesmo sentido.';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Filtro entrada: |MA80−MA200|/MA200 ≤ 3% (15m). Universo = Scanner 1 (fecho acima SMA200 em 1h, Binance Futures). Regras de frequência (análise Abr+Mai/2026): inactivo sáb/dom; horas 0–2, 4 e 11h PT bloqueadas; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde (líquido ≥0), mesma direção; sem posição aberta no mesmo sentido.';
 /** MA30/MA200 em 15m — mesma lógica de spread que MA12/MA30 (universo = scan Ma30Near6PriceBetween). */
 export const MA_CROSS_15M_STRATEGY_DESCRIPTION =
   'MA30 / MA200 em 15m: mesma lógica que MA12/MA30 (spread |rápida−lenta|/lenta). Entrada quando o spread ultrapassa o limiar na direção; modo repetir tendência com Δ mínimo opcional; TP parcial quando o preço favorece N% vs entrada; restante fecha quando o spread comprime abaixo do limiar de saída. SL 5%. Filtro SELL por distância do preço à MA200. Universo = scan MA30 entre −6% e +1% vs MA200 (1h) — menu Ma30Near6PriceBetween; actualiza esse scan antes de gerar sinais.';
@@ -729,6 +732,7 @@ export async function syncMaCrossScanner1UniverseDescriptions(
       row.description?.includes('bybit') ||
       row.description?.includes('+2–20%') ||
       row.description?.includes('+2-20%') ||
+      !row.description?.includes('|MA80−MA200|') ||
       row.description !== description;
     if (needsUpdate) {
       await prisma.strategy.update({
