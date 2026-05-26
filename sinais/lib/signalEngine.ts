@@ -980,7 +980,7 @@ export async function runEmaRibbonScalpingSellStrategy(
 
 /**
  * Pivot Boss Bear — só VENDA (15m ou 1h).
- * EMA12 e EMA30 abaixo da EMA80; fecho acima SMA200 (1h); pullback EMA30 + rejeição bear.
+ * EMA12 e EMA30 abaixo da EMA80; fecho acima SMA200 (1h) ou até −5% abaixo; pullback EMA30 + rejeição bear.
  */
 async function runPivotBossBearOnTimeframe(
   symbol: string,
@@ -995,6 +995,7 @@ async function runPivotBossBearOnTimeframe(
   const atrPeriod = Math.max(2, Math.floor(Number(params.atrPeriod ?? 14)));
   const pullbackMaxBars = Math.max(3, Math.floor(Number(params.pullbackMaxBars ?? 3)));
   const ma200FilterPeriod = Math.max(50, Math.floor(Number(params.ma200FilterPeriod ?? 200)));
+  const ma200MaxDistBelowPct = Number(params.ma200MaxDistBelowPct ?? 5);
   const strongBodyOfRangeMin = Number(params.strongBodyOfRangeMin ?? 0.55);
   const strongBodyMinAtrMult = Number(params.strongBodyMinAtrMult ?? 0.35);
   const closeLowerThirdMaxFrac = Number(params.closeLowerThirdMaxFrac ?? 0.35);
@@ -1047,7 +1048,9 @@ async function runPivotBossBearOnTimeframe(
     const closes1h = closed1h.map((bar) => bar.close);
     const sma200_1h = calculateSMA(closes1h, ma200FilterPeriod);
     const close1h = closed1h[closed1h.length - 1]?.close;
-    if (sma200_1h == null || close1h == null || !(close1h > sma200_1h)) return null;
+    if (sma200_1h == null || close1h == null || sma200_1h === 0) return null;
+    const distBelowSma200Pct = ((sma200_1h - close1h) / sma200_1h) * 100;
+    if (distBelowSma200Pct > ma200MaxDistBelowPct) return null;
 
     if (!(e12 < e80 && e30 < e80)) return null;
     if (!(entryPrice < e80)) return null;
@@ -1124,13 +1127,15 @@ async function runPivotBossBearOnTimeframe(
         emaStack: { ema12: e12, ema30: e30, ema80: e80 },
         sma200_1h: sma200_1h,
         close1h,
+        distBelowSma200Pct: Number(distBelowSma200Pct.toFixed(3)),
+        ma200MaxDistBelowPct,
         stopLossPctCap,
         tp1Pct,
         tp1Position,
         closeAfterHours,
         bodyRangePct: Number(((body / range) * 100).toFixed(1)),
         executionProfile:
-          `SELL apenas | Pivot Boss bear ${timeframe} (EMA12/30 abaixo EMA80, acima SMA200 1h) | SL +${slLabel} (swing/EMA30, máx. ${(stopLossPctCap * 100).toFixed(0)}%) | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+          `SELL apenas | Pivot Boss bear ${timeframe} (EMA12/30 abaixo EMA80, SMA200 1h acima ou ≤−${ma200MaxDistBelowPct}%) | SL +${slLabel} (swing/EMA30, máx. ${(stopLossPctCap * 100).toFixed(0)}%) | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
       }),
     };
   } catch (error) {

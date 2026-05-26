@@ -251,12 +251,12 @@ export const AFASTAMENTO_MEDIO_30M_DESCRIPTION =
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss em 15m, só VENDA. Filtro: fecho acima SMA200 (1h); EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 3 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss em 15m, só VENDA. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 3 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_1H_DISPLAY = 'Pivot Boss Bear 1h (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_1H_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss em 1h, só VENDA. Filtro: fecho acima SMA200 (1h); EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 3 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss em 1h, só VENDA. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 3 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
@@ -268,6 +268,7 @@ export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   minEma200SlopeDownPct: 0.15,
   pullbackMaxBars: 3,
   ma200FilterPeriod: 200,
+  ma200MaxDistBelowPct: 5,
   rejectionLookback: 5,
   ema200TouchTolerancePct: 0.35,
   strongBodyOfRangeMin: 0.55,
@@ -327,6 +328,7 @@ export async function syncPivotBossBear15mUniverse(
       row.description?.includes('rejeição na EMA200') ||
       row.description?.includes('Sem filtro EMA200') ||
       row.description?.includes('últimos 5 candles') ||
+      row.description?.includes('fecho acima SMA200 (1h);') ||
       row.description !== description;
     const needsParams = p.symbolLimit != null;
     const needsPullback =
@@ -335,6 +337,9 @@ export async function syncPivotBossBear15mUniverse(
     const needsMa200Filter =
       p.ma200FilterPeriod == null ||
       Number(p.ma200FilterPeriod) !== PIVOT_BOSS_BEAR_15M_PARAMS.ma200FilterPeriod;
+    const needsMa200MaxDist =
+      p.ma200MaxDistBelowPct == null ||
+      Number(p.ma200MaxDistBelowPct) !== PIVOT_BOSS_BEAR_15M_PARAMS.ma200MaxDistBelowPct;
     const needsSellBlock =
       p.sellBlockMaxDistBelowEma80Pct == null ||
       Number(p.sellBlockMaxDistBelowEma80Pct) !==
@@ -342,7 +347,7 @@ export async function syncPivotBossBear15mUniverse(
       p.sellBlockMaxDistBelowEma30Pct != null ||
       p.breakdownLookback != null;
 
-    if (!needsDesc && !needsParams && !needsPullback && !needsSellBlock && !needsMa200Filter) {
+    if (!needsDesc && !needsParams && !needsPullback && !needsSellBlock && !needsMa200Filter && !needsMa200MaxDist) {
       continue;
     }
 
@@ -351,6 +356,9 @@ export async function syncPivotBossBear15mUniverse(
     if (needsPullback) next.pullbackMaxBars = PIVOT_BOSS_BEAR_15M_PARAMS.pullbackMaxBars;
     if (needsMa200Filter) {
       next.ma200FilterPeriod = PIVOT_BOSS_BEAR_15M_PARAMS.ma200FilterPeriod;
+    }
+    if (needsMa200MaxDist) {
+      next.ma200MaxDistBelowPct = PIVOT_BOSS_BEAR_15M_PARAMS.ma200MaxDistBelowPct;
     }
     if (needsSellBlock) {
       next.sellBlockMaxDistBelowEma80Pct =
@@ -363,7 +371,7 @@ export async function syncPivotBossBear15mUniverse(
       where: { name },
       data: {
         ...(needsDesc ? { description } : {}),
-        ...(needsParams || needsPullback || needsSellBlock || needsMa200Filter
+        ...(needsParams || needsPullback || needsSellBlock || needsMa200Filter || needsMa200MaxDist
           ? { params: JSON.stringify(next) }
           : {}),
       },
