@@ -23,6 +23,7 @@ import {
   isMaCross15mHourBlocked,
   isMaCross15mWeekendBlocked,
 } from './maCross15mGuard';
+import { checkPivotBossDailySignalGate } from './pivotBossGuard';
 import {
   fetchCandles,
   fetchTopSymbolsBy1hPriceChange,
@@ -979,7 +980,7 @@ export async function runEmaRibbonScalpingSellStrategy(
 
 /**
  * Pivot Boss Bear — só VENDA (15m ou 1h).
- * Stack bearish 12/30/80/200: pullback EMA30 ou rejeição EMA200.
+ * EMA12 e EMA30 abaixo da EMA80; fecho acima SMA200 (1h); pullback EMA30 + rejeição bear.
  */
 async function runPivotBossBearOnTimeframe(
   symbol: string,
@@ -991,13 +992,9 @@ async function runPivotBossBearOnTimeframe(
   const emaFast = Math.max(2, Math.floor(Number(params.emaFastPeriod ?? 12)));
   const emaMid = Math.max(emaFast + 1, Math.floor(Number(params.emaMidPeriod ?? 30)));
   const emaSlow = Math.max(emaMid + 1, Math.floor(Number(params.emaSlowPeriod ?? 80)));
-  const emaTrend = Math.max(emaSlow + 1, Math.floor(Number(params.emaTrendPeriod ?? 200)));
   const atrPeriod = Math.max(2, Math.floor(Number(params.atrPeriod ?? 14)));
-  const slopeLookback = Math.max(2, Math.floor(Number(params.slopeLookback ?? 8)));
-  const minEma200SlopeDownPct = Number(params.minEma200SlopeDownPct ?? 0.15);
-  const pullbackMaxBars = Math.max(3, Math.floor(Number(params.pullbackMaxBars ?? 5)));
-  const rejectionLookback = Math.max(2, Math.floor(Number(params.rejectionLookback ?? 5)));
-  const ema200TouchTolerancePct = Number(params.ema200TouchTolerancePct ?? 0.35);
+  const pullbackMaxBars = Math.max(3, Math.floor(Number(params.pullbackMaxBars ?? 3)));
+  const ma200FilterPeriod = Math.max(50, Math.floor(Number(params.ma200FilterPeriod ?? 200)));
   const strongBodyOfRangeMin = Number(params.strongBodyOfRangeMin ?? 0.55);
   const strongBodyMinAtrMult = Number(params.strongBodyMinAtrMult ?? 0.35);
   const closeLowerThirdMaxFrac = Number(params.closeLowerThirdMaxFrac ?? 0.35);
@@ -1015,43 +1012,45 @@ async function runPivotBossBearOnTimeframe(
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
 
   try {
-    const historyBars = Math.max(pullbackMaxBars, rejectionLookback, swingLookback) + 5;
-    const warm = emaTrend + historyBars + slopeLookback + atrPeriod + 20;
-    const candlesNeeded = Math.min(1500, Math.max(260, warm));
+    const historyBars = Math.max(pullbackMaxBars, swingLookback) + 5;
+    const warm = emaSlow + historyBars + atrPeriod + 20;
+    const candlesNeeded = Math.min(1500, Math.max(120, warm));
     const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
-    if (candles.length < emaTrend + historyBars + 5) return null;
+    if (candles.length < emaSlow + historyBars + 5) return null;
 
     const closedCandles = candles.slice(0, -1);
     const lc = closedCandles.length - 1;
-    if (lc < emaTrend + historyBars) return null;
+    if (lc < emaSlow + historyBars) return null;
 
     const closedCloses = closedCandles.map((c) => c.close);
     const ema12Series = calculateEMA(closedCloses, emaFast);
     const ema30Series = calculateEMA(closedCloses, emaMid);
     const ema80Series = calculateEMA(closedCloses, emaSlow);
-    const ema200Series = calculateEMA(closedCloses, emaTrend);
-    if (!ema12Series || !ema30Series || !ema80Series || !ema200Series) return null;
+    if (!ema12Series || !ema30Series || !ema80Series) return null;
 
     const e12 = emaValueAtClosedIdx(ema12Series, emaFast, lc);
     const e30 = emaValueAtClosedIdx(ema30Series, emaMid, lc);
     const e80 = emaValueAtClosedIdx(ema80Series, emaSlow, lc);
-    const e200 = emaValueAtClosedIdx(ema200Series, emaTrend, lc);
-    if (e12 == null || e30 == null || e80 == null || e200 == null || e80 === 0 || e30 === 0) {
+    if (e12 == null || e30 == null || e80 == null || e80 === 0 || e30 === 0) {
       return null;
     }
 
     const c = closedCandles[lc];
     const entryPrice = c.close;
 
-    if (!(e200 > e80 && e80 > e30 && e30 > e12)) return null;
-    if (!(entryPrice < e80)) return null;
-    if (!(e12 < e30)) return null;
+    let closed1h = closedCandles;
+    if (timeframe !== '1h') {
+      const candles1h = await fetchCandles(symbol, '1h', ma200FilterPeriod + 10);
+      closed1h = candles1h.slice(0, -1);
+    }
+    if (closed1h.length < ma200FilterPeriod) return null;
+    const closes1h = closed1h.map((bar) => bar.close);
+    const sma200_1h = calculateSMA(closes1h, ma200FilterPeriod);
+    const close1h = closed1h[closed1h.length - 1]?.close;
+    if (sma200_1h == null || close1h == null || !(close1h > sma200_1h)) return null;
 
-    const e200ThenIdx = lc - slopeLookback;
-    const e200Then = emaValueAtClosedIdx(ema200Series, emaTrend, e200ThenIdx);
-    if (e200Then == null || e200Then === 0) return null;
-    const ema200SlopePct = ((e200 - e200Then) / e200Then) * 100;
-    if (ema200SlopePct > -minEma200SlopeDownPct) return null;
+    if (!(e12 < e80 && e30 < e80)) return null;
+    if (!(entryPrice < e80)) return null;
 
     if (entryPrice < e80 && sellBlockMaxDistBelowEma80Pct > 0) {
       const distBelowEma80Pct = ((e80 - entryPrice) / e80) * 100;
@@ -1070,7 +1069,7 @@ async function runPivotBossBearOnTimeframe(
     if (c.close >= e12) return null;
 
     let scenarioPullback = false;
-    const pbFrom = Math.max(emaTrend - 1, lc - pullbackMaxBars);
+    const pbFrom = Math.max(emaSlow - 1, lc - pullbackMaxBars);
     for (let j = pbFrom; j <= lc - 1; j++) {
       const j30 = emaValueAtClosedIdx(ema30Series, emaMid, j);
       if (j30 == null) continue;
@@ -1082,24 +1081,9 @@ async function runPivotBossBearOnTimeframe(
       }
     }
 
-    let scenarioRejection200 = false;
-    const rejFrom = Math.max(emaTrend - 1, lc - rejectionLookback);
-    for (let j = rejFrom; j <= lc - 1; j++) {
-      const j200 = emaValueAtClosedIdx(ema200Series, emaTrend, j);
-      if (j200 == null) continue;
-      const bar = closedCandles[j];
-      const touch200 = bar.high >= j200 * (1 - ema200TouchTolerancePct / 100);
-      if (touch200 && bar.close < j200) {
-        scenarioRejection200 = true;
-        break;
-      }
-    }
+    if (!scenarioPullback) return null;
 
-    if (!scenarioPullback && !scenarioRejection200) return null;
-
-    const scenarios: string[] = [];
-    if (scenarioPullback) scenarios.push('pullback_rejeicao_ema30');
-    if (scenarioRejection200) scenarios.push('rejeicao_ema200');
+    const scenarios: string[] = ['pullback_rejeicao_ema30'];
 
     const swingHi = highestHigh(closedCandles, Math.max(0, lc - swingLookback), lc);
     const stopFromSwing = swingHi + atr * swingAboveAtrMult;
@@ -1118,16 +1102,11 @@ async function runPivotBossBearOnTimeframe(
 
     const target1 = entryPrice * (1 - tp1Pct);
 
-    const slopeStrength = Math.min(16, Math.max(0, -ema200SlopePct - minEma200SlopeDownPct) * 4);
     const bodyBonus = Math.min(
-      12,
-      ((body / range - strongBodyOfRangeMin) / (1 - strongBodyOfRangeMin)) * 12
+      18,
+      ((body / range - strongBodyOfRangeMin) / (1 - strongBodyOfRangeMin)) * 18
     );
-    const scenarioBonus = scenarioRejection200 ? 6 : 0;
-    const strength = Math.min(
-      98,
-      Math.max(62, Math.round(62 + slopeStrength + bodyBonus + scenarioBonus))
-    );
+    const strength = Math.min(98, Math.max(62, Math.round(62 + bodyBonus)));
 
     const slLabel = `${((stopLoss / entryPrice - 1) * 100).toFixed(1)}%`;
     const tpLabel = `${(tp1Pct * 100).toFixed(0)}%`;
@@ -1142,15 +1121,16 @@ async function runPivotBossBearOnTimeframe(
       strength,
       extraInfo: JSON.stringify({
         scenarios,
-        emaStack: { ema12: e12, ema30: e30, ema80: e80, ema200: e200 },
-        ema200SlopePct: Number(ema200SlopePct.toFixed(3)),
+        emaStack: { ema12: e12, ema30: e30, ema80: e80 },
+        sma200_1h: sma200_1h,
+        close1h,
         stopLossPctCap,
         tp1Pct,
         tp1Position,
         closeAfterHours,
         bodyRangePct: Number(((body / range) * 100).toFixed(1)),
         executionProfile:
-          `SELL apenas | Pivot Boss 4 EMA bear ${timeframe} | SL +${slLabel} (swing/EMA30, máx. ${(stopLossPctCap * 100).toFixed(0)}%) | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+          `SELL apenas | Pivot Boss bear ${timeframe} (EMA12/30 abaixo EMA80, acima SMA200 1h) | SL +${slLabel} (swing/EMA30, máx. ${(stopLossPctCap * 100).toFixed(0)}%) | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
       }),
     };
   } catch (error) {
@@ -1838,6 +1818,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
             if (signalResult) {
               const isMaCross12x30 = strategy.name === 'MA_CROSS_5M';
+              const isPivotBoss =
+                strategy.name === 'PIVOT_BOSS_BEAR_15M' ||
+                strategy.name === 'PIVOT_BOSS_BEAR_1H';
               const isMacdPmo = strategy.name === 'MACD_HISTOGRAM_PMO';
               let canCreate = false;
               let skipReason = '';
@@ -1847,6 +1830,14 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                   symbol,
                   strategyId: strategy.id,
                   direction: signalResult.direction,
+                });
+                canCreate = gate.allowed;
+                if (!gate.allowed) skipReason = gate.reason;
+              } else if (isPivotBoss) {
+                const gate = await checkPivotBossDailySignalGate(prisma, {
+                  symbol,
+                  strategyId: strategy.id,
+                  timeframe,
                 });
                 canCreate = gate.allowed;
                 if (!gate.allowed) skipReason = gate.reason;

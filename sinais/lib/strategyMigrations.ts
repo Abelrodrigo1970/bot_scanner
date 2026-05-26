@@ -251,12 +251,12 @@ export const AFASTAMENTO_MEDIO_30M_DESCRIPTION =
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 15m, só VENDA. Filtro: stack bearish (200>80>30>12), preço abaixo EMA80 (não >5% abaixo EMA80), EMA200 em queda. Entrada: (A) pullback EMA30 nos últimos 5 candles + rejeição bear; (B) rejeição na EMA200. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss em 15m, só VENDA. Filtro: fecho acima SMA200 (1h); EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 3 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_1H_DISPLAY = 'Pivot Boss Bear 1h (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_1H_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss 4 EMA (12/30/80/200) em 1h, só VENDA. Mesma lógica que a versão 15m: stack bearish, preço abaixo EMA80 (não >5% abaixo EMA80), EMA200 em queda. Entrada: (A) pullback EMA30 nos últimos 5 candles + rejeição bear; (B) rejeição na EMA200. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss em 1h, só VENDA. Filtro: fecho acima SMA200 (1h); EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 3 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. SL acima do swing/EMA30 (máx. 8%) | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
@@ -266,7 +266,8 @@ export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   atrPeriod: 14,
   slopeLookback: 8,
   minEma200SlopeDownPct: 0.15,
-  pullbackMaxBars: 5,
+  pullbackMaxBars: 3,
+  ma200FilterPeriod: 200,
   rejectionLookback: 5,
   ema200TouchTolerancePct: 0.35,
   strongBodyOfRangeMin: 0.55,
@@ -297,58 +298,80 @@ export const PIVOT_BOSS_BEAR_1H_PARAMS = {
 export async function syncPivotBossBear15mUniverse(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
-  const row = await prisma.strategy.findUnique({
-    where: { name: 'PIVOT_BOSS_BEAR_15M' },
-    select: { params: true, description: true },
-  });
-  if (!row) return { updated: false };
+  let anyUpdated = false;
 
-  let p: Record<string, unknown> = {};
-  try {
-    p = row.params ? JSON.parse(row.params) : {};
-  } catch {
-    p = {};
+  for (const [name, description] of [
+    ['PIVOT_BOSS_BEAR_15M', PIVOT_BOSS_BEAR_15M_DESCRIPTION] as const,
+    ['PIVOT_BOSS_BEAR_1H', PIVOT_BOSS_BEAR_1H_DESCRIPTION] as const,
+  ]) {
+    const row = await prisma.strategy.findUnique({
+      where: { name },
+      select: { params: true, description: true },
+    });
+    if (!row) continue;
+
+    let p: Record<string, unknown> = {};
+    try {
+      p = row.params ? JSON.parse(row.params) : {};
+    } catch {
+      p = {};
+    }
+
+    const needsDesc =
+      row.description?.includes('Top movers') ||
+      row.description?.includes('pullback com rejeição na EMA30') ||
+      row.description?.includes('breakdown de consolidação') ||
+      row.description?.includes('(C)') ||
+      row.description?.includes('stack bearish') ||
+      row.description?.includes('EMA200 em queda') ||
+      row.description?.includes('rejeição na EMA200') ||
+      row.description?.includes('Sem filtro EMA200') ||
+      row.description?.includes('últimos 5 candles') ||
+      row.description !== description;
+    const needsParams = p.symbolLimit != null;
+    const needsPullback =
+      p.pullbackMaxBars == null ||
+      Number(p.pullbackMaxBars) !== PIVOT_BOSS_BEAR_15M_PARAMS.pullbackMaxBars;
+    const needsMa200Filter =
+      p.ma200FilterPeriod == null ||
+      Number(p.ma200FilterPeriod) !== PIVOT_BOSS_BEAR_15M_PARAMS.ma200FilterPeriod;
+    const needsSellBlock =
+      p.sellBlockMaxDistBelowEma80Pct == null ||
+      Number(p.sellBlockMaxDistBelowEma80Pct) !==
+        PIVOT_BOSS_BEAR_15M_PARAMS.sellBlockMaxDistBelowEma80Pct ||
+      p.sellBlockMaxDistBelowEma30Pct != null ||
+      p.breakdownLookback != null;
+
+    if (!needsDesc && !needsParams && !needsPullback && !needsSellBlock && !needsMa200Filter) {
+      continue;
+    }
+
+    const next = { ...p };
+    if (needsParams) delete next.symbolLimit;
+    if (needsPullback) next.pullbackMaxBars = PIVOT_BOSS_BEAR_15M_PARAMS.pullbackMaxBars;
+    if (needsMa200Filter) {
+      next.ma200FilterPeriod = PIVOT_BOSS_BEAR_15M_PARAMS.ma200FilterPeriod;
+    }
+    if (needsSellBlock) {
+      next.sellBlockMaxDistBelowEma80Pct =
+        PIVOT_BOSS_BEAR_15M_PARAMS.sellBlockMaxDistBelowEma80Pct;
+      delete next.sellBlockMaxDistBelowEma30Pct;
+      delete next.breakdownLookback;
+    }
+
+    await prisma.strategy.update({
+      where: { name },
+      data: {
+        ...(needsDesc ? { description } : {}),
+        ...(needsParams || needsPullback || needsSellBlock || needsMa200Filter
+          ? { params: JSON.stringify(next) }
+          : {}),
+      },
+    });
+    anyUpdated = true;
   }
 
-  const needsDesc =
-    row.description?.includes('Top movers') ||
-    row.description?.includes('pullback com rejeição na EMA30') ||
-    row.description?.includes('breakdown de consolidação') ||
-    row.description?.includes('(C)') ||
-    row.description !== PIVOT_BOSS_BEAR_15M_DESCRIPTION;
-  const needsParams = p.symbolLimit != null;
-  const needsPullback =
-    p.pullbackMaxBars == null ||
-    Number(p.pullbackMaxBars) !== PIVOT_BOSS_BEAR_15M_PARAMS.pullbackMaxBars;
-  const needsSellBlock =
-    p.sellBlockMaxDistBelowEma80Pct == null ||
-    Number(p.sellBlockMaxDistBelowEma80Pct) !==
-      PIVOT_BOSS_BEAR_15M_PARAMS.sellBlockMaxDistBelowEma80Pct ||
-    p.sellBlockMaxDistBelowEma30Pct != null ||
-    p.breakdownLookback != null;
-
-  if (!needsDesc && !needsParams && !needsPullback && !needsSellBlock) return { updated: false };
-
-  const next = { ...p };
-  if (needsParams) delete next.symbolLimit;
-  if (needsPullback) next.pullbackMaxBars = PIVOT_BOSS_BEAR_15M_PARAMS.pullbackMaxBars;
-  if (needsSellBlock) {
-    next.sellBlockMaxDistBelowEma80Pct =
-      PIVOT_BOSS_BEAR_15M_PARAMS.sellBlockMaxDistBelowEma80Pct;
-    delete next.sellBlockMaxDistBelowEma30Pct;
-    delete next.breakdownLookback;
-  }
-
-  await prisma.strategy.update({
-    where: { name: 'PIVOT_BOSS_BEAR_15M' },
-    data: {
-      ...(needsDesc ? { description: PIVOT_BOSS_BEAR_15M_DESCRIPTION } : {}),
-      ...(needsParams || needsPullback || needsSellBlock
-        ? { params: JSON.stringify(next) }
-        : {}),
-    },
-  });
-  return { updated: true };
+  return { updated: anyUpdated };
 }
 
 /** Actualiza limiares COMPRA/VENDA em AFASTAMENTO_MEDIO (1h). */
