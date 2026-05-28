@@ -105,7 +105,7 @@ export default function SignalFilters({
           ) : (
             <input
               type="text"
-              placeholder="Volume Spike, MA60, RSI..."
+              placeholder="MA Cross 15m, Pivot Boss..."
               value={filters.strategy}
               onChange={(e) => onFilterChange({ ...filters, strategy: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"

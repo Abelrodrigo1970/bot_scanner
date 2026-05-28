@@ -7,6 +7,7 @@ import {
   backfillMaCross5mSignalNames,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
+  REMOVED_DEPRECATED_STRATEGY_NAMES,
   removeDeprecatedStrategies,
   syncAfastamentoMedio30mBuyPrevMax,
   syncMacdHistogramPmoParams,
@@ -215,8 +216,9 @@ export async function GET(request: NextRequest) {
     // Listagem pública - necessário para o dropdown de filtros no dashboard
     const strategies = await prisma.strategy.findMany({
       where: {
-        // Oculta estratégia legada para não confundir com MA_CROSS_5M.
-        name: { not: 'VOLUME_SPIKE_15M' },
+        name: {
+          notIn: [...REMOVED_DEPRECATED_STRATEGY_NAMES, 'VOLUME_SPIKE_15M'],
+        },
       },
       orderBy: { name: 'asc' },
     });

@@ -41,6 +41,14 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     description: 'Top por volume 24h (param. symbolLimit / minQuoteVolume), sem tabela de universo.',
   },
   {
+    strategyName: 'EMA_SCALPING_SELL',
+    displayLabel: 'EMA Ribbon Scalping SELL (15m)',
+    signalTimeframes: ['15m'],
+    source: 'runtime_top_movers_1h',
+    dataKey: 'fetchTopSymbolsBy1hPriceChange',
+    description: 'Top movers 1h (limite symbolLimit nos params).',
+  },
+  {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
     displayLabel: 'Pivot Boss Bear 15m (4 EMA venda)',
     signalTimeframes: ['15m'],

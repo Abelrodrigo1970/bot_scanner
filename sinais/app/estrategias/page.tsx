@@ -1,8 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/Header';
 import Disclaimer from '@/components/Disclaimer';
+import {
+  CRON_GROUPS,
+  isDeprecatedStrategyName,
+  REMOVED_STRATEGY_LABELS,
+  sortActiveStrategies,
+  STRATEGY_CATALOG,
+} from '@/lib/strategyCatalog';
 
 interface Strategy {
   id: string;
@@ -90,7 +97,8 @@ export default function EstrategiasPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setStrategies(data.strategies);
+        const active = (data.strategies as Strategy[]).filter((s) => !isDeprecatedStrategyName(s.name));
+        setStrategies(sortActiveStrategies(active));
       }
     } catch (error) {
       console.error('Erro ao buscar estratégias:', error);
@@ -222,79 +230,13 @@ export default function EstrategiasPage() {
     </div>
   );
 
+  const activeCount = useMemo(() => strategies.filter((s) => s.isActive).length, [strategies]);
+
   const renderStrategyParams = (strategy: Strategy) => {
     const p = parseStrategyParams(strategy.params);
     const upd = (patch: object) => handleUpdateParams(strategy, { ...p, ...patch });
 
     switch (strategy.name) {
-      case 'RSI':
-        return (
-          <div className="space-y-3">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>1h</strong>. Universo = scan <strong>MA30 entre −6% e +1% vs MA200 (1h)</strong> (só define quais pares analisar). Linha lenta = <strong>SMA sobre o RSI</strong> (TradingView: RSI + Smoothing).{' '}
-              <strong>BUY</strong>: lenta cruza <strong>para cima</strong> do nível. <strong>SELL</strong>: lenta <strong>passa para baixo</strong> do nível (ex.: 47). Sem filtro MA200 no preço.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
-              {numField('Suavização: período SMA sobre o RSI', p.rsiSmoothLength ?? 21, (v) => upd({ rsiSmoothLength: v }))}
-              {numField('Nível de referência (cruzamento)', p.rsiRefLevel ?? 47, (v) => upd({ rsiRefLevel: v }), 0.5)}
-              {numField('SL compra (%)', p.buyStopPercent ?? 5, (v) => upd({ buyStopPercent: v }), 0.5)}
-              {numField('TP compra: valorização vs entrada (%)', p.rsiBuyGainTpPct ?? 43, (v) => upd({ rsiBuyGainTpPct: v }), 0.5)}
-              {numField('TP compra: % da posição', p.rsiBuyGainTpPositionPct ?? 50, (v) => upd({ rsiBuyGainTpPositionPct: v }), 1)}
-              {numField('SL venda (%)', p.sellStopPercent ?? 5, (v) => upd({ sellStopPercent: v }), 0.5)}
-              {numField('TP venda: valorização vs entrada (%)', p.rsiSellGainTpPct ?? 43, (v) => upd({ rsiSellGainTpPct: v }), 0.5)}
-              {numField('TP venda: % da posição', p.rsiSellGainTpPositionPct ?? 50, (v) => upd({ rsiSellGainTpPositionPct: v }), 1)}
-              {numField('Saída temporal (h)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
-            </div>
-          </div>
-        );
-
-      case 'RSI_BYBIT_15M':
-        return (
-          <div className="space-y-3">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>15m</strong>. Universo = tabela <strong>Ma30Above6Pct</strong> (<strong>MA30 &gt; 9% da MA200</strong> em 1h); actualiza o scan &quot;MA30 &gt; 9% MA200&quot; antes de gerar sinais. Linha lenta = <strong>SMA sobre o RSI</strong>.{' '}
-              <strong>BUY</strong>: lenta cruza <strong>para cima</strong> do nível. <strong>SELL</strong>: lenta <strong>passa para baixo</strong> do nível (ex.: 47). Mesmos SL/TP parciais que o RSI 1h.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
-              {numField('Suavização: período SMA sobre o RSI', p.rsiSmoothLength ?? 21, (v) => upd({ rsiSmoothLength: v }))}
-              {numField('Nível de referência (cruzamento)', p.rsiRefLevel ?? 47, (v) => upd({ rsiRefLevel: v }), 0.5)}
-              {numField('SL compra (%)', p.buyStopPercent ?? 5, (v) => upd({ buyStopPercent: v }), 0.5)}
-              {numField('TP compra: valorização vs entrada (%)', p.rsiBuyGainTpPct ?? 43, (v) => upd({ rsiBuyGainTpPct: v }), 0.5)}
-              {numField('TP compra: % da posição', p.rsiBuyGainTpPositionPct ?? 50, (v) => upd({ rsiBuyGainTpPositionPct: v }), 1)}
-              {numField('SL venda (%)', p.sellStopPercent ?? 5, (v) => upd({ sellStopPercent: v }), 0.5)}
-              {numField('TP venda: valorização vs entrada (%)', p.rsiSellGainTpPct ?? 43, (v) => upd({ rsiSellGainTpPct: v }), 0.5)}
-              {numField('TP venda: % da posição', p.rsiSellGainTpPositionPct ?? 50, (v) => upd({ rsiSellGainTpPositionPct: v }), 1)}
-              {numField('Saída temporal (h)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
-            </div>
-          </div>
-        );
-
-      case 'RSI_15M':
-        return (
-          <div className="space-y-3">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Universo = scan <strong>MA30 entre −6% e +1% vs MA200 (1h)</strong> (menu &quot;MA30 −6%…+1% vs MA200&quot;). Actualiza esse scan antes de gerar sinais.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {numField('Período RSI', p.period ?? 14, (v) => upd({ period: v }))}
-            {numField('RSI vela anterior abaixo de', p.previousBelowThreshold ?? 28, (v) => upd({ previousBelowThreshold: v }))}
-            {numField('RSI atual fecha acima de', p.buyThreshold ?? 32, (v) => upd({ buyThreshold: v }))}
-            {numField('SL (%)', p.stopPercent ?? 3, (v) => upd({ stopPercent: v }), 0.5)}
-            {numField('Máx. símbolos', p.symbolLimit ?? 400, (v) => upd({ symbolLimit: v }))}
-            </div>
-          </div>
-        );
-
-      case 'VOLUME_SPIKE':
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {numField('Multiplicador de volume (×)', p.volumeMultiplier ?? 20, (v) => upd({ volumeMultiplier: v }))}
-            {numField('Lookback (horas)', p.lookbackHours ?? 20, (v) => upd({ lookbackHours: v }))}
-          </div>
-        );
-
       case 'MA_CROSS_5M': {
         const maPairLabel = 'MA12 / MA30';
         const diffLabel = 'MA12 / MA30';
@@ -562,13 +504,52 @@ export default function EstrategiasPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Estratégias</h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 max-w-3xl">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 max-w-3xl">
           Estratégia <strong>Ativa</strong> = o motor gera sinais quando as regras batem certo. Em cada cartão,{' '}
           <strong>COMPRA / VENDA</strong> controla só se ordens são enviadas à corretora (auto-execução no cron ou botão
-          executar): OFF mantém o sinal na app mas não abre posição nessa direcção. Valores em{' '}
-          <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">params.allowBuy</code> e{' '}
-          <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">params.allowSell</code>.
+          executar): OFF mantém o sinal na app mas não abre posição nessa direcção.
         </p>
+
+        <div className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Estratégias activas</h2>
+            {!loading && (
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {activeCount} de {strategies.length} activas
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {CRON_GROUPS.map((group) => (
+              <div
+                key={group.key}
+                className="rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 p-4"
+              >
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{group.title}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{group.description}</p>
+                <ul className="mt-3 space-y-1.5">
+                  {strategies
+                    .filter((s) => STRATEGY_CATALOG[s.name]?.cron === group.key)
+                    .map((s) => (
+                      <li key={s.id} className="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <span
+                          className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${
+                            s.isActive ? 'bg-green-500' : 'bg-gray-400'
+                          }`}
+                        />
+                        <span>{s.displayName}</span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Removidas do sistema:{' '}
+            {Object.values(REMOVED_STRATEGY_LABELS).join(' · ')}.
+            Scanners 1–3: menu <strong>Origem de dados</strong>.
+          </p>
+        </div>
 
         {message && (
           <div
@@ -634,14 +615,23 @@ export default function EstrategiasPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {strategies.map((strategy) => (
+            {strategies.map((strategy) => {
+              const meta = STRATEGY_CATALOG[strategy.name];
+              const sellOnly =
+                strategy.name === 'EMA_SCALPING_SELL' ||
+                strategy.name === 'PIVOT_BOSS_BEAR_15M' ||
+                strategy.name === 'PIVOT_BOSS_BEAR_1H' ||
+                strategy.name === 'RSI_OVERBOUGHT_DROP_1H' ||
+                strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H';
+
+              return (
               <div
                 key={strategy.id}
                 className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
+                    <div className="flex items-center flex-wrap gap-2 mb-2">
                       <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                         {strategy.displayName}
                       </h2>
@@ -654,7 +644,22 @@ export default function EstrategiasPage() {
                       >
                         {strategy.isActive ? 'Ativa' : 'Inativa'}
                       </span>
+                      {meta && (
+                        <>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                            {meta.cronLabel}
+                          </span>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200">
+                            Velas {meta.timeframe}
+                          </span>
+                        </>
+                      )}
                     </div>
+                    {meta?.universe && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        Universo: {meta.universe}
+                      </p>
+                    )}
                     <p className="text-gray-600 dark:text-gray-400">{strategy.description}</p>
                   </div>
                   <button
@@ -682,9 +687,9 @@ export default function EstrategiasPage() {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                     Enviar ordens automáticas (cron) ou manualmente nesta direcção. OFF não impede sinais — só evita
                     abrir posição COMPRA ou VENDA na exchange seleccionada abaixo.
-                    {strategy.name === 'EMA_SCALPING_SELL' ? (
+                    {sellOnly ? (
                       <span className="block mt-1 text-amber-700 dark:text-amber-300">
-                        <>Nota: EMA_SCALPING_SELL só gera VENDAS; activar COMPRA não produz longs.</>
+                        Nota: esta estratégia só gera <strong>VENDAS</strong>; activar COMPRA não produz longs.
                       </span>
                     ) : null}
                   </p>
@@ -754,7 +759,8 @@ export default function EstrategiasPage() {
                   {renderStrategyParams(strategy)}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
