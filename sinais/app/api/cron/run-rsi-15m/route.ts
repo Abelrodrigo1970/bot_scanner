@@ -3,24 +3,15 @@ import { runAllStrategies } from '@/lib/signalEngine';
 import { cleanupBybitOrphanOpenOrders } from '@/lib/tradingExecutor';
 
 /**
- * Cron dedicado 15m: EMA_SCALPING (BUY) e EMA_SCALPING_SELL (se activa).
- * RSI_15M, RSI_BYBIT_15M, MA_CROSS_15M e VOLUME_SPIKE foram removidas.
+ * Cron dedicado 15m: EMA_SCALPING_SELL (se activa).
+ * EMA_SCALPING (BUY), RSI_15M, MA_CROSS_15M e VOLUME_SPIKE foram removidas.
  */
 async function runCron15mStrategiesInBackground(): Promise<void> {
   try {
-    console.log('[Run-15m-strategies BG] Iniciando EMA Ribbon + restantes 15m...');
+    console.log('[Run-15m-strategies BG] Iniciando EMA Ribbon SELL 15m...');
 
     const signalsCreated = await runAllStrategies({
-      exclude: [
-        'MA_CROSS_5M',
-        'MA200_VOLATILE',
-        'MA_VOLATILE',
-        'MACD_HISTOGRAM_PMO',
-        'AFASTAMENTO_MEDIO',
-        'AFASTAMENTO_MEDIO_30M',
-        'RSI_OVERBOUGHT_DROP_1H',
-        'PIVOT_BOSS_BEAR_1H',
-      ],
+      only: ['EMA_SCALPING_SELL'],
     });
 
     const orphanCleanup = await cleanupBybitOrphanOpenOrders();
@@ -51,7 +42,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     return NextResponse.json({
       success: true,
-      message: 'Processamento em background (EMA Ribbon Scalping 15m; estratégias RSI/MA30×200 removidas)',
+      message: 'Processamento em background (EMA Ribbon Scalping SELL 15m)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

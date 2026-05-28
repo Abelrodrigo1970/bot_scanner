@@ -44,7 +44,6 @@ function side(
 }
 
 /** SL dinâmico (ATR/swing); valores médios para simulação conservadora. */
-const EMA_RIBBON_BUY = side(2.9, 4.8, 55, 9.3, 35);
 const EMA_RIBBON_SELL = side(2.9, 4.8, 55, 9.3, 35);
 
 export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
@@ -62,27 +61,6 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(4, 80, 70),
     sell: side(4, 80, 70),
     summary: 'SL 4%. TP1 ±80% (70% pos.). Restante às 24h.',
-  },
-  {
-    strategyName: 'MA_VOLATILE',
-    displayNames: ['MA Cross Top Voláteis'],
-    buy: side(15, 30, 40, 60, 30),
-    sell: side(15, 30, 40, 60, 30),
-    summary:
-      'SL 15%. TP1 ±30% (40%) | TP2 ±60% (30%) | 30% restante na reversão MA60.',
-  },
-  {
-    strategyName: 'AFASTAMENTO_MEDIO',
-    displayNames: [
-      'Afastamento médio 1h (≤1,9→≥2,4)',
-      'Afastamento médio 1h (≤1,5→≥2,5)',
-      'Afastamento médio 1h (≤2→≥2)',
-      'Afastamento médio 1h (≤2↔≥2)',
-    ],
-    buy: side(4, 9, 40),
-    sell: side(4, 9, 40),
-    summary:
-      'SL 4%. TP1 ±9% (40% pos.). Restante às 24h.',
   },
   {
     strategyName: 'AFASTAMENTO_MEDIO_30M',
@@ -120,14 +98,6 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(4, 20, 100),
     sell: side(4, 20, 100),
     summary: 'SL 4%. TP ±20% (posição total).',
-  },
-  {
-    strategyName: 'EMA_SCALPING',
-    displayNames: ['EMA Ribbon Scalping (15m)'],
-    buy: EMA_RIBBON_BUY,
-    sell: null,
-    summary:
-      'Só COMPRA. SL dinâmico (ATR/swing, máx. ~2,9%). TP1 R×1,65 (~4,8%, 55%) | TP2 R×3,2 (~9,3%, 35%).',
   },
   {
     strategyName: 'EMA_SCALPING_SELL',

@@ -2,12 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Cron agregado 1h:
- * - run-scans-ma: MaCrossBelow + Bybit Vol1h/MA200 (MA_VOLATILE, MA Cross)
- * - run-signals: MA200 4h + MACD/PMO + afastamento 1h + RSI queda 70
+ * - run-scans-ma: Bybit Vol1h/MA200
+ * - run-signals: MA200 4h + MACD/PMO + RSI queda 70
  *   (AFASTAMENTO_MEDIO_30M → cron separado /api/cron/run-30m)
- * - run-ma-volatile: MA_VOLATILE (MA60 1h; universo MaCrossBelow)
- *
- * Scanners 1/2/3: agendar à parte de 4 em 4 h → /api/cron/run-universe-scans
  */
 async function run1hInBackground(origin: string, authHeader: string): Promise<void> {
   try {
@@ -19,7 +16,6 @@ async function run1hInBackground(origin: string, authHeader: string): Promise<vo
     const calls = [
       `${origin}/api/cron/run-scans-ma`,
       `${origin}/api/cron/run-signals`,
-      `${origin}/api/cron/run-ma-volatile`,
     ];
 
     const results = await Promise.allSettled(
@@ -78,7 +74,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message:
-        'Processamento agregado 1h: MA Cross/Bybit scan + MA200 + estratégias importadas + MA60 1h (Scanners 1–3: cron 4h separado)',
+        'Processamento agregado 1h: Bybit scan + MA200 + estratégias importadas (Scanners 1–3: cron 4h separado)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

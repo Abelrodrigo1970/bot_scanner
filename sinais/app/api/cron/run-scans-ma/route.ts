@@ -1,36 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { fetchBybitAboveMa200Mc20m, fetchMaCrossBelow } from '@/lib/marketData';
+import { fetchBybitAboveMa200Mc20m } from '@/lib/marketData';
 
 /**
- * Atualiza tabelas de universo usadas por estratégias activas:
- * - MaCrossBelow → MA_VOLATILE
- * - BybitAboveMa200Mc20m → menu Origem de dados (Bybit); MA Cross usa Scanner 1
+ * Atualiza tabela BybitAboveMa200Mc20m (menu Origem de dados Bybit).
  *
  * Scanners 1/2/3 (afastamento / RSI): /api/cron/run-universe-scans
  */
 let maScansJobPromise: Promise<void> | null = null;
 
-async function runMaScansJob(): Promise<{
-  maCrossBelow: number;
-  bybitVolume1hMa200: number;
-}> {
-  const maCross = await fetchMaCrossBelow(100);
-  await prisma.maCrossBelow.deleteMany({});
-  if (maCross.length > 0) {
-    await prisma.maCrossBelow.createMany({
-      data: maCross.map((item) => ({
-        symbol: item.symbol,
-        lastPrice: item.lastPrice,
-        ma30: item.ma30,
-        ma200: item.ma200,
-        distPriceMa200: item.distPriceMa200,
-        distMa30Ma200: item.distMa30Ma200,
-        rank: item.rank,
-      })),
-    });
-  }
-
+async function runMaScansJob(): Promise<{ bybitVolume1hMa200: number }> {
   console.log('[run-scans-ma] Bybit Volume 1h (500k) + MA200 — a calcular…');
   const bybitVolMa200 = await fetchBybitAboveMa200Mc20m(300, 500_000);
   await prisma.bybitAboveMa200Mc20m.deleteMany({});
@@ -49,7 +28,6 @@ async function runMaScansJob(): Promise<{
   }
 
   return {
-    maCrossBelow: maCross.length,
     bybitVolume1hMa200: bybitVolMa200.length,
   };
 }
@@ -92,8 +70,7 @@ export async function GET(request: NextRequest) {
       {
         accepted: true,
         background: true,
-        message:
-          'Scans MaCrossBelow + Bybit Vol1h/MA200 em background (universos MA_VOLATILE e MA Cross).',
+        message: 'Scan Bybit Vol1h/MA200 em background.',
         startedAt,
       },
       { status: 202 }

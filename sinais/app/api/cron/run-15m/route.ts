@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Cron agregado 15m:
  * - MA_CROSS_5M (candles 5m, URL: /api/cron/run-volume-spike-15m)
- * - EMA Ribbon 15m via /api/cron/run-rsi-15m
+ * - EMA Ribbon SELL 15m via /api/cron/run-rsi-15m
  *
  * Dispara os crons dedicados em background para manter a mesma lógica já existente.
  */
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento agregado 15m (MA Cross 5m + RSI 15m) iniciado em background',
+      message: 'Processamento agregado 15m (MA Cross 15m + EMA Ribbon SELL) iniciado em background',
       executedAt: now.toISOString(),
     });
   } catch (error) {

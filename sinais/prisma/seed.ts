@@ -4,7 +4,6 @@ import {
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_5M_PARAMS,
-  MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION,
   migrateVolumeSpike15mToMaCross5m,
   removeDeprecatedStrategies,
 } from '../lib/strategyMigrations';
@@ -27,56 +26,6 @@ async function main() {
   if (mig.signalsRelabeled != null && mig.signalsRelabeled > 0) {
     console.log(`  strategyName em sinais (estatísticas): ${mig.signalsRelabeled} actualizados para "${MA_CROSS_5M_DISPLAY}"`);
   }
-
-  // Estratégia MA Cross Top Voláteis (universo = MA Cross Proximidade / MaCrossBelow na BD)
-  const maVolatileStrategy = await prisma.strategy.upsert({
-    where: { name: 'MA_VOLATILE' },
-    update: {
-      description: MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION,
-      params: JSON.stringify({
-        ma60Period: 60,
-        ma200Period: 200,
-        confirmationPct: 2,
-        buyStopPercent: 15,
-        buyTp1Percent: 30,
-        buyTp1Position: 40,
-        buyTp2Percent: 60,
-        buyTp2Position: 30,
-        sellStopPercent: 15,
-        sellTp1Percent: 30,
-        sellTp1Position: 40,
-        sellTp2Percent: 60,
-        sellTp2Position: 30,
-        allowBuy: true,
-        allowSell: false,
-        exchange: 'binance',
-      }),
-    },
-    create: {
-      name: 'MA_VOLATILE',
-      displayName: 'MA Cross Top Voláteis',
-      description: MA_VOLATILE_MA30_SCAN_UNIVERSE_DESCRIPTION,
-      isActive: true,
-      params: JSON.stringify({
-        ma60Period: 60,
-        ma200Period: 200,
-        confirmationPct: 2,
-        buyStopPercent: 15,
-        buyTp1Percent: 30,
-        buyTp1Position: 40,
-        buyTp2Percent: 60,
-        buyTp2Position: 30,
-        sellStopPercent: 15,
-        sellTp1Percent: 30,
-        sellTp1Position: 40,
-        sellTp2Percent: 60,
-        sellTp2Position: 30,
-        allowBuy: true,
-        allowSell: false,
-        exchange: 'binance',
-      }),
-    },
-  });
 
   // MA Cross 5m (MA12/MA30) — velas 5m; cron típico a cada 15 min
   const maCross5mStrategy = await prisma.strategy.upsert({
@@ -140,62 +89,6 @@ async function main() {
         minQuoteVolume: 100000,
         allowBuy: true,
         allowSell: true,
-        exchange: 'binance',
-      }),
-    },
-  });
-
-  await prisma.strategy.upsert({
-    where: { name: 'EMA_SCALPING' },
-    update: {
-      displayName: 'EMA Ribbon Scalping (15m)',
-      description:
-        'Scalping 15m tipo «EMA Ribbon»: só COMPRA. Fita 8×55 por defeito (parametrizável); tendência com subida forte da EMA lenta; consolidação + rompimento SB ou pullback à fita + SB; TP por R. Binance Futures. Universo Top movers 1h (limite parametrizável).',
-      params: JSON.stringify({
-        ribbonFastPeriod: 8,
-        ribbonSlowPeriod: 55,
-        atrPeriod: 14,
-        slopeLookback: 5,
-        minSlowEmaSlopePct: 0.85,
-        consolidationLookback: 14,
-        consolidationMaxRangePct: 1.35,
-        pullbackMaxBars: 10,
-        strongBodyOfRangeMin: 0.58,
-        strongBodyMinAtrMult: 0.42,
-        symbolLimit: 80,
-        rewardRisk1: 1.65,
-        rewardRisk2: 3.2,
-        tp1PositionPct: 55,
-        tp2PositionPct: 35,
-        allowBuy: true,
-        allowSell: false,
-        exchange: 'binance',
-      }),
-    },
-    create: {
-      name: 'EMA_SCALPING',
-      displayName: 'EMA Ribbon Scalping (15m)',
-      description:
-        'Scalping 15m tipo «EMA Ribbon»: só COMPRA. Fita 8×55 por defeito (parametrizável); tendência com subida forte da EMA lenta; consolidação + rompimento SB ou pullback à fita + SB; TP por R. Binance Futures. Universo Top movers 1h (limite parametrizável).',
-      isActive: true,
-      params: JSON.stringify({
-        ribbonFastPeriod: 8,
-        ribbonSlowPeriod: 55,
-        atrPeriod: 14,
-        slopeLookback: 5,
-        minSlowEmaSlopePct: 0.85,
-        consolidationLookback: 14,
-        consolidationMaxRangePct: 1.35,
-        pullbackMaxBars: 10,
-        strongBodyOfRangeMin: 0.58,
-        strongBodyMinAtrMult: 0.42,
-        symbolLimit: 80,
-        rewardRisk1: 1.65,
-        rewardRisk2: 3.2,
-        tp1PositionPct: 55,
-        tp2PositionPct: 35,
-        allowBuy: true,
-        allowSell: false,
         exchange: 'binance',
       }),
     },
@@ -302,7 +195,6 @@ async function main() {
   console.log('Seed concluído!');
   console.log('Estratégias (ids):', {
     maCross5m: maCross5mStrategy.id,
-    maVolatile: maVolatileStrategy.id,
     ma200Volatile: ma200VolatileStrategy.id,
   });
 }

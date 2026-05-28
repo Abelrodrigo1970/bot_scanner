@@ -76,8 +76,8 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_NEAR_MA200_PCT4_4H: {
     displayName: 'Scanner 3 — Até ±4% da MA80 (4h)',
     description:
-      'Preço dentro de ±4% da MA80 em 4h. Universo: Afastamento médio 1h e Afastamento médio 30m.',
-    strategyNames: 'AFASTAMENTO_MEDIO, AFASTAMENTO_MEDIO_30M',
+      'Preço dentro de ±4% da MA80 em 4h. Universo: Afastamento médio 30m.',
+    strategyNames: 'AFASTAMENTO_MEDIO_30M',
   },
   UNIVERSE_ABOVE_MA200_1D: {
     displayName: 'Scanner 4 — Acima SMA200 (1d)',

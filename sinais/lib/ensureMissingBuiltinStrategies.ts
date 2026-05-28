@@ -2,11 +2,6 @@ import type { PrismaClient } from '@prisma/client';
 import {
   MACD_HISTOGRAM_PMO_DESCRIPTION,
   MACD_HISTOGRAM_PMO_PARAMS,
-  AFASTAMENTO_MEDIO_DESCRIPTION,
-  AFASTAMENTO_MEDIO_DISPLAY,
-  AFASTAMENTO_MEDIO_BUY_PARAMS,
-  AFASTAMENTO_MEDIO_EXIT_PARAMS,
-  AFASTAMENTO_MEDIO_SELL_PARAMS,
   AFASTAMENTO_MEDIO_30M_DESCRIPTION,
   AFASTAMENTO_MEDIO_30M_EXIT_PARAMS,
   AFASTAMENTO_MEDIO_30M_DISPLAY,
@@ -25,8 +20,6 @@ import {
   PIVOT_BOSS_BEAR_1H_DESCRIPTION,
   PIVOT_BOSS_BEAR_1H_PARAMS,
   PIVOT_BOSS_BEAR_1H_DISPLAY,
-  syncAfastamentoMedio1hBuyThresholds,
-  syncAfastamentoMedio1hScanner3Description,
   syncAfastamentoMedio30mBuyPrevMax,
   syncMacdHistogramPmoParams,
   syncPivotBossBear15mUniverse,
@@ -41,25 +34,6 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: MACD_HISTOGRAM_PMO_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(MACD_HISTOGRAM_PMO_PARAMS),
-  },
-  {
-    name: 'AFASTAMENTO_MEDIO',
-    displayName: AFASTAMENTO_MEDIO_DISPLAY,
-    description: AFASTAMENTO_MEDIO_DESCRIPTION,
-    isActive: true,
-    params: JSON.stringify({
-      maPeriod: 80,
-      smoothPeriod: 7,
-      meanLineType: 'EMA',
-      trendMaType: 'EMA',
-      buyTrendMaPeriod: 30,
-      ...AFASTAMENTO_MEDIO_BUY_PARAMS,
-      ...AFASTAMENTO_MEDIO_SELL_PARAMS,
-      ...AFASTAMENTO_MEDIO_EXIT_PARAMS,
-      ...AFASTAMENTO_STRENGTH_FILTER_PARAMS,
-      allowBuy: true,
-      allowSell: true,
-    }),
   },
   {
     name: 'AFASTAMENTO_MEDIO_30M',
@@ -127,14 +101,6 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const rsiSync = await syncRsiOverboughtDrop1hConfig(prisma);
   if (rsiSync.updated) {
     console.log('✅ RSI_OVERBOUGHT_DROP_1H: params/descrição actualizados (pullback bear 1h)');
-  }
-  const af1hSync = await syncAfastamentoMedio1hScanner3Description(prisma);
-  if (af1hSync.updated) {
-    console.log('✅ AFASTAMENTO_MEDIO: descrição actualizada (universo Scanner 3)');
-  }
-  const af1hBuySync = await syncAfastamentoMedio1hBuyThresholds(prisma);
-  if (af1hBuySync.updated) {
-    console.log('✅ AFASTAMENTO_MEDIO: COMPRA/VENDA ≤1,9↔≥2,4 (1h) + maxStrength 75');
   }
   const af30mSync = await syncAfastamentoMedio30mBuyPrevMax(prisma);
   if (af30mSync.updated) {

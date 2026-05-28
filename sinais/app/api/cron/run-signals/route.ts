@@ -22,7 +22,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
-      exclude: ['MA_CROSS_5M', 'MA_VOLATILE', 'EMA_SCALPING', 'EMA_SCALPING_SELL', 'AFASTAMENTO_MEDIO_30M'],
+      exclude: ['MA_CROSS_5M', 'EMA_SCALPING_SELL', 'AFASTAMENTO_MEDIO_30M'],
     });
 
     // Auto-exec MA200_VOLATILE — força mínima 70 (igual à força fixa dos sinais MA200)

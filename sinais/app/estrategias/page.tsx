@@ -413,34 +413,25 @@ export default function EstrategiasPage() {
         );
       }
 
-      case 'MA_VOLATILE':
       case 'MA200_VOLATILE': {
-        const isMa60 = strategy.name === 'MA_VOLATILE';
-        const defaultBuyStop = isMa60 ? 15 : 4;
-        const defaultSellStop = isMa60 ? 15 : 4;
-        const defaultBuyTp1 = isMa60 ? 30 : 80;
-        const defaultBuyTp1Position = isMa60 ? 40 : 70;
-        const defaultBuyTp2 = isMa60 ? 60 : 0;
-        const defaultBuyTp2Position = isMa60 ? 30 : 0;
-        const defaultSellTp1 = isMa60 ? 30 : 80;
-        const defaultSellTp1Position = isMa60 ? 40 : 70;
-        const defaultSellTp2 = isMa60 ? 60 : 0;
-        const defaultSellTp2Position = isMa60 ? 30 : 0;
+        const defaultBuyStop = 4;
+        const defaultSellStop = 4;
+        const defaultBuyTp1 = 80;
+        const defaultBuyTp1Position = 70;
+        const defaultBuyTp2 = 0;
+        const defaultBuyTp2Position = 0;
+        const defaultSellTp1 = 80;
+        const defaultSellTp1Position = 70;
+        const defaultSellTp2 = 0;
+        const defaultSellTp2Position = 0;
         return (
           <div className="space-y-4">
-            {isMa60 && (
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                Universo = resultados do scan <strong>MA Cross Proximidade</strong> (menu). Actualiza esse scan antes de gerar sinais.
-              </p>
-            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Confirmação (%)', p.confirmationPct ?? 2, (v) => upd({ confirmationPct: v }), 0.5)}
-              {isMa60
-                ? numField('Período MA', p.ma60Period ?? 60, (v) => upd({ ma60Period: v }))
-                : numField('Período MA', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
-              {!isMa60 && numField('Distância máx. à MA (%)', p.maxDistancePct ?? 10, (v) => upd({ maxDistancePct: v }), 0.5)}
-              {!isMa60 && numField('Máx. símbolos', p.symbolLimit ?? 500, (v) => upd({ symbolLimit: v }))}
-              {!isMa60 && numField('Volume mínimo', p.minQuoteVolume ?? 100000, (v) => upd({ minQuoteVolume: v }))}
+              {numField('Período MA', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
+              {numField('Distância máx. à MA (%)', p.maxDistancePct ?? 10, (v) => upd({ maxDistancePct: v }), 0.5)}
+              {numField('Máx. símbolos', p.symbolLimit ?? 500, (v) => upd({ symbolLimit: v }))}
+              {numField('Volume mínimo', p.minQuoteVolume ?? 100000, (v) => upd({ minQuoteVolume: v }))}
             </div>
             <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">BUY</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -461,32 +452,6 @@ export default function EstrategiasPage() {
           </div>
         );
       }
-
-      case 'EMA_SCALPING':
-        return (
-          <div className="space-y-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>15m</strong>; dados <strong>Binance Futures</strong> (endpoint interno igual às restantes estratégias). Inspirado em cenários de scalp com fita de EMA: tendência com subida da EMA lenta; entrada em vela forte (SB) ou após pullback à zona da fita. Só existe lógica de <strong>COMPRA</strong>. Universo = Top movers por variação 1h, limitado pelo máximo abaixo.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('EMA rápida (topo bullish)', p.ribbonFastPeriod ?? 8, (v) => upd({ ribbonFastPeriod: v }))}
-              {numField('EMA lenta (base fita)', p.ribbonSlowPeriod ?? 55, (v) => upd({ ribbonSlowPeriod: v }))}
-              {numField('ATR período', p.atrPeriod ?? 14, (v) => upd({ atrPeriod: v }))}
-              {numField('Lookback inclinação (velas)', p.slopeLookback ?? 5, (v) => upd({ slopeLookback: v }))}
-              {numField('Inclinação mín. EMA lenta (%)', p.minSlowEmaSlopePct ?? 0.85, (v) => upd({ minSlowEmaSlopePct: v }), 0.05)}
-              {numField('Barras lateral (consol.)', p.consolidationLookback ?? 14, (v) => upd({ consolidationLookback: v }))}
-              {numField('Máx. range consolidação (%)', p.consolidationMaxRangePct ?? 1.35, (v) => upd({ consolidationMaxRangePct: v }), 0.05)}
-              {numField('Barras máx. pullback', p.pullbackMaxBars ?? 10, (v) => upd({ pullbackMaxBars: v }))}
-              {numField('Corpo mínimo / range', p.strongBodyOfRangeMin ?? 0.58, (v) => upd({ strongBodyOfRangeMin: v }), 0.01)}
-              {numField('Corpo mínimo × ATR', p.strongBodyMinAtrMult ?? 0.42, (v) => upd({ strongBodyMinAtrMult: v }), 0.02)}
-              {numField('Máximo símbolos', p.symbolLimit ?? 80, (v) => upd({ symbolLimit: v }))}
-              {numField('Risk-reward TP1', p.rewardRisk1 ?? 1.65, (v) => upd({ rewardRisk1: v }), 0.05)}
-              {numField('Risk-reward TP2', p.rewardRisk2 ?? 3.2, (v) => upd({ rewardRisk2: v }), 0.05)}
-              {numField('TP1 — % da posição', p.tp1PositionPct ?? 55, (v) => upd({ tp1PositionPct: v }))}
-              {numField('TP2 — % da posição', p.tp2PositionPct ?? 35, (v) => upd({ tp2PositionPct: v }))}
-            </div>
-          </div>
-        );
 
       case 'RSI_OVERBOUGHT_DROP_1H':
         return (
@@ -717,17 +682,9 @@ export default function EstrategiasPage() {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                     Enviar ordens automáticas (cron) ou manualmente nesta direcção. OFF não impede sinais — só evita
                     abrir posição COMPRA ou VENDA na exchange seleccionada abaixo.
-                    {(strategy.name === 'RSI_15M' ||
-                      strategy.name === 'EMA_SCALPING' ||
-                      strategy.name === 'EMA_SCALPING_SELL') ? (
+                    {strategy.name === 'EMA_SCALPING_SELL' ? (
                       <span className="block mt-1 text-amber-700 dark:text-amber-300">
-                        {strategy.name === 'RSI_15M' ? (
-                          <>Nota: RSI_15M só gera compras na lógica actual; activar VENDA não produz shorts até a estratégia suportar SELL.</>
-                        ) : strategy.name === 'EMA_SCALPING_SELL' ? (
-                          <>Nota: EMA_SCALPING_SELL só gera VENDAS; activar COMPRA não produz longs.</>
-                        ) : (
-                          <>Nota: EMA_SCALPING só gera COMPRAS; activar VENDA não altera comportamento (use EMA_SCALPING_SELL para shorts).</>
-                        )}
+                        <>Nota: EMA_SCALPING_SELL só gera VENDAS; activar COMPRA não produz longs.</>
                       </span>
                     ) : null}
                   </p>

@@ -8,12 +8,9 @@ import {
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   removeDeprecatedStrategies,
-  syncAfastamentoMedio1hBuyThresholds,
-  syncAfastamentoMedio1hScanner3Description,
   syncAfastamentoMedio30mBuyPrevMax,
   syncMacdHistogramPmoParams,
   syncMaCrossScanner1UniverseDescriptions,
-  syncRsiMaVolatileUniverseDescriptions,
   syncRsiOverboughtDrop1hConfig,
 } from '@/lib/strategyMigrations';
 
@@ -39,30 +36,6 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   allowSell: true,
   exchange: 'binance' as const,
 };
-
-const EMA_SCALPING_DEFAULT_PARAMS = {
-  ribbonFastPeriod: 8,
-  ribbonSlowPeriod: 55,
-  atrPeriod: 14,
-  slopeLookback: 5,
-  minSlowEmaSlopePct: 0.85,
-  consolidationLookback: 14,
-  consolidationMaxRangePct: 1.35,
-  pullbackMaxBars: 10,
-  strongBodyOfRangeMin: 0.58,
-  strongBodyMinAtrMult: 0.42,
-  symbolLimit: 80,
-  rewardRisk1: 1.65,
-  rewardRisk2: 3.2,
-  tp1PositionPct: 55,
-  tp2PositionPct: 35,
-  allowBuy: true,
-  allowSell: false,
-  exchange: 'binance' as const,
-};
-
-const EMA_SCALPING_DESCRIPTION =
-  'Scalping 15m tipo «EMA Ribbon»: só COMPRA. Fita = EMA rápida × EMA lenta (ex.: 8/55): tendência com subida forte da EMA lenta nos últimos N candles; cenário «lateral»: consolidação estreita e rompimento com vela bull forte (corpo alto vs range, perto da máxima) a fechar acima da EMA rápida; cenário «pullback»: toque dentro da zona da fita e continuação com vela forte. SL = mínimo entre swing low − margem por ATR e EMA lenta com folga %. TP por múltiplos de R. Dados Binance Futures (mesmo endpoint que fetchCandles). Universo = Top movers 1h (limite parametrizável).';
 
 const EMA_SCALPING_SELL_DEFAULT_PARAMS = {
   ribbonFastPeriod: 8,
@@ -94,8 +67,6 @@ async function ensureMissingStrategies() {
   await syncMacdHistogramPmoParams(prisma);
   await syncMaCrossScanner1UniverseDescriptions(prisma);
   await syncRsiOverboughtDrop1hConfig(prisma);
-  await syncAfastamentoMedio1hScanner3Description(prisma);
-  await syncAfastamentoMedio1hBuyThresholds(prisma);
   await syncAfastamentoMedio30mBuyPrevMax(prisma);
 
   const existingMaCross5m = await prisma.strategy.findUnique({
@@ -195,22 +166,6 @@ async function ensureMissingStrategies() {
     );
   }
 
-  const existingEmaScalping = await prisma.strategy.findUnique({
-    where: { name: 'EMA_SCALPING' },
-    select: { id: true },
-  });
-  if (!existingEmaScalping) {
-    await prisma.strategy.create({
-      data: {
-        name: 'EMA_SCALPING',
-        displayName: 'EMA Ribbon Scalping (15m)',
-        description: EMA_SCALPING_DESCRIPTION,
-        isActive: true,
-        params: JSON.stringify(EMA_SCALPING_DEFAULT_PARAMS),
-      },
-    });
-  }
-
   const existingEmaScalpingSell = await prisma.strategy.findUnique({
     where: { name: 'EMA_SCALPING_SELL' },
     select: { id: true },
@@ -256,7 +211,6 @@ export async function GET(request: NextRequest) {
     }
 
     await ensureMissingStrategies();
-    await syncRsiMaVolatileUniverseDescriptions(prisma);
 
     // Listagem pública - necessário para o dropdown de filtros no dashboard
     const strategies = await prisma.strategy.findMany({

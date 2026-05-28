@@ -8,6 +8,9 @@ export const REMOVED_DEPRECATED_STRATEGY_NAMES = [
   'RSI_BYBIT_15M',
   'MA_CROSS_15M',
   'MA_CROSS_1H',
+  'MA_VOLATILE',
+  'AFASTAMENTO_MEDIO',
+  'EMA_SCALPING',
 ] as const;
 
 export interface RemoveDeprecatedStrategiesResult {

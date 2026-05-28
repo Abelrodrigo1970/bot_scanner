@@ -24,15 +24,6 @@ export interface StrategyUniverseSpec {
 /** Estratégias activas no seed + importadas (exclui descontinuadas). */
 export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
   {
-    strategyName: 'MA_VOLATILE',
-    displayLabel: 'MA Cross Top Voláteis',
-    signalTimeframes: ['1h'],
-    source: 'table',
-    dataKey: 'MaCrossBelow',
-    description: 'MA30 entre −3% e +3% vs MA200 (1h), preço abaixo MA200.',
-    refresh: '/api/cron/run-scans-ma ou POST /api/ma-cross-below',
-  },
-  {
     strategyName: 'MA_CROSS_5M',
     displayLabel: 'MA Cross 15m (MA12/MA30)',
     signalTimeframes: ['15m'],
@@ -48,14 +39,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     source: 'runtime_top_volume',
     dataKey: 'fetchTopSymbolsByVolume',
     description: 'Top por volume 24h (param. symbolLimit / minQuoteVolume), sem tabela de universo.',
-  },
-  {
-    strategyName: 'EMA_SCALPING',
-    displayLabel: 'EMA Ribbon Scalping',
-    signalTimeframes: ['15m'],
-    source: 'runtime_top_movers_1h',
-    dataKey: 'fetchTopSymbolsBy1hPriceChange',
-    description: 'Top movers 1h (limite symbolLimit nos params).',
   },
   {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
@@ -82,15 +65,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     source: 'runtime_top_movers_1h',
     dataKey: 'fetchTopSymbolsBy1hPriceChange:50',
     description: 'Top 50 movers 1h (param. symbolLimit; vela fechada + PMO/MACD confirmados).',
-  },
-  {
-    strategyName: 'AFASTAMENTO_MEDIO',
-    displayLabel: 'Afastamento médio 1h (≤1,9→≥2,4)',
-    signalTimeframes: ['1h'],
-    source: 'universe_scan',
-    dataKey: 'UNIVERSE_NEAR_MA200_PCT4_4H',
-    description: 'Scanner 3: ±4% da MA80 (4h).',
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
     strategyName: 'RSI_OVERBOUGHT_DROP_1H',
@@ -124,10 +98,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 /** Rotas do menu «Origem de dados» alinhadas a universos em uso. */
 export const DATA_SOURCE_MENU_ITEMS = [
   {
-    href: '/ma-cross-below',
-    label: 'MA Cross Proximidade → MA_VOLATILE',
-  },
-  {
     href: '/bybit-ma200-mc20m',
     label: 'Bybit Vol 1h + MA200 → MA12×MA30',
   },
@@ -141,7 +111,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/3',
-    label: 'Scanner 3 — ±4% MA80 (4h, Afastamento 1h + 30m)',
+    label: 'Scanner 3 — ±4% MA80 (4h, Afastamento 30m)',
   },
   {
     href: '/scanners/4',

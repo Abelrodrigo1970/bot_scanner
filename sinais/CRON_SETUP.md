@@ -6,9 +6,9 @@ Sistema de sinais. Executa automaticamente entre 8:00 e 23:59 (ajuste o timezone
 
 | Endpoint | Estratégias | Frequência recomendada |
 |----------|-------------|------------------------|
-| `/api/cron/run-15m` | MA Cross 15m + EMA Ribbon 15m | `*/15 8-23 * * *` |
+| `/api/cron/run-15m` | MA Cross 15m + EMA Ribbon SELL 15m | `*/15 8-23 * * *` |
 | `/api/cron/run-30m` | **Afastamento médio 30m** | `*/30 8-23 * * *` |
-| `/api/cron/run-1h` | RSI 1h, MA200 4h, MACD+PMO, **Afastamento 1h**, MA_VOLATILE | `0 8-23 * * *` |
+| `/api/cron/run-1h` | RSI 1h, MA200 4h, MACD+PMO | `0 8-23 * * *` |
 | `/api/cron/run-universe-scans` | Scanners 1, 2 e 3 (universo) | `0 */4 8-23 * * *` (de 4 em 4 h) |
 
 **Importante:** `AFASTAMENTO_MEDIO_30M` **não** corre no `run-1h` nem no `run-signals`. Precisa do job **30m** separado.
@@ -20,7 +20,7 @@ Sistema de sinais. Executa automaticamente entre 8:00 e 23:59 (ajuste o timezone
 - **15m:** :00, :15, :30, :45 de cada hora
 - **30m:** :00 e :30 de cada hora ← **Afastamento 30m**
 - **1h:** início de cada hora
-- **Scanners:** de 4 em 4 horas (alimenta Scanner 3 usado pelo afastamento 1h e 30m)
+- **Scanners:** de 4 em 4 horas (alimenta Scanner 3 usado pelo afastamento 30m)
 
 ## Configuração no cron-job.org (Recomendado)
 
