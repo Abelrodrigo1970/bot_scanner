@@ -8,8 +8,8 @@ Análise histórica (2026, força ≥70, dias úteis):
 
 | Estratégia | Guards no código | Cron recomendado | PnL simulado |
 |---|---|---|---|
-| **MA Cross 15m** | Whitelist **3, 7, 15, 17, 19h** PT + sem FDS | **`*/15 * * * *`** (24h) | ~+$464 vs +$268 só 8–23h |
-| **Pivot Boss 15m** | Bloqueio **18h, 22h** PT + sem FDS | **`0 * * * *`** (24h) | ~+$517 vs +$325 só 8–23h |
+| **MA Cross 15m** | Whitelist **3, 7, 15, 17, 19h** PT + sem FDS + turnover **≥ $10M/h** | **`*/15 * * * *`** (24h) | ~+$464 vs +$268 só 8–23h |
+| **Pivot Boss 15m** | Bloqueio **18h, 22h** PT + sem FDS + turnover **≤ $5M/h** | **`0 * * * *`** (24h) | ~+$517 vs +$325 só 8–23h |
 
 O código filtra horas más; o cron **24h** permite captar **3h/7h** (MA Cross) e **0h–7h** (Pivot Boss).
 

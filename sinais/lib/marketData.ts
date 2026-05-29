@@ -260,6 +260,29 @@ export async function fetchCurrentPrice(symbol: string, retries = 2): Promise<nu
   throw lastError;
 }
 
+/** Turnover USDT da última vela 1h fechada (Binance Futures). Proxy de liquidez/market cap. */
+export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<number | null> {
+  try {
+    await throttleBinanceKlinesFetch();
+    const response = await fetch(
+      `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol.toUpperCase()}&interval=1h&limit=2`,
+      {
+        cache: 'no-store',
+        headers: BINANCE_PUBLIC_HEADERS,
+        signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+      }
+    );
+    if (!response.ok) return null;
+    const rows = (await response.json()) as unknown[][];
+    if (rows.length < 1) return null;
+    const lastClosed = rows.length >= 2 ? rows[rows.length - 2]! : rows[rows.length - 1]!;
+    const quoteVol = parseFloat(String(lastClosed[7] ?? ''));
+    return Number.isFinite(quoteVol) && quoteVol > 0 ? quoteVol : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Lista de símbolos padrão para análise
  */

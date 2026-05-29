@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { fetchCurrentPrice } from './marketData';
+import { fetchCurrentPrice, fetchLastClosed1hQuoteVolumeUsd } from './marketData';
 
 export const MA_CROSS_15M_TIMEFRAME = '15m' as const;
 export const MA_CROSS_15M_TZ = 'Europe/Lisbon';
@@ -14,6 +14,9 @@ export const MA_CROSS_15M_ALLOWED_HOURS_PT: readonly number[] = [3, 7, 15, 17, 1
 export const MA_CROSS_15M_BLOCKED_HOURS_PT: readonly number[] = Array.from({ length: 24 }, (_, h) => h).filter(
   (h) => !MA_CROSS_15M_ALLOWED_HOURS_PT.includes(h)
 );
+
+/** Turnover mínimo 1h USDT (análise Abr–Mai/2026, força ≥70). */
+export const MA_CROSS_15M_MIN_TURNOVER_1H_USD = 10_000_000;
 
 /** Taxa round-trip usada na simulação Abr+Mai/2026 (alinhada com `simulate-2nd-if-green.mjs`). */
 export const MA_CROSS_15M_ROUND_TRIP_FEE_PCT = 0.1;
@@ -34,6 +37,10 @@ export function isMaCross15mWeekendBlocked(now: Date = new Date()): boolean {
 
 export function isMaCross15mHourBlocked(now: Date = new Date()): boolean {
   return !MA_CROSS_15M_ALLOWED_HOURS_PT.includes(hourInLisbon(now));
+}
+
+export function isMaCross15mTurnoverBlocked(turnover1hUsd: number): boolean {
+  return turnover1hUsd < MA_CROSS_15M_MIN_TURNOVER_1H_USD;
 }
 
 export interface MaCross15mSignalGateInput {
@@ -93,6 +100,7 @@ async function isSignalProfitable(
 /**
  * Regras MA Cross 15m (análise horária 2026):
  * - sem fim-de-semana (cron) e só horas PT permitidas (whitelist)
+ * - turnover 1h ≥ $10M USDT (Binance)
  * - 1.º sinal do dia: cooldown 24h desde o último sinal do par
  * - 2.º sinal no mesmo dia: só se 1.º fechado, verde (líquido) e mesma direção
  * - máx. 2 sinais por símbolo por dia civil (PT)
@@ -107,6 +115,20 @@ export async function checkMaCross15mSignalGate(
     return {
       allowed: false,
       reason: `horário bloqueado (${hourInLisbon(now)}h PT; permitido ${MA_CROSS_15M_ALLOWED_HOURS_PT.join(', ')}h)`,
+    };
+  }
+
+  const turnover1h = await fetchLastClosed1hQuoteVolumeUsd(input.symbol);
+  if (turnover1h == null) {
+    return {
+      allowed: false,
+      reason: `turnover 1h indisponível (${input.symbol})`,
+    };
+  }
+  if (isMaCross15mTurnoverBlocked(turnover1h)) {
+    return {
+      allowed: false,
+      reason: `turnover 1h insuficiente ($${(turnover1h / 1e6).toFixed(2)}M < $${MA_CROSS_15M_MIN_TURNOVER_1H_USD / 1e6}M)`,
     };
   }
 
