@@ -19,19 +19,14 @@ async function run15mInBackground(origin: string, authHeader: string): Promise<v
       `${origin}/api/cron/run-rsi-15m`,
     ];
 
-    const results = await Promise.allSettled(
-      calls.map((url) => fetch(url, { method: 'GET', headers, cache: 'no-store' }))
-    );
-
     let okCount = 0;
-    for (let i = 0; i < results.length; i++) {
-      const endpoint = calls[i];
-      const result = results[i];
-      if (result.status === 'fulfilled') {
+    for (const url of calls) {
+      try {
+        const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
         okCount++;
-        console.log(`[Run-15m BG] ${endpoint} -> HTTP ${result.value.status}`);
-      } else {
-        console.error(`[Run-15m BG] ${endpoint} -> erro`, result.reason);
+        console.log(`[Run-15m BG] ${url} -> HTTP ${res.status}`);
+      } catch (reason) {
+        console.error(`[Run-15m BG] ${url} -> erro`, reason);
       }
     }
 

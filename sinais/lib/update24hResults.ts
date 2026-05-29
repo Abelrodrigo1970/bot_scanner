@@ -3,7 +3,7 @@
  */
 
 import { prisma } from './db';
-import { fetchCandles, fetchFallbackPrice } from './marketData';
+import { fetchCandlesSafe, fetchFallbackPrice } from './marketData';
 import { closeActivePositionForSymbol } from './tradingExecutor';
 
 /**
@@ -42,41 +42,33 @@ export async function updateMissingHighLow24h(): Promise<{
         // Calcular preço máximo e mínimo durante as 24 horas
         let high24h: number | null = null;
         let low24h: number | null = null;
-        
-        try {
-          // Encontrar o timestamp do sinal e 24 horas depois
+
+        const allCandles = await fetchCandlesSafe(signal.symbol, '1h', 48);
+        if (allCandles && allCandles.length > 0) {
           const signalTimestamp = signal.generatedAt.getTime();
-          const endTimestamp = signalTimestamp + (24 * 60 * 60 * 1000); // 24 horas depois
-          
-          // Buscar candles recentes (últimas 48 horas para garantir cobertura)
-          const allCandles = await fetchCandles(signal.symbol, '1h', 48);
-          
-          // Filtrar candles que estão dentro do período de 24h após o sinal
+          const endTimestamp = signalTimestamp + 24 * 60 * 60 * 1000;
+
           const relevantCandles = allCandles.filter((candle) => {
             const candleStart = candle.timestamp;
-            const candleEnd = candleStart + (60 * 60 * 1000); // 1 hora depois
-            
-            return (candleStart >= signalTimestamp && candleStart <= endTimestamp) ||
-                   (candleStart < signalTimestamp && candleEnd > signalTimestamp) ||
-                   (candleStart < endTimestamp && candleEnd > endTimestamp);
+            const candleEnd = candleStart + 60 * 60 * 1000;
+
+            return (
+              (candleStart >= signalTimestamp && candleStart <= endTimestamp) ||
+              (candleStart < signalTimestamp && candleEnd > signalTimestamp) ||
+              (candleStart < endTimestamp && candleEnd > endTimestamp)
+            );
           });
-          
+
           if (relevantCandles.length > 0) {
-            // Calcular high e low dos candles relevantes
             high24h = Math.max(...relevantCandles.map((c) => c.high));
             low24h = Math.min(...relevantCandles.map((c) => c.low));
-            
-            // Garantir que incluímos o preço de entrada e o preço 24h
             high24h = Math.max(high24h, signal.entryPrice, price24h);
             low24h = Math.min(low24h, signal.entryPrice, price24h);
           } else {
-            // Se não houver candles relevantes, usar o preço 24h e o preço de entrada como fallback
             high24h = Math.max(price24h, signal.entryPrice);
             low24h = Math.min(price24h, signal.entryPrice);
           }
-        } catch (error) {
-          // Se houver erro ao buscar candles, usar o preço 24h e o preço de entrada
-          console.warn(`⚠️  Erro ao buscar candles históricos para ${signal.symbol}, usando fallback:`, error);
+        } else {
           high24h = Math.max(price24h, signal.entryPrice);
           low24h = Math.min(price24h, signal.entryPrice);
         }
@@ -144,55 +136,40 @@ export async function update24hResults(): Promise<{
           signal.symbol,
           signal.entryPrice
         );
-        if (priceSource !== 'ticker') {
-          console.warn(
-            `⚠️ 24h ${signal.symbol}: preço via ${priceSource}${priceSource === 'entry' ? ' (par indisponível na Binance?)' : ''}`
-          );
+        if (priceSource === 'entry') {
+          console.warn(`⚠️ 24h ${signal.symbol}: preço de entrada (API indisponível nesta ronda)`);
         }
 
         // Calcular preço máximo e mínimo durante as 24 horas
         let high24h: number | null = null;
         let low24h: number | null = null;
-        
-        try {
-          // Encontrar o timestamp do sinal e 24 horas depois
+
+        const allCandles = await fetchCandlesSafe(signal.symbol, '1h', 48);
+        if (allCandles && allCandles.length > 0) {
           const signalTimestamp = signal.generatedAt.getTime();
-          const endTimestamp = signalTimestamp + (24 * 60 * 60 * 1000); // 24 horas depois
-          
-          // Buscar candles recentes (últimas 48 horas para garantir cobertura)
-          // A API da Binance retorna os candles mais recentes, então vamos buscar e filtrar
-          const allCandles = await fetchCandles(signal.symbol, '1h', 48);
-          
-          // Filtrar candles que estão dentro do período de 24h após o sinal
-          // Cada candle representa 1 hora, então o timestamp do candle é o início da hora
+          const endTimestamp = signalTimestamp + 24 * 60 * 60 * 1000;
+
           const relevantCandles = allCandles.filter((candle) => {
-            // O timestamp do candle é o início da hora, então incluímos se:
-            // - O início do candle está dentro do período OU
-            // - O candle cobre o período (início antes do fim do período e fim depois do início)
             const candleStart = candle.timestamp;
-            const candleEnd = candleStart + (60 * 60 * 1000); // 1 hora depois
-            
-            return (candleStart >= signalTimestamp && candleStart <= endTimestamp) ||
-                   (candleStart < signalTimestamp && candleEnd > signalTimestamp) ||
-                   (candleStart < endTimestamp && candleEnd > endTimestamp);
+            const candleEnd = candleStart + 60 * 60 * 1000;
+
+            return (
+              (candleStart >= signalTimestamp && candleStart <= endTimestamp) ||
+              (candleStart < signalTimestamp && candleEnd > signalTimestamp) ||
+              (candleStart < endTimestamp && candleEnd > endTimestamp)
+            );
           });
-          
+
           if (relevantCandles.length > 0) {
-            // Calcular high e low dos candles relevantes
             high24h = Math.max(...relevantCandles.map((c) => c.high));
             low24h = Math.min(...relevantCandles.map((c) => c.low));
-            
-            // Garantir que incluímos o preço de entrada e o preço atual
             high24h = Math.max(high24h, signal.entryPrice, currentPrice);
             low24h = Math.min(low24h, signal.entryPrice, currentPrice);
           } else {
-            // Se não houver candles relevantes, usar o preço atual e o preço de entrada como fallback
             high24h = Math.max(currentPrice, signal.entryPrice);
             low24h = Math.min(currentPrice, signal.entryPrice);
           }
-        } catch (error) {
-          // Se houver erro ao buscar candles, usar o preço atual e o preço de entrada
-          console.warn(`⚠️  Erro ao buscar candles históricos para ${signal.symbol}, usando fallback:`, error);
+        } else {
           high24h = Math.max(currentPrice, signal.entryPrice);
           low24h = Math.min(currentPrice, signal.entryPrice);
         }

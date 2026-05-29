@@ -60,11 +60,14 @@ const BYBIT_KLINE_INTERVAL: Record<string, string> = {
   '1d': 'D',
 };
 /** Espaço mínimo entre pedidos Binance (cron analisa muitos símbolos; vários jobs em paralelo). */
-const BINANCE_KLINES_MIN_GAP_MS = 320;
+const BINANCE_KLINES_MIN_GAP_MS = 500;
 const BYBIT_KLINES_MIN_GAP_MS = 100;
 /** Fila global: evita rajadas quando run-15m + run-1h + run-30m correm ao mesmo tempo. */
 let binancePublicApiChain: Promise<unknown> = Promise.resolve();
 let bybitPublicApiChain: Promise<unknown> = Promise.resolve();
+/** Bybit public API devolve 403 (CloudFront geo) no Railway US — desactivar após 1.ª detecção. */
+let bybitMarketDataGeoBlocked = false;
+let bybitGeoBlockWarned = false;
 
 const BINANCE_PUBLIC_HEADERS: Record<string, string> = {
   Accept: 'application/json',
@@ -113,6 +116,29 @@ function runOnBinanceQueue<T>(fn: () => Promise<T>): Promise<T> {
 
 function runOnBybitQueue<T>(fn: () => Promise<T>): Promise<T> {
   return runOnThrottledQueue(bybitQueueRef, bybitLastAtRef, BYBIT_KLINES_MIN_GAP_MS, fn);
+}
+
+function noteBybitGeoBlock(err: unknown): void {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (
+    msg.includes('403') ||
+    msg.includes('CloudFront') ||
+    msg.includes('block access from your country')
+  ) {
+    bybitMarketDataGeoBlocked = true;
+    if (!bybitGeoBlockWarned) {
+      console.warn(
+        '⚠️ Bybit market data indisponível neste servidor (403 geo). Fallback desactivado; só Binance.'
+      );
+      bybitGeoBlockWarned = true;
+    }
+  }
+}
+
+function canUseBybitMarketData(): boolean {
+  if (bybitMarketDataGeoBlocked) return false;
+  if (process.env.BYBIT_MARKET_DATA_FALLBACK === 'false') return false;
+  return true;
 }
 
 function isRetryableKlinesError(err: unknown): boolean {
@@ -227,6 +253,11 @@ async function fetchCandlesFromBybit(
   const bodyText = await response.text();
 
   if (!response.ok) {
+    if (response.status === 403) {
+      noteBybitGeoBlock(
+        new Error(`Bybit klines ${symbol}: 403 — ${bodyText.slice(0, 120)}`)
+      );
+    }
     throw new Error(
       `Bybit klines ${symbol}: ${response.status} ${response.statusText} — ${bodyText.slice(0, 120)}`
     );
@@ -258,6 +289,7 @@ async function fetchCurrentPriceFromBybit(symbol: string): Promise<number> {
   const bodyText = await response.text();
 
   if (!response.ok) {
+    if (response.status === 403) noteBybitGeoBlock(new Error(`Bybit ticker ${sym}: 403`));
     throw new Error(`Bybit ticker ${sym}: ${response.status} ${response.statusText}`);
   }
 
@@ -271,11 +303,11 @@ async function fetchCurrentPriceFromBybit(symbol: string): Promise<number> {
   return price;
 }
 
+/** Só em geo-block Binance (451). Rate limit (429) resolve com retry Binance — Bybit bloqueia Railway US. */
 function shouldFallbackToBybit(err: unknown): boolean {
-  if (!err || typeof err !== 'object') return true;
-  const status = (err as { status?: number }).status;
-  if (status == null) return true;
-  return status === 451 || status === 429 || status === 418 || status >= 500;
+  if (!canUseBybitMarketData()) return false;
+  if (!err || typeof err !== 'object') return false;
+  return (err as { status?: number }).status === 451;
 }
 
 /**
@@ -298,11 +330,10 @@ export async function fetchCandles(
   }
 
   const hostCount = BINANCE_FAPI_HOSTS.length;
-  /** Várias voltas aos mirrors (timeouts / corpo truncado / rate limit). */
-  const maxAttempts = hostCount * 3;
+  /** Várias voltas aos mirrors (rate limit / timeout / corpo truncado). */
+  const maxAttempts = hostCount * 5;
 
   let lastError: unknown;
-  let rateLimitHits = 0;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const host = BINANCE_FAPI_HOSTS[attempt % hostCount];
     const url = new URL('/fapi/v1/klines', host);
@@ -332,10 +363,6 @@ export async function fetchCandles(
           throw error;
         }
         lastError = error;
-        if (response.status === 429 || response.status === 418) {
-          rateLimitHits++;
-          if (rateLimitHits >= 2) break;
-        }
         if (attempt < maxAttempts - 1) {
           await delay(
             retryDelayMs(response.status, attempt, response.headers.get('retry-after'))
@@ -348,10 +375,6 @@ export async function fetchCandles(
     } catch (err) {
       lastError = err;
       const status = (err as { status?: number })?.status;
-      if (status === 429 || status === 418) {
-        rateLimitHits++;
-        if (rateLimitHits >= 2) break;
-      }
       if (!isRetryableKlinesError(err) || attempt === maxAttempts - 1) {
         break;
       }
@@ -361,18 +384,20 @@ export async function fetchCandles(
 
   if (shouldFallbackToBybit(lastError) && BYBIT_KLINE_INTERVAL[interval]) {
     try {
-      const status = (lastError as { status?: number })?.status;
-      console.warn(
-        `⚠️ Binance candles ${symbol} falhou${status ? ` (${status})` : ''}; a usar Bybit (${interval})`
-      );
+      console.warn(`⚠️ Binance candles ${symbol} (451); a tentar Bybit (${interval})`);
       return await fetchCandlesFromBybit(symbol, interval, limit, startTime, endTime);
     } catch (bybitErr) {
-      console.error(`Erro ao buscar candles para ${symbol} (Binance + Bybit):`, bybitErr);
-      throw bybitErr;
+      noteBybitGeoBlock(bybitErr);
+      lastError = bybitErr;
     }
   }
 
-  console.error(`Erro ao buscar candles para ${symbol}:`, lastError);
+  const status = (lastError as { status?: number })?.status;
+  if (status === 429) {
+    console.warn(`⚠️ Binance rate limit — candles ${symbol} (${interval}) ignorados nesta ronda`);
+  } else {
+    console.warn(`⚠️ Binance candles ${symbol} (${interval}):`, lastError);
+  }
   throw lastError;
 }
 
@@ -381,9 +406,8 @@ export async function fetchCandles(
  */
 export async function fetchCurrentPrice(symbol: string): Promise<number> {
   const hostCount = BINANCE_FAPI_HOSTS.length;
-  const maxAttempts = hostCount * 3;
+  const maxAttempts = hostCount * 5;
   let lastError: unknown;
-  let rateLimitHits = 0;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const host = BINANCE_FAPI_HOSTS[attempt % hostCount];
     const url = `${host}/fapi/v1/ticker/price?symbol=${symbol.toUpperCase()}`;
@@ -414,10 +438,6 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
           throw error;
         }
         lastError = error;
-        if (response.status === 429 || response.status === 418) {
-          rateLimitHits++;
-          if (rateLimitHits >= 2) break;
-        }
         await delay(
           retryDelayMs(response.status, attempt, response.headers.get('retry-after'))
         );
@@ -440,10 +460,6 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
     } catch (err) {
       lastError = err;
       const status = (err as { status?: number })?.status;
-      if (status === 429 || status === 418) {
-        rateLimitHits++;
-        if (rateLimitHits >= 2) break;
-      }
       if (!isRetryableKlinesError(err) || attempt === maxAttempts - 1) {
         break;
       }
@@ -453,13 +469,11 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
 
   if (shouldFallbackToBybit(lastError)) {
     try {
-      const status = (lastError as { status?: number })?.status;
-      console.warn(
-        `⚠️ Binance preço ${symbol} falhou${status ? ` (${status})` : ''}; a usar Bybit`
-      );
+      console.warn(`⚠️ Binance preço ${symbol} (451); a tentar Bybit`);
       return await fetchCurrentPriceFromBybit(symbol);
     } catch (bybitErr) {
-      throw bybitErr instanceof Error ? bybitErr : new Error(`Erro ao buscar preço ${symbol}`);
+      noteBybitGeoBlock(bybitErr);
+      lastError = bybitErr;
     }
   }
 
@@ -475,6 +489,21 @@ export async function fetchCurrentPriceSafe(symbol: string): Promise<number | nu
   }
 }
 
+/** Como {@link fetchCandles}, mas devolve null em falha (sem log). */
+export async function fetchCandlesSafe(
+  symbol: string,
+  interval: string,
+  limit: number = 200,
+  startTime?: number,
+  endTime?: number
+): Promise<Candle[] | null> {
+  try {
+    return await fetchCandles(symbol, interval, limit, startTime, endTime);
+  } catch {
+    return null;
+  }
+}
+
 /** Preço de fallback: último close 1h ou preço de entrada. */
 export async function fetchFallbackPrice(
   symbol: string,
@@ -483,14 +512,10 @@ export async function fetchFallbackPrice(
   const ticker = await fetchCurrentPriceSafe(symbol);
   if (ticker != null) return { price: ticker, source: 'ticker' };
 
-  try {
-    const candles = await fetchCandles(symbol, '1h', 3);
-    const last = candles[candles.length - 1];
-    if (last && last.close > 0) {
-      return { price: last.close, source: 'klines' };
-    }
-  } catch {
-    // ignora — usa entrada
+  const candles = await fetchCandlesSafe(symbol, '1h', 3);
+  const last = candles?.[candles.length - 1];
+  if (last && last.close > 0) {
+    return { price: last.close, source: 'klines' };
   }
 
   return { price: entryPrice, source: 'entry' };
@@ -519,24 +544,7 @@ export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<n
     }
   }
 
-  try {
-    const url = `${BYBIT_API_BASE}/v5/market/kline?category=linear&symbol=${sym}&interval=60&limit=2`;
-    const response = await runOnBybitQueue(() =>
-      fetch(url, {
-        cache: 'no-store',
-        headers: BINANCE_PUBLIC_HEADERS,
-        signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-      })
-    );
-    if (!response.ok) return null;
-    const parsed = (await response.json()) as { result?: { list?: string[][] } };
-    const rows = parsed.result?.list ?? [];
-    const row = rows.length >= 2 ? rows[1]! : rows[0];
-    const turnover = parseFloat(row?.[6] ?? '');
-    return Number.isFinite(turnover) && turnover > 0 ? turnover : null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 /**
