@@ -74,7 +74,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     cron: '1h',
     cronLabel: 'Cron 1h',
     timeframe: '1h',
-    universe: 'Scanner 2 (±10% EMA80, 1h)',
+    universe: 'Scanner 4 (acima SMA200, 1d)',
   },
 };
 

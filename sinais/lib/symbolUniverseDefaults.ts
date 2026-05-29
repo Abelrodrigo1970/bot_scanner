@@ -70,8 +70,8 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_NEAR_MA200_PCT10_1H: {
     displayName: 'Scanner 2 — Até ±10% da EMA80 (1h)',
     description:
-      'Preço dentro de ±10% da EMA80 em 1h. Universo: RSI pullback bear e Pivot Boss Bear 1h.',
-    strategyNames: 'RSI_OVERBOUGHT_DROP_1H, PIVOT_BOSS_BEAR_1H',
+      'Preço dentro de ±10% da EMA80 em 1h. Universo: RSI pullback bear.',
+    strategyNames: 'RSI_OVERBOUGHT_DROP_1H',
   },
   UNIVERSE_NEAR_MA200_PCT4_4H: {
     displayName: 'Scanner 3 — Até ±4% da MA80 (4h)',
@@ -82,8 +82,8 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA200_1D: {
     displayName: 'Scanner 4 — Acima SMA200 (1d)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em velas diárias (1d). Sem limite máximo de afastamento.',
-    strategyNames: '—',
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em velas diárias (1d). Universo: Pivot Boss Bear 1h.',
+    strategyNames: 'PIVOT_BOSS_BEAR_1H',
   },
 };
 

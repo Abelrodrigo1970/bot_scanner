@@ -16,6 +16,7 @@ import {
   UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80,
   UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
   UNIVERSE_CODE_SCANNER_3_MA80_PCT4,
+  UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D,
 } from './symbolUniverseDefaults';
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
 import {
@@ -1733,12 +1734,12 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'PIVOT_BOSS_BEAR_1H') {
-        console.log(`🔍 ${strategy.name}: universo Scanner 2 (±10% EMA80, 1h); sinais em 1h...`);
-        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80);
-        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2)`);
+        console.log(`🔍 ${strategy.name}: universo Scanner 4 (acima SMA200, 1d); sinais em 1h...`);
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 4)`);
         if (symbolsToAnalyze.length === 0) {
           console.warn(
-            `⚠️ Scanner 2 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 2. Ignorando ${strategy.name}.`
+            `⚠️ Scanner 4 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 4. Ignorando ${strategy.name}.`
           );
           continue;
         }

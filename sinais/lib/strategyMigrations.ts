@@ -262,7 +262,7 @@ export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
 export const PIVOT_BOSS_BEAR_1H_DISPLAY = 'Pivot Boss Bear 1h (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_1H_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). Pivot Boss em 1h, só VENDA. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 2 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. SL +8% fixo | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 4 (fecho acima SMA200 em 1d). Pivot Boss em 1h, só VENDA. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 2 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. SL +8% fixo | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
@@ -301,7 +301,7 @@ export const PIVOT_BOSS_BEAR_1H_PARAMS = {
   ...PIVOT_BOSS_BEAR_15M_PARAMS,
 } as const;
 
-/** Actualiza universo/descrição Pivot Boss Bear (15m → Scanner 1; 1h → Scanner 2). */
+/** Actualiza universo/descrição Pivot Boss Bear (15m → Scanner 1; 1h → Scanner 4). */
 export async function syncPivotBossBear15mUniverse(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -338,6 +338,7 @@ export async function syncPivotBossBear15mUniverse(
       row.description?.includes('swing/EMA30') ||
       row.description?.includes('fecho acima SMA200 (1h);') ||
       (name === 'PIVOT_BOSS_BEAR_15M' && row.description?.includes('Scanner 2')) ||
+      (name === 'PIVOT_BOSS_BEAR_1H' && row.description?.includes('Scanner 2')) ||
       row.description !== description;
     const needsParams = p.symbolLimit != null;
     const needsPullback =
