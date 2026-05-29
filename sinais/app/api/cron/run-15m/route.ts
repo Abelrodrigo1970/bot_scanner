@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Cron agregado 15m:
+ * Cron agregado 15m (24h recomendado — MA Cross whitelist filtra horas PT):
  * - MA_CROSS_5M (candles 5m, URL: /api/cron/run-volume-spike-15m)
  * - EMA Ribbon SELL 15m via /api/cron/run-rsi-15m
  *

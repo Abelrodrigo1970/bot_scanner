@@ -12,6 +12,7 @@ import {
   checkMaCross15mSignalGate,
   isMaCross15mHourBlocked,
   isMaCross15mWeekendBlocked,
+  MA_CROSS_15M_ALLOWED_HOURS_PT,
 } from '@/lib/maCross15mGuard';
 import { update24hResults } from '@/lib/update24hResults';
 import {
@@ -244,10 +245,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (isMaCross15mHourBlocked(now)) {
+      const h = now.toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hour12: false });
       return NextResponse.json({
         success: true,
         skipped: true,
-        message: `MA Cross 15m inactivo neste horário (${now.toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hour12: false })}h PT bloqueada)`,
+        message: `MA Cross 15m inactivo neste horário (${h}h PT; permitido: ${MA_CROSS_15M_ALLOWED_HOURS_PT.join(', ')}h)`,
         executedAt: now.toISOString(),
       });
     }

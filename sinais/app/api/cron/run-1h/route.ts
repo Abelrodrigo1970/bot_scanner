@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Cron agregado 1h:
+ * Cron agregado 1h (24h recomendado — Pivot Boss bloqueia 18h/22h PT no código):
  * - run-scans-ma: Bybit Vol1h/MA200
- * - run-signals: MA200 4h + MACD/PMO + RSI queda 70
+ * - run-signals: Pivot Boss 15m/1h, MA200 4h, MACD/PMO, RSI queda 70
  *   (AFASTAMENTO_MEDIO_30M → cron separado /api/cron/run-30m)
  */
 async function run1hInBackground(origin: string, authHeader: string): Promise<void> {

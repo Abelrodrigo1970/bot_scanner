@@ -1,26 +1,37 @@
 # ⏰ Configuração do Cron Job Automático
 
-Sistema de sinais. Executa automaticamente entre 8:00 e 23:59 (ajuste o timezone no cron-job.org se necessário).
+Sistema de sinais. **Timezone no cron-job.org:** `Europe/Lisbon` (Portugal).
+
+## Rentabilidade (MA Cross 15m + Pivot Boss 15m)
+
+Análise histórica (2026, força ≥70, dias úteis):
+
+| Estratégia | Guards no código | Cron recomendado | PnL simulado |
+|---|---|---|---|
+| **MA Cross 15m** | Whitelist **3, 7, 15, 17, 19h** PT + sem FDS | **`*/15 * * * *`** (24h) | ~+$464 vs +$268 só 8–23h |
+| **Pivot Boss 15m** | Bloqueio **18h, 22h** PT + sem FDS | **`0 * * * *`** (24h) | ~+$517 vs +$325 só 8–23h |
+
+O código filtra horas más; o cron **24h** permite captar **3h/7h** (MA Cross) e **0h–7h** (Pivot Boss).
 
 ## Endpoints disponíveis (modo agregado)
 
 | Endpoint | Estratégias | Frequência recomendada |
 |----------|-------------|------------------------|
-| `/api/cron/run-15m` | MA Cross 15m + EMA Ribbon SELL 15m | `*/15 8-23 * * *` |
+| `/api/cron/run-15m` | MA Cross 15m + EMA Ribbon SELL 15m | **`*/15 * * * *`** (24h) |
 | `/api/cron/run-30m` | **Afastamento médio 30m** | `*/30 8-23 * * *` |
-| `/api/cron/run-1h` | RSI 1h, MA200 4h, MACD+PMO | `0 8-23 * * *` |
-| `/api/cron/run-universe-scans` | Scanners 1, 2 e 3 (universo) | `0 */4 8-23 * * *` (de 4 em 4 h) |
+| `/api/cron/run-1h` | Pivot Boss 15m/1h, RSI 1h, MA200 4h, MACD+PMO | **`0 * * * *`** (24h) |
+| `/api/cron/run-universe-scans` | Scanners 1, 2 e 3 (universo) | `0 */4 * * *` (de 4 em 4 h, 24h) |
 
 **Importante:** `AFASTAMENTO_MEDIO_30M` **não** corre no `run-1h` nem no `run-signals`. Precisa do job **30m** separado.
 
 **Configuração mínima no cron-job.org:** 3 jobs (15m + **30m** + 1h) + 1 job para scanners (opcional mas recomendado).
 
-## Horários de Execução (exemplo 8h–23h)
+## Horários de Execução (24h — MA Cross + Pivot Boss)
 
-- **15m:** :00, :15, :30, :45 de cada hora
-- **30m:** :00 e :30 de cada hora ← **Afastamento 30m**
-- **1h:** início de cada hora
-- **Scanners:** de 4 em 4 horas (alimenta Scanner 3 usado pelo afastamento 30m)
+- **15m:** :00, :15, :30, :45 de cada hora (MA Cross só gera sinal às 3, 7, 15, 17, 19h PT)
+- **30m:** :00 e :30 de cada hora ← **Afastamento 30m** (pode manter 8–23h)
+- **1h:** início de cada hora (Pivot Boss activo 0–23h excepto 18h e 22h PT)
+- **Scanners:** de 4 em 4 horas
 
 ## Configuração no cron-job.org (Recomendado)
 
@@ -30,10 +41,11 @@ Sistema de sinais. Executa automaticamente entre 8:00 e 23:59 (ajuste o timezone
 
 ### Passo 2: Criar os Cron Jobs
 
-**Cron Job 1 – Agregado 15m:**
+**Cron Job 1 – Agregado 15m (24h — MA Cross whitelist filtra horas):**
 - **Title:** Sinais 15m
 - **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-15m`
-- **Schedule:** `*/15 8-23 * * *`
+- **Schedule:** `*/15 * * * *`
+- **Timezone:** Europe/Lisbon
 - **Method:** GET
 - **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
 
@@ -44,17 +56,18 @@ Sistema de sinais. Executa automaticamente entre 8:00 e 23:59 (ajuste o timezone
 - **Method:** GET
 - **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
 
-**Cron Job 3 – Agregado 1h:**
+**Cron Job 3 – Agregado 1h (24h — Pivot Boss bloqueia 18h/22h no código):**
 - **Title:** Sinais 1h
 - **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-1h`
-- **Schedule:** `0 8-23 * * *`
+- **Schedule:** `0 * * * *`
+- **Timezone:** Europe/Lisbon
 - **Method:** GET
 - **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
 
 **Cron Job 4 – Scanners universo (recomendado):**
 - **Title:** Scanners 1/2/3
 - **URL:** `https://SEU-DOMINIO.up.railway.app/api/cron/run-universe-scans`
-- **Schedule:** `0 */4 8-23 * * *`
+- **Schedule:** `0 */4 * * *`
 - **Method:** GET
 - **Headers:** `Authorization: Bearer SEU_CRON_SECRET`
 

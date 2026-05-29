@@ -7,8 +7,13 @@ export const MA_CROSS_15M_TZ = 'Europe/Lisbon';
 /** Cooldown mínimo entre o 1.º sinal do dia e o último sinal anterior (outro dia). */
 export const MA_CROSS_5M_SIGNAL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
-/** Horas PT com lucro líquido negativo recorrente (análise Abr+Mai/2026). */
-export const MA_CROSS_15M_BLOCKED_HOURS_PT: readonly number[] = [0, 1, 2, 4, 11];
+/** Horas PT rentáveis com SL/TP real (análise 2026, força ≥70, dias úteis). Requer cron 24h para incluir 3h e 7h. */
+export const MA_CROSS_15M_ALLOWED_HOURS_PT: readonly number[] = [3, 7, 15, 17, 19];
+
+/** Complemento de {@link MA_CROSS_15M_ALLOWED_HOURS_PT} (0–23 PT). */
+export const MA_CROSS_15M_BLOCKED_HOURS_PT: readonly number[] = Array.from({ length: 24 }, (_, h) => h).filter(
+  (h) => !MA_CROSS_15M_ALLOWED_HOURS_PT.includes(h)
+);
 
 /** Taxa round-trip usada na simulação Abr+Mai/2026 (alinhada com `simulate-2nd-if-green.mjs`). */
 export const MA_CROSS_15M_ROUND_TRIP_FEE_PCT = 0.1;
@@ -28,7 +33,7 @@ export function isMaCross15mWeekendBlocked(now: Date = new Date()): boolean {
 }
 
 export function isMaCross15mHourBlocked(now: Date = new Date()): boolean {
-  return MA_CROSS_15M_BLOCKED_HOURS_PT.includes(hourInLisbon(now));
+  return !MA_CROSS_15M_ALLOWED_HOURS_PT.includes(hourInLisbon(now));
 }
 
 export interface MaCross15mSignalGateInput {
@@ -86,8 +91,8 @@ async function isSignalProfitable(
 }
 
 /**
- * Regras MA Cross 15m (análise Abr+Mai/2026):
- * - sem fim-de-semana (cron) e sem horas tóxicas PT
+ * Regras MA Cross 15m (análise horária 2026):
+ * - sem fim-de-semana (cron) e só horas PT permitidas (whitelist)
  * - 1.º sinal do dia: cooldown 24h desde o último sinal do par
  * - 2.º sinal no mesmo dia: só se 1.º fechado, verde (líquido) e mesma direção
  * - máx. 2 sinais por símbolo por dia civil (PT)
@@ -101,7 +106,7 @@ export async function checkMaCross15mSignalGate(
   if (isMaCross15mHourBlocked(now)) {
     return {
       allowed: false,
-      reason: `horário bloqueado (${hourInLisbon(now)}h PT)`,
+      reason: `horário bloqueado (${hourInLisbon(now)}h PT; permitido ${MA_CROSS_15M_ALLOWED_HOURS_PT.join(', ')}h)`,
     };
   }
 

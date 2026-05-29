@@ -113,7 +113,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: null,
     sell: side(8, 9, 50),
     summary:
-      'Só VENDA. Stack 12/30/80/200 bearish. SL dinâmico (máx. 8%). TP1 -9% (50%) | restante às 24h.',
+      'Só VENDA. Stack 12/30/80/200 bearish. SL +8% fixo. TP1 -9% (50%) | restante às 24h.',
   },
   {
     strategyName: 'PIVOT_BOSS_BEAR_1H',
@@ -121,7 +121,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: null,
     sell: side(8, 9, 50),
     summary:
-      'Só VENDA. Stack 12/30/80/200 bearish em 1h. SL dinâmico (máx. 8%). TP1 -9% (50%) | restante às 24h.',
+      'Só VENDA. Stack 12/30/80/200 bearish em 1h. SL +8% fixo. TP1 -9% (50%) | restante às 24h.',
   },
 ];
 

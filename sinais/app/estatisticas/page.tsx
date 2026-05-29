@@ -10,6 +10,7 @@ import {
   STRATEGY_SIMULATION_PROFILES,
   type StrategySimulationSide,
 } from '@/lib/strategySimulationProfiles';
+import { simulateSignalNetResultPercent } from '@/lib/simulateSignalSlTp';
 
 interface Signal {
   id: string;
@@ -18,6 +19,10 @@ interface Signal {
   timeframe: string;
   strategyName: string;
   entryPrice: number;
+  stopLoss: number;
+  target1: number | null;
+  target2: number | null;
+  extraInfo: string | null;
   price24h: number | null;
   result24h: number | null;
   status24h: string | null;
@@ -129,7 +134,7 @@ export default function EstatisticasPage() {
   const [endDate, setEndDate] = useState<string>('');
   
   // Estados para simulação (defaults = MA Cross 15m; actualizam ao filtrar estratégia)
-  const [useSimulation, setUseSimulation] = useState(false);
+  const [useSimulation, setUseSimulation] = useState(true);
   const [usePerStrategyProfiles, setUsePerStrategyProfiles] = useState(true);
   const [buyStopLoss, setBuyStopLoss] = useState<string>('15');
   const [buyTakeProfit1, setBuyTakeProfit1] = useState<string>('44');
@@ -242,103 +247,13 @@ export default function EstatisticasPage() {
     }
   };
 
-  // Simulação com 2 TPs + fechamento final por tempo (24h por padrão).
-  // Para horas > 24, usa projeção linear a partir do resultado de 24h.
   const simulateTrade = (
     signal: SignalWithResult,
     buySide: StrategySimulationSide,
     sellSide: StrategySimulationSide
   ): number => {
-    const FEE_OPEN = 0.0005;
-    const FEE_CLOSE = 0.0005;
-    const TOTAL_FEE = FEE_OPEN + FEE_CLOSE;
-    const feeAmount = 100 * TOTAL_FEE;
-
     const activeSide = signal.direction === 'BUY' ? buySide : sellSide;
-    const stopLossPercent = activeSide.stopLossPct;
-    const tp1Percent = activeSide.tp1Pct;
-    const tp2Percent = activeSide.tp2Pct;
-    const tp1Weight = Math.max(0, Math.min(100, activeSide.tp1PositionPct)) / 100;
-    const tp2Weight = Math.max(0, Math.min(100, activeSide.tp2PositionPct)) / 100;
-    const finalWeight = Math.max(0, 1 - tp1Weight - tp2Weight);
-    const finalHours = activeSide.finalCloseHours;
-
-    let stopLossPrice: number;
-    let takeProfit1Price: number;
-    let takeProfit2Price: number;
-
-    if (signal.direction === 'BUY') {
-      stopLossPrice = signal.entryPrice * (1 - stopLossPercent / 100);
-      takeProfit1Price = signal.entryPrice * (1 + tp1Percent / 100);
-      takeProfit2Price = signal.entryPrice * (1 + tp2Percent / 100);
-    } else {
-      // Para SELL, stop loss é acima e take profits são abaixo
-      stopLossPrice = signal.entryPrice * (1 + stopLossPercent / 100);
-      takeProfit1Price = signal.entryPrice * (1 - tp1Percent / 100);
-      takeProfit2Price = signal.entryPrice * (1 - tp2Percent / 100);
-    }
-
-    // Resultado base em 24h, depois projetado para N horas (simulação)
-    const base24hPercent =
-      signal.result24h === null ? 0 : (signal.result24h / signal.entryPrice) * 100;
-    const hoursMultiplier = Math.max(0.25, finalHours / 24);
-    const finalResultPercent = base24hPercent * hoursMultiplier;
-
-    let grossPercentResult = 0;
-
-    // Regra conservadora: se SL aparece nas extremas, considera SL primeiro (como na lógica anterior).
-    if (signal.direction === 'BUY') {
-      if (signal.low24h !== null && signal.low24h <= stopLossPrice) {
-        grossPercentResult = -stopLossPercent;
-      } else if (
-        tp2Percent > 0 &&
-        tp2Weight > 0 &&
-        signal.high24h !== null &&
-        signal.high24h >= takeProfit2Price
-      ) {
-        // TP2 atingido -> assume TP1 + TP2 + restante no fechamento final (SL limita restante)
-        const cappedFinal = Math.max(finalResultPercent, -stopLossPercent);
-        grossPercentResult =
-          tp1Weight * tp1Percent +
-          tp2Weight * tp2Percent +
-          finalWeight * cappedFinal;
-      } else if (signal.high24h !== null && signal.high24h >= takeProfit1Price) {
-        // Apenas TP1 atingido -> restante no fechamento final (SL limita restante)
-        const remainingWeight = Math.max(0, 1 - tp1Weight);
-        const cappedFinal = Math.max(finalResultPercent, -stopLossPercent);
-        grossPercentResult = tp1Weight * tp1Percent + remainingWeight * cappedFinal;
-      } else {
-        // Nenhum TP/SL detectado nas extremas → fechamento final, mas SL ainda limita a perda
-        grossPercentResult = Math.max(finalResultPercent, -stopLossPercent);
-      }
-    } else {
-      if (signal.high24h !== null && signal.high24h >= stopLossPrice) {
-        grossPercentResult = -stopLossPercent;
-      } else if (
-        tp2Percent > 0 &&
-        tp2Weight > 0 &&
-        signal.low24h !== null &&
-        signal.low24h <= takeProfit2Price
-      ) {
-        // TP2 atingido -> restante no fechamento final (SL limita restante)
-        const cappedFinal = Math.max(finalResultPercent, -stopLossPercent);
-        grossPercentResult =
-          tp1Weight * tp1Percent +
-          tp2Weight * tp2Percent +
-          finalWeight * cappedFinal;
-      } else if (signal.low24h !== null && signal.low24h <= takeProfit1Price) {
-        // Apenas TP1 atingido -> restante no fechamento final (SL limita restante)
-        const remainingWeight = Math.max(0, 1 - tp1Weight);
-        const cappedFinal = Math.max(finalResultPercent, -stopLossPercent);
-        grossPercentResult = tp1Weight * tp1Percent + remainingWeight * cappedFinal;
-      } else {
-        // Nenhum TP/SL detectado nas extremas → fechamento final, mas SL ainda limita a perda
-        grossPercentResult = Math.max(finalResultPercent, -stopLossPercent);
-      }
-    }
-
-    // netResult em $ para posição de $100 => valor numérico equivale ao %
-    return grossPercentResult - feeAmount;
+    return simulateSignalNetResultPercent(signal, activeSide);
   };
 
   // Função para calcular estatísticas simuladas
@@ -1029,7 +944,11 @@ export default function EstatisticasPage() {
                     ] | Fecho {finalCloseHours}h
                   </>
                 ) : usePerStrategyProfiles ? (
-                  <>cada sinal usa o SL/TP da sua estratégia (tabela acima). Fecho final 24h por defeito.</>
+                  <>
+                    cada sinal usa <strong>SL/TP gravados no sinal</strong> (ex. Pivot Boss dinâmico) quando
+                    existem; senão o perfil canónico da estratégia. Parciais TP1/TP2 via{' '}
+                    <code className="text-xs">extraInfo</code> ou perfil. Fecho final 24h por defeito.
+                  </>
                 ) : (
                   <>
                     BUY [SL {buyStopLoss}% | TP1 {buyTakeProfit1}% ({buyTp1PositionPercent}%) | TP2{' '}

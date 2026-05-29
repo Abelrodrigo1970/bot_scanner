@@ -23,7 +23,11 @@ import {
   isMaCross15mHourBlocked,
   isMaCross15mWeekendBlocked,
 } from './maCross15mGuard';
-import { checkPivotBossDailySignalGate } from './pivotBossGuard';
+import {
+  checkPivotBossDailySignalGate,
+  isPivotBossBear15mHourBlocked,
+  isPivotBossBear15mWeekendBlocked,
+} from './pivotBossGuard';
 import {
   fetchCandles,
   fetchTopSymbolsBy1hPriceChange,
@@ -993,7 +997,7 @@ async function runPivotBossBearOnTimeframe(
   const emaMid = Math.max(emaFast + 1, Math.floor(Number(params.emaMidPeriod ?? 30)));
   const emaSlow = Math.max(emaMid + 1, Math.floor(Number(params.emaSlowPeriod ?? 80)));
   const atrPeriod = Math.max(2, Math.floor(Number(params.atrPeriod ?? 14)));
-  const pullbackMaxBars = Math.max(3, Math.floor(Number(params.pullbackMaxBars ?? 3)));
+  const pullbackMaxBars = Math.max(2, Math.floor(Number(params.pullbackMaxBars ?? 2)));
   const ma200FilterPeriod = Math.max(50, Math.floor(Number(params.ma200FilterPeriod ?? 200)));
   const ma200MaxDistBelowPct = Number(params.ma200MaxDistBelowPct ?? 5);
   const strongBodyOfRangeMin = Number(params.strongBodyOfRangeMin ?? 0.55);
@@ -1003,11 +1007,7 @@ async function runPivotBossBearOnTimeframe(
     params.sellBlockMaxDistBelowEma80Pct ?? 5
   );
   const swingLookback = Math.max(2, Math.floor(Number(params.swingLookback ?? 8)));
-  const swingAboveAtrMult = Number(params.swingAboveAtrMult ?? 0.15);
-  const ema30StopBufferPct = Number(params.ema30StopBufferPct ?? 0.35);
-  const minStopDistancePct = Number(params.minStopDistancePct ?? 2.5);
-  const maxStopDistancePct = Number(params.maxStopDistancePct ?? 10);
-  const stopLossPctCap = Number(params.stopLossPct ?? 0.08);
+  const stopLossPct = Number(params.stopLossPct ?? 0.08);
   const tp1Pct = Number(params.tp1Pct ?? 0.09);
   const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 50))));
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
@@ -1088,20 +1088,8 @@ async function runPivotBossBearOnTimeframe(
 
     const scenarios: string[] = ['pullback_rejeicao_ema30'];
 
-    const swingHi = highestHigh(closedCandles, Math.max(0, lc - swingLookback), lc);
-    const stopFromSwing = swingHi + atr * swingAboveAtrMult;
-    const stopFromEma30 = e30 * (1 + ema30StopBufferPct / 100);
-    let stopLoss = Math.max(stopFromSwing, stopFromEma30);
-
-    const minDist = entryPrice * (minStopDistancePct / 100);
-    if (stopLoss - entryPrice < minDist) stopLoss = entryPrice + minDist;
-    const maxDist = entryPrice * (maxStopDistancePct / 100);
-    if (stopLoss - entryPrice > maxDist) stopLoss = entryPrice + maxDist;
-
-    const capStop = entryPrice * (1 + stopLossPctCap);
-    if (stopLoss > capStop) stopLoss = capStop;
-
-    if (!(stopLoss > entryPrice && stopLoss - entryPrice >= minDist * 0.85)) return null;
+    const stopLoss = entryPrice * (1 + stopLossPct);
+    if (!(stopLoss > entryPrice)) return null;
 
     const target1 = entryPrice * (1 - tp1Pct);
 
@@ -1111,7 +1099,7 @@ async function runPivotBossBearOnTimeframe(
     );
     const strength = Math.min(98, Math.max(62, Math.round(62 + bodyBonus)));
 
-    const slLabel = `${((stopLoss / entryPrice - 1) * 100).toFixed(1)}%`;
+    const slLabel = `${(stopLossPct * 100).toFixed(0)}%`;
     const tpLabel = `${(tp1Pct * 100).toFixed(0)}%`;
 
     return {
@@ -1129,13 +1117,13 @@ async function runPivotBossBearOnTimeframe(
         close1h,
         distBelowSma200Pct: Number(distBelowSma200Pct.toFixed(3)),
         ma200MaxDistBelowPct,
-        stopLossPctCap,
+        stopLossPct,
         tp1Pct,
         tp1Position,
         closeAfterHours,
         bodyRangePct: Number(((body / range) * 100).toFixed(1)),
         executionProfile:
-          `SELL apenas | Pivot Boss bear ${timeframe} (EMA12/30 abaixo EMA80, SMA200 1h acima ou ≤−${ma200MaxDistBelowPct}%) | SL +${slLabel} (swing/EMA30, máx. ${(stopLossPctCap * 100).toFixed(0)}%) | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+          `SELL apenas | Pivot Boss bear ${timeframe} (EMA12/30 abaixo EMA80, SMA200 1h acima ou ≤−${ma200MaxDistBelowPct}%) | SL +${slLabel} fixo | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
       }),
     };
   } catch (error) {
@@ -1699,6 +1687,16 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
       if (strategy.name === 'MA_CROSS_5M' && isMaCross15mHourBlocked()) {
         console.log('⏭️ MA Cross 15m: ignorado — horário PT bloqueado');
+        continue;
+      }
+
+      if (strategy.name === 'PIVOT_BOSS_BEAR_15M' && isPivotBossBear15mWeekendBlocked()) {
+        console.log('⏭️ Pivot Boss Bear 15m: ignorado ao fim-de-semana (sáb/dom, horário Portugal)');
+        continue;
+      }
+
+      if (strategy.name === 'PIVOT_BOSS_BEAR_15M' && isPivotBossBear15mHourBlocked()) {
+        console.log('⏭️ Pivot Boss Bear 15m: ignorado — horário PT bloqueado (18h, 22h)');
         continue;
       }
 

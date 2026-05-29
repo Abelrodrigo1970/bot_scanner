@@ -16,6 +16,26 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Modo backtest: injecta histórico local em vez de pedir à Binance. */
+type BacktestCandleState = {
+  pools: Map<string, Candle[]>;
+  endMs: number;
+};
+
+let backtestCandleState: BacktestCandleState | null = null;
+
+export function setBacktestCandlePools(pools: Map<string, Candle[]>): void {
+  backtestCandleState = { pools, endMs: Number.POSITIVE_INFINITY };
+}
+
+export function setBacktestCursor(endMs: number): void {
+  if (backtestCandleState) backtestCandleState.endMs = endMs;
+}
+
+export function clearBacktestCandlePools(): void {
+  backtestCandleState = null;
+}
+
 const BINANCE_FAPI_HOSTS = [
   'https://fapi.binance.com',
   'https://fapi1.binance.com',
@@ -113,6 +133,15 @@ export async function fetchCandles(
   startTime?: number,
   endTime?: number
 ): Promise<Candle[]> {
+  if (backtestCandleState) {
+    const key = `${symbol.toUpperCase()}:${interval}`;
+    const all = backtestCandleState.pools.get(key) ?? [];
+    let filtered = all.filter((c) => c.timestamp <= backtestCandleState!.endMs);
+    if (startTime) filtered = filtered.filter((c) => c.timestamp >= startTime);
+    if (endTime) filtered = filtered.filter((c) => c.timestamp <= endTime);
+    return filtered.slice(-Math.max(1, limit));
+  }
+
   const hostCount = BINANCE_FAPI_HOSTS.length;
   /** Várias voltas aos mirrors (timeouts / corpo truncado / rate limit). */
   const maxAttempts = hostCount * 3;
