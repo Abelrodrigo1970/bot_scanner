@@ -43,7 +43,22 @@ const BINANCE_FAPI_HOSTS = [
   'https://fapi3.binance.com',
 ] as const;
 
-const BINANCE_FAPI_RETRYABLE_STATUSES = new Set([418, 429, 500, 502, 503, 504]);
+const BINANCE_FAPI_RETRYABLE_STATUSES = new Set([418, 429, 451, 500, 502, 503, 504]);
+const BYBIT_API_BASE = 'https://api.bybit.com';
+/** Intervalos Binance → Bybit linear kline (v5). */
+const BYBIT_KLINE_INTERVAL: Record<string, string> = {
+  '1m': '1',
+  '3m': '3',
+  '5m': '5',
+  '15m': '15',
+  '30m': '30',
+  '1h': '60',
+  '2h': '120',
+  '4h': '240',
+  '6h': '360',
+  '12h': '720',
+  '1d': 'D',
+};
 /** Espaço mínimo entre pedidos klines (cron analisa muitos símbolos em sequência). */
 const BINANCE_KLINES_MIN_GAP_MS = 120;
 let lastBinanceKlinesFetchAt = 0;
@@ -123,6 +138,104 @@ function parseBinanceKlinesBody(text: string, symbol: string, host: string): Can
   });
 }
 
+function parseBybitKlineRows(rows: string[][]): Candle[] {
+  return rows
+    .map((row) => ({
+      timestamp: Number(row[0]),
+      open: parseFloat(row[1]),
+      high: parseFloat(row[2]),
+      low: parseFloat(row[3]),
+      close: parseFloat(row[4]),
+      volume: parseFloat(row[5]),
+    }))
+    .filter(
+      (c) =>
+        Number.isFinite(c.timestamp) &&
+        Number.isFinite(c.open) &&
+        Number.isFinite(c.high) &&
+        Number.isFinite(c.low) &&
+        Number.isFinite(c.close)
+    )
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
+
+/** Fallback quando Binance Futures bloqueia o IP (HTTP 451 no Railway US). */
+async function fetchCandlesFromBybit(
+  symbol: string,
+  interval: string,
+  limit: number,
+  startTime?: number,
+  endTime?: number
+): Promise<Candle[]> {
+  const bybitInterval = BYBIT_KLINE_INTERVAL[interval];
+  if (!bybitInterval) {
+    throw new Error(`Intervalo ${interval} sem equivalente Bybit`);
+  }
+
+  const url = new URL(`${BYBIT_API_BASE}/v5/market/kline`);
+  url.searchParams.set('category', 'linear');
+  url.searchParams.set('symbol', symbol.toUpperCase());
+  url.searchParams.set('interval', bybitInterval);
+  url.searchParams.set('limit', String(Math.min(Math.max(1, limit), 1000)));
+  if (startTime) url.searchParams.set('start', String(startTime));
+  if (endTime) url.searchParams.set('end', String(endTime));
+
+  const response = await fetch(url.toString(), {
+    cache: 'no-store',
+    headers: BINANCE_PUBLIC_HEADERS,
+    signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+  });
+  const bodyText = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `Bybit klines ${symbol}: ${response.status} ${response.statusText} — ${bodyText.slice(0, 120)}`
+    );
+  }
+
+  const parsed = JSON.parse(bodyText.trim()) as { result?: { list?: string[][] } };
+  const rows = parsed.result?.list ?? [];
+  if (rows.length === 0) {
+    throw new Error(`Bybit klines vazio para ${symbol}`);
+  }
+
+  let candles = parseBybitKlineRows(rows);
+  if (startTime) candles = candles.filter((c) => c.timestamp >= startTime);
+  if (endTime) candles = candles.filter((c) => c.timestamp <= endTime);
+  if (candles.length > limit) candles = candles.slice(-limit);
+  return candles;
+}
+
+async function fetchCurrentPriceFromBybit(symbol: string): Promise<number> {
+  const sym = symbol.toUpperCase();
+  const url = `${BYBIT_API_BASE}/v5/market/tickers?category=linear&symbol=${sym}`;
+  const response = await fetch(url, {
+    cache: 'no-store',
+    headers: BINANCE_PUBLIC_HEADERS,
+    signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+  });
+  const bodyText = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`Bybit ticker ${sym}: ${response.status} ${response.statusText}`);
+  }
+
+  const parsed = JSON.parse(bodyText.trim()) as {
+    result?: { list?: Array<{ lastPrice?: string }> };
+  };
+  const price = parseFloat(parsed.result?.list?.[0]?.lastPrice ?? '');
+  if (!Number.isFinite(price) || price <= 0) {
+    throw new Error(`Preço Bybit inválido para ${sym}`);
+  }
+  return price;
+}
+
+function shouldFallbackToBybit(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return true;
+  const status = (err as { status?: number }).status;
+  return status == null || status === 451 || status >= 500;
+}
+
 /**
  * Busca velas (candles) de uma exchange pública (Binance Futures USDⓈ-M)
  */
@@ -188,6 +301,19 @@ export async function fetchCandles(
         break;
       }
       await delay(400 * (attempt + 1));
+    }
+  }
+
+  if (shouldFallbackToBybit(lastError) && BYBIT_KLINE_INTERVAL[interval]) {
+    try {
+      const status = (lastError as { status?: number })?.status;
+      console.warn(
+        `⚠️ Binance candles ${symbol} falhou${status ? ` (${status})` : ''}; a usar Bybit (${interval})`
+      );
+      return await fetchCandlesFromBybit(symbol, interval, limit, startTime, endTime);
+    } catch (bybitErr) {
+      console.error(`Erro ao buscar candles para ${symbol} (Binance + Bybit):`, bybitErr);
+      throw bybitErr;
     }
   }
 
@@ -258,6 +384,18 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
     }
   }
 
+  if (shouldFallbackToBybit(lastError)) {
+    try {
+      const status = (lastError as { status?: number })?.status;
+      console.warn(
+        `⚠️ Binance preço ${symbol} falhou${status ? ` (${status})` : ''}; a usar Bybit`
+      );
+      return await fetchCurrentPriceFromBybit(symbol);
+    } catch (bybitErr) {
+      throw bybitErr instanceof Error ? bybitErr : new Error(`Erro ao buscar preço ${symbol}`);
+    }
+  }
+
   throw lastError instanceof Error ? lastError : new Error(`Erro ao buscar preço ${symbol}`);
 }
 
@@ -315,7 +453,23 @@ export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<n
       continue;
     }
   }
-  return null;
+
+  try {
+    const url = `${BYBIT_API_BASE}/v5/market/kline?category=linear&symbol=${sym}&interval=60&limit=2`;
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: BINANCE_PUBLIC_HEADERS,
+      signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+    const parsed = (await response.json()) as { result?: { list?: string[][] } };
+    const rows = parsed.result?.list ?? [];
+    const row = rows.length >= 2 ? rows[1]! : rows[0];
+    const turnover = parseFloat(row?.[6] ?? '');
+    return Number.isFinite(turnover) && turnover > 0 ? turnover : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
