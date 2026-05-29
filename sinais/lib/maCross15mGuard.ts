@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { fetchCurrentPrice, fetchLastClosed1hQuoteVolumeUsd } from './marketData';
+import { fetchCurrentPriceSafe, fetchLastClosed1hQuoteVolumeUsd } from './marketData';
 
 export const MA_CROSS_15M_TIMEFRAME = '15m' as const;
 export const MA_CROSS_15M_TZ = 'Europe/Lisbon';
@@ -86,7 +86,8 @@ async function isSignalProfitable(
   }
 
   try {
-    const currentPrice = await fetchCurrentPrice(symbol);
+    const currentPrice = await fetchCurrentPriceSafe(symbol);
+    if (currentPrice == null) return false;
     const result =
       signal.direction === 'SELL'
         ? signal.entryPrice - currentPrice

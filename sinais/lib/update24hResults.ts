@@ -3,7 +3,7 @@
  */
 
 import { prisma } from './db';
-import { fetchCurrentPrice, fetchCandles } from './marketData';
+import { fetchCandles, fetchFallbackPrice } from './marketData';
 import { closeActivePositionForSymbol } from './tradingExecutor';
 
 /**
@@ -35,7 +35,9 @@ export async function updateMissingHighLow24h(): Promise<{
     for (const signal of signalsToUpdate) {
       try {
         // Se já tem price24h, usar ele, senão buscar preço atual
-        const price24h = signal.price24h || await fetchCurrentPrice(signal.symbol);
+        const price24h =
+          signal.price24h ??
+          (await fetchFallbackPrice(signal.symbol, signal.entryPrice)).price;
 
         // Calcular preço máximo e mínimo durante as 24 horas
         let high24h: number | null = null;
@@ -97,7 +99,7 @@ export async function updateMissingHighLow24h(): Promise<{
         await new Promise((resolve) => setTimeout(resolve, 200));
       } catch (error) {
         errors++;
-        console.error(`❌ Erro ao atualizar sinal ${signal.id}:`, error);
+        console.warn(`⚠️ Erro ao actualizar high/low sinal ${signal.id} (${signal.symbol}):`, error);
       }
     }
 
@@ -138,8 +140,15 @@ export async function update24hResults(): Promise<{
 
     for (const signal of signalsToUpdate) {
       try {
-        // Buscar preço atual
-        const currentPrice = await fetchCurrentPrice(signal.symbol);
+        const { price: currentPrice, source: priceSource } = await fetchFallbackPrice(
+          signal.symbol,
+          signal.entryPrice
+        );
+        if (priceSource !== 'ticker') {
+          console.warn(
+            `⚠️ 24h ${signal.symbol}: preço via ${priceSource}${priceSource === 'entry' ? ' (par indisponível na Binance?)' : ''}`
+          );
+        }
 
         // Calcular preço máximo e mínimo durante as 24 horas
         let high24h: number | null = null;
@@ -247,7 +256,7 @@ export async function update24hResults(): Promise<{
         await new Promise((resolve) => setTimeout(resolve, 200));
       } catch (error) {
         errors++;
-        console.error(`❌ Erro ao atualizar sinal ${signal.id}:`, error);
+        console.warn(`⚠️ Erro ao actualizar sinal 24h ${signal.id} (${signal.symbol}):`, error);
       }
     }
 

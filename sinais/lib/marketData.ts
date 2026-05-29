@@ -196,91 +196,126 @@ export async function fetchCandles(
 }
 
 /**
- * Busca o preço atual de um par (Futures USDⓈ-M)
- * Retry em caso de Bad Request/erro temporário da API
+ * Busca o preço actual de um par (Futures USDⓈ-M). Usa mirrors Binance como fetchCandles.
  */
-export async function fetchCurrentPrice(symbol: string, retries = 2): Promise<number> {
+export async function fetchCurrentPrice(symbol: string): Promise<number> {
+  const hostCount = BINANCE_FAPI_HOSTS.length;
+  const maxAttempts = hostCount * 3;
   let lastError: unknown;
-  for (let attempt = 0; attempt <= retries; attempt++) {
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const host = BINANCE_FAPI_HOSTS[attempt % hostCount];
+    const url = `${host}/fapi/v1/ticker/price?symbol=${symbol.toUpperCase()}`;
+
+    try {
+      await throttleBinanceKlinesFetch();
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: BINANCE_PUBLIC_HEADERS,
+        signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+      });
+      const bodyText = await response.text();
+
+      if (!response.ok) {
+        let detail = `${response.status} ${response.statusText}`.trim();
+        try {
+          const api = JSON.parse(bodyText.trim()) as { msg?: string; code?: number };
+          if (api?.msg) detail = `${detail} — ${api.msg}`;
+        } catch {
+          if (bodyText.trim()) detail += ` — ${bodyText.trim().slice(0, 120)}`;
+        }
+        const error: Error & { status?: number } = new Error(
+          `Erro ao buscar preço ${symbol}: ${detail}`
+        );
+        error.status = response.status;
+        if (!BINANCE_FAPI_RETRYABLE_STATUSES.has(response.status)) {
+          throw error;
+        }
+        lastError = error;
+        await delay(400 * (attempt + 1));
+        continue;
+      }
+
+      const trimmed = bodyText.trim();
+      if (!trimmed) {
+        lastError = new Error(`Resposta vazia da Binance (preço ${symbol})`);
+        await delay(400 * (attempt + 1));
+        continue;
+      }
+
+      const data = JSON.parse(trimmed) as { price?: string };
+      const price = parseFloat(data.price ?? '');
+      if (!Number.isFinite(price) || price <= 0) {
+        throw new Error(`Preço inválido para ${symbol}`);
+      }
+      return price;
+    } catch (err) {
+      lastError = err;
+      if (!isRetryableKlinesError(err) || attempt === maxAttempts - 1) {
+        break;
+      }
+      await delay(400 * (attempt + 1));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(`Erro ao buscar preço ${symbol}`);
+}
+
+/** Como {@link fetchCurrentPrice}, mas devolve null em falha (sem log). */
+export async function fetchCurrentPriceSafe(symbol: string): Promise<number | null> {
+  try {
+    return await fetchCurrentPrice(symbol);
+  } catch {
+    return null;
+  }
+}
+
+/** Preço de fallback: último close 1h ou preço de entrada. */
+export async function fetchFallbackPrice(
+  symbol: string,
+  entryPrice: number
+): Promise<{ price: number; source: 'ticker' | 'klines' | 'entry' }> {
+  const ticker = await fetchCurrentPriceSafe(symbol);
+  if (ticker != null) return { price: ticker, source: 'ticker' };
+
+  try {
+    const candles = await fetchCandles(symbol, '1h', 3);
+    const last = candles[candles.length - 1];
+    if (last && last.close > 0) {
+      return { price: last.close, source: 'klines' };
+    }
+  } catch {
+    // ignora — usa entrada
+  }
+
+  return { price: entryPrice, source: 'entry' };
+}
+
+/** Turnover USDT da última vela 1h fechada (Binance Futures). Proxy de liquidez/market cap. */
+export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<number | null> {
+  const sym = symbol.toUpperCase();
+  for (const host of BINANCE_FAPI_HOSTS) {
     try {
       await throttleBinanceKlinesFetch();
       const response = await fetch(
-        `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`,
+        `${host}/fapi/v1/klines?symbol=${sym}&interval=1h&limit=2`,
         {
           cache: 'no-store',
           headers: BINANCE_PUBLIC_HEADERS,
           signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
         }
       );
-      const bodyText = await response.text();
-
-      if (!response.ok) {
-        if (response.status === 400 && attempt < retries) {
-          await delay(1500 * (attempt + 1));
-          continue;
-        }
-        throw new Error(`Erro ao buscar preço: ${response.statusText}`);
-      }
-
-      const trimmed = bodyText.trim();
-      if (!trimmed) {
-        const err: Error & { retryable?: boolean } = new Error(
-          `Resposta vazia da Binance (preço ${symbol})`
-        );
-        err.retryable = true;
-        throw err;
-      }
-
-      let data: { price?: string };
-      try {
-        data = JSON.parse(trimmed);
-      } catch {
-        const err: Error & { retryable?: boolean } = new Error(
-          `JSON inválido da Binance (preço ${symbol})`
-        );
-        err.retryable = true;
-        throw err;
-      }
-
-      const price = parseFloat(data.price ?? '');
-      if (!Number.isFinite(price)) {
-        throw new Error(`Preço inválido para ${symbol}`);
-      }
-      return price;
-    } catch (error) {
-      lastError = error;
-      if (attempt < retries && isRetryableKlinesError(error)) {
-        await delay(1500 * (attempt + 1));
-      } else {
-        console.error(`Erro ao buscar preço para ${symbol}:`, error);
-        throw error;
-      }
+      if (!response.ok) continue;
+      const rows = (await response.json()) as unknown[][];
+      if (rows.length < 1) return null;
+      const lastClosed = rows.length >= 2 ? rows[rows.length - 2]! : rows[rows.length - 1]!;
+      const quoteVol = parseFloat(String(lastClosed[7] ?? ''));
+      return Number.isFinite(quoteVol) && quoteVol > 0 ? quoteVol : null;
+    } catch {
+      continue;
     }
   }
-  throw lastError;
-}
-
-/** Turnover USDT da última vela 1h fechada (Binance Futures). Proxy de liquidez/market cap. */
-export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<number | null> {
-  try {
-    await throttleBinanceKlinesFetch();
-    const response = await fetch(
-      `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol.toUpperCase()}&interval=1h&limit=2`,
-      {
-        cache: 'no-store',
-        headers: BINANCE_PUBLIC_HEADERS,
-        signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-      }
-    );
-    if (!response.ok) return null;
-    const rows = (await response.json()) as unknown[][];
-    if (rows.length < 1) return null;
-    const lastClosed = rows.length >= 2 ? rows[rows.length - 2]! : rows[rows.length - 1]!;
-    const quoteVol = parseFloat(String(lastClosed[7] ?? ''));
-    return Number.isFinite(quoteVol) && quoteVol > 0 ? quoteVol : null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 /**
