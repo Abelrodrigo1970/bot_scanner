@@ -59,9 +59,12 @@ const BYBIT_KLINE_INTERVAL: Record<string, string> = {
   '12h': '720',
   '1d': 'D',
 };
-/** Espaço mínimo entre pedidos klines (cron analisa muitos símbolos em sequência). */
-const BINANCE_KLINES_MIN_GAP_MS = 120;
-let lastBinanceKlinesFetchAt = 0;
+/** Espaço mínimo entre pedidos Binance (cron analisa muitos símbolos; vários jobs em paralelo). */
+const BINANCE_KLINES_MIN_GAP_MS = 320;
+const BYBIT_KLINES_MIN_GAP_MS = 100;
+/** Fila global: evita rajadas quando run-15m + run-1h + run-30m correm ao mesmo tempo. */
+let binancePublicApiChain: Promise<unknown> = Promise.resolve();
+let bybitPublicApiChain: Promise<unknown> = Promise.resolve();
 
 const BINANCE_PUBLIC_HEADERS: Record<string, string> = {
   Accept: 'application/json',
@@ -71,11 +74,45 @@ const BINANCE_PUBLIC_HEADERS: Record<string, string> = {
 
 const BINANCE_KLINES_TIMEOUT_MS = 25_000;
 
-async function throttleBinanceKlinesFetch(): Promise<void> {
-  const now = Date.now();
-  const waitMs = lastBinanceKlinesFetchAt + BINANCE_KLINES_MIN_GAP_MS - now;
-  if (waitMs > 0) await delay(waitMs);
-  lastBinanceKlinesFetchAt = Date.now();
+function retryDelayMs(status: number, attempt: number, retryAfterHeader?: string | null): number {
+  if (status === 429 || status === 418) {
+    const parsed = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : Number.NaN;
+    if (Number.isFinite(parsed) && parsed > 0) return parsed * 1000;
+    return Math.min(10_000, 1000 * 2 ** attempt);
+  }
+  return 400 * (attempt + 1);
+}
+
+function runOnThrottledQueue<T>(
+  chainRef: { current: Promise<unknown> },
+  lastAtRef: { value: number },
+  gapMs: number,
+  fn: () => Promise<T>
+): Promise<T> {
+  const task = chainRef.current.then(async () => {
+    const waitMs = lastAtRef.value + gapMs - Date.now();
+    if (waitMs > 0) await delay(waitMs);
+    lastAtRef.value = Date.now();
+    return fn();
+  });
+  chainRef.current = task.then(
+    () => undefined,
+    () => undefined
+  );
+  return task;
+}
+
+const binanceQueueRef = { current: binancePublicApiChain };
+const bybitQueueRef = { current: bybitPublicApiChain };
+const binanceLastAtRef = { value: 0 };
+const bybitLastAtRef = { value: 0 };
+
+function runOnBinanceQueue<T>(fn: () => Promise<T>): Promise<T> {
+  return runOnThrottledQueue(binanceQueueRef, binanceLastAtRef, BINANCE_KLINES_MIN_GAP_MS, fn);
+}
+
+function runOnBybitQueue<T>(fn: () => Promise<T>): Promise<T> {
+  return runOnThrottledQueue(bybitQueueRef, bybitLastAtRef, BYBIT_KLINES_MIN_GAP_MS, fn);
 }
 
 function isRetryableKlinesError(err: unknown): boolean {
@@ -180,11 +217,13 @@ async function fetchCandlesFromBybit(
   if (startTime) url.searchParams.set('start', String(startTime));
   if (endTime) url.searchParams.set('end', String(endTime));
 
-  const response = await fetch(url.toString(), {
-    cache: 'no-store',
-    headers: BINANCE_PUBLIC_HEADERS,
-    signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-  });
+  const response = await runOnBybitQueue(() =>
+    fetch(url.toString(), {
+      cache: 'no-store',
+      headers: BINANCE_PUBLIC_HEADERS,
+      signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+    })
+  );
   const bodyText = await response.text();
 
   if (!response.ok) {
@@ -209,11 +248,13 @@ async function fetchCandlesFromBybit(
 async function fetchCurrentPriceFromBybit(symbol: string): Promise<number> {
   const sym = symbol.toUpperCase();
   const url = `${BYBIT_API_BASE}/v5/market/tickers?category=linear&symbol=${sym}`;
-  const response = await fetch(url, {
-    cache: 'no-store',
-    headers: BINANCE_PUBLIC_HEADERS,
-    signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-  });
+  const response = await runOnBybitQueue(() =>
+    fetch(url, {
+      cache: 'no-store',
+      headers: BINANCE_PUBLIC_HEADERS,
+      signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+    })
+  );
   const bodyText = await response.text();
 
   if (!response.ok) {
@@ -233,7 +274,8 @@ async function fetchCurrentPriceFromBybit(symbol: string): Promise<number> {
 function shouldFallbackToBybit(err: unknown): boolean {
   if (!err || typeof err !== 'object') return true;
   const status = (err as { status?: number }).status;
-  return status == null || status === 451 || status >= 500;
+  if (status == null) return true;
+  return status === 451 || status === 429 || status === 418 || status >= 500;
 }
 
 /**
@@ -260,6 +302,7 @@ export async function fetchCandles(
   const maxAttempts = hostCount * 3;
 
   let lastError: unknown;
+  let rateLimitHits = 0;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const host = BINANCE_FAPI_HOSTS[attempt % hostCount];
     const url = new URL('/fapi/v1/klines', host);
@@ -270,12 +313,13 @@ export async function fetchCandles(
     if (endTime) url.searchParams.set('endTime', String(endTime));
 
     try {
-      await throttleBinanceKlinesFetch();
-      const response = await fetch(url.toString(), {
-        cache: 'no-store',
-        headers: BINANCE_PUBLIC_HEADERS,
-        signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-      });
+      const response = await runOnBinanceQueue(() =>
+        fetch(url.toString(), {
+          cache: 'no-store',
+          headers: BINANCE_PUBLIC_HEADERS,
+          signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+        })
+      );
       const bodyText = await response.text();
 
       if (!response.ok) {
@@ -288,8 +332,14 @@ export async function fetchCandles(
           throw error;
         }
         lastError = error;
+        if (response.status === 429 || response.status === 418) {
+          rateLimitHits++;
+          if (rateLimitHits >= 2) break;
+        }
         if (attempt < maxAttempts - 1) {
-          await delay(400 * (attempt + 1));
+          await delay(
+            retryDelayMs(response.status, attempt, response.headers.get('retry-after'))
+          );
         }
         continue;
       }
@@ -297,10 +347,15 @@ export async function fetchCandles(
       return parseBinanceKlinesBody(bodyText, symbol, host);
     } catch (err) {
       lastError = err;
+      const status = (err as { status?: number })?.status;
+      if (status === 429 || status === 418) {
+        rateLimitHits++;
+        if (rateLimitHits >= 2) break;
+      }
       if (!isRetryableKlinesError(err) || attempt === maxAttempts - 1) {
         break;
       }
-      await delay(400 * (attempt + 1));
+      await delay(retryDelayMs(status ?? 0, attempt));
     }
   }
 
@@ -328,18 +383,19 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
   const hostCount = BINANCE_FAPI_HOSTS.length;
   const maxAttempts = hostCount * 3;
   let lastError: unknown;
-
+  let rateLimitHits = 0;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const host = BINANCE_FAPI_HOSTS[attempt % hostCount];
     const url = `${host}/fapi/v1/ticker/price?symbol=${symbol.toUpperCase()}`;
 
     try {
-      await throttleBinanceKlinesFetch();
-      const response = await fetch(url, {
-        cache: 'no-store',
-        headers: BINANCE_PUBLIC_HEADERS,
-        signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-      });
+      const response = await runOnBinanceQueue(() =>
+        fetch(url, {
+          cache: 'no-store',
+          headers: BINANCE_PUBLIC_HEADERS,
+          signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+        })
+      );
       const bodyText = await response.text();
 
       if (!response.ok) {
@@ -358,14 +414,20 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
           throw error;
         }
         lastError = error;
-        await delay(400 * (attempt + 1));
+        if (response.status === 429 || response.status === 418) {
+          rateLimitHits++;
+          if (rateLimitHits >= 2) break;
+        }
+        await delay(
+          retryDelayMs(response.status, attempt, response.headers.get('retry-after'))
+        );
         continue;
       }
 
       const trimmed = bodyText.trim();
       if (!trimmed) {
         lastError = new Error(`Resposta vazia da Binance (preço ${symbol})`);
-        await delay(400 * (attempt + 1));
+        await delay(retryDelayMs(0, attempt));
         continue;
       }
 
@@ -377,10 +439,15 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
       return price;
     } catch (err) {
       lastError = err;
+      const status = (err as { status?: number })?.status;
+      if (status === 429 || status === 418) {
+        rateLimitHits++;
+        if (rateLimitHits >= 2) break;
+      }
       if (!isRetryableKlinesError(err) || attempt === maxAttempts - 1) {
         break;
       }
-      await delay(400 * (attempt + 1));
+      await delay(retryDelayMs(status ?? 0, attempt));
     }
   }
 
@@ -434,14 +501,12 @@ export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<n
   const sym = symbol.toUpperCase();
   for (const host of BINANCE_FAPI_HOSTS) {
     try {
-      await throttleBinanceKlinesFetch();
-      const response = await fetch(
-        `${host}/fapi/v1/klines?symbol=${sym}&interval=1h&limit=2`,
-        {
+      const response = await runOnBinanceQueue(() =>
+        fetch(`${host}/fapi/v1/klines?symbol=${sym}&interval=1h&limit=2`, {
           cache: 'no-store',
           headers: BINANCE_PUBLIC_HEADERS,
           signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-        }
+        })
       );
       if (!response.ok) continue;
       const rows = (await response.json()) as unknown[][];
@@ -456,11 +521,13 @@ export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<n
 
   try {
     const url = `${BYBIT_API_BASE}/v5/market/kline?category=linear&symbol=${sym}&interval=60&limit=2`;
-    const response = await fetch(url, {
-      cache: 'no-store',
-      headers: BINANCE_PUBLIC_HEADERS,
-      signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-    });
+    const response = await runOnBybitQueue(() =>
+      fetch(url, {
+        cache: 'no-store',
+        headers: BINANCE_PUBLIC_HEADERS,
+        signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+      })
+    );
     if (!response.ok) return null;
     const parsed = (await response.json()) as { result?: { list?: string[][] } };
     const rows = parsed.result?.list ?? [];
