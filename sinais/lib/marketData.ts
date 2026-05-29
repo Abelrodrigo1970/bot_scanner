@@ -37,9 +37,9 @@ export function clearBacktestCandlePools(): void {
 }
 
 const BINANCE_FAPI_HOSTS = [
-  'https://fapi.binance.com',
   'https://fapi1.binance.com',
   'https://fapi2.binance.com',
+  'https://fapi.binance.com',
   'https://fapi3.binance.com',
 ] as const;
 
@@ -139,6 +139,61 @@ function canUseBybitMarketData(): boolean {
   if (bybitMarketDataGeoBlocked) return false;
   if (process.env.BYBIT_MARKET_DATA_FALLBACK === 'false') return false;
   return true;
+}
+
+/** GET Binance Futures público com fila global, mirrors e retry. */
+async function fetchBinanceFapiText(path: string): Promise<string> {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  const hostCount = BINANCE_FAPI_HOSTS.length;
+  const maxAttempts = hostCount * 4;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const host = BINANCE_FAPI_HOSTS[attempt % hostCount];
+    const url = `${host}${normalized}`;
+
+    try {
+      const response = await runOnBinanceQueue(() =>
+        fetch(url, {
+          cache: 'no-store',
+          headers: BINANCE_PUBLIC_HEADERS,
+          signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
+        })
+      );
+      const bodyText = await response.text();
+
+      if (!response.ok) {
+        const error: Error & { status?: number } = new Error(
+          `Binance ${normalized}: ${response.status} ${response.statusText}`
+        );
+        error.status = response.status;
+        if (!BINANCE_FAPI_RETRYABLE_STATUSES.has(response.status)) throw error;
+        lastError = error;
+        await delay(
+          retryDelayMs(response.status, attempt, response.headers.get('retry-after'))
+        );
+        continue;
+      }
+
+      const trimmed = bodyText.trim();
+      if (!trimmed) {
+        lastError = new Error(`Resposta vazia Binance ${normalized} @ ${host}`);
+        await delay(retryDelayMs(0, attempt));
+        continue;
+      }
+      return trimmed;
+    } catch (err) {
+      lastError = err;
+      if (!isRetryableKlinesError(err) || attempt === maxAttempts - 1) break;
+      await delay(retryDelayMs(0, attempt));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(`Binance ${normalized} falhou`);
+}
+
+async function fetchBinanceFapiJson<T>(path: string): Promise<T> {
+  return JSON.parse(await fetchBinanceFapiText(path)) as T;
 }
 
 function isRetryableKlinesError(err: unknown): boolean {
@@ -331,7 +386,7 @@ export async function fetchCandles(
 
   const hostCount = BINANCE_FAPI_HOSTS.length;
   /** Várias voltas aos mirrors (rate limit / timeout / corpo truncado). */
-  const maxAttempts = hostCount * 5;
+  const maxAttempts = hostCount * 6;
 
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -406,7 +461,7 @@ export async function fetchCandles(
  */
 export async function fetchCurrentPrice(symbol: string): Promise<number> {
   const hostCount = BINANCE_FAPI_HOSTS.length;
-  const maxAttempts = hostCount * 5;
+  const maxAttempts = hostCount * 6;
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const host = BINANCE_FAPI_HOSTS[attempt % hostCount];
@@ -695,35 +750,25 @@ export async function fetchTopSymbolsByVolume(
   minQuoteVolume: number = 0
 ): Promise<string[]> {
   try {
-    const response = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+    const data = await fetchBinanceFapiJson<
+      Array<{ symbol: string; quoteVolume: string }>
+    >('/fapi/v1/ticker/24hr');
 
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar dados: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    // Filtrar apenas pares USDT perpetual
     const usdtPairs = data
-      .filter((ticker: any) => {
+      .filter((ticker) => {
         return (
           ticker.symbol.endsWith('USDT') &&
           !ticker.symbol.includes('BUSD') &&
           parseFloat(ticker.quoteVolume) >= minQuoteVolume
         );
       })
-      .map((ticker: any) => ({
+      .map((ticker) => ({
         symbol: ticker.symbol,
         quoteVolume: parseFloat(ticker.quoteVolume),
       }));
 
-    // Ordenar por quoteVolume decrescente
-    const sorted = usdtPairs.sort((a: any, b: any) => {
-      return b.quoteVolume - a.quoteVolume;
-    });
-
-    // Retornar apenas os símbolos
-    return sorted.slice(0, limit).map((item: any) => item.symbol);
+    const sorted = usdtPairs.sort((a, b) => b.quoteVolume - a.quoteVolume);
+    return sorted.slice(0, limit).map((item) => item.symbol);
   } catch (error) {
     console.error('Erro ao buscar top símbolos por volume:', error);
     throw error;
@@ -741,33 +786,25 @@ export async function fetchTopSymbolsBy24hPriceChange(
   minQuoteVolume: number = 0
 ): Promise<string[]> {
   try {
-    const response = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar dados: ${response.statusText}`);
-    }
-
-    const data = await response.json();
+    const data = await fetchBinanceFapiJson<
+      Array<{ symbol: string; quoteVolume: string; priceChangePercent: string }>
+    >('/fapi/v1/ticker/24hr');
 
     const usdtPairs = data
-      .filter((ticker: any) => {
+      .filter((ticker) => {
         return (
           ticker.symbol.endsWith('USDT') &&
           !ticker.symbol.includes('BUSD') &&
           parseFloat(ticker.quoteVolume) >= minQuoteVolume
         );
       })
-      .map((ticker: any) => ({
+      .map((ticker) => ({
         symbol: ticker.symbol,
         priceChangePercent: parseFloat(ticker.priceChangePercent || '0'),
       }));
 
-    // Ordenar por priceChangePercent decrescente (maior subida primeiro)
-    const sorted = usdtPairs.sort((a: any, b: any) => {
-      return b.priceChangePercent - a.priceChangePercent;
-    });
-
-    return sorted.slice(0, limit).map((item: any) => item.symbol);
+    const sorted = usdtPairs.sort((a, b) => b.priceChangePercent - a.priceChangePercent);
+    return sorted.slice(0, limit).map((item) => item.symbol);
   } catch (error) {
     console.error('Erro ao buscar top símbolos por % 24h:', error);
     throw error;
@@ -776,59 +813,50 @@ export async function fetchTopSymbolsBy24hPriceChange(
 
 /**
  * Busca os símbolos com maior variação de preço na última hora (1h).
- * Não usa volume 24h: lista de candidatos vem do exchangeInfo (Binance Futures).
- * Ordena apenas por % de variação na última hora.
- * @param limit Número máximo de símbolos (padrão: 150)
- * @param candidatePool Quantos símbolos consultar (klines 1h) antes de ordenar (padrão: 250)
+ * Candidatos: top liquidez (ticker/24hr, 1 pedido). Klines 1h via fila global (fetchCandles).
  */
 export async function fetchTopSymbolsBy1hPriceChange(
   limit: number = 150,
-  candidatePool: number = 250
+  candidatePool: number = 60
 ): Promise<string[]> {
   try {
-    const response = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo');
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar exchangeInfo: ${response.statusText}`);
-    }
-    const data = await response.json();
+    const tickers = await fetchBinanceFapiJson<
+      Array<{ symbol: string; quoteVolume: string }>
+    >('/fapi/v1/ticker/24hr');
 
-    const usdtPairs: string[] = (data.symbols || [])
-      .filter((s: any) => {
-        return (
-          s.symbol?.endsWith('USDT') &&
-          !s.symbol?.includes('BUSD') &&
-          s.status === 'TRADING' &&
-          (s.contractType === 'PERPETUAL' || !s.contractType)
-        );
-      })
+    const usdtPairs = tickers
+      .filter(
+        (t) =>
+          t.symbol.endsWith('USDT') &&
+          !t.symbol.includes('BUSD') &&
+          parseFloat(t.quoteVolume) > 100_000
+      )
+      .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
       .slice(0, candidatePool)
-      .map((s: any) => s.symbol);
+      .map((t) => t.symbol);
 
     const results: { symbol: string; changePercent1h: number }[] = [];
 
-    for (let i = 0; i < usdtPairs.length; i++) {
-      const symbol = usdtPairs[i];
+    for (const symbol of usdtPairs) {
       try {
-        const klinesRes = await fetch(
-          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=2`
-        );
-        if (!klinesRes.ok) continue;
-        const klines = await klinesRes.json();
+        const klines = await fetchCandles(symbol, '1h', 2);
         if (klines.length < 2) continue;
-        const prevClose = parseFloat(klines[0][4]);
-        const lastClose = parseFloat(klines[1][4]);
-        if (prevClose === 0) continue;
-        const changePercent1h = ((lastClose - prevClose) / prevClose) * 100;
-        results.push({ symbol, changePercent1h });
+        const prevClose = klines[0]!.close;
+        const lastClose = klines[1]!.close;
+        if (prevClose <= 0) continue;
+        results.push({
+          symbol,
+          changePercent1h: ((lastClose - prevClose) / prevClose) * 100,
+        });
       } catch {
-        // ignorar falha por símbolo
+        // ignora falha por símbolo
       }
-      if ((i + 1) % 50 === 0) await delay(100);
-      else await delay(80);
-    }    results.sort((a, b) => b.changePercent1h - a.changePercent1h);
+    }
+
+    results.sort((a, b) => b.changePercent1h - a.changePercent1h);
     return results.slice(0, limit).map((r) => r.symbol);
   } catch (error) {
-    console.error('Erro ao buscar símbolos por variação 1h:', error);
+    console.warn('Erro ao buscar símbolos por variação 1h:', error);
     throw error;
   }
 }

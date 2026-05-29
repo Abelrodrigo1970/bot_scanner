@@ -50,6 +50,19 @@ import {
   calculateVolumeMA,
 } from './indicators';
 
+const TOP_MOVERS_1H_FALLBACK: string[] = [
+  'BTCUSDT',
+  'ETHUSDT',
+  'BNBUSDT',
+  'SOLUSDT',
+  'XRPUSDT',
+  'DOGEUSDT',
+  'ADAUSDT',
+  'AVAXUSDT',
+  'LINKUSDT',
+  'DOTUSDT',
+];
+
 export interface SignalResult {
   direction: 'BUY' | 'SELL';
   entryPrice: number;
@@ -1665,14 +1678,21 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
       return 0;
     }
 
-    console.log('🔍 Buscando símbolos por variação na última hora (Binance Futures)...');
-    let symbols: string[] = [];
-    try {
-      symbols = await fetchTopSymbolsBy1hPriceChange(150, 250);
-      console.log(`✅ Encontrados ${symbols.length} símbolos`);
-    } catch (err) {
-      console.error('Erro ao buscar símbolos, usando fallback:', err);
-      symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'LINKUSDT', 'DOTUSDT'];
+    let topMoverSymbols: string[] | null = null;
+    async function loadTopMoverSymbols(): Promise<string[]> {
+      if (topMoverSymbols) return topMoverSymbols;
+      console.log('🔍 Buscando símbolos por variação na última hora (Binance Futures)...');
+      try {
+        topMoverSymbols = await fetchTopSymbolsBy1hPriceChange(150, 60);
+        console.log(`✅ Encontrados ${topMoverSymbols.length} símbolos (top movers 1h)`);
+      } catch (err) {
+        console.warn(
+          '⚠️ Top movers 1h indisponível, fallback mínimo:',
+          err instanceof Error ? err.message : err
+        );
+        topMoverSymbols = [...TOP_MOVERS_1H_FALLBACK];
+      }
+      return topMoverSymbols;
     }
 
     const timeframes: Timeframe[] = ['1h', '4h'];
@@ -1716,10 +1736,11 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           ? ['1h']
           : timeframes;
 
-      let symbolsToAnalyze = symbols;
+      let symbolsToAnalyze: string[] = [];
       if (strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL') {
+        const movers = await loadTopMoverSymbols();
         const lim = Math.min(250, Math.max(15, Math.floor(Number(params.symbolLimit ?? 80))));
-        symbolsToAnalyze = symbols.slice(0, lim);
+        symbolsToAnalyze = movers.slice(0, lim);
         console.log(
           `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
@@ -1801,11 +1822,16 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2)`);
         if (symbolsToAnalyze.length === 0) continue;
       } else if (strategy.name === 'MACD_HISTOGRAM_PMO') {
+        const movers = await loadTopMoverSymbols();
         const lim = Math.min(150, Math.max(20, Math.floor(Number(params.symbolLimit ?? 50))));
-        symbolsToAnalyze = symbols.slice(0, lim);
+        symbolsToAnalyze = movers.slice(0, lim);
         console.log(
           `✅ MACD Histogram + PMO: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
+      }
+
+      if (symbolsToAnalyze.length === 0) {
+        continue;
       }
 
       for (const symbol of symbolsToAnalyze) {

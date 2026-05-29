@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 async function run30mInBackground(origin: string, authHeader: string): Promise<void> {
   try {
+    // Desfasar 75s do cron 15m (:15/:30/:45) para não saturar a fila Binance.
+    await new Promise((resolve) => setTimeout(resolve, 75_000));
     console.log('[Run-30m BG] Iniciando agregado 30m...');
 
     const headers: Record<string, string> = {};
