@@ -80,17 +80,17 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'RSI queda de 70 (mín. 4 pts) + afastamento >12% (1h)',
     ],
     buy: null,
-    sell: side(8, 9, 30, 19, 40),
+    sell: side(8, 9, 50, 28, 30),
     summary:
-      'Só VENDA. SL +8%. TP1 -9% (30%) | TP2 -19% (40%) | restante fecho manual.',
+      'Só VENDA. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.',
   },
   {
     strategyName: 'RSI_OVERBOUGHT_DROP_LEGACY_1H',
     displayNames: ['RSI queda de 70 (mín. 4 pts) + afastamento >10% (1h)'],
     buy: null,
-    sell: side(8, 9, 30, 19, 40),
+    sell: side(8, 9, 50, 28, 30),
     summary:
-      'Só VENDA. SL +8%. TP1 -9% (30%) | TP2 -19% (40%) | restante fecho manual.',
+      'Só VENDA. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.',
   },
   {
     strategyName: 'MACD_HISTOGRAM_PMO',

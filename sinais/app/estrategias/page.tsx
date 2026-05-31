@@ -418,12 +418,12 @@ export default function EstrategiasPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {numField('SL (%) acima entrada', (p.stopLossPct ?? 0.08) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
               {numField('TP1 (%) abaixo entrada', p.sellTp1Percent ?? 9, (v) => upd({ sellTp1Percent: v }), 0.5)}
-              {numField('TP1 — % da posição', p.sellTp1Position ?? 30, (v) => upd({ sellTp1Position: v }))}
-              {numField('TP2 (%) abaixo entrada', p.sellTp2Percent ?? 19, (v) => upd({ sellTp2Percent: v }), 0.5)}
-              {numField('TP2 — % da posição', p.sellTp2Position ?? 40, (v) => upd({ sellTp2Position: v }))}
+              {numField('TP1 — % da posição', p.sellTp1Position ?? 50, (v) => upd({ sellTp1Position: v }))}
+              {numField('TP2 (%) abaixo entrada', p.sellTp2Percent ?? 28, (v) => upd({ sellTp2Percent: v }), 0.5)}
+              {numField('TP2 — % da posição', p.sellTp2Position ?? 30, (v) => upd({ sellTp2Position: v }))}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Restante da posição ({Math.max(0, 100 - Number(p.sellTp1Position ?? 30) - Number(p.sellTp2Position ?? 40))}
+              Restante da posição ({Math.max(0, 100 - Number(p.sellTp1Position ?? 50) - Number(p.sellTp2Position ?? 30))}
               %) — fecho manual.
             </p>
           </div>
@@ -448,12 +448,12 @@ export default function EstrategiasPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {numField('SL (%) acima entrada', (p.stopLossPct ?? 0.08) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
               {numField('TP1 (%) abaixo entrada', p.sellTp1Percent ?? 9, (v) => upd({ sellTp1Percent: v }), 0.5)}
-              {numField('TP1 — % da posição', p.sellTp1Position ?? 30, (v) => upd({ sellTp1Position: v }))}
-              {numField('TP2 (%) abaixo entrada', p.sellTp2Percent ?? 19, (v) => upd({ sellTp2Percent: v }), 0.5)}
-              {numField('TP2 — % da posição', p.sellTp2Position ?? 40, (v) => upd({ sellTp2Position: v }))}
+              {numField('TP1 — % da posição', p.sellTp1Position ?? 50, (v) => upd({ sellTp1Position: v }))}
+              {numField('TP2 (%) abaixo entrada', p.sellTp2Percent ?? 28, (v) => upd({ sellTp2Percent: v }), 0.5)}
+              {numField('TP2 — % da posição', p.sellTp2Position ?? 30, (v) => upd({ sellTp2Position: v }))}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Restante da posição ({Math.max(0, 100 - Number(p.sellTp1Position ?? 30) - Number(p.sellTp2Position ?? 40))}
+              Restante da posição ({Math.max(0, 100 - Number(p.sellTp1Position ?? 50) - Number(p.sellTp2Position ?? 30))}
               %) — fecho manual.
             </p>
           </div>

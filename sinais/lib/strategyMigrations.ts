@@ -167,15 +167,15 @@ export const RSI_OVERBOUGHT_DROP_1H_PARAMS = {
   requireBearCandle: true,
   stopLossPct: 0.08,
   sellTp1Percent: 9,
-  sellTp2Percent: 19,
-  sellTp1Position: 30,
-  sellTp2Position: 40,
+  sellTp2Percent: 28,
+  sellTp1Position: 50,
+  sellTp2Position: 30,
   allowBuy: false,
   allowSell: true,
 } as const;
 
 export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). VENDA: tendência bear (preço < EMA80, stack 200>80>30>12, EMA200 a descer). Pullback à EMA30 nos últimos 8 velas; RSI ≥50 no rally e queda ≥3 pts (≥55→abaixo). Entrada: vela bear a fechar abaixo EMA12. Não emite se >10% abaixo EMA80. SL +8%. TP1 -9% (30%) | TP2 -19% (40%) | restante fecho manual.';
+  'Universo: Scanner 2 (±10% EMA80, 1h). VENDA: tendência bear (preço < EMA80, stack 200>80>30>12, EMA200 a descer). Pullback à EMA30 nos últimos 8 velas; RSI ≥50 no rally e queda ≥3 pts (≥55→abaixo). Entrada: vela bear a fechar abaixo EMA12. Não emite se >10% abaixo EMA80. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.';
 
 export const RSI_OVERBOUGHT_DROP_LEGACY_1H_DISPLAY =
   'RSI queda de 70 (mín. 4 pts) + afastamento >10% (1h)';
@@ -189,15 +189,15 @@ export const RSI_OVERBOUGHT_DROP_LEGACY_1H_PARAMS = {
   meanLineType: 'EMA',
   stopLossPct: 0.08,
   sellTp1Percent: 9,
-  sellTp2Percent: 19,
-  sellTp1Position: 30,
-  sellTp2Position: 40,
+  sellTp2Percent: 28,
+  sellTp1Position: 50,
+  sellTp2Position: 30,
   allowBuy: false,
   allowSell: true,
 } as const;
 
 export const RSI_OVERBOUGHT_DROP_LEGACY_1H_DESCRIPTION =
-  'Universo: Scanner 1 (acima SMA200, 1h). VENDA: RSI(14) cai de ≥70 com queda ≥4 pts e preço >10% acima da EMA80. SL +8%. TP1 -9% (30%) | TP2 -19% (40%) | restante fecho manual.';
+  'Universo: Scanner 1 (acima SMA200, 1h). VENDA: RSI(14) cai de ≥70 com queda ≥4 pts e preço >10% acima da EMA80. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.';
 
 export const AFASTAMENTO_MEDIO_DISPLAY = 'Afastamento médio 1h (≤1,9→≥2,4)';
 
@@ -598,6 +598,10 @@ export async function syncRsiOverboughtDrop1hConfig(
     p.stopLossPct === '0.06' ||
     p.sellTp1Percent == null ||
     p.sellTp2Percent == null;
+  const needsTpUpdate =
+    p.sellTp2Percent === 19 ||
+    p.sellTp1Position === 30 ||
+    p.sellTp2Position === 40;
   const needsDesc =
     row.description?.includes('SMA80') ||
     row.description?.includes('TP na EMA80') ||
@@ -610,24 +614,26 @@ export async function syncRsiOverboughtDrop1hConfig(
       row.displayName?.includes('queda de 70') ||
       row.displayName == null);
 
-  if (!isLegacyExtensionShort && !needsSlTp && !needsDesc && !needsDisplay) {
+  if (!isLegacyExtensionShort && !needsSlTp && !needsTpUpdate && !needsDesc && !needsDisplay) {
     return { updated: false };
   }
+
+  const tpPatch = needsSlTp || needsTpUpdate
+    ? {
+        stopLossPct: 0.08,
+        sellTp1Percent: 9,
+        sellTp2Percent: 28,
+        sellTp1Position: 50,
+        sellTp2Position: 30,
+      }
+    : {};
 
   const next = isLegacyExtensionShort
     ? { ...RSI_OVERBOUGHT_DROP_1H_PARAMS }
     : {
         ...RSI_OVERBOUGHT_DROP_1H_PARAMS,
         ...p,
-        ...(needsSlTp
-          ? {
-              stopLossPct: 0.08,
-              sellTp1Percent: 9,
-              sellTp2Percent: 19,
-              sellTp1Position: 30,
-              sellTp2Position: 40,
-            }
-          : {}),
+        ...tpPatch,
       };
 
   await prisma.strategy.update({
@@ -636,6 +642,57 @@ export async function syncRsiOverboughtDrop1hConfig(
       displayName: RSI_OVERBOUGHT_DROP_1H_DISPLAY,
       params: JSON.stringify(next),
       description: RSI_OVERBOUGHT_DROP_1H_DESCRIPTION,
+    },
+  });
+  return { updated: true };
+}
+
+/** Actualiza params/descrição RSI legado (>10% EMA80, Scanner 1). */
+export async function syncRsiOverboughtDropLegacy1hConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'RSI_OVERBOUGHT_DROP_LEGACY_1H' },
+    select: { params: true, description: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const needsTpUpdate =
+    p.sellTp2Percent === 19 ||
+    p.sellTp1Position === 30 ||
+    p.sellTp2Position === 40 ||
+    p.sellTp1Percent == null ||
+    p.sellTp2Percent == null;
+  const needsDesc = row.description !== RSI_OVERBOUGHT_DROP_LEGACY_1H_DESCRIPTION;
+
+  if (!needsTpUpdate && !needsDesc) return { updated: false };
+
+  const next = {
+    ...RSI_OVERBOUGHT_DROP_LEGACY_1H_PARAMS,
+    ...p,
+    ...(needsTpUpdate
+      ? {
+          stopLossPct: 0.08,
+          sellTp1Percent: 9,
+          sellTp2Percent: 28,
+          sellTp1Position: 50,
+          sellTp2Position: 30,
+        }
+      : {}),
+  };
+
+  await prisma.strategy.update({
+    where: { name: 'RSI_OVERBOUGHT_DROP_LEGACY_1H' },
+    data: {
+      params: JSON.stringify(next),
+      description: RSI_OVERBOUGHT_DROP_LEGACY_1H_DESCRIPTION,
     },
   });
   return { updated: true };

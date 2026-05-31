@@ -189,9 +189,9 @@ export async function runRsiOverboughtDropLegacy1hStrategy(
     String(params.meanLineType || 'EMA').toUpperCase() === 'SMA' ? 'SMA' : 'EMA';
   const stopLossPct = Number(params.stopLossPct ?? 0.08);
   const sellTp1Percent = Number(params.sellTp1Percent ?? 9);
-  const sellTp2Percent = Number(params.sellTp2Percent ?? 19);
-  const sellTp1Position = Math.min(100, Math.max(1, Number(params.sellTp1Position ?? 30)));
-  const sellTp2Position = Math.min(100, Math.max(1, Number(params.sellTp2Position ?? 40)));
+  const sellTp2Percent = Number(params.sellTp2Percent ?? 28);
+  const sellTp1Position = Math.min(100, Math.max(1, Number(params.sellTp1Position ?? 50)));
+  const sellTp2Position = Math.min(100, Math.max(1, Number(params.sellTp2Position ?? 30)));
 
   try {
     const candlesNeeded = Math.max(maPeriod, rsiPeriod) + 50;
@@ -303,9 +303,9 @@ export async function runRsiOverboughtDrop1hStrategy(
   const requireBearCandle = paramFlag(params.requireBearCandle, true);
   const stopLossPct = Number(params.stopLossPct ?? 0.08);
   const sellTp1Percent = Number(params.sellTp1Percent ?? 9);
-  const sellTp2Percent = Number(params.sellTp2Percent ?? 19);
-  const sellTp1Position = Math.min(100, Math.max(1, Number(params.sellTp1Position ?? 30)));
-  const sellTp2Position = Math.min(100, Math.max(1, Number(params.sellTp2Position ?? 40)));
+  const sellTp2Percent = Number(params.sellTp2Percent ?? 28);
+  const sellTp1Position = Math.min(100, Math.max(1, Number(params.sellTp1Position ?? 50)));
+  const sellTp2Position = Math.min(100, Math.max(1, Number(params.sellTp2Position ?? 30)));
 
   try {
     const historyBars = Math.max(pullbackMaxBars, rsiPullbackLookback, slopeLookback) + 5;

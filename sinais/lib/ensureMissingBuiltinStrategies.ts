@@ -24,6 +24,7 @@ import {
   syncMacdHistogramPmoParams,
   syncPivotBossBear15mUniverse,
   syncRsiOverboughtDrop1hConfig,
+  syncRsiOverboughtDropLegacy1hConfig,
 } from './strategyMigrations';
 
 /** Estratégias importadas (foto + afastamento 80/7) — criadas se faltarem na BD. */
@@ -101,6 +102,10 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const rsiSync = await syncRsiOverboughtDrop1hConfig(prisma);
   if (rsiSync.updated) {
     console.log('✅ RSI_OVERBOUGHT_DROP_1H: params/descrição actualizados (pullback bear 1h)');
+  }
+  const rsiLegacySync = await syncRsiOverboughtDropLegacy1hConfig(prisma);
+  if (rsiLegacySync.updated) {
+    console.log('✅ RSI_OVERBOUGHT_DROP_LEGACY_1H: params/descrição actualizados (TP 50/30/28%)');
   }
   const af30mSync = await syncAfastamentoMedio30mBuyPrevMax(prisma);
   if (af30mSync.updated) {
