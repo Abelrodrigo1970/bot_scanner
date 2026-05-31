@@ -36,14 +36,10 @@ export function clearBacktestCandlePools(): void {
   backtestCandleState = null;
 }
 
-const BINANCE_FAPI_HOSTS = [
-  'https://fapi1.binance.com',
-  'https://fapi2.binance.com',
-  'https://fapi.binance.com',
-  'https://fapi3.binance.com',
-] as const;
+/** fapi1/2/3 devolvem HTTP 202 + corpo vazio (Railway US e muitas regiões) — só fapi.binance.com é fiável. */
+const BINANCE_FAPI_HOSTS = ['https://fapi.binance.com'] as const;
 
-const BINANCE_FAPI_RETRYABLE_STATUSES = new Set([418, 429, 451, 500, 502, 503, 504]);
+const BINANCE_FAPI_RETRYABLE_STATUSES = new Set([202, 418, 429, 451, 500, 502, 503, 504]);
 const BYBIT_API_BASE = 'https://api.bybit.com';
 /** Intervalos Binance → Bybit linear kline (v5). */
 const BYBIT_KLINE_INTERVAL: Record<string, string> = {
@@ -141,11 +137,16 @@ function canUseBybitMarketData(): boolean {
   return true;
 }
 
+/** HTTP 202 Accepted com corpo vazio — mirrors fapi1/2/3; tratar como falha retryable. */
+function isBinanceEmptyBody(status: number, bodyText: string): boolean {
+  return !bodyText.trim() || status === 202;
+}
+
 /** GET Binance Futures público com fila global, mirrors e retry. */
 async function fetchBinanceFapiText(path: string): Promise<string> {
   const normalized = path.startsWith('/') ? path : `/${path}`;
   const hostCount = BINANCE_FAPI_HOSTS.length;
-  const maxAttempts = hostCount * 4;
+  const maxAttempts = Math.max(8, hostCount * 6);
   let lastError: unknown;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -163,11 +164,12 @@ async function fetchBinanceFapiText(path: string): Promise<string> {
       const bodyText = await response.text();
 
       if (!response.ok) {
-        const error: Error & { status?: number } = new Error(
+        const error: Error & { status?: number; retryable?: boolean } = new Error(
           `Binance ${normalized}: ${response.status} ${response.statusText}`
         );
         error.status = response.status;
-        if (!BINANCE_FAPI_RETRYABLE_STATUSES.has(response.status)) throw error;
+        error.retryable = BINANCE_FAPI_RETRYABLE_STATUSES.has(response.status);
+        if (!error.retryable) throw error;
         lastError = error;
         await delay(
           retryDelayMs(response.status, attempt, response.headers.get('retry-after'))
@@ -175,17 +177,22 @@ async function fetchBinanceFapiText(path: string): Promise<string> {
         continue;
       }
 
-      const trimmed = bodyText.trim();
-      if (!trimmed) {
-        lastError = new Error(`Resposta vazia Binance ${normalized} @ ${host}`);
-        await delay(retryDelayMs(0, attempt));
+      if (isBinanceEmptyBody(response.status, bodyText)) {
+        const error: Error & { status?: number; retryable?: boolean } = new Error(
+          `Resposta vazia Binance ${normalized} @ ${host} (HTTP ${response.status})`
+        );
+        error.status = response.status === 202 ? 202 : undefined;
+        error.retryable = true;
+        lastError = error;
+        await delay(retryDelayMs(response.status === 202 ? 429 : 0, attempt));
         continue;
       }
-      return trimmed;
+      return bodyText.trim();
     } catch (err) {
       lastError = err;
       if (!isRetryableKlinesError(err) || attempt === maxAttempts - 1) break;
-      await delay(retryDelayMs(0, attempt));
+      const status = (err as { status?: number })?.status;
+      await delay(retryDelayMs(status ?? 0, attempt));
     }
   }
 
@@ -384,57 +391,20 @@ export async function fetchCandles(
     return filtered.slice(-Math.max(1, limit));
   }
 
-  const hostCount = BINANCE_FAPI_HOSTS.length;
-  /** Várias voltas aos mirrors (rate limit / timeout / corpo truncado). */
-  const maxAttempts = hostCount * 6;
+  const params = new URLSearchParams({
+    symbol,
+    interval,
+    limit: String(limit),
+  });
+  if (startTime) params.set('startTime', String(startTime));
+  if (endTime) params.set('endTime', String(endTime));
 
   let lastError: unknown;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const host = BINANCE_FAPI_HOSTS[attempt % hostCount];
-    const url = new URL('/fapi/v1/klines', host);
-    url.searchParams.set('symbol', symbol);
-    url.searchParams.set('interval', interval);
-    url.searchParams.set('limit', String(limit));
-    if (startTime) url.searchParams.set('startTime', String(startTime));
-    if (endTime) url.searchParams.set('endTime', String(endTime));
-
-    try {
-      const response = await runOnBinanceQueue(() =>
-        fetch(url.toString(), {
-          cache: 'no-store',
-          headers: BINANCE_PUBLIC_HEADERS,
-          signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-        })
-      );
-      const bodyText = await response.text();
-
-      if (!response.ok) {
-        const error: Error & { status?: number; endpoint?: string } = new Error(
-          `Erro ao buscar dados: ${response.status} ${response.statusText}`
-        );
-        error.status = response.status;
-        error.endpoint = host;
-        if (!BINANCE_FAPI_RETRYABLE_STATUSES.has(response.status)) {
-          throw error;
-        }
-        lastError = error;
-        if (attempt < maxAttempts - 1) {
-          await delay(
-            retryDelayMs(response.status, attempt, response.headers.get('retry-after'))
-          );
-        }
-        continue;
-      }
-
-      return parseBinanceKlinesBody(bodyText, symbol, host);
-    } catch (err) {
-      lastError = err;
-      const status = (err as { status?: number })?.status;
-      if (!isRetryableKlinesError(err) || attempt === maxAttempts - 1) {
-        break;
-      }
-      await delay(retryDelayMs(status ?? 0, attempt));
-    }
+  try {
+    const bodyText = await fetchBinanceFapiText(`/fapi/v1/klines?${params}`);
+    return parseBinanceKlinesBody(bodyText, symbol, BINANCE_FAPI_HOSTS[0]);
+  } catch (err) {
+    lastError = err;
   }
 
   if (shouldFallbackToBybit(lastError) && BYBIT_KLINE_INTERVAL[interval]) {
@@ -460,66 +430,19 @@ export async function fetchCandles(
  * Busca o preço actual de um par (Futures USDⓈ-M). Usa mirrors Binance como fetchCandles.
  */
 export async function fetchCurrentPrice(symbol: string): Promise<number> {
-  const hostCount = BINANCE_FAPI_HOSTS.length;
-  const maxAttempts = hostCount * 6;
   let lastError: unknown;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const host = BINANCE_FAPI_HOSTS[attempt % hostCount];
-    const url = `${host}/fapi/v1/ticker/price?symbol=${symbol.toUpperCase()}`;
-
-    try {
-      const response = await runOnBinanceQueue(() =>
-        fetch(url, {
-          cache: 'no-store',
-          headers: BINANCE_PUBLIC_HEADERS,
-          signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-        })
-      );
-      const bodyText = await response.text();
-
-      if (!response.ok) {
-        let detail = `${response.status} ${response.statusText}`.trim();
-        try {
-          const api = JSON.parse(bodyText.trim()) as { msg?: string; code?: number };
-          if (api?.msg) detail = `${detail} — ${api.msg}`;
-        } catch {
-          if (bodyText.trim()) detail += ` — ${bodyText.trim().slice(0, 120)}`;
-        }
-        const error: Error & { status?: number } = new Error(
-          `Erro ao buscar preço ${symbol}: ${detail}`
-        );
-        error.status = response.status;
-        if (!BINANCE_FAPI_RETRYABLE_STATUSES.has(response.status)) {
-          throw error;
-        }
-        lastError = error;
-        await delay(
-          retryDelayMs(response.status, attempt, response.headers.get('retry-after'))
-        );
-        continue;
-      }
-
-      const trimmed = bodyText.trim();
-      if (!trimmed) {
-        lastError = new Error(`Resposta vazia da Binance (preço ${symbol})`);
-        await delay(retryDelayMs(0, attempt));
-        continue;
-      }
-
-      const data = JSON.parse(trimmed) as { price?: string };
-      const price = parseFloat(data.price ?? '');
-      if (!Number.isFinite(price) || price <= 0) {
-        throw new Error(`Preço inválido para ${symbol}`);
-      }
-      return price;
-    } catch (err) {
-      lastError = err;
-      const status = (err as { status?: number })?.status;
-      if (!isRetryableKlinesError(err) || attempt === maxAttempts - 1) {
-        break;
-      }
-      await delay(retryDelayMs(status ?? 0, attempt));
+  try {
+    const bodyText = await fetchBinanceFapiText(
+      `/fapi/v1/ticker/price?symbol=${symbol.toUpperCase()}`
+    );
+    const data = JSON.parse(bodyText) as { price?: string };
+    const price = parseFloat(data.price ?? '');
+    if (!Number.isFinite(price) || price <= 0) {
+      throw new Error(`Preço inválido para ${symbol}`);
     }
+    return price;
+  } catch (err) {
+    lastError = err;
   }
 
   if (shouldFallbackToBybit(lastError)) {
@@ -579,27 +502,18 @@ export async function fetchFallbackPrice(
 /** Turnover USDT da última vela 1h fechada (Binance Futures). Proxy de liquidez/market cap. */
 export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<number | null> {
   const sym = symbol.toUpperCase();
-  for (const host of BINANCE_FAPI_HOSTS) {
-    try {
-      const response = await runOnBinanceQueue(() =>
-        fetch(`${host}/fapi/v1/klines?symbol=${sym}&interval=1h&limit=2`, {
-          cache: 'no-store',
-          headers: BINANCE_PUBLIC_HEADERS,
-          signal: AbortSignal.timeout(BINANCE_KLINES_TIMEOUT_MS),
-        })
-      );
-      if (!response.ok) continue;
-      const rows = (await response.json()) as unknown[][];
-      if (rows.length < 1) return null;
-      const lastClosed = rows.length >= 2 ? rows[rows.length - 2]! : rows[rows.length - 1]!;
-      const quoteVol = parseFloat(String(lastClosed[7] ?? ''));
-      return Number.isFinite(quoteVol) && quoteVol > 0 ? quoteVol : null;
-    } catch {
-      continue;
-    }
+  try {
+    const bodyText = await fetchBinanceFapiText(
+      `/fapi/v1/klines?symbol=${sym}&interval=1h&limit=2`
+    );
+    const rows = JSON.parse(bodyText) as unknown[][];
+    if (rows.length < 1) return null;
+    const lastClosed = rows.length >= 2 ? rows[rows.length - 2]! : rows[rows.length - 1]!;
+    const quoteVol = parseFloat(String(lastClosed[7] ?? ''));
+    return Number.isFinite(quoteVol) && quoteVol > 0 ? quoteVol : null;
+  } catch {
+    return null;
   }
-
-  return null;
 }
 
 /**
