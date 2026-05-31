@@ -368,12 +368,14 @@ export default function EstrategiasPage() {
         const defaultSellTp2Position = 0;
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Timeframe <strong>4h</strong>. Universo = <strong>Scanner 4</strong> (fecho acima SMA200 em 1d).
+              COMPRA/VENDA quando o preço cruza a MA200 com confirmação de 2%.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {numField('Confirmação (%)', p.confirmationPct ?? 2, (v) => upd({ confirmationPct: v }), 0.5)}
               {numField('Período MA', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
               {numField('Distância máx. à MA (%)', p.maxDistancePct ?? 10, (v) => upd({ maxDistancePct: v }), 0.5)}
-              {numField('Máx. símbolos', p.symbolLimit ?? 500, (v) => upd({ symbolLimit: v }))}
-              {numField('Volume mínimo', p.minQuoteVolume ?? 100000, (v) => upd({ minQuoteVolume: v }))}
             </div>
             <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">BUY</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -33,7 +33,6 @@ import {
   fetchCandles,
   fetchTopSymbolsBy1hPriceChange,
   fetchTopSymbolsBy24hPriceChange,
-  fetchTopSymbolsByVolume,
   type Candle,
   type Timeframe,
 } from './marketData';
@@ -1765,17 +1764,14 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'MA200_VOLATILE') {
-        const maxSymbols = params.symbolLimit ?? 500;
-        const minQuoteVolume = params.minQuoteVolume ?? 100000;
-        console.log(`🔍 Buscando universo alargado para ${strategy.name} (${maxSymbols} símbolos)...`);
-        try {
-          const broadSymbols = await fetchTopSymbolsByVolume(maxSymbols, minQuoteVolume);
-          if (broadSymbols.length > 0) {
-            symbolsToAnalyze = broadSymbols;
-            console.log(`✅ Encontrados ${broadSymbols.length} símbolos líquidos`);
-          }
-        } catch (err) {
-          console.warn(`⚠️ Falha ao ampliar universo de ${strategy.name}, usando Top movers 1h:`, err);
+        console.log(`🔍 ${strategy.name}: universo Scanner 4 (acima SMA200, 1d); sinais em 4h...`);
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 4)`);
+        if (symbolsToAnalyze.length === 0) {
+          console.warn(
+            `⚠️ Scanner 4 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 4. Ignorando ${strategy.name}.`
+          );
+          continue;
         }
       } else if (strategy.name === 'MA_CROSS_5M' || strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H') {
         console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima SMA200, 1h)...`);

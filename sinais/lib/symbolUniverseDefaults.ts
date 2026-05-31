@@ -82,8 +82,8 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA200_1D: {
     displayName: 'Scanner 4 — Acima SMA200 (1d)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em velas diárias (1d). Universo: Pivot Boss Bear 1h.',
-    strategyNames: 'PIVOT_BOSS_BEAR_1H',
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em velas diárias (1d). Universo: Pivot Boss Bear 1h e MA200 Top Voláteis (4h).',
+    strategyNames: 'PIVOT_BOSS_BEAR_1H, MA200_VOLATILE',
   },
 };
 

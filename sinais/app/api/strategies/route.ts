@@ -12,6 +12,7 @@ import {
   syncAfastamentoMedio30mBuyPrevMax,
   syncMacdHistogramPmoParams,
   syncMaCrossScanner1UniverseDescriptions,
+  syncMa200Scanner4UniverseDescription,
   syncRsiOverboughtDrop1hConfig,
 } from '@/lib/strategyMigrations';
 
@@ -67,6 +68,7 @@ async function ensureMissingStrategies() {
   await ensureMissingBuiltinStrategies(prisma);
   await syncMacdHistogramPmoParams(prisma);
   await syncMaCrossScanner1UniverseDescriptions(prisma);
+  await syncMa200Scanner4UniverseDescription(prisma);
   await syncRsiOverboughtDrop1hConfig(prisma);
   await syncAfastamentoMedio30mBuyPrevMax(prisma);
 

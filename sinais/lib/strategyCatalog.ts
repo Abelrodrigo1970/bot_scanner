@@ -50,7 +50,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     cron: '1h',
     cronLabel: 'Cron 1h',
     timeframe: '4h',
-    universe: 'Top volume 24h',
+    universe: 'Scanner 4 (acima SMA200, 1d)',
   },
   MACD_HISTOGRAM_PMO: {
     cron: '1h',

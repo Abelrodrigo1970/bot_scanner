@@ -22,6 +22,7 @@ import {
   PIVOT_BOSS_BEAR_1H_DISPLAY,
   syncAfastamentoMedio30mBuyPrevMax,
   syncMacdHistogramPmoParams,
+  syncMa200Scanner4UniverseDescription,
   syncPivotBossBear15mUniverse,
   syncRsiOverboughtDrop1hConfig,
   syncRsiOverboughtDropLegacy1hConfig,
@@ -113,6 +114,10 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   }
   const pivotBossSync = await syncPivotBossBear15mUniverse(prisma);
   if (pivotBossSync.updated) {
-    console.log('✅ PIVOT_BOSS_BEAR: universo/descrição actualizados (15m → Scanner 1; 1h → Scanner 2)');
+    console.log('✅ PIVOT_BOSS_BEAR: universo/descrição actualizados (15m → Scanner 1; 1h → Scanner 4)');
+  }
+  const ma200Sync = await syncMa200Scanner4UniverseDescription(prisma);
+  if (ma200Sync.updated) {
+    console.log('✅ MA200_VOLATILE: universo actualizado para Scanner 4 (1d)');
   }
 }

@@ -36,9 +36,10 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     strategyName: 'MA200_VOLATILE',
     displayLabel: 'MA200 Top Voláteis',
     signalTimeframes: ['4h'],
-    source: 'runtime_top_volume',
-    dataKey: 'fetchTopSymbolsByVolume',
-    description: 'Top por volume 24h (param. symbolLimit / minQuoteVolume), sem tabela de universo.',
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_ABOVE_MA200_1D',
+    description: 'Scanner 4: fecho acima SMA200 (1d); sinais em 4h.',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
     strategyName: 'EMA_SCALPING_SELL',
@@ -123,6 +124,6 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/4',
-    label: 'Scanner 4 — Acima SMA200 (1d, Pivot Boss 1h)',
+    label: 'Scanner 4 — Acima SMA200 (1d, Pivot Boss 1h + MA200 4h)',
   },
 ] as const;

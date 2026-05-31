@@ -264,6 +264,9 @@ export const PIVOT_BOSS_BEAR_1H_DISPLAY = 'Pivot Boss Bear 1h (4 EMA venda)';
 export const PIVOT_BOSS_BEAR_1H_DESCRIPTION =
   'Universo: Scanner 4 (fecho acima SMA200 em 1d). Pivot Boss em 1h, só VENDA. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 2 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. SL +8% fixo | TP1 -9% (50%) | restante às 24h.';
 
+export const MA200_VOLATILE_DESCRIPTION =
+  'MA200 4h. Universo: Scanner 4 (fecho acima SMA200 em 1d). COMPRA: fecha 2%+ acima MA200, só se a distância à média for inferior a 10% → SL -4% | TP1 +80% (70%) | restante às 24h. VENDA: fecha 2%+ abaixo MA200, só se a distância à média for inferior a 10% → SL +4% | TP1 -80% (70%) | restante às 24h.';
+
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
   emaMidPeriod: 30,
@@ -770,6 +773,33 @@ export async function syncMacdHistogramPmoParams(
       params: JSON.stringify(next),
       description: MACD_HISTOGRAM_PMO_DESCRIPTION,
     },
+  });
+  return { updated: true };
+}
+
+/** Actualiza descrição MA200 4h para universo Scanner 4 (1d). */
+export async function syncMa200Scanner4UniverseDescription(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'MA200_VOLATILE' },
+    select: { description: true },
+  });
+  if (!row) return { updated: false };
+
+  const needsUpdate =
+    row.description?.includes('Top Voláteis') ||
+    row.description?.includes('símbolos líquidos') ||
+    row.description?.includes('Universo alargado') ||
+    row.description?.includes('top volume') ||
+    row.description?.includes('Top por volume') ||
+    !row.description?.includes('Scanner 4');
+
+  if (!needsUpdate) return { updated: false };
+
+  await prisma.strategy.update({
+    where: { name: 'MA200_VOLATILE' },
+    data: { description: MA200_VOLATILE_DESCRIPTION },
   });
   return { updated: true };
 }

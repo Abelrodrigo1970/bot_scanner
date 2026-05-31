@@ -4,6 +4,7 @@ import {
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_5M_PARAMS,
+  MA200_VOLATILE_DESCRIPTION,
   migrateVolumeSpike15mToMaCross5m,
   removeDeprecatedStrategies,
 } from '../lib/strategyMigrations';
@@ -48,8 +49,7 @@ async function main() {
   const ma200VolatileStrategy = await prisma.strategy.upsert({
     where: { name: 'MA200_VOLATILE' },
     update: {
-      description:
-        'MA200 4h. Universo alargado de símbolos líquidos. COMPRA: fecha 2%+ acima MA200, só se a distância à média for inferior a 10% → SL -4% | TP1 +80% (70%) | restante às 24h. VENDA: fecha 2%+ abaixo MA200, só se a distância à média for inferior a 10% → SL +4% | TP1 -80% (70%) | restante às 24h.',
+      description: MA200_VOLATILE_DESCRIPTION,
       params: JSON.stringify({
         ma200Period: 200,
         confirmationPct: 2,
@@ -71,8 +71,7 @@ async function main() {
     create: {
       name: 'MA200_VOLATILE',
       displayName: 'MA200 Top Voláteis',
-      description:
-        'MA200 4h. Universo alargado de símbolos líquidos. COMPRA: fecha 2%+ acima MA200, só se a distância à média for inferior a 10% → SL -4% | TP1 +80% (70%) | restante às 24h. VENDA: fecha 2%+ abaixo MA200, só se a distância à média for inferior a 10% → SL +4% | TP1 -80% (70%) | restante às 24h.',
+      description: MA200_VOLATILE_DESCRIPTION,
       isActive: true,
       params: JSON.stringify({
         ma200Period: 200,
