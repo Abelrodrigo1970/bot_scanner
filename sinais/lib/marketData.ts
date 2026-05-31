@@ -2,8 +2,6 @@
  * Funções para buscar dados de mercado de APIs públicas
  */
 
-import { ProxyAgent, type Dispatcher } from 'undici';
-
 export interface Candle {
   open: number;
   high: number;
@@ -82,42 +80,25 @@ let binanceGeoBlocked = false;
 let binanceGeoBlockWarned = false;
 let binance451PerSymbolLogs = 0;
 
-let binanceProxyAgent: Dispatcher | undefined;
-
-function hasBinanceHttpProxy(): boolean {
-  return !!(process.env.BINANCE_HTTP_PROXY || process.env.HTTPS_PROXY);
-}
-
-function getBinanceProxyAgent(): Dispatcher | undefined {
-  const proxyUrl = process.env.BINANCE_HTTP_PROXY || process.env.HTTPS_PROXY;
-  if (!proxyUrl) return undefined;
-  if (!binanceProxyAgent) binanceProxyAgent = new ProxyAgent(proxyUrl);
-  return binanceProxyAgent;
-}
-
-type HttpFetchInit = RequestInit & { dispatcher?: Dispatcher };
-
-function httpFetch(url: string, init: HttpFetchInit = {}): Promise<Response> {
-  return fetch(url, init);
-}
-
 function binanceHttpFetch(url: string, timeoutMs = BINANCE_KLINES_TIMEOUT_MS): Promise<Response> {
-  const dispatcher = getBinanceProxyAgent();
-  return httpFetch(url, {
+  return fetch(url, {
     cache: 'no-store',
     headers: BINANCE_PUBLIC_HEADERS,
     signal: AbortSignal.timeout(timeoutMs),
-    ...(dispatcher ? { dispatcher } : {}),
   });
+}
+
+function httpFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(url, init);
 }
 
 function markBinanceGeoBlocked(): void {
   binanceGeoBlocked = true;
   if (!binanceGeoBlockWarned) {
-    const hint = hasBinanceHttpProxy()
-      ? 'proxy BINANCE_HTTP_PROXY activo — a tentar Binance via proxy'
-      : 'a usar Bybit para klines; ou define BINANCE_HTTP_PROXY / região EU no Railway';
-    console.warn(`⚠️ Binance geo-block (451) neste servidor; ${hint}.`);
+    console.warn(
+      '⚠️ Binance geo-block (451) neste servidor; a usar Bybit para klines. ' +
+        'Alternativa: região EU no Railway ou BYBIT_MARKET_DATA_BASE_URL=https://api.bybit.nl'
+    );
     binanceGeoBlockWarned = true;
   }
 }
@@ -217,7 +198,7 @@ function isBinanceEmptyBody(status: number, bodyText: string): boolean {
 async function fetchBinanceFapiText(path: string): Promise<string> {
   const normalized = path.startsWith('/') ? path : `/${path}`;
 
-  if (binanceGeoBlocked && !hasBinanceHttpProxy()) {
+  if (binanceGeoBlocked) {
     throw binance451Error(normalized);
   }
 
@@ -456,7 +437,7 @@ async function fetchCurrentPriceFromBybit(symbol: string): Promise<number> {
 
 function shouldUseBybitMarketData(err?: unknown): boolean {
   if (!canUseBybitMarketData()) return false;
-  if (binanceGeoBlocked && !hasBinanceHttpProxy()) return true;
+  if (binanceGeoBlocked) return true;
   if (!err || typeof err !== 'object') return false;
   return (err as { status?: number }).status === 451;
 }
@@ -511,7 +492,7 @@ export async function fetchCandles(
     try {
       return await fetchCandlesFromBybit(symbol, interval, limit, startTime, endTime);
     } catch (bybitErr) {
-      if (!hasBinanceHttpProxy() && binanceGeoBlocked) {
+      if (binanceGeoBlocked) {
         throw bybitErr;
       }
     }
@@ -546,7 +527,7 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
     try {
       return await fetchCurrentPriceFromBybit(symbol);
     } catch (bybitErr) {
-      if (!hasBinanceHttpProxy() && binanceGeoBlocked) throw bybitErr;
+      if (binanceGeoBlocked) throw bybitErr;
     }
   }
 
