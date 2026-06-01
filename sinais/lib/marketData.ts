@@ -61,13 +61,18 @@ function isBinanceKlinesApiPath(path: string): boolean {
   return /\/klines\b/i.test(path);
 }
 
-/** Bybit primeiro no Railway US (Binance público costuma devolver 451). Override: MARKET_DATA_PRIMARY=binance|bybit */
+/**
+ * Binance é a fonte primária por defeito (funciona na maioria das regiões Railway, incl. EU).
+ * A Bybit entra apenas como fallback automático quando a Binance devolve 451 (ver shouldUseBybitMarketData).
+ * Para forçar a Bybit como primária (ex.: servidor numa região onde a Binance bloqueia mas a Bybit não):
+ * MARKET_DATA_PRIMARY=bybit (ou MARKET_DATA_BYBIT_PRIMARY=true).
+ */
 function isBybitMarketDataPrimary(): boolean {
   const primary = (process.env.MARKET_DATA_PRIMARY ?? '').trim().toLowerCase();
   if (primary === 'bybit') return true;
   if (primary === 'binance') return false;
   if (process.env.MARKET_DATA_BYBIT_PRIMARY === 'true') return true;
-  return isRailwayHosted();
+  return false;
 }
 
 /** Hosts públicos Bybit (market data). Railway US bloqueia api.bybit.com — tentar mirrors. */

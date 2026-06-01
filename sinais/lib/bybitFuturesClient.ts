@@ -22,6 +22,22 @@ function createSignature(payload: string): string {
   return crypto.createHmac('sha256', apiSecret).update(payload).digest('hex');
 }
 
+// Lê a resposta como texto e só depois faz parse, para que um corpo não-JSON
+// (ex.: HTML 403 da CloudFront ao geo-bloquear o IP) gere um erro claro em vez
+// de "Expected property name or '}' in JSON at position N".
+async function parseBybitResponse<T>(response: Response): Promise<{ retCode: number; retMsg: string; result: T }> {
+  const text = await response.text();
+  const snippet = text.slice(0, 200).replace(/\s+/g, ' ').trim();
+  if (!response.ok) {
+    throw new Error(`Bybit HTTP ${response.status}${snippet ? ` — ${snippet}` : ''}`);
+  }
+  try {
+    return JSON.parse(text) as { retCode: number; retMsg: string; result: T };
+  } catch {
+    throw new Error(`Bybit resposta não-JSON (HTTP ${response.status})${snippet ? ` — ${snippet}` : ''}`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // GET request (query string assinada no header)
 // ---------------------------------------------------------------------------
@@ -45,7 +61,7 @@ async function signedGet<T>(path: string, params: Record<string, string> = {}): 
     },
   });
 
-  const data = await response.json() as { retCode: number; retMsg: string; result: T };
+  const data = await parseBybitResponse<T>(response);
   if (data.retCode !== 0) throw new Error(`Bybit API: ${data.retMsg} (retCode ${data.retCode})`);
   return data.result;
 }
@@ -74,7 +90,7 @@ async function signedPost<T>(path: string, body: Record<string, unknown> = {}): 
     body: rawBody,
   });
 
-  const data = await response.json() as { retCode: number; retMsg: string; result: T };
+  const data = await parseBybitResponse<T>(response);
   if (data.retCode !== 0) throw new Error(`Bybit API: ${data.retMsg} (retCode ${data.retCode})`);
   return data.result;
 }
