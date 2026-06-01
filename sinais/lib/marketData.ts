@@ -42,7 +42,23 @@ const BINANCE_FAPI_HOSTS = ['https://fapi.binance.com'] as const;
 const BINANCE_FAPI_RETRYABLE_STATUSES = new Set([202, 418, 429, 500, 502, 503, 504]);
 
 function isRailwayHosted(): boolean {
-  return Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID);
+  return Boolean(
+    process.env.RAILWAY_ENVIRONMENT ||
+      process.env.RAILWAY_PROJECT_ID ||
+      process.env.RAILWAY_SERVICE_ID ||
+      process.env.RAILWAY_REPLICA_ID
+  );
+}
+
+/** Binance público (klines/tickers): omitir no Railway / MARKET_DATA_PRIMARY=bybit. */
+function canAttemptBinancePublicApi(): boolean {
+  if (isBybitMarketDataPrimary()) return false;
+  if (binanceGeoBlocked) return false;
+  return true;
+}
+
+function isBinanceKlinesApiPath(path: string): boolean {
+  return /\/klines\b/i.test(path);
 }
 
 /** Bybit primeiro no Railway US (Binance público costuma devolver 451). Override: MARKET_DATA_PRIMARY=binance|bybit */
@@ -224,8 +240,16 @@ function isBinanceEmptyBody(status: number, bodyText: string): boolean {
 async function fetchBinanceFapiText(path: string): Promise<string> {
   const normalized = path.startsWith('/') ? path : `/${path}`;
 
-  if (binanceGeoBlocked) {
-    throw binance451Error(normalized);
+  if (!canAttemptBinancePublicApi()) {
+    if (binanceGeoBlocked) {
+      throw binance451Error(normalized);
+    }
+    const err = new Error(
+      `Binance ${normalized}: omitido (Bybit é a fonte primária; defina MARKET_DATA_PRIMARY=binance só em servidor EU)`
+    ) as Error & { status: number; retryable: boolean };
+    err.status = 451;
+    err.retryable = false;
+    throw err;
   }
 
   const hostCount = BINANCE_FAPI_HOSTS.length;
@@ -319,8 +343,11 @@ async function fetchUsdtPerpTickers24hr(): Promise<UsdtPerpTicker24hr[]> {
       return await fetchBybitLinearTickers24hr();
     } catch (bybitErr) {
       noteBybitGeoBlock(bybitErr);
-      if (binanceGeoBlocked) throw bybitErr;
+      throw bybitErr;
     }
+  }
+  if (!canAttemptBinancePublicApi()) {
+    throw new Error('Tickers 24h: Bybit falhou e Binance omitida (servidor Bybit primário)');
   }
   return JSON.parse(
     await fetchBinanceFapiText('/fapi/v1/ticker/24hr')
@@ -533,8 +560,13 @@ async function fetchCurrentPriceFromBybit(symbol: string): Promise<number> {
 }
 
 function shouldUseBybitMarketData(err?: unknown): boolean {
+  if (process.env.BYBIT_MARKET_DATA_FALLBACK === 'false' && !isBybitMarketDataPrimary()) {
+    return false;
+  }
+  if (isBybitMarketDataPrimary()) {
+    return canUseBybitMarketData();
+  }
   if (!canUseBybitMarketData()) return false;
-  if (isBybitMarketDataPrimary()) return true;
   if (binanceGeoBlocked) return true;
   if (!err || typeof err !== 'object') return false;
   return (err as { status?: number }).status === 451;
@@ -587,17 +619,32 @@ export async function fetchCandles(
   if (startTime) params.set('startTime', String(startTime));
   if (endTime) params.set('endTime', String(endTime));
 
-  if (shouldUseBybitMarketData() && BYBIT_KLINE_INTERVAL[interval]) {
+  const bybitInterval = BYBIT_KLINE_INTERVAL[interval];
+  let lastError: unknown;
+
+  if (shouldUseBybitMarketData() && bybitInterval) {
     try {
       return await fetchCandlesFromBybit(symbol, interval, limit, startTime, endTime);
     } catch (bybitErr) {
-      if (binanceGeoBlocked) {
-        throw bybitErr;
+      noteBybitGeoBlock(bybitErr);
+      lastError = bybitErr;
+      if (isBybitMarketDataPrimary()) {
+        warnCandlesFetchFailure(symbol, interval, lastError);
+        throw lastError;
       }
     }
   }
 
-  let lastError: unknown;
+  if (!canAttemptBinancePublicApi()) {
+    const msg =
+      bybitMarketDataGeoBlocked && isBybitMarketDataPrimary()
+        ? `Bybit indisponível (403 em todos os hosts). Configure BYBIT_MARKET_DATA_BASE_URL=https://api.bybit.nl`
+        : 'Binance bloqueada (451) e Bybit não configurado';
+    const err = new Error(`${msg} — ${symbol} ${interval}`);
+    warnCandlesFetchFailure(symbol, interval, lastError ?? err);
+    throw lastError instanceof Error ? lastError : err;
+  }
+
   try {
     const bodyText = await fetchBinanceFapiText(`/fapi/v1/klines?${params}`);
     return parseBinanceKlinesBody(bodyText, symbol, BINANCE_FAPI_HOSTS[0]);
@@ -605,7 +652,7 @@ export async function fetchCandles(
     lastError = err;
   }
 
-  if (shouldUseBybitMarketData(lastError) && BYBIT_KLINE_INTERVAL[interval]) {
+  if (shouldUseBybitMarketData(lastError) && bybitInterval) {
     try {
       return await fetchCandlesFromBybit(symbol, interval, limit, startTime, endTime);
     } catch (bybitErr) {
@@ -622,15 +669,26 @@ export async function fetchCandles(
  * Busca o preço actual de um par (Futures USDⓈ-M). Usa mirrors Binance como fetchCandles.
  */
 export async function fetchCurrentPrice(symbol: string): Promise<number> {
+  let lastError: unknown;
+
   if (shouldUseBybitMarketData()) {
     try {
       return await fetchCurrentPriceFromBybit(symbol);
     } catch (bybitErr) {
-      if (binanceGeoBlocked) throw bybitErr;
+      noteBybitGeoBlock(bybitErr);
+      lastError = bybitErr;
+      if (isBybitMarketDataPrimary()) {
+        throw bybitErr;
+      }
     }
   }
 
-  let lastError: unknown;
+  if (!canAttemptBinancePublicApi()) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error(`Preço ${symbol}: Bybit/Binance indisponíveis neste servidor`);
+  }
+
   try {
     const bodyText = await fetchBinanceFapiText(
       `/fapi/v1/ticker/price?symbol=${symbol.toUpperCase()}`
@@ -721,6 +779,10 @@ export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<n
     } catch {
       // fallback Binance abaixo
     }
+  }
+
+  if (!canAttemptBinancePublicApi()) {
+    return null;
   }
 
   try {
