@@ -698,14 +698,37 @@ export async function fetchFallbackPrice(
   return { price: entryPrice, source: 'entry' };
 }
 
-/** Turnover USDT da última vela 1h fechada (Binance Futures). Proxy de liquidez/market cap. */
+/** Turnover USDT da última vela 1h fechada. Usa quote volume (Binance índice 7, Bybit turnover). */
 export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<number | null> {
   const sym = symbol.toUpperCase();
+
+  if (shouldUseBybitMarketData() && BYBIT_KLINE_INTERVAL['1h']) {
+    try {
+      const params = new URLSearchParams({
+        category: 'linear',
+        symbol: sym,
+        interval: BYBIT_KLINE_INTERVAL['1h'],
+        limit: '2',
+      });
+      const bodyText = await fetchBybitMarketText(`/v5/market/kline?${params}`);
+      const parsed = JSON.parse(bodyText) as { result?: { list?: string[][] } };
+      const rows = parsed.result?.list ?? [];
+      if (rows.length >= 1) {
+        const lastClosed = rows.length >= 2 ? rows[rows.length - 2]! : rows[rows.length - 1]!;
+        const turnover = parseFloat(lastClosed[6] ?? '');
+        if (Number.isFinite(turnover) && turnover > 0) return turnover;
+      }
+    } catch {
+      // fallback Binance abaixo
+    }
+  }
+
   try {
-    const candles = await fetchCandles(sym, '1h', 2);
-    if (candles.length < 1) return null;
-    const lastClosed = candles.length >= 2 ? candles[candles.length - 2]! : candles[candles.length - 1]!;
-    const quoteVol = lastClosed.volume * lastClosed.close;
+    const bodyText = await fetchBinanceFapiText(`/fapi/v1/klines?symbol=${sym}&interval=1h&limit=2`);
+    const rows = JSON.parse(bodyText) as unknown[][];
+    if (rows.length < 1) return null;
+    const lastClosed = rows.length >= 2 ? rows[rows.length - 2]! : rows[rows.length - 1]!;
+    const quoteVol = parseFloat(String(lastClosed[7] ?? ''));
     return Number.isFinite(quoteVol) && quoteVol > 0 ? quoteVol : null;
   } catch {
     return null;
