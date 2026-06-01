@@ -401,8 +401,8 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>1h</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 2</strong> (±10%
-              EMA80). Tendência bear: preço abaixo EMA80, stack 200&gt;80&gt;30&gt;12, EMA200 a descer. Entrada após
+              Timeframe <strong>1h</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 2</strong> (-5% a
+              +15% EMA80). Tendência bear: preço abaixo EMA80, stack 200&gt;80&gt;30&gt;12, EMA200 a descer. Entrada após
               pullback à EMA30, RSI ≥50 no rally e queda ≥3 pts, vela bear a fechar abaixo EMA12 (como nos breakdowns
               pós-rejeição nas EMAs).
             </p>
@@ -435,8 +435,8 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>1h</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 1</strong> (fecho
-              acima SMA200). Entrada: RSI(14) cruza de ≥70 para baixo (queda ≥4 pts) com preço &gt;10% acima da
+              Timeframe <strong>1h</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 2</strong> (-5% a
+              +15% EMA80). Entrada: RSI(14) cruza de ≥70 para baixo (queda ≥4 pts) com preço &gt;10% acima da
               EMA80 (mean-reversion short).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -17,8 +17,8 @@ const mainMenuItems = [
 /** Scans que alimentam estratégias activas (ver lib/strategyUniverses.ts). */
 const dataSourceItems = [
   { href: '/bybit-ma200-mc20m', label: 'Bybit Vol 1h + MA200 → MA12×MA30' },
-  { href: '/scanners/1', label: 'Scanner 1 — Acima SMA200 (MA Cross + RSI legado + Pivot Boss 15m)' },
-  { href: '/scanners/2', label: 'Scanner 2 — ±10% EMA80 (RSI queda 70)' },
+  { href: '/scanners/1', label: 'Scanner 1 — Acima SMA200 (MA Cross + Pivot Boss 15m)' },
+  { href: '/scanners/2', label: 'Scanner 2 — -5% a +15% EMA80 (RSI legado + RSI pullback bear)' },
   { href: '/scanners/3', label: 'Scanner 3 — ±4% MA80 (4h, Afastamento 30m)' },
   { href: '/scanners/4', label: 'Scanner 4 — Acima SMA200 (1d)' },
 ];

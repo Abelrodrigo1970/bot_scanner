@@ -4,7 +4,7 @@ import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
 
 /**
- * Executa os scanners de universo (MA200 1h/1d, ±10% EMA80, ±4% MA80) e grava na BD.
+ * Executa os scanners de universo (MA200 1h/1d, EMA80 -5/+15%, ±4% MA80) e grava na BD.
  * Resposta imediata 202 — trabalho pesado em background (evita timeout do cron-job.org).
  * Agendar de 4 em 4 horas (00:00, 04:00, 08:00, …).
  */

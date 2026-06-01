@@ -1773,7 +1773,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           );
           continue;
         }
-      } else if (strategy.name === 'MA_CROSS_5M' || strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H') {
+      } else if (strategy.name === 'MA_CROSS_5M') {
         console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima SMA200, 1h)...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
@@ -1812,11 +1812,19 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           );
           continue;
         }
-      } else if (strategy.name === 'RSI_OVERBOUGHT_DROP_1H') {
-        console.log('🔍 RSI_OVERBOUGHT_DROP_1H: universo Scanner 2 (±10% EMA80, 1h)...');
+      } else if (
+        strategy.name === 'RSI_OVERBOUGHT_DROP_1H' ||
+        strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H'
+      ) {
+        console.log(`🔍 ${strategy.name}: universo Scanner 2 (-5% a +15% EMA80, 1h)...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2)`);
-        if (symbolsToAnalyze.length === 0) continue;
+        if (symbolsToAnalyze.length === 0) {
+          console.warn(
+            `⚠️ Scanner 2 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 2. Ignorando ${strategy.name}.`
+          );
+          continue;
+        }
       } else if (strategy.name === 'MACD_HISTOGRAM_PMO') {
         const movers = await loadTopMoverSymbols();
         const lim = Math.min(150, Math.max(20, Math.floor(Number(params.symbolLimit ?? 50))));

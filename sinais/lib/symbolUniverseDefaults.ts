@@ -13,6 +13,11 @@ export const SCANNER_1_MIN_DISTANCE_PCT = 2;
 /** Sem tecto: qualquer fecho acima da SMA200 (1h). */
 export const SCANNER_1_MAX_DISTANCE_PCT = null as number | null;
 
+/** Scanner 2: banda assimétrica vs EMA80 (1h). */
+export const SCANNER_2_MIN_DISTANCE_PCT = -5;
+export const SCANNER_2_MAX_DISTANCE_PCT = 15;
+export const SCANNER_2_EMA80_BAND_LABEL = '-5% a +15% da EMA80 (1h)';
+
 export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
   UNIVERSE_ABOVE_MA200_1H: {
     ruleType: 'ABOVE_MA',
@@ -27,7 +32,8 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     ruleType: 'WITHIN_PCT_OF_MA',
     maPeriod: 80,
     maType: 'EMA',
-    maxDistancePct: 10,
+    minDistancePct: SCANNER_2_MIN_DISTANCE_PCT,
+    maxDistancePct: SCANNER_2_MAX_DISTANCE_PCT,
     timeframe: '1h',
     minQuoteVolume: 100000,
     candidateLimit: 400,
@@ -64,14 +70,14 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA200_1H: {
     displayName: 'Scanner 1 — Acima SMA200 (1h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Universo: MA Cross 15m, RSI queda de 70 legado e Pivot Boss Bear 15m.',
-    strategyNames: 'MA_CROSS_5M, RSI_OVERBOUGHT_DROP_LEGACY_1H, PIVOT_BOSS_BEAR_15M',
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Universo: MA Cross 15m e Pivot Boss Bear 15m.',
+    strategyNames: 'MA_CROSS_5M, PIVOT_BOSS_BEAR_15M',
   },
   UNIVERSE_NEAR_MA200_PCT10_1H: {
-    displayName: 'Scanner 2 — Até ±10% da EMA80 (1h)',
+    displayName: `Scanner 2 — ${SCANNER_2_EMA80_BAND_LABEL}`,
     description:
-      'Preço dentro de ±10% da EMA80 em 1h. Universo: RSI pullback bear.',
-    strategyNames: 'RSI_OVERBOUGHT_DROP_1H',
+      'Preço entre -5% e +15% da EMA80 em 1h. Universo: RSI queda de 70 legado e RSI pullback bear.',
+    strategyNames: 'RSI_OVERBOUGHT_DROP_1H, RSI_OVERBOUGHT_DROP_LEGACY_1H',
   },
   UNIVERSE_NEAR_MA200_PCT4_4H: {
     displayName: 'Scanner 3 — Até ±4% da MA80 (4h)',

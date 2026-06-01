@@ -62,13 +62,13 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     cron: '1h',
     cronLabel: 'Cron 1h',
     timeframe: '1h',
-    universe: 'Scanner 2 (±10% EMA80, 1h)',
+    universe: 'Scanner 2 (-5% a +15% EMA80, 1h)',
   },
   RSI_OVERBOUGHT_DROP_LEGACY_1H: {
     cron: '1h',
     cronLabel: 'Cron 1h',
     timeframe: '1h',
-    universe: 'Scanner 1 (acima SMA200, 1h)',
+    universe: 'Scanner 2 (-5% a +15% EMA80, 1h)',
   },
   PIVOT_BOSS_BEAR_1H: {
     cron: '1h',

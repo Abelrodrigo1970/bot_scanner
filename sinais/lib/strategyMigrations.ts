@@ -175,7 +175,7 @@ export const RSI_OVERBOUGHT_DROP_1H_PARAMS = {
 } as const;
 
 export const RSI_OVERBOUGHT_DROP_1H_DESCRIPTION =
-  'Universo: Scanner 2 (±10% EMA80, 1h). VENDA: tendência bear (preço < EMA80, stack 200>80>30>12, EMA200 a descer). Pullback à EMA30 nos últimos 8 velas; RSI ≥50 no rally e queda ≥3 pts (≥55→abaixo). Entrada: vela bear a fechar abaixo EMA12. Não emite se >10% abaixo EMA80. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.';
+  'Universo: Scanner 2 (-5% a +15% EMA80, 1h). VENDA: tendência bear (preço < EMA80, stack 200>80>30>12, EMA200 a descer). Pullback à EMA30 nos últimos 8 velas; RSI ≥50 no rally e queda ≥3 pts (≥55→abaixo). Entrada: vela bear a fechar abaixo EMA12. Não emite se >10% abaixo EMA80. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.';
 
 export const RSI_OVERBOUGHT_DROP_LEGACY_1H_DISPLAY =
   'RSI queda de 70 (mín. 4 pts) + afastamento >10% (1h)';
@@ -197,7 +197,7 @@ export const RSI_OVERBOUGHT_DROP_LEGACY_1H_PARAMS = {
 } as const;
 
 export const RSI_OVERBOUGHT_DROP_LEGACY_1H_DESCRIPTION =
-  'Universo: Scanner 1 (acima SMA200, 1h). VENDA: RSI(14) cai de ≥70 com queda ≥4 pts e preço >10% acima da EMA80. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.';
+  'Universo: Scanner 2 (-5% a +15% EMA80, 1h). VENDA: RSI(14) cai de ≥70 com queda ≥4 pts e preço >10% acima da EMA80. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.';
 
 export const AFASTAMENTO_MEDIO_DISPLAY = 'Afastamento médio 1h (≤1,9→≥2,4)';
 
@@ -610,6 +610,7 @@ export async function syncRsiOverboughtDrop1hConfig(
     row.description?.includes('TP na EMA80') ||
     row.description?.includes('SL 6%') ||
     row.description?.includes('afastamento à EMA80 >12%') ||
+    row.description?.includes('±10%') ||
     row.description !== RSI_OVERBOUGHT_DROP_1H_DESCRIPTION;
   const needsDisplay =
     row.displayName !== RSI_OVERBOUGHT_DROP_1H_DISPLAY &&
@@ -650,7 +651,7 @@ export async function syncRsiOverboughtDrop1hConfig(
   return { updated: true };
 }
 
-/** Actualiza params/descrição RSI legado (>10% EMA80, Scanner 1). */
+/** Actualiza params/descrição RSI legado (>10% EMA80, Scanner 2). */
 export async function syncRsiOverboughtDropLegacy1hConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -673,7 +674,9 @@ export async function syncRsiOverboughtDropLegacy1hConfig(
     p.sellTp2Position === 40 ||
     p.sellTp1Percent == null ||
     p.sellTp2Percent == null;
-  const needsDesc = row.description !== RSI_OVERBOUGHT_DROP_LEGACY_1H_DESCRIPTION;
+  const needsDesc =
+    row.description !== RSI_OVERBOUGHT_DROP_LEGACY_1H_DESCRIPTION ||
+    row.description?.includes('±10%') === true;
 
   if (!needsTpUpdate && !needsDesc) return { updated: false };
 

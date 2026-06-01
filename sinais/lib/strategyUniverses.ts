@@ -81,7 +81,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     signalTimeframes: ['1h'],
     source: 'universe_scan',
     dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
-    description: 'Scanner 2: ±10% da EMA80 (1h).',
+    description: 'Scanner 2: -5% a +15% da EMA80 (1h).',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
@@ -89,8 +89,8 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     displayLabel: 'RSI queda de 70 (mín. 4 pts) + afastamento >10% (1h)',
     signalTimeframes: ['1h'],
     source: 'universe_scan',
-    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-    description: 'Scanner 1: fecho acima SMA200 (1h).',
+    dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
+    description: 'Scanner 2: -5% a +15% da EMA80 (1h).',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
@@ -112,11 +112,11 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — Acima SMA200 (MA Cross + RSI legado + Pivot Boss 15m)',
+    label: 'Scanner 1 — Acima SMA200 (MA Cross + Pivot Boss 15m)',
   },
   {
     href: '/scanners/2',
-    label: 'Scanner 2 — ±10% EMA80 (RSI queda 70)',
+    label: 'Scanner 2 — -5% a +15% EMA80 (RSI legado + RSI pullback bear)',
   },
   {
     href: '/scanners/3',
