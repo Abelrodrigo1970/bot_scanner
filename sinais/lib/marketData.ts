@@ -719,6 +719,12 @@ export async function fetchCandles(
     }
   }
 
+  // 400 = símbolo inexistente/inválido na Binance (lixo de universos antigos ou
+  // par só noutra exchange). Não há dados a obter: devolve vazio sem spam de erros.
+  if ((lastError as { status?: number })?.status === 400) {
+    return [];
+  }
+
   warnCandlesFetchFailure(symbol, interval, lastError);
   throw lastError;
 }
