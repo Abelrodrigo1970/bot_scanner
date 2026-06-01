@@ -41,15 +41,41 @@ const BINANCE_FAPI_HOSTS = ['https://fapi.binance.com'] as const;
 
 const BINANCE_FAPI_RETRYABLE_STATUSES = new Set([202, 418, 429, 500, 502, 503, 504]);
 
+function isRailwayHosted(): boolean {
+  return Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID);
+}
+
+/** Bybit primeiro no Railway US (Binance público costuma devolver 451). Override: MARKET_DATA_PRIMARY=binance|bybit */
+function isBybitMarketDataPrimary(): boolean {
+  const primary = (process.env.MARKET_DATA_PRIMARY ?? '').trim().toLowerCase();
+  if (primary === 'bybit') return true;
+  if (primary === 'binance') return false;
+  if (process.env.MARKET_DATA_BYBIT_PRIMARY === 'true') return true;
+  return isRailwayHosted();
+}
+
 /** Hosts públicos Bybit (market data). Railway US bloqueia api.bybit.com — tentar mirrors. */
-const BYBIT_MARKET_DATA_HOSTS = [
-  ...(process.env.BYBIT_MARKET_DATA_BASE_URL
-    ? [process.env.BYBIT_MARKET_DATA_BASE_URL.replace(/\/$/, '')]
-    : []),
-  'https://api.bybit.nl',
-  'https://api.bytick.com',
-  'https://api.bybit.com',
-].filter((h, i, a) => h && a.indexOf(h) === i);
+function getBybitMarketDataHosts(): string[] {
+  const explicit = process.env.BYBIT_MARKET_DATA_BASE_URL?.replace(/\/$/, '');
+  const railwayDefault = isRailwayHosted() ? 'https://api.bybit.nl' : undefined;
+  const preferred = explicit || railwayDefault;
+  return [
+    ...(preferred ? [preferred] : []),
+    'https://api.bybit.nl',
+    'https://api.bytick.com',
+    'https://api.bybit.com',
+  ].filter((h, i, a) => h && a.indexOf(h) === i);
+}
+
+let marketDataPrimaryLogged = false;
+function logMarketDataPrimaryOnce(): void {
+  if (marketDataPrimaryLogged || !isBybitMarketDataPrimary()) return;
+  marketDataPrimaryLogged = true;
+  const host = getBybitMarketDataHosts()[0] ?? 'api.bybit.nl';
+  console.log(
+    `ℹ️ Market data: Bybit primário (${host}). Binance só em fallback ou MARKET_DATA_PRIMARY=binance.`
+  );
+}
 
 /** Intervalos Binance → Bybit linear kline (v5). */
 const BYBIT_KLINE_INTERVAL: Record<string, string> = {
@@ -171,7 +197,7 @@ function noteBybitGeoBlock(err: unknown, host?: string): void {
     msg.includes('block access from your country')
   ) {
     if (host) bybitMarketDataHostsBlocked.add(host);
-    if (bybitMarketDataHostsBlocked.size >= BYBIT_MARKET_DATA_HOSTS.length) {
+    if (bybitMarketDataHostsBlocked.size >= getBybitMarketDataHosts().length) {
       bybitMarketDataGeoBlocked = true;
       if (!bybitGeoBlockWarned) {
         console.warn(
@@ -255,7 +281,78 @@ async function fetchBinanceFapiText(path: string): Promise<string> {
   throw lastError instanceof Error ? lastError : new Error(`Binance ${normalized} falhou`);
 }
 
+type UsdtPerpTicker24hr = {
+  symbol: string;
+  quoteVolume: string;
+  priceChangePercent?: string;
+  lastPrice?: string;
+  volume?: string;
+};
+
+async function fetchBybitLinearTickers24hr(): Promise<UsdtPerpTicker24hr[]> {
+  const bodyText = await fetchBybitMarketText('/v5/market/tickers?category=linear');
+  const parsed = JSON.parse(bodyText) as {
+    result?: {
+      list?: Array<{
+        symbol?: string;
+        turnover24h?: string;
+        volume24h?: string;
+        price24hPcnt?: string;
+        lastPrice?: string;
+      }>;
+    };
+  };
+  return (parsed.result?.list ?? [])
+    .filter((t) => t.symbol?.endsWith('USDT') && !t.symbol?.includes('BUSD'))
+    .map((t) => ({
+      symbol: t.symbol!,
+      quoteVolume: t.turnover24h || t.volume24h || '0',
+      priceChangePercent: t.price24hPcnt || '0',
+      lastPrice: t.lastPrice || '0',
+      volume: t.volume24h || '0',
+    }));
+}
+
+async function fetchUsdtPerpTickers24hr(): Promise<UsdtPerpTicker24hr[]> {
+  if (isBybitMarketDataPrimary() && canUseBybitMarketData()) {
+    try {
+      return await fetchBybitLinearTickers24hr();
+    } catch (bybitErr) {
+      noteBybitGeoBlock(bybitErr);
+      if (binanceGeoBlocked) throw bybitErr;
+    }
+  }
+  return JSON.parse(
+    await fetchBinanceFapiText('/fapi/v1/ticker/24hr')
+  ) as UsdtPerpTicker24hr[];
+}
+
+function topUsdtSymbolsByQuoteVolume(
+  tickers: UsdtPerpTicker24hr[],
+  pool: number,
+  minQuoteVolume: number
+): string[] {
+  return tickers
+    .filter(
+      (t) =>
+        t.symbol.endsWith('USDT') &&
+        !t.symbol.includes('BUSD') &&
+        parseFloat(t.quoteVolume || '0') > minQuoteVolume
+    )
+    .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+    .slice(0, pool)
+    .map((t) => t.symbol);
+}
+
 async function fetchBinanceFapiJson<T>(path: string): Promise<T> {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  if (normalized === '/fapi/v1/ticker/24hr' && isBybitMarketDataPrimary() && canUseBybitMarketData()) {
+    try {
+      return (await fetchBybitLinearTickers24hr()) as T;
+    } catch (bybitErr) {
+      noteBybitGeoBlock(bybitErr);
+    }
+  }
   return JSON.parse(await fetchBinanceFapiText(path)) as T;
 }
 
@@ -275,7 +372,7 @@ function isRetryableKlinesError(err: unknown): boolean {
 async function fetchBybitMarketText(pathAndQuery: string): Promise<string> {
   let lastError: unknown;
 
-  for (const host of BYBIT_MARKET_DATA_HOSTS) {
+  for (const host of getBybitMarketDataHosts()) {
     if (bybitMarketDataHostsBlocked.has(host)) continue;
 
     const url = `${host}${pathAndQuery.startsWith('/') ? pathAndQuery : `/${pathAndQuery}`}`;
@@ -437,6 +534,7 @@ async function fetchCurrentPriceFromBybit(symbol: string): Promise<number> {
 
 function shouldUseBybitMarketData(err?: unknown): boolean {
   if (!canUseBybitMarketData()) return false;
+  if (isBybitMarketDataPrimary()) return true;
   if (binanceGeoBlocked) return true;
   if (!err || typeof err !== 'object') return false;
   return (err as { status?: number }).status === 451;
@@ -471,6 +569,7 @@ export async function fetchCandles(
   startTime?: number,
   endTime?: number
 ): Promise<Candle[]> {
+  logMarketDataPrimaryOnce();
   if (backtestCandleState) {
     const key = `${symbol.toUpperCase()}:${interval}`;
     const all = backtestCandleState.pools.get(key) ?? [];
@@ -603,13 +702,10 @@ export async function fetchFallbackPrice(
 export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<number | null> {
   const sym = symbol.toUpperCase();
   try {
-    const bodyText = await fetchBinanceFapiText(
-      `/fapi/v1/klines?symbol=${sym}&interval=1h&limit=2`
-    );
-    const rows = JSON.parse(bodyText) as unknown[][];
-    if (rows.length < 1) return null;
-    const lastClosed = rows.length >= 2 ? rows[rows.length - 2]! : rows[rows.length - 1]!;
-    const quoteVol = parseFloat(String(lastClosed[7] ?? ''));
+    const candles = await fetchCandles(sym, '1h', 2);
+    if (candles.length < 1) return null;
+    const lastClosed = candles.length >= 2 ? candles[candles.length - 2]! : candles[candles.length - 1]!;
+    const quoteVol = lastClosed.volume * lastClosed.close;
     return Number.isFinite(quoteVol) && quoteVol > 0 ? quoteVol : null;
   } catch {
     return null;
@@ -668,63 +764,30 @@ export interface TopMover {
  */
 export async function fetchTopMovers(limit: number = 15): Promise<TopMover[]> {
   try {
-    // Buscar todos os tickers 24h para obter lista de símbolos e preços atuais
-    const response = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar dados: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    // Filtrar apenas pares USDⓈ-M (Futuros com margem em USDT) com volume mínimo
-    // Ordenar por volume para priorizar os mais líquidos
+    const data = await fetchUsdtPerpTickers24hr();
     const usdtPairs = data
-      .filter((ticker: any) => {
-        return ticker.symbol.endsWith('USDT') && 
-               !ticker.symbol.includes('BUSD') &&
-               parseFloat(ticker.quoteVolume) > 1000000; // Volume mínimo de 1M USDT
-      })
-      .sort((a: any, b: any) => {
-        return parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume);
-      })
-      .slice(0, 50); // Limitar a 50 símbolos mais líquidos para otimizar
+      .filter((ticker) => parseFloat(ticker.quoteVolume) > 1_000_000)
+      .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .slice(0, 50);
 
-    // Buscar candles diários para obter preço de abertura do dia atual
-    // Usar Promise.all com limite de concorrência para não sobrecarregar a API
     const topMoversData = await Promise.all(
-      usdtPairs.map(async (ticker: any) => {
+      usdtPairs.map(async (ticker) => {
         try {
-          // Buscar candles diários (apenas o último candle que contém o dia atual)
-          const candlesResponse = await fetch(
-            `https://fapi.binance.com/fapi/v1/klines?symbol=${ticker.symbol}&interval=1d&limit=1`
-          );
-          
-          if (!candlesResponse.ok) {
-            return null;
-          }
+          const candles = await fetchCandles(ticker.symbol, '1d', 1);
+          if (candles.length === 0) return null;
 
-          const candles = await candlesResponse.json();
-          
-          if (candles.length === 0) {
-            return null;
-          }
-
-          // O último candle é o do dia atual
-          const todayCandle = candles[candles.length - 1];
-          const openPrice = parseFloat(todayCandle[1]); // Preço de abertura
-          const currentPrice = parseFloat(ticker.lastPrice);
-          const highPrice = parseFloat(todayCandle[2]); // Máxima do dia
-          const lowPrice = parseFloat(todayCandle[3]); // Mínima do dia
-          
-          // Calcular variação percentual do dia atual
+          const todayCandle = candles[candles.length - 1]!;
+          const openPrice = todayCandle.open;
+          const currentPrice = parseFloat(ticker.lastPrice || '0');
+          const highPrice = todayCandle.high;
+          const lowPrice = todayCandle.low;
           const priceChangePercent = ((currentPrice - openPrice) / openPrice) * 100;
 
           return {
             symbol: ticker.symbol,
             priceChangePercent,
             lastPrice: currentPrice,
-            volume: parseFloat(ticker.volume),
+            volume: parseFloat(ticker.volume || '0'),
             highPrice,
             lowPrice,
           };
@@ -911,33 +974,19 @@ export interface MaCrossBelowItem {
  */
 export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBelowItem[]> {
   try {
-    const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-    if (!tickerRes.ok) throw new Error('Erro ao buscar tickers');
-    const tickerData = await tickerRes.json();
-
-    // Top 300 por volume, só USDT futures
-    const symbols: string[] = tickerData
-      .filter((t: any) => t.symbol?.endsWith('USDT') && !t.symbol?.includes('BUSD') && parseFloat(t.quoteVolume || '0') > 500000)
-      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-      .slice(0, 300)
-      .map((t: any) => t.symbol);
+    const tickerData = await fetchUsdtPerpTickers24hr();
+    const symbols = topUsdtSymbolsByQuoteVolume(tickerData, 300, 500_000);
 
     const results: Omit<MaCrossBelowItem, 'rank'>[] = [];
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
       try {
-        // Buscar 205 velas de 1h — 205h ≈ 8,5 dias, suficiente para MA200 1h
-        const klinesRes = await fetch(
-          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=205`
-        );
-        if (!klinesRes.ok) continue;
-        const klines = await klinesRes.json();
+        const klines = await fetchCandles(symbol, '1h', 205);
         if (klines.length < 202) continue;
 
-        // Closes excluindo a vela em formação (último candle ainda não fechado)
-        const closes: number[] = klines.slice(0, -1).map((k: any) => parseFloat(k[4]));
-        const lastPrice = closes[closes.length - 1];
+        const closes: number[] = klines.slice(0, -1).map((k) => k.close);
+        const lastPrice = closes[closes.length - 1]!;
 
         // MA200 e MA30 sobre candles fechados
         const ma200Vals = closes.slice(-200);
@@ -978,30 +1027,19 @@ export async function fetchMaCrossBelow(limit: number = 100): Promise<MaCrossBel
  */
 export async function fetchMa30Above6Pct(limit: number = 100): Promise<MaCrossBelowItem[]> {
   try {
-    const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-    if (!tickerRes.ok) throw new Error('Erro ao buscar tickers');
-    const tickerData = await tickerRes.json();
-
-    const symbols: string[] = tickerData
-      .filter((t: any) => t.symbol?.endsWith('USDT') && !t.symbol?.includes('BUSD') && parseFloat(t.quoteVolume || '0') > 500000)
-      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-      .slice(0, 300)
-      .map((t: any) => t.symbol);
+    const tickerData = await fetchUsdtPerpTickers24hr();
+    const symbols = topUsdtSymbolsByQuoteVolume(tickerData, 300, 500_000);
 
     const results: Omit<MaCrossBelowItem, 'rank'>[] = [];
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
       try {
-        const klinesRes = await fetch(
-          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=205`
-        );
-        if (!klinesRes.ok) continue;
-        const klines = await klinesRes.json();
+        const klines = await fetchCandles(symbol, '1h', 205);
         if (klines.length < 202) continue;
 
-        const closes: number[] = klines.slice(0, -1).map((k: any) => parseFloat(k[4]));
-        const lastPrice = closes[closes.length - 1];
+        const closes: number[] = klines.slice(0, -1).map((k) => k.close);
+        const lastPrice = closes[closes.length - 1]!;
 
         const ma200Vals = closes.slice(-200);
         const ma30Vals = closes.slice(-30);
@@ -1043,30 +1081,19 @@ const MA30_VS_MA200_BAND_HIGH_PCT = 1;
  */
 export async function fetchMa30Near6PriceBetween(limit: number = 300): Promise<MaCrossBelowItem[]> {
   try {
-    const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-    if (!tickerRes.ok) throw new Error('Erro ao buscar tickers');
-    const tickerData = await tickerRes.json();
-
-    const symbols: string[] = tickerData
-      .filter((t: any) => t.symbol?.endsWith('USDT') && !t.symbol?.includes('BUSD') && parseFloat(t.quoteVolume || '0') > 500000)
-      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-      .slice(0, 300)
-      .map((t: any) => t.symbol);
+    const tickerData = await fetchUsdtPerpTickers24hr();
+    const symbols = topUsdtSymbolsByQuoteVolume(tickerData, 300, 500_000);
 
     const results: Omit<MaCrossBelowItem, 'rank'>[] = [];
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
       try {
-        const klinesRes = await fetch(
-          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=205`
-        );
-        if (!klinesRes.ok) continue;
-        const klines = await klinesRes.json();
+        const klines = await fetchCandles(symbol, '1h', 205);
         if (klines.length < 202) continue;
 
-        const closes: number[] = klines.slice(0, -1).map((k: any) => parseFloat(k[4]));
-        const lastPrice = closes[closes.length - 1];
+        const closes: number[] = klines.slice(0, -1).map((k) => k.close);
+        const lastPrice = closes[closes.length - 1]!;
 
         const ma200Vals = closes.slice(-200);
         const ma30Vals = closes.slice(-30);
@@ -1508,15 +1535,8 @@ export async function fetchBybitTradfiAboveMa2004h(
 
 export async function fetchTopVolatile(limit: number = 25): Promise<TopVolatileItem[]> {
   try {
-    const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-    if (!tickerRes.ok) throw new Error('Erro ao buscar tickers');
-    const tickerData = await tickerRes.json();
-
-    const symbols = tickerData
-      .filter((t: any) => t.symbol?.endsWith('USDT') && !t.symbol?.includes('BUSD') && parseFloat(t.quoteVolume || '0') > 500000)
-      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-      .slice(0, 200)
-      .map((t: any) => t.symbol);
+    const tickerData = await fetchUsdtPerpTickers24hr();
+    const symbols = topUsdtSymbolsByQuoteVolume(tickerData, 200, 500_000);
 
     const results: { symbol: string; high3m: number; low3m: number; volatilityPercent: number; lastPrice: number }[] = [];
     const scanStart = Date.now() - TOP_VOLATILE_SCAN_MS;
@@ -1524,25 +1544,19 @@ export async function fetchTopVolatile(limit: number = 25): Promise<TopVolatileI
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
       try {
-        const klinesRes = await fetch(
-          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1d&limit=100&startTime=${scanStart}`
-        );
-        if (!klinesRes.ok) continue;
-        const klines = await klinesRes.json();
+        const klines = await fetchCandles(symbol, '1d', 100, scanStart);
         if (klines.length < 7) continue;
 
         let high3m = -Infinity;
         let low3m = Infinity;
         for (const k of klines) {
-          const h = parseFloat(k[2]);
-          const l = parseFloat(k[3]);
-          if (h > high3m) high3m = h;
-          if (l < low3m && l > 0) low3m = l;
+          if (k.high > high3m) high3m = k.high;
+          if (k.low < low3m && k.low > 0) low3m = k.low;
         }
         if (low3m <= 0 || !isFinite(high3m)) continue;
 
         const volatilityPercent = ((high3m - low3m) / low3m) * 100;
-        const lastPrice = parseFloat(klines[klines.length - 1][4]);
+        const lastPrice = klines[klines.length - 1]!.close;
 
         results.push({ symbol, high3m, low3m, volatilityPercent, lastPrice });
       } catch {
