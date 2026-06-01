@@ -25,7 +25,7 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     minDistancePct: null,
     maxDistancePct: null,
     timeframe: '1h',
-    minQuoteVolume: 100000,
+    minQuoteVolume: 500000,
     candidateLimit: 400,
   },
   UNIVERSE_NEAR_MA200_PCT10_1H: {
@@ -35,7 +35,7 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     minDistancePct: SCANNER_2_MIN_DISTANCE_PCT,
     maxDistancePct: SCANNER_2_MAX_DISTANCE_PCT,
     timeframe: '1h',
-    minQuoteVolume: 100000,
+    minQuoteVolume: 500000,
     candidateLimit: 400,
   },
   UNIVERSE_NEAR_MA200_PCT4_4H: {
@@ -43,7 +43,7 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     maPeriod: 80,
     maxDistancePct: 4,
     timeframe: '4h',
-    minQuoteVolume: 100000,
+    minQuoteVolume: 500000,
     candidateLimit: 400,
   },
   UNIVERSE_ABOVE_MA200_1D: {
@@ -52,7 +52,7 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     minDistancePct: null,
     maxDistancePct: null,
     timeframe: '1d',
-    minQuoteVolume: 100000,
+    minQuoteVolume: 500000,
     candidateLimit: 400,
   },
 };

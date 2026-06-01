@@ -6,7 +6,11 @@ import {
   getBuiltinScanDefinition,
 } from '@/lib/symbolUniverseDefaults';
 import { scanSymbolUniverse } from '@/lib/universeScanner';
-import { persistUniverseScan } from '@/lib/universeScanPersistence';
+import {
+  buildScanItemsWithPreviousDelta,
+  getLatestUniverseScanPair,
+  persistUniverseScan,
+} from '@/lib/universeScanPersistence';
 
 type RouteContext = { params: Promise<{ code: string }> };
 
@@ -26,15 +30,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Scanner desconhecido' }, { status: 404 });
     }
 
-    const run = await prisma.universeScanRun.findFirst({
-      where: { universeCode: code },
-      orderBy: { scannedAt: 'desc' },
-      include: {
-        rows: {
-          orderBy: { pctFromMa: 'asc' },
-        },
-      },
-    });
+    const pair = await getLatestUniverseScanPair(code);
+    const run = pair.current;
+    const items = run
+      ? buildScanItemsWithPreviousDelta(run.rows, pair.previous?.rows ?? null)
+      : [];
 
     return NextResponse.json({
       success: true,
@@ -49,14 +49,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
             source: run.source,
           }
         : null,
-      items: (run?.rows ?? []).map((r, i) => ({
-        rank: i + 1,
-        symbol: r.symbol,
-        close: r.close,
-        ma: r.ma,
-        pctFromMa: r.pctFromMa,
-      })),
-      count: run?.rows.length ?? 0,
+      previousRun: pair.previous
+        ? { id: pair.previous.id, scannedAt: pair.previous.scannedAt.toISOString() }
+        : null,
+      items,
+      count: items.length,
     });
   } catch (error) {
     console.error('GET universe-scans:', error);
@@ -112,24 +109,22 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    const saved = await prisma.universeScanRun.findUnique({
-      where: { id: persisted.runId },
-      include: { rows: { orderBy: { pctFromMa: 'asc' } } },
-    });
+    const pair = await getLatestUniverseScanPair(code);
+    const run = pair.current;
+    const items = run
+      ? buildScanItemsWithPreviousDelta(run.rows, pair.previous?.rows ?? null)
+      : buildScanItemsWithPreviousDelta(rows, null);
 
     return NextResponse.json({
       success: true,
       code,
       meta,
       runId: persisted.runId,
-      scannedAt: saved?.scannedAt.toISOString() ?? new Date().toISOString(),
-      items: (saved?.rows ?? rows).map((r, i) => ({
-        rank: i + 1,
-        symbol: r.symbol,
-        close: r.close,
-        ma: r.ma,
-        pctFromMa: r.pctFromMa,
-      })),
+      scannedAt: run?.scannedAt.toISOString() ?? new Date().toISOString(),
+      previousRun: pair.previous
+        ? { id: pair.previous.id, scannedAt: pair.previous.scannedAt.toISOString() }
+        : null,
+      items,
       count: rows.length,
       message: `${meta.displayName} atualizado (${rows.length} símbolos)`,
     });

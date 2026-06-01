@@ -18,6 +18,8 @@ export type UniverseScanRowWithDelta = UniverseScanRowSnapshot & {
   closeChangePct: number | null;
   /** Δ pontos na distância à média (pct actual − pct anterior). */
   pctFromMaDelta: number | null;
+  /** Afastamento (% vs MA) no scan anterior. null = sem scan anterior ou símbolo novo. */
+  pctFromMaPrev: number | null;
   /** Entrou no universo desde o scan anterior. */
   isNewInUniverse: boolean;
 };
@@ -176,10 +178,14 @@ export function buildScanItemsWithPreviousDelta(
     const p = prev?.get(r.symbol);
     let closeChangePct: number | null = null;
     let pctFromMaDelta: number | null = null;
+    let pctFromMaPrev: number | null = null;
 
-    if (p && p.close > 0) {
-      closeChangePct = ((r.close - p.close) / p.close) * 100;
+    if (p) {
+      pctFromMaPrev = p.pctFromMa;
       pctFromMaDelta = r.pctFromMa - p.pctFromMa;
+      if (p.close > 0) {
+        closeChangePct = ((r.close - p.close) / p.close) * 100;
+      }
     }
 
     return {
@@ -190,6 +196,7 @@ export function buildScanItemsWithPreviousDelta(
       pctFromMa: r.pctFromMa,
       closeChangePct,
       pctFromMaDelta,
+      pctFromMaPrev,
       isNewInUniverse: prev !== null && !prevSymbols.has(r.symbol),
     };
   });
