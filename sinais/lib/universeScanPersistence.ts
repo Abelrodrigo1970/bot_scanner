@@ -1,8 +1,26 @@
 import { prisma } from './db';
 import { scanSymbolUniverse } from './universeScanner';
 import { getBuiltinScanDefinition } from './symbolUniverseDefaults';
+import { filterToBybitMarketSymbols } from './marketData';
 
 const SCAN_HISTORY_KEEP = 25;
+
+export type UniverseScanRowSnapshot = {
+  symbol: string;
+  close: number;
+  ma: number;
+  pctFromMa: number;
+};
+
+export type UniverseScanRowWithDelta = UniverseScanRowSnapshot & {
+  rank: number;
+  /** Variação do fecho vs scan anterior (%). null = sem scan anterior ou símbolo novo. */
+  closeChangePct: number | null;
+  /** Δ pontos na distância à média (pct actual − pct anterior). */
+  pctFromMaDelta: number | null;
+  /** Entrou no universo desde o scan anterior. */
+  isNewInUniverse: boolean;
+};
 
 export type PersistUniverseScanInput = {
   universeCode: string;
@@ -112,7 +130,7 @@ export async function getLatestUniverseScanSymbols(
 export async function resolveUniverseScanSymbols(universeCode: string): Promise<string[]> {
   const latest = await getLatestUniverseScanSymbols(universeCode);
   if (latest.ok) {
-    return latest.symbols;
+    return filterToBybitMarketSymbols(latest.symbols);
   }
 
   const def = getBuiltinScanDefinition(universeCode);
@@ -133,5 +151,113 @@ export async function resolveUniverseScanSymbols(universeCode: string): Promise<
   if (!persisted.ok) {
     console.warn(`[resolveUniverseScanSymbols] falha ao gravar: ${persisted.reason}`);
   }
-  return rows.map((r) => r.symbol);
+  return filterToBybitMarketSymbols(rows.map((r) => r.symbol));
+}
+
+function previousRowMap(
+  rows: Array<{ symbol: string; close: number; pctFromMa: number }>
+): Map<string, { close: number; pctFromMa: number }> {
+  const m = new Map<string, { close: number; pctFromMa: number }>();
+  for (const r of rows) {
+    m.set(r.symbol, { close: r.close, pctFromMa: r.pctFromMa });
+  }
+  return m;
+}
+
+/** Compara linhas do scan actual com o run imediatamente anterior (mesmo universeCode). */
+export function buildScanItemsWithPreviousDelta(
+  currentRows: UniverseScanRowSnapshot[],
+  previousRows: UniverseScanRowSnapshot[] | null | undefined
+): UniverseScanRowWithDelta[] {
+  const prev = previousRows?.length ? previousRowMap(previousRows) : null;
+  const prevSymbols = prev ? new Set(prev.keys()) : new Set<string>();
+
+  return currentRows.map((r, i) => {
+    const p = prev?.get(r.symbol);
+    let closeChangePct: number | null = null;
+    let pctFromMaDelta: number | null = null;
+
+    if (p && p.close > 0) {
+      closeChangePct = ((r.close - p.close) / p.close) * 100;
+      pctFromMaDelta = r.pctFromMa - p.pctFromMa;
+    }
+
+    return {
+      rank: i + 1,
+      symbol: r.symbol,
+      close: r.close,
+      ma: r.ma,
+      pctFromMa: r.pctFromMa,
+      closeChangePct,
+      pctFromMaDelta,
+      isNewInUniverse: prev !== null && !prevSymbols.has(r.symbol),
+    };
+  });
+}
+
+export type UniverseScanRunsPair = {
+  current: {
+    id: string;
+    scannedAt: Date;
+    rowCount: number;
+    source: string;
+    rows: UniverseScanRowSnapshot[];
+  } | null;
+  previous: {
+    id: string;
+    scannedAt: Date;
+    rows: UniverseScanRowSnapshot[];
+  } | null;
+};
+
+/** Último scan e o anterior (para Δ na UI). */
+export async function getLatestUniverseScanPair(
+  universeCode: string
+): Promise<UniverseScanRunsPair> {
+  const runs = await prisma.universeScanRun.findMany({
+    where: { universeCode },
+    orderBy: { scannedAt: 'desc' },
+    take: 2,
+    include: {
+      rows: {
+        select: { symbol: true, close: true, ma: true, pctFromMa: true },
+      },
+    },
+  });
+
+  const toSnap = (
+    rows: Array<{ symbol: string; close: number; ma: number; pctFromMa: number }>
+  ): UniverseScanRowSnapshot[] =>
+    rows.map((r) => ({
+      symbol: r.symbol,
+      close: r.close,
+      ma: r.ma,
+      pctFromMa: r.pctFromMa,
+    }));
+
+  const [cur, prev] = runs;
+  if (!cur) {
+    return { current: null, previous: null };
+  }
+
+  const currentRows = toSnap(cur.rows).sort(
+    (a, b) => Math.abs(b.pctFromMa) - Math.abs(a.pctFromMa)
+  );
+
+  return {
+    current: {
+      id: cur.id,
+      scannedAt: cur.scannedAt,
+      rowCount: cur.rowCount,
+      source: cur.source,
+      rows: currentRows,
+    },
+    previous: prev
+      ? {
+          id: prev.id,
+          scannedAt: prev.scannedAt,
+          rows: toSnap(prev.rows),
+        }
+      : null,
+  };
 }

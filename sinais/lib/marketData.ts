@@ -366,6 +366,17 @@ async function getBybitLinearSymbolSet(): Promise<Set<string> | null> {
   return bybitLinearSymbolsCache?.set ?? null;
 }
 
+/**
+ * Quando a Bybit é a fonte primária (Railway), remove símbolos que não existem na Bybit linear.
+ * Útil para limpar universos persistidos com símbolos só-Binance. Em caso de dúvida, mantém o símbolo.
+ */
+export async function filterToBybitMarketSymbols(symbols: string[]): Promise<string[]> {
+  if (!isBybitMarketDataPrimary() || symbols.length === 0) return symbols;
+  const set = await getBybitLinearSymbolSet();
+  if (!set || set.size === 0) return symbols;
+  return symbols.filter((s) => set.has(s.toUpperCase()));
+}
+
 async function fetchUsdtPerpTickers24hr(): Promise<UsdtPerpTicker24hr[]> {
   if (isBybitMarketDataPrimary() && canUseBybitMarketData()) {
     try {
