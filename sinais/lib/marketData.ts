@@ -326,7 +326,7 @@ async function fetchBybitLinearTickers24hr(): Promise<UsdtPerpTicker24hr[]> {
       }>;
     };
   };
-  return (parsed.result?.list ?? [])
+  const tickers = (parsed.result?.list ?? [])
     .filter((t) => t.symbol?.endsWith('USDT') && !t.symbol?.includes('BUSD'))
     .map((t) => ({
       symbol: t.symbol!,
@@ -335,6 +335,35 @@ async function fetchBybitLinearTickers24hr(): Promise<UsdtPerpTicker24hr[]> {
       lastPrice: t.lastPrice || '0',
       volume: t.volume24h || '0',
     }));
+  rememberBybitLinearSymbols(tickers.map((t) => t.symbol));
+  return tickers;
+}
+
+/** Conjunto de símbolos linear USDT disponíveis na Bybit (cache curto para saltar pares inexistentes). */
+let bybitLinearSymbolsCache: { set: Set<string>; at: number } | null = null;
+const BYBIT_LINEAR_SYMBOLS_TTL_MS = 10 * 60 * 1000;
+
+function rememberBybitLinearSymbols(symbols: string[]): void {
+  if (symbols.length === 0) return;
+  bybitLinearSymbolsCache = {
+    set: new Set(symbols.map((s) => s.toUpperCase())),
+    at: Date.now(),
+  };
+}
+
+async function getBybitLinearSymbolSet(): Promise<Set<string> | null> {
+  if (
+    bybitLinearSymbolsCache &&
+    Date.now() - bybitLinearSymbolsCache.at < BYBIT_LINEAR_SYMBOLS_TTL_MS
+  ) {
+    return bybitLinearSymbolsCache.set;
+  }
+  try {
+    await fetchBybitLinearTickers24hr();
+  } catch {
+    // mantém cache anterior se existir
+  }
+  return bybitLinearSymbolsCache?.set ?? null;
 }
 
 async function fetchUsdtPerpTickers24hr(): Promise<UsdtPerpTicker24hr[]> {
@@ -534,7 +563,11 @@ async function fetchCandlesFromBybit(
   const parsed = JSON.parse(bodyText) as { result?: { list?: string[][] } };
   const rows = parsed.result?.list ?? [];
   if (rows.length === 0) {
-    throw new Error(`Bybit klines vazio para ${symbol}`);
+    const err = new Error(`Bybit klines vazio para ${symbol}`) as Error & {
+      symbolUnavailable: boolean;
+    };
+    err.symbolUnavailable = true;
+    throw err;
   }
 
   let candles = parseBybitKlineRows(rows);
@@ -623,12 +656,21 @@ export async function fetchCandles(
   let lastError: unknown;
 
   if (shouldUseBybitMarketData() && bybitInterval) {
+    if (isBybitMarketDataPrimary()) {
+      const bybitSymbols = await getBybitLinearSymbolSet();
+      if (bybitSymbols && !bybitSymbols.has(symbol.toUpperCase())) {
+        return [];
+      }
+    }
     try {
       return await fetchCandlesFromBybit(symbol, interval, limit, startTime, endTime);
     } catch (bybitErr) {
       noteBybitGeoBlock(bybitErr);
       lastError = bybitErr;
       if (isBybitMarketDataPrimary()) {
+        if ((bybitErr as { symbolUnavailable?: boolean })?.symbolUnavailable) {
+          return [];
+        }
         warnCandlesFetchFailure(symbol, interval, lastError);
         throw lastError;
       }
