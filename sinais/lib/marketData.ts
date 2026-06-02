@@ -861,6 +861,68 @@ export async function fetchLastClosed1hQuoteVolumeUsd(symbol: string): Promise<n
   }
 }
 
+/** Garante velas em ordem cronológica (Bybit devolve mais recente primeiro). */
+function klineRowsChronological(rows: string[][]): string[][] {
+  if (rows.length <= 1) return rows;
+  const t0 = Number(rows[0]![0]);
+  const t1 = Number(rows[rows.length - 1]![0]);
+  if (Number.isFinite(t0) && Number.isFinite(t1) && t0 > t1) {
+    return rows.slice().reverse();
+  }
+  return rows;
+}
+
+/** Soma do turnover USDT das últimas 3 velas 1h fechadas (Binance quote vol / Bybit turnover). */
+export async function fetchLast3Closed1hQuoteVolumeUsdSum(symbol: string): Promise<number | null> {
+  const sym = symbol.toUpperCase();
+  const CLOSED_COUNT = 3;
+
+  const sumFromRows = (rows: string[][], turnoverIdx: number): number | null => {
+    const ordered = klineRowsChronological(rows);
+    if (ordered.length < CLOSED_COUNT + 1) return null;
+    const closed = ordered.slice(ordered.length - CLOSED_COUNT - 1, ordered.length - 1);
+    let sum = 0;
+    for (const row of closed) {
+      const turnover = parseFloat(String(row[turnoverIdx] ?? ''));
+      if (!Number.isFinite(turnover) || turnover <= 0) return null;
+      sum += turnover;
+    }
+    return sum;
+  };
+
+  if (shouldUseBybitMarketData() && BYBIT_KLINE_INTERVAL['1h']) {
+    try {
+      const params = new URLSearchParams({
+        category: 'linear',
+        symbol: sym,
+        interval: BYBIT_KLINE_INTERVAL['1h'],
+        limit: String(CLOSED_COUNT + 2),
+      });
+      const bodyText = await fetchBybitMarketText(`/v5/market/kline?${params}`);
+      const parsed = JSON.parse(bodyText) as { result?: { list?: string[][] } };
+      const sum = sumFromRows(parsed.result?.list ?? [], 6);
+      if (sum != null) return sum;
+    } catch {
+      // fallback Binance abaixo
+    }
+  }
+
+  if (!canAttemptBinancePublicApi()) {
+    return null;
+  }
+
+  try {
+    const bodyText = await fetchBinanceFapiText(
+      `/fapi/v1/klines?symbol=${sym}&interval=1h&limit=${CLOSED_COUNT + 2}`
+    );
+    const rows = JSON.parse(bodyText) as unknown[][];
+    const asStrings = rows.map((r) => r.map((c) => String(c)));
+    return sumFromRows(asStrings, 7);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Lista de símbolos padrão para análise
  */

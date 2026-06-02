@@ -1795,15 +1795,18 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           );
           continue;
         }
-      } else if (
-        strategy.name === 'AFASTAMENTO_MEDIO' ||
-        strategy.name === 'AFASTAMENTO_MEDIO_30M'
-      ) {
-        const signalTf =
-          strategy.name === 'AFASTAMENTO_MEDIO_30M' ? 'sinais em 30m' : 'sinais em 1h';
-        console.log(
-          `🔍 ${strategy.name}: universo Scanner 3 (±4% MA80, 4h); ${signalTf}...`
-        );
+      } else if (strategy.name === 'AFASTAMENTO_MEDIO_30M') {
+        console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima SMA200, 1h); sinais em 30m...`);
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
+        if (symbolsToAnalyze.length === 0) {
+          console.warn(
+            `⚠️ Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
+          );
+          continue;
+        }
+      } else if (strategy.name === 'AFASTAMENTO_MEDIO') {
+        console.log(`🔍 ${strategy.name}: universo Scanner 3 (±4% MA80, 4h); sinais em 1h...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_3_MA80_PCT4);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 3)`);
         if (symbolsToAnalyze.length === 0) {

@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { fetchCurrentPriceSafe, fetchLastClosed1hQuoteVolumeUsd } from './marketData';
+import { fetchCurrentPriceSafe, fetchLast3Closed1hQuoteVolumeUsdSum } from './marketData';
 
 export const MA_CROSS_15M_TIMEFRAME = '15m' as const;
 export const MA_CROSS_15M_TZ = 'Europe/Lisbon';
@@ -15,7 +15,7 @@ export const MA_CROSS_15M_BLOCKED_HOURS_PT: readonly number[] = Array.from({ len
   (h) => !MA_CROSS_15M_ALLOWED_HOURS_PT.includes(h)
 );
 
-/** Turnover mínimo 1h USDT (análise Abr–Mai/2026, força ≥70). */
+/** Soma mínima do turnover das 3 últimas velas 1h fechadas (USDT). */
 export const MA_CROSS_15M_MIN_TURNOVER_1H_USD = 10_000_000;
 
 /** Taxa round-trip usada na simulação Abr+Mai/2026 (alinhada com `simulate-2nd-if-green.mjs`). */
@@ -39,8 +39,8 @@ export function isMaCross15mHourBlocked(now: Date = new Date()): boolean {
   return !MA_CROSS_15M_ALLOWED_HOURS_PT.includes(hourInLisbon(now));
 }
 
-export function isMaCross15mTurnoverBlocked(turnover1hUsd: number): boolean {
-  return turnover1hUsd < MA_CROSS_15M_MIN_TURNOVER_1H_USD;
+export function isMaCross15mTurnoverBlocked(turnover3hSumUsd: number): boolean {
+  return turnover3hSumUsd < MA_CROSS_15M_MIN_TURNOVER_1H_USD;
 }
 
 export interface MaCross15mSignalGateInput {
@@ -101,7 +101,7 @@ async function isSignalProfitable(
 /**
  * Regras MA Cross 15m (análise horária 2026):
  * - sem fim-de-semana (cron) e só horas PT permitidas (whitelist)
- * - turnover 1h ≥ $10M USDT (Binance)
+ * - soma turnover 3 últimas velas 1h ≥ $10M USDT
  * - 1.º sinal do dia: cooldown 24h desde o último sinal do par
  * - 2.º sinal no mesmo dia: só se 1.º fechado, verde (líquido) e mesma direção
  * - máx. 2 sinais por símbolo por dia civil (PT)
@@ -119,17 +119,17 @@ export async function checkMaCross15mSignalGate(
     };
   }
 
-  const turnover1h = await fetchLastClosed1hQuoteVolumeUsd(input.symbol);
-  if (turnover1h == null) {
+  const turnover3hSum = await fetchLast3Closed1hQuoteVolumeUsdSum(input.symbol);
+  if (turnover3hSum == null) {
     return {
       allowed: false,
-      reason: `turnover 1h indisponível (${input.symbol})`,
+      reason: `turnover 3×1h indisponível (${input.symbol})`,
     };
   }
-  if (isMaCross15mTurnoverBlocked(turnover1h)) {
+  if (isMaCross15mTurnoverBlocked(turnover3hSum)) {
     return {
       allowed: false,
-      reason: `turnover 1h insuficiente ($${(turnover1h / 1e6).toFixed(2)}M < $${MA_CROSS_15M_MIN_TURNOVER_1H_USD / 1e6}M)`,
+      reason: `soma turnover 3 velas 1h insuficiente ($${(turnover3hSum / 1e6).toFixed(2)}M < $${MA_CROSS_15M_MIN_TURNOVER_1H_USD / 1e6}M)`,
     };
   }
 

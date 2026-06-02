@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Cron agregado 30m:
- * - AFASTAMENTO_MEDIO_30M (velas 30m; universo Scanner 3 em 4h)
+ * - AFASTAMENTO_MEDIO_30M (velas 30m; universo Scanner 1 — acima SMA200 em 1h)
  *
  * Agendar no cron-job.org: a cada 30 min, 8h–23h (ver CRON_SETUP.md).
  * Não corre no run-1h nem no run-signals (excluída de propósito).

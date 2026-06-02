@@ -44,7 +44,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     cron: '30m',
     cronLabel: 'Cron 30m',
     timeframe: '30m',
-    universe: 'Scanner 3 (±4% MA80, 4h)',
+    universe: 'Scanner 1 (acima SMA200, 1h)',
   },
   MA200_VOLATILE: {
     cron: '1h',

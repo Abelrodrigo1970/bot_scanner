@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runAllStrategies } from '@/lib/signalEngine';
 
 /**
- * Cron dedicado: apenas AFASTAMENTO_MEDIO_30M (velas 30m; universo Scanner 3 em 4h).
+ * Cron dedicado: apenas AFASTAMENTO_MEDIO_30M (velas 30m; universo Scanner 1 — acima SMA200 em 1h).
  * Preferir agendar `/api/cron/run-30m` no cron-job.org (agregado 30m).
  */
 async function runInBackground(): Promise<void> {
