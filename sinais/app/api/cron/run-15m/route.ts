@@ -1,56 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  runEmaRibbonSell15mPipeline,
+  runMaCross15mPipeline,
+} from '@/lib/cron15mStrategies';
 
 /**
- * Cron agregado 15m (24h recomendado — MA Cross whitelist filtra horas PT):
- * - MA_CROSS_5M (candles 5m, URL: /api/cron/run-volume-spike-15m)
- * - EMA Ribbon SELL 15m via /api/cron/run-rsi-15m
+ * Cron agregado 15m (24h recomendado — MA Cross whitelist filtra horas PT).
  *
- * Dispara os crons dedicados em background para manter a mesma lógica já existente.
+ * Ordem de execução (sequencial, mesmo processo) — pedido do utilizador:
+ *   1.º  MA Cross 15m (MA12/MA30)  ← prioridade: corre até ao fim primeiro
+ *   2.º  EMA Ribbon Scalping SELL 15m
+ *
+ * Correr em sequência (em vez de em paralelo) evita que as duas estratégias
+ * compitam pela fila de pedidos à Binance e dá prioridade à MA Cross.
  */
-async function run15mInBackground(origin: string, authHeader: string): Promise<void> {
+async function run15mInBackground(now: Date): Promise<void> {
+  console.log('[Run-15m BG] Iniciando agregado 15m (sequencial: 1º MA Cross 15m, 2º EMA Ribbon SELL)...');
+
   try {
-    console.log('[Run-15m BG] Iniciando agregado 15m...');
-
-    const headers: Record<string, string> = {};
-    if (authHeader) headers.authorization = authHeader;
-
-    const calls = [
-      `${origin}/api/cron/run-volume-spike-15m`,
-      `${origin}/api/cron/run-rsi-15m`,
-    ];
-
-    let okCount = 0;
-    for (const url of calls) {
-      try {
-        const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
-        okCount++;
-        console.log(`[Run-15m BG] ${url} -> HTTP ${res.status}`);
-      } catch (reason) {
-        console.error(`[Run-15m BG] ${url} -> erro`, reason);
-      }
-    }
-
-    console.log(`[Run-15m BG] Agregado 15m finalizado: ${okCount}/${calls.length} chamadas OK`);
+    const maCross = await runMaCross15mPipeline(now);
+    console.log(`[Run-15m BG] 1/2 MA Cross 15m -> ${maCross.status}` +
+      (typeof maCross.signalsCreated === 'number' ? ` (${maCross.signalsCreated} sinais)` : ''));
   } catch (error) {
-    console.error('[Run-15m BG] Erro fatal:', error);
-  }
-}
-
-function resolveInternalOrigin(request: NextRequest): string {
-  const forwardedHost = request.headers.get('x-forwarded-host');
-  const forwardedProto = request.headers.get('x-forwarded-proto');
-
-  if (forwardedHost) {
-    return `${forwardedProto || 'https'}://${forwardedHost}`;
+    console.error('[Run-15m BG] MA Cross 15m falhou:', error);
   }
 
-  const url = request.nextUrl;
-  const isLocalHost =
-    url.hostname === 'localhost' ||
-    url.hostname === '127.0.0.1' ||
-    url.hostname === '0.0.0.0';
-  const protocol = isLocalHost ? 'http:' : url.protocol;
-  return `${protocol}//${url.host}`;
+  try {
+    const created = await runEmaRibbonSell15mPipeline();
+    console.log(`[Run-15m BG] 2/2 EMA Ribbon SELL 15m -> ${created} sinais`);
+  } catch (error) {
+    console.error('[Run-15m BG] EMA Ribbon SELL 15m falhou:', error);
+  }
+
+  console.log('[Run-15m BG] Agregado 15m finalizado (sequencial).');
 }
 
 export async function GET(request: NextRequest) {
@@ -63,13 +45,15 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date();
-    const origin = resolveInternalOrigin(request);
 
-    run15mInBackground(origin, authHeader || (cronSecret ? `Bearer ${cronSecret}` : ''));
+    // Resposta imediata; o trabalho pesado corre em background (evita timeout Railway).
+    run15mInBackground(now).catch((error) => {
+      console.error('[Run-15m BG] Erro fatal:', error);
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento agregado 15m (MA Cross 15m + EMA Ribbon SELL) iniciado em background',
+      message: 'Processamento agregado 15m (1º MA Cross 15m, 2º EMA Ribbon SELL) iniciado em background',
       executedAt: now.toISOString(),
     });
   } catch (error) {

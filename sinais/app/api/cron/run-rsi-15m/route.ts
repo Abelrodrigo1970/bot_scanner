@@ -1,33 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runAllStrategies } from '@/lib/signalEngine';
-import { cleanupBybitOrphanOpenOrders } from '@/lib/tradingExecutor';
+import { runEmaRibbonSell15mPipeline } from '@/lib/cron15mStrategies';
 
 /**
  * Cron dedicado 15m: EMA_SCALPING_SELL (se activa).
  * EMA_SCALPING (BUY), RSI_15M, MA_CROSS_15M e VOLUME_SPIKE foram removidas.
  */
-async function runCron15mStrategiesInBackground(): Promise<void> {
-  try {
-    console.log('[Run-15m-strategies BG] Iniciando EMA Ribbon SELL 15m...');
-
-    const signalsCreated = await runAllStrategies({
-      only: ['EMA_SCALPING_SELL'],
-    });
-
-    const orphanCleanup = await cleanupBybitOrphanOpenOrders();
-    if (orphanCleanup.cancelledSymbols.length > 0 || orphanCleanup.errors.length > 0) {
-      console.log(
-        `[Run-15m-strategies BG] Bybit órfãs: cancelados ${orphanCleanup.cancelledSymbols.length} símbolo(s)` +
-          (orphanCleanup.errors.length ? `; erros: ${orphanCleanup.errors.join('; ')}` : '')
-      );
-    }
-
-    console.log(`[Run-15m-strategies BG] Concluído: ${signalsCreated} sinais criados`);
-  } catch (error) {
-    console.error('[Run-15m-strategies BG] Erro fatal:', error);
-  }
-}
-
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -37,7 +14,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    runCron15mStrategiesInBackground();
+    // Background (resposta imediata para não estourar o timeout do Railway).
+    runEmaRibbonSell15mPipeline().catch((error) => {
+      console.error('[Run-15m-strategies BG] Erro fatal:', error);
+    });
 
     const now = new Date();
     return NextResponse.json({
