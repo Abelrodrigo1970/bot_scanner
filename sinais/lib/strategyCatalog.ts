@@ -38,7 +38,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     cron: '15m',
     cronLabel: 'Cron 15m',
     timeframe: '15m',
-    universe: 'Top movers 1h',
+    universe: 'Scanner 4 (acima SMA200, 1d)',
   },
   EMA_SCALPING_SELL: {
     cron: '15m',

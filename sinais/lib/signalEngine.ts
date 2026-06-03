@@ -1736,12 +1736,22 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           : timeframes;
 
       let symbolsToAnalyze: string[] = [];
-      if (strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL') {
+      if (strategy.name === 'EMA_SCALPING') {
+        console.log(`🔍 ${strategy.name}: universo Scanner 4 (acima SMA200, 1d); sinais em 15m...`);
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D);
+        console.log(`✅ EMA Ribbon Scalping BUY: ${symbolsToAnalyze.length} símbolos (Scanner 4)`);
+        if (symbolsToAnalyze.length === 0) {
+          console.warn(
+            `⚠️ Scanner 4 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 4. Ignorando ${strategy.name}.`
+          );
+          continue;
+        }
+      } else if (strategy.name === 'EMA_SCALPING_SELL') {
         const movers = await loadTopMoverSymbols();
         const lim = Math.min(250, Math.max(15, Math.floor(Number(params.symbolLimit ?? 80))));
         symbolsToAnalyze = movers.slice(0, lim);
         console.log(
-          `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : strategy.name === 'EMA_SCALPING' ? 'EMA Ribbon Scalping BUY' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
+          `✅ EMA Ribbon Scalping SELL: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
       } else if (strategy.name === 'PIVOT_BOSS_BEAR_15M') {
         console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima SMA200, 1h); sinais em 15m...`);

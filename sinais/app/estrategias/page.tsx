@@ -465,7 +465,7 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>15m</strong>; dados <strong>Binance Futures</strong>. Tendência de alta: EMA55 a subir, EMA8 acima da EMA55; retração (pullback) ou consolidação junto à fita; vela <strong>bull</strong> forte a fechar acima da EMA8. Só <strong>COMPRA</strong>. Universo = Top movers 1h (limite abaixo).
+              Timeframe <strong>15m</strong>; dados <strong>Binance Futures</strong>. Tendência de alta: EMA55 a subir, EMA8 acima da EMA55; retração (pullback) ou consolidação junto à fita; vela <strong>bull</strong> forte a fechar acima da EMA8. Só <strong>COMPRA</strong>. Universo = <strong>Scanner 4</strong> (fecho acima SMA200 em 1d).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('EMA rápida (base bull)', p.ribbonFastPeriod ?? 8, (v) => upd({ ribbonFastPeriod: v }))}

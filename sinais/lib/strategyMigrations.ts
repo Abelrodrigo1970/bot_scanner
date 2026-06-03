@@ -277,7 +277,7 @@ export const EMA_SCALPING_PARAMS = {
 } as const;
 
 export const EMA_SCALPING_DESCRIPTION =
-  'Scalping 15m «EMA Ribbon» só COMPRA: tendência de alta (EMA55 a subir ≥0,85%), EMA8 acima da EMA55; retração/pullback ou consolidação junto à fita; vela bull forte a fechar acima da EMA8. SL abaixo do swing ou EMA55. TP por R (1,65R / 3,2R). Universo = Top movers 1h.';
+  'Scalping 15m «EMA Ribbon» só COMPRA: tendência de alta (EMA55 a subir ≥0,85%), EMA8 acima da EMA55; retração/pullback ou consolidação junto à fita; vela bull forte a fechar acima da EMA8. SL abaixo do swing ou EMA55. TP por R (1,65R / 3,2R). Universo: Scanner 4 (fecho acima SMA200 em 1d).';
 
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 

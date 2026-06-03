@@ -45,9 +45,10 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     strategyName: 'EMA_SCALPING',
     displayLabel: 'EMA Ribbon Scalping BUY (15m)',
     signalTimeframes: ['15m'],
-    source: 'runtime_top_movers_1h',
-    dataKey: 'fetchTopSymbolsBy1hPriceChange',
-    description: 'Top movers 1h. Tendência de alta + retração à fita EMA8/55; entrada em vela bull forte.',
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_ABOVE_MA200_1D',
+    description: 'Scanner 4: fecho acima SMA200 (1d); sinais em 15m.',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
@@ -124,6 +125,6 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/4',
-    label: 'Scanner 4 — Acima SMA200 (1d, Pivot Boss 1h + MA200 4h)',
+    label: 'Scanner 4 — Acima SMA200 (Pivot Boss 1h + MA200 4h + EMA Ribbon BUY 15m)',
   },
 ] as const;
