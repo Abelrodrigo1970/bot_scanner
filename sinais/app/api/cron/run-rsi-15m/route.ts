@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runEmaRibbonSell15mPipeline } from '@/lib/cron15mStrategies';
+import { runEmaRibbonBuy15mPipeline } from '@/lib/cron15mStrategies';
 
 /**
- * Cron dedicado 15m: EMA_SCALPING_SELL (se activa).
- * EMA_SCALPING (BUY), RSI_15M, MA_CROSS_15M e VOLUME_SPIKE foram removidas.
+ * Cron dedicado 15m: EMA_SCALPING (BUY — tendência de alta + retração), se activa.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -14,15 +13,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    // Background (resposta imediata para não estourar o timeout do Railway).
-    runEmaRibbonSell15mPipeline().catch((error) => {
+    runEmaRibbonBuy15mPipeline().catch((error) => {
       console.error('[Run-15m-strategies BG] Erro fatal:', error);
     });
 
     const now = new Date();
     return NextResponse.json({
       success: true,
-      message: 'Processamento em background (EMA Ribbon Scalping SELL 15m)',
+      message: 'Processamento em background (EMA Ribbon Scalping BUY 15m)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

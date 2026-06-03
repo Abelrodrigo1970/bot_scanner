@@ -21,6 +21,7 @@ import {
   PIVOT_BOSS_BEAR_1H_PARAMS,
   PIVOT_BOSS_BEAR_1H_DISPLAY,
   syncAfastamentoMedio30mBuyPrevMax,
+  syncEmaRibbonScalpingBuy15m,
   syncMacdHistogramPmoParams,
   syncMa200Scanner4UniverseDescription,
   syncPivotBossBear15mUniverse,
@@ -111,6 +112,10 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const af30mSync = await syncAfastamentoMedio30mBuyPrevMax(prisma);
   if (af30mSync.updated) {
     console.log('✅ AFASTAMENTO_MEDIO_30M: COMPRA/VENDA ≤2↔≥2,3 (30m) + maxStrength 75');
+  }
+  const emaRibbonSync = await syncEmaRibbonScalpingBuy15m(prisma);
+  if (emaRibbonSync.updated) {
+    console.log('✅ EMA_SCALPING: Ribbon BUY 15m activo (retração em tendência de alta); SELL desactivado');
   }
   const pivotBossSync = await syncPivotBossBear15mUniverse(prisma);
   if (pivotBossSync.updated) {

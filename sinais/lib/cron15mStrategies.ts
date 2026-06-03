@@ -241,11 +241,11 @@ export async function runMaCross15mPipeline(now: Date = new Date()): Promise<Cro
 }
 
 /**
- * Pipeline da EMA Ribbon Scalping SELL 15m. Prioridade 2 do agregado 15m.
+ * Pipeline da EMA Ribbon Scalping BUY 15m (tendência de alta + retração). Prioridade 2 do agregado 15m.
  */
-export async function runEmaRibbonSell15mPipeline(): Promise<number> {
-  console.log('[Run-15m-strategies BG] Iniciando EMA Ribbon SELL 15m...');
-  const signalsCreated = await runAllStrategies({ only: ['EMA_SCALPING_SELL'] });
+export async function runEmaRibbonBuy15mPipeline(): Promise<number> {
+  console.log('[Run-15m-strategies BG] Iniciando EMA Ribbon BUY 15m (tendência alta + retração)...');
+  const signalsCreated = await runAllStrategies({ only: ['EMA_SCALPING'] });
 
   const orphanCleanup = await cleanupBybitOrphanOpenOrders();
   if (orphanCleanup.cancelledSymbols.length > 0 || orphanCleanup.errors.length > 0) {

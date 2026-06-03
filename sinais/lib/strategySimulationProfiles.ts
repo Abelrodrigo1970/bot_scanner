@@ -100,12 +100,20 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     summary: 'SL 4%. TP ±20% (posição total).',
   },
   {
+    strategyName: 'EMA_SCALPING',
+    displayNames: ['EMA Ribbon Scalping BUY (15m)'],
+    buy: EMA_RIBBON_SELL,
+    sell: null,
+    summary:
+      'Só COMPRA. Tendência de alta + retração. SL dinâmico (ATR/swing, máx. ~2,9%). TP1 R×1,65 (~4,8%, 55%) | TP2 R×3,2 (~9,3%, 35%).',
+  },
+  {
     strategyName: 'EMA_SCALPING_SELL',
     displayNames: ['EMA Ribbon Scalping SELL (15m)'],
     buy: null,
     sell: EMA_RIBBON_SELL,
     summary:
-      'Só VENDA. SL dinâmico (ATR/swing, máx. ~2,9%). TP1 R×1,65 (~4,8%, 55%) | TP2 R×3,2 (~9,3%, 35%).',
+      'Descontinuado. SL dinâmico (ATR/swing, máx. ~2,9%). TP1 R×1,65 (~4,8%, 55%) | TP2 R×3,2 (~9,3%, 35%).',
   },
   {
     strategyName: 'PIVOT_BOSS_BEAR_15M',

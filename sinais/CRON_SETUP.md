@@ -17,7 +17,7 @@ O código filtra horas más; o cron **24h** permite captar **3h/7h** (MA Cross) 
 
 | Endpoint | Estratégias | Frequência recomendada |
 |----------|-------------|------------------------|
-| `/api/cron/run-15m` | MA Cross 15m + EMA Ribbon SELL 15m | **`*/15 * * * *`** (24h) |
+| `/api/cron/run-15m` | MA Cross 15m + EMA Ribbon BUY 15m | **`*/15 * * * *`** (24h) |
 | `/api/cron/run-30m` | **Afastamento médio 30m** | `*/30 8-23 * * *` |
 | `/api/cron/run-1h` | Pivot Boss 15m/1h, RSI 1h, MA200 4h, MACD+PMO | **`0 * * * *`** (24h) |
 | `/api/cron/run-universe-scans` | Scanners 1, 2 e 3 (universo) | `0 */4 * * *` (de 4 em 4 h, 24h) |

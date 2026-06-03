@@ -24,7 +24,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
-      exclude: ['MA_CROSS_5M', 'EMA_SCALPING_SELL', 'AFASTAMENTO_MEDIO_30M'],
+      exclude: ['MA_CROSS_5M', 'EMA_SCALPING', 'AFASTAMENTO_MEDIO_30M'],
     });
 
     const autoMinStrength = getAutoExecuteMinStrength();

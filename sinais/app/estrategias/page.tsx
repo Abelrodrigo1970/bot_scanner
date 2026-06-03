@@ -461,6 +461,40 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'EMA_SCALPING':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Timeframe <strong>15m</strong>; dados <strong>Binance Futures</strong>. Tendência de alta: EMA55 a subir, EMA8 acima da EMA55; retração (pullback) ou consolidação junto à fita; vela <strong>bull</strong> forte a fechar acima da EMA8. Só <strong>COMPRA</strong>. Universo = Top movers 1h (limite abaixo).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('EMA rápida (base bull)', p.ribbonFastPeriod ?? 8, (v) => upd({ ribbonFastPeriod: v }))}
+              {numField('EMA lenta (topo fita)', p.ribbonSlowPeriod ?? 55, (v) => upd({ ribbonSlowPeriod: v }))}
+              {numField('ATR período', p.atrPeriod ?? 14, (v) => upd({ atrPeriod: v }))}
+              {numField('Lookback inclinação (velas)', p.slopeLookback ?? 5, (v) => upd({ slopeLookback: v }))}
+              {numField('Inclinação mín. EMA lenta (subida, %)', p.minSlowEmaSlopePct ?? 0.85, (v) => upd({ minSlowEmaSlopePct: v }), 0.05)}
+              {numField('Barras lateral (consol.)', p.consolidationLookback ?? 14, (v) => upd({ consolidationLookback: v }))}
+              {numField('Máx. range consolidação (%)', p.consolidationMaxRangePct ?? 1.35, (v) => upd({ consolidationMaxRangePct: v }), 0.05)}
+              {numField('Mín. velas com close < EMA rápida (lateral)', p.minBarsBelowFastInConsolidation ?? Math.ceil((p.consolidationLookback ?? 14) * 0.55), (v) => upd({ minBarsBelowFastInConsolidation: v }))}
+              {numField('Barras máx. pullback', p.pullbackMaxBars ?? 10, (v) => upd({ pullbackMaxBars: v }))}
+              {numField('Corpo mínimo / range', p.strongBodyOfRangeMin ?? 0.58, (v) => upd({ strongBodyOfRangeMin: v }), 0.01)}
+              {numField('Corpo mínimo × ATR', p.strongBodyMinAtrMult ?? 0.42, (v) => upd({ strongBodyMinAtrMult: v }), 0.02)}
+              {numField('Máximo quartil superior (fecha perto do high)', p.closeUpperThirdMaxFrac ?? 0.32, (v) => upd({ closeUpperThirdMaxFrac: v }), 0.02)}
+              {numField('Lookback swing SL (velas)', p.swingLookback ?? 6, (v) => upd({ swingLookback: v }))}
+              {numField('Margem swing × ATR', p.swingBelowAtrMult ?? 0.14, (v) => upd({ swingBelowAtrMult: v }), 0.02)}
+              {numField('Folga SL vs EMA lenta (%)', p.slowEmaStopBufferPct ?? 0.12, (v) => upd({ slowEmaStopBufferPct: v }), 0.02)}
+              {numField('SL mínimo (% entrada)', p.minStopDistancePct ?? 0.22, (v) => upd({ minStopDistancePct: v }), 0.02)}
+              {numField('SL máximo (% entrada)', p.maxStopDistancePct ?? 2.9, (v) => upd({ maxStopDistancePct: v }), 0.05)}
+              {numField('Fresh break (× ATR)', p.freshBreakAtrFrac ?? 0.07, (v) => upd({ freshBreakAtrFrac: v }), 0.01)}
+              {numField('Máximo símbolos', p.symbolLimit ?? 80, (v) => upd({ symbolLimit: v }))}
+              {numField('Risk-reward TP1', p.rewardRisk1 ?? 1.65, (v) => upd({ rewardRisk1: v }), 0.05)}
+              {numField('Risk-reward TP2', p.rewardRisk2 ?? 3.2, (v) => upd({ rewardRisk2: v }), 0.05)}
+              {numField('TP1 — % da posição', p.tp1PositionPct ?? 55, (v) => upd({ tp1PositionPct: v }))}
+              {numField('TP2 — % da posição', p.tp2PositionPct ?? 35, (v) => upd({ tp2PositionPct: v }))}
+            </div>
+          </div>
+        );
+
       case 'EMA_SCALPING_SELL':
         return (
           <div className="space-y-4">
@@ -625,6 +659,7 @@ export default function EstrategiasPage() {
                 strategy.name === 'PIVOT_BOSS_BEAR_1H' ||
                 strategy.name === 'RSI_OVERBOUGHT_DROP_1H' ||
                 strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H';
+              const buyOnly = strategy.name === 'EMA_SCALPING';
 
               return (
               <div
@@ -692,6 +727,10 @@ export default function EstrategiasPage() {
                     {sellOnly ? (
                       <span className="block mt-1 text-amber-700 dark:text-amber-300">
                         Nota: esta estratégia só gera <strong>VENDAS</strong>; activar COMPRA não produz longs.
+                      </span>
+                    ) : buyOnly ? (
+                      <span className="block mt-1 text-amber-700 dark:text-amber-300">
+                        Nota: esta estratégia só gera <strong>COMPRAS</strong> (tendência de alta + retração); activar VENDA não produz shorts.
                       </span>
                     ) : null}
                   </p>

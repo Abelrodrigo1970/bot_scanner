@@ -34,6 +34,8 @@ const ALLOWED_STRATEGIES = [
   'MA Cross 15m',
   'MA12/MA30',
   'MA_CROSS_5M',
+  'EMA_SCALPING',
+  'EMA Ribbon Scalping BUY',
   'EMA_SCALPING_SELL',
   'EMA Ribbon Scalping SELL',
   'MACD Histogram 1h + PMO',

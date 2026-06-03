@@ -10,6 +10,7 @@ import {
   REMOVED_DEPRECATED_STRATEGY_NAMES,
   removeDeprecatedStrategies,
   syncAfastamentoMedio30mBuyPrevMax,
+  syncEmaRibbonScalpingBuy15m,
   syncMacdHistogramPmoParams,
   syncMaCrossScanner1UniverseDescriptions,
   syncMa200Scanner4UniverseDescription,
@@ -71,6 +72,7 @@ async function ensureMissingStrategies() {
   await syncMa200Scanner4UniverseDescription(prisma);
   await syncRsiOverboughtDrop1hConfig(prisma);
   await syncAfastamentoMedio30mBuyPrevMax(prisma);
+  await syncEmaRibbonScalpingBuy15m(prisma);
 
   const existingMaCross5m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_5M' },

@@ -10,7 +10,6 @@ export const REMOVED_DEPRECATED_STRATEGY_NAMES = [
   'MA_CROSS_1H',
   'MA_VOLATILE',
   'AFASTAMENTO_MEDIO',
-  'EMA_SCALPING',
 ] as const;
 
 export interface RemoveDeprecatedStrategiesResult {
@@ -254,6 +253,32 @@ export const AFASTAMENTO_MEDIO_30M_EXIT_PARAMS = {
 export const AFASTAMENTO_MEDIO_30M_DESCRIPTION =
   'Universo: Scanner 1 (fecho acima SMA200 em 1h). EMA80 + SMA(7) em 30m. COMPRA: linha ≤2%→≥2,3%, preço > EMA80 e > EMA30 (SL -6%, TP1 +9% (50%) | restante às 24h). VENDA: linha ≥2,3%→≤2%, preço < EMA80 e < EMA30 (SL +6%, TP1 -9% (50%) | restante às 24h). Não emite se força >75.';
 
+export const EMA_SCALPING_DISPLAY = 'EMA Ribbon Scalping BUY (15m)';
+
+export const EMA_SCALPING_PARAMS = {
+  ribbonFastPeriod: 8,
+  ribbonSlowPeriod: 55,
+  atrPeriod: 14,
+  slopeLookback: 5,
+  minSlowEmaSlopePct: 0.85,
+  consolidationLookback: 14,
+  consolidationMaxRangePct: 1.35,
+  pullbackMaxBars: 10,
+  strongBodyOfRangeMin: 0.58,
+  strongBodyMinAtrMult: 0.42,
+  symbolLimit: 80,
+  rewardRisk1: 1.65,
+  rewardRisk2: 3.2,
+  tp1PositionPct: 55,
+  tp2PositionPct: 35,
+  allowBuy: true,
+  allowSell: false,
+  exchange: 'binance' as const,
+} as const;
+
+export const EMA_SCALPING_DESCRIPTION =
+  'Scalping 15m «EMA Ribbon» só COMPRA: tendência de alta (EMA55 a subir ≥0,85%), EMA8 acima da EMA55; retração/pullback ou consolidação junto à fita; vela bull forte a fechar acima da EMA8. SL abaixo do swing ou EMA55. TP por R (1,65R / 3,2R). Universo = Top movers 1h.';
+
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
@@ -470,6 +495,68 @@ export async function syncAfastamentoMedio1hBuyThresholds(
     },
   });
   return { updated: true };
+}
+
+/** Activa EMA Ribbon BUY 15m no cron; desactiva a versão SELL legada. */
+export async function syncEmaRibbonScalpingBuy15m(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  let updated = false;
+
+  const existing = await prisma.strategy.findUnique({
+    where: { name: 'EMA_SCALPING' },
+    select: { id: true, params: true, displayName: true, description: true, isActive: true },
+  });
+
+  if (!existing) {
+    await prisma.strategy.create({
+      data: {
+        name: 'EMA_SCALPING',
+        displayName: EMA_SCALPING_DISPLAY,
+        description: EMA_SCALPING_DESCRIPTION,
+        isActive: true,
+        params: JSON.stringify(EMA_SCALPING_PARAMS),
+      },
+    });
+    updated = true;
+  } else {
+    const p = JSON.parse(existing.params || '{}') as Record<string, unknown>;
+    const needsMeta =
+      existing.displayName !== EMA_SCALPING_DISPLAY ||
+      existing.description !== EMA_SCALPING_DESCRIPTION;
+    const needsParams =
+      Number(p.ribbonFastPeriod ?? 0) !== EMA_SCALPING_PARAMS.ribbonFastPeriod ||
+      p.allowBuy !== true ||
+      p.allowSell !== false;
+    const needsActive = !existing.isActive;
+
+    if (needsMeta || needsParams || needsActive) {
+      await prisma.strategy.update({
+        where: { name: 'EMA_SCALPING' },
+        data: {
+          displayName: EMA_SCALPING_DISPLAY,
+          description: EMA_SCALPING_DESCRIPTION,
+          isActive: true,
+          params: JSON.stringify({ ...p, ...EMA_SCALPING_PARAMS }),
+        },
+      });
+      updated = true;
+    }
+  }
+
+  const sellRow = await prisma.strategy.findUnique({
+    where: { name: 'EMA_SCALPING_SELL' },
+    select: { isActive: true },
+  });
+  if (sellRow?.isActive) {
+    await prisma.strategy.update({
+      where: { name: 'EMA_SCALPING_SELL' },
+      data: { isActive: false },
+    });
+    updated = true;
+  }
+
+  return { updated };
 }
 
 /** Actualiza limiares COMPRA/VENDA em AFASTAMENTO_MEDIO_30M (deploy / cron). */

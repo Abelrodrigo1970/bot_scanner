@@ -4,7 +4,7 @@ import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
 export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
   'MA_CROSS_5M',
   'PIVOT_BOSS_BEAR_15M',
-  'EMA_SCALPING_SELL',
+  'EMA_SCALPING',
   'AFASTAMENTO_MEDIO_30M',
   'MA200_VOLATILE',
   'MACD_HISTOGRAM_PMO',
@@ -34,9 +34,15 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '15m',
     universe: 'Scanner 1 (acima SMA200, 1h)',
   },
-  EMA_SCALPING_SELL: {
+  EMA_SCALPING: {
     cron: '15m',
     cronLabel: 'Cron 15m',
+    timeframe: '15m',
+    universe: 'Top movers 1h',
+  },
+  EMA_SCALPING_SELL: {
+    cron: '15m',
+    cronLabel: 'Cron 15m (legado)',
     timeframe: '15m',
     universe: 'Top movers 1h',
   },
@@ -82,7 +88,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 export const REMOVED_STRATEGY_LABELS: Record<string, string> = {
   MA_VOLATILE: 'MA Cross Top Voláteis',
   AFASTAMENTO_MEDIO: 'Afastamento médio 1h',
-  EMA_SCALPING: 'EMA Ribbon Scalping 15m (COMPRA)',
+  EMA_SCALPING_SELL: 'EMA Ribbon Scalping SELL 15m (descontinuado)',
   RSI: 'RSI 1h',
   RSI_15M: 'RSI 15m',
   RSI_BYBIT_15M: 'RSI Bybit 15m',

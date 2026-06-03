@@ -1741,7 +1741,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         const lim = Math.min(250, Math.max(15, Math.floor(Number(params.symbolLimit ?? 80))));
         symbolsToAnalyze = movers.slice(0, lim);
         console.log(
-          `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
+          `✅ ${strategy.name === 'EMA_SCALPING_SELL' ? 'EMA Ribbon Scalping SELL' : strategy.name === 'EMA_SCALPING' ? 'EMA Ribbon Scalping BUY' : 'EMA Ribbon Scalping'}: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
       } else if (strategy.name === 'PIVOT_BOSS_BEAR_15M') {
         console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima SMA200, 1h); sinais em 15m...`);
