@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { isBybitEnabled } from '@/lib/bybitConfig';
 import { strategyAllowsAutoExecuteDirection } from '@/lib/signalEngine';
 import {
   closeActivePositionForSymbol,
@@ -12,6 +13,13 @@ type StrategyRow = {
   params: string | null;
 };
 
+/** Exchange da estratégia ou EXCHANGE global (Bybit se EXCHANGE=bybit). */
+export function resolveStrategyExchange(stratParams: Record<string, unknown>): 'binance' | 'bybit' {
+  if (stratParams.exchange === 'bybit') return 'bybit';
+  if (stratParams.exchange === 'binance') return 'binance';
+  return isBybitEnabled() ? 'bybit' : 'binance';
+}
+
 /**
  * Auto-executa sinais NEW recentes para uma estratégia (inspecção, reversal close, allowBuy/allowSell).
  */
@@ -22,8 +30,8 @@ export async function autoExecuteNewSignalsForStrategy(opts: {
   logPrefix: string;
 }): Promise<number> {
   const { strategy, startedAt, minStrength, logPrefix } = opts;
-  const stratParams = JSON.parse(strategy.params || '{}');
-  const exchange = (stratParams.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+  const stratParams = JSON.parse(strategy.params || '{}') as Record<string, unknown>;
+  const exchange = resolveStrategyExchange(stratParams);
 
   const newSignals = await prisma.signal.findMany({
     where: {

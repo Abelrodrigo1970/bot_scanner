@@ -57,6 +57,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
       allowSell: true,
       buyEnabled: true,
       sellEnabled: true,
+      exchange: 'bybit',
     }),
   },
   {

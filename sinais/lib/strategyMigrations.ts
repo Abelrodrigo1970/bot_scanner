@@ -273,7 +273,7 @@ export const EMA_SCALPING_PARAMS = {
   tp2PositionPct: 35,
   allowBuy: true,
   allowSell: false,
-  exchange: 'binance' as const,
+  exchange: 'bybit' as const,
 } as const;
 
 export const EMA_SCALPING_DESCRIPTION =
@@ -527,7 +527,8 @@ export async function syncEmaRibbonScalpingBuy15m(
     const needsParams =
       Number(p.ribbonFastPeriod ?? 0) !== EMA_SCALPING_PARAMS.ribbonFastPeriod ||
       p.allowBuy !== true ||
-      p.allowSell !== false;
+      p.allowSell !== false ||
+      p.exchange !== 'bybit';
     const needsActive = !existing.isActive;
 
     if (needsMeta || needsParams || needsActive) {
@@ -609,8 +610,11 @@ export async function syncAfastamentoMedio30mBuyPrevMax(
   const needsStrength =
     p.maxStrength == null ||
     Number(p.maxStrength) !== AFASTAMENTO_STRENGTH_FILTER_PARAMS.maxStrength;
+  const needsExchange = p.exchange !== 'bybit';
 
-  if (!needsBuy && !needsSell && !needsMeta && !needsExit && !needsStrength) return { updated: false };
+  if (!needsBuy && !needsSell && !needsMeta && !needsExit && !needsStrength && !needsExchange) {
+    return { updated: false };
+  }
 
   const next: Record<string, unknown> = {
     ...p,
@@ -618,6 +622,7 @@ export async function syncAfastamentoMedio30mBuyPrevMax(
     ...(needsSell ? AFASTAMENTO_MEDIO_30M_SELL_PARAMS : {}),
     ...(needsExit || needsMeta ? AFASTAMENTO_MEDIO_30M_EXIT_PARAMS : {}),
     ...(needsStrength || needsMeta ? AFASTAMENTO_STRENGTH_FILTER_PARAMS : {}),
+    ...(needsExchange ? { exchange: 'bybit' } : {}),
   };
   if (needsExit) {
     delete next.takeProfitPct;
