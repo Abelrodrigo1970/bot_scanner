@@ -50,16 +50,10 @@ function isRailwayHosted(): boolean {
   );
 }
 
-/** Binance público (klines/tickers): omitir enquanto Bybit primário responde; senão fallback. */
+/** Binance público (klines/tickers): omitir no Railway / MARKET_DATA_PRIMARY=bybit. */
 function canAttemptBinancePublicApi(): boolean {
-  if (binanceGeoBlocked) {
-    if (bybitMarketDataGeoBlocked && Date.now() - binanceGeoBlockedAt >= BINANCE_GEO_BLOCK_RESET_MS) {
-      resetBinanceGeoBlock();
-    } else {
-      return false;
-    }
-  }
-  if (isBybitMarketDataPrimary() && canUseBybitMarketData()) return false;
+  if (isBybitMarketDataPrimary()) return false;
+  if (binanceGeoBlocked) return false;
   return true;
 }
 
@@ -100,7 +94,7 @@ function logMarketDataPrimaryOnce(): void {
   marketDataPrimaryLogged = true;
   const host = getBybitMarketDataHosts()[0] ?? 'api.bybit.nl';
   console.log(
-    `ℹ️ Market data: Bybit primário (${host}); Binance entra se Bybit falhar.`
+    `ℹ️ Market data: Bybit primário (${host}). Binance só em fallback ou MARKET_DATA_PRIMARY=binance.`
   );
 }
 
@@ -132,14 +126,11 @@ const bybitMarketDataHostsBlocked = new Set<string>();
 const BYBIT_GEO_BLOCK_RESET_MS = 10 * 60 * 1000;
 /** Após Binance 451 no Railway, preferir Bybit e re-tentar hosts (incidentes de rede são transitórios). */
 let sessionPreferBybitAfter451 = false;
-/** Binance HTTP 451 = geo-block neste IP — re-tenta após TTL se Bybit também falhar. */
+/** Binance HTTP 451 = geo-block permanente neste IP (Railway US) — não repetir 8× por pedido. */
 let binanceGeoBlocked = false;
-let binanceGeoBlockedAt = 0;
 let binanceGeoBlockWarned = false;
 let binance451PerSymbolLogs = 0;
-const BINANCE_GEO_BLOCK_RESET_MS = 10 * 60 * 1000;
 let marketDataConfigLogged = false;
-let bybitFallbackToBinanceWarned = false;
 
 function binanceHttpFetch(url: string, timeoutMs = BINANCE_KLINES_TIMEOUT_MS): Promise<Response> {
   return fetch(url, {
@@ -182,22 +173,8 @@ function logMarketDataConfigOnce(): void {
   }
 }
 
-function resetBinanceGeoBlock(): void {
-  binanceGeoBlocked = false;
-  binanceGeoBlockedAt = 0;
-  binanceGeoBlockWarned = false;
-  binance451PerSymbolLogs = 0;
-}
-
-function warnBybitFallbackToBinanceOnce(): void {
-  if (bybitFallbackToBinanceWarned) return;
-  bybitFallbackToBinanceWarned = true;
-  console.warn('⚠️ Bybit market data falhou (403) — fallback Binance para velas/tickers.');
-}
-
 function markBinanceGeoBlocked(): void {
   binanceGeoBlocked = true;
-  binanceGeoBlockedAt = Date.now();
   if (isRailwayHosted()) {
     sessionPreferBybitAfter451 = true;
     resetBybitMarketDataGeoBlock();
@@ -452,18 +429,16 @@ export async function filterToBybitMarketSymbols(symbols: string[]): Promise<str
 }
 
 async function fetchUsdtPerpTickers24hr(): Promise<UsdtPerpTicker24hr[]> {
-  if (shouldUseBybitMarketData()) {
+  if (isBybitMarketDataPrimary() && canUseBybitMarketData()) {
     try {
       return await fetchBybitLinearTickers24hr();
     } catch (bybitErr) {
       noteBybitGeoBlock(bybitErr);
-      if (isBybitMarketDataPrimary()) {
-        warnBybitFallbackToBinanceOnce();
-      }
+      throw bybitErr;
     }
   }
   if (!canAttemptBinancePublicApi()) {
-    throw new Error('Tickers 24h: Bybit e Binance indisponíveis neste servidor');
+    throw new Error('Tickers 24h: Bybit falhou e Binance omitida (servidor Bybit primário)');
   }
   return JSON.parse(
     await fetchBinanceFapiText('/fapi/v1/ticker/24hr')
@@ -766,22 +741,21 @@ export async function fetchCandles(
     } catch (bybitErr) {
       noteBybitGeoBlock(bybitErr);
       lastError = bybitErr;
-      if ((bybitErr as { symbolUnavailable?: boolean })?.symbolUnavailable) {
-        return [];
-      }
       if (isBybitMarketDataPrimary()) {
-        warnBybitFallbackToBinanceOnce();
+        if ((bybitErr as { symbolUnavailable?: boolean })?.symbolUnavailable) {
+          return [];
+        }
+        warnCandlesFetchFailure(symbol, interval, lastError);
+        throw lastError;
       }
     }
   }
 
   if (!canAttemptBinancePublicApi()) {
     const msg =
-      bybitMarketDataGeoBlocked && binanceGeoBlocked
-        ? 'Bybit (403) e Binance (451) indisponíveis neste IP Railway'
-        : bybitMarketDataGeoBlocked && isBybitMarketDataPrimary()
-          ? 'Bybit indisponível (403) e Binance bloqueada (451) neste servidor'
-          : marketDataBlockedMessage();
+      bybitMarketDataGeoBlocked && isBybitMarketDataPrimary()
+        ? `Bybit indisponível (403 em todos os hosts). Configure BYBIT_MARKET_DATA_BASE_URL=https://api.bybit.nl`
+        : marketDataBlockedMessage();
     const err = new Error(`${msg} — ${symbol} ${interval}`);
     warnCandlesFetchFailure(symbol, interval, lastError ?? err);
     throw lastError instanceof Error ? lastError : err;
@@ -826,7 +800,7 @@ export async function fetchCurrentPrice(symbol: string): Promise<number> {
       noteBybitGeoBlock(bybitErr);
       lastError = bybitErr;
       if (isBybitMarketDataPrimary()) {
-        warnBybitFallbackToBinanceOnce();
+        throw bybitErr;
       }
     }
   }
