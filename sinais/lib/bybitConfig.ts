@@ -8,9 +8,39 @@
 /** Demo Trading (fundos fictícios, API keys criadas no modo Demo da conta). */
 const BYBIT_DEMO_DEFAULT = 'https://api-demo.bybit.com';
 
+/** Mainnet regional (Holanda, EEA, etc.) — docs Bybit V5. */
+const BYBIT_MAINNET_HOSTS = new Set([
+  'api.bybit.com',
+  'api.bytick.com',
+  'api.bybit.nl',
+  'api.bybit.eu',
+  'api.bybit.tr',
+  'api.bybit.kz',
+  'api.bybitgeorgia.ge',
+  'api.bybit.ae',
+  'api.bybit.id',
+]);
+
+function isRailwayHosted(): boolean {
+  return Boolean(
+    process.env.RAILWAY_ENVIRONMENT ||
+      process.env.RAILWAY_PROJECT_ID ||
+      process.env.RAILWAY_SERVICE_ID
+  );
+}
+
 export function getBybitBaseUrl(): string {
-  const url = process.env.BYBIT_BASE_URL;
-  if (url) return url.replace(/\/$/, '');
+  const raw = (process.env.BYBIT_BASE_URL || '').replace(/\/$/, '');
+  if (raw) {
+    // Railway EU: api.bybit.com devolve 403 CloudFront — mirror NL obrigatório
+    if (
+      isRailwayHosted() &&
+      (raw === 'https://api.bybit.com' || raw.endsWith('api.bybit.com'))
+    ) {
+      return (process.env.BYBIT_BASE_URL_NL || 'https://api.bybit.nl').replace(/\/$/, '');
+    }
+    return raw;
+  }
   return BYBIT_DEMO_DEFAULT;
 }
 
@@ -31,12 +61,12 @@ export function isBybitDemo(): boolean {
   return getBybitBaseUrl().toLowerCase().includes('api-demo');
 }
 
-/** Mainnet global V5 (dinheiro real). Só usar com chaves de conta real e opt-in explícito. */
+/** Mainnet global ou regional V5 (dinheiro real). */
 export function isBybitMainnet(): boolean {
   const host = bybitBaseHostname();
   if (!host) return false;
   if (host.includes('testnet') || host.includes('demo')) return false;
-  return host === 'api.bybit.com';
+  return BYBIT_MAINNET_HOSTS.has(host);
 }
 
 function isBybitAllowMainnetEnv(): boolean {
