@@ -153,7 +153,10 @@ async function getProxyAgent(): Promise<UndiciProxyAgent | null> {
     _proxyAgent = new ProxyAgent(proxyUrl);
     console.log(`ℹ️ Market data: proxy activo → ${proxyUrl.replace(/:([^@/]+)@/, ':***@')}`);
   } catch (e) {
-    console.warn('⚠️ MARKET_DATA_PROXY_URL definido mas undici não disponível:', e instanceof Error ? e.message : e);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes('markAsUncloneable')) {
+      console.warn('⚠️ MARKET_DATA_PROXY_URL definido mas undici não disponível:', msg);
+    }
     _proxyAgent = null;
   }
   return _proxyAgent;
