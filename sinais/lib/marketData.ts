@@ -1,6 +1,7 @@
 /**
  * Funções para buscar dados de mercado de APIs públicas
  */
+import type { ProxyAgent as UndiciProxyAgent } from 'undici';
 
 export interface Candle {
   open: number;
@@ -141,16 +142,43 @@ const BINANCE_GEO_BLOCK_RESET_MS = 10 * 60 * 1000;
 let marketDataConfigLogged = false;
 let bybitFallbackToBinanceWarned = false;
 
+let _proxyAgent: UndiciProxyAgent | null | undefined = undefined;
+
+async function getProxyAgent(): Promise<UndiciProxyAgent | null> {
+  const proxyUrl = process.env.MARKET_DATA_PROXY_URL?.trim();
+  if (!proxyUrl) return null;
+  if (_proxyAgent !== undefined) return _proxyAgent;
+  try {
+    const { ProxyAgent } = await import('undici');
+    _proxyAgent = new ProxyAgent(proxyUrl);
+    console.log(`ℹ️ Market data: proxy activo → ${proxyUrl.replace(/:([^@/]+)@/, ':***@')}`);
+  } catch (e) {
+    console.warn('⚠️ MARKET_DATA_PROXY_URL definido mas undici não disponível:', e instanceof Error ? e.message : e);
+    _proxyAgent = null;
+  }
+  return _proxyAgent;
+}
+
+async function proxyFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const agent = await getProxyAgent();
+  if (agent) {
+    const { fetch: undiciFetch } = await import('undici');
+    return undiciFetch(url, { ...init, dispatcher: agent } as Parameters<typeof undiciFetch>[1]) as unknown as Response;
+  }
+  return fetch(url, init);
+}
+
 function binanceHttpFetch(url: string, timeoutMs = BINANCE_KLINES_TIMEOUT_MS): Promise<Response> {
-  return fetch(url, {
+  const init: RequestInit = {
     cache: 'no-store',
     headers: BINANCE_PUBLIC_HEADERS,
     signal: AbortSignal.timeout(timeoutMs),
-  });
+  };
+  return proxyFetch(url, init);
 }
 
 function httpFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  return fetch(url, init);
+  return proxyFetch(url, init);
 }
 
 function resetBybitMarketDataGeoBlock(): void {
