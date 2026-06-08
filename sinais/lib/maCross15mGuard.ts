@@ -7,10 +7,10 @@ export const MA_CROSS_15M_TZ = 'Europe/Lisbon';
 /** Cooldown mínimo entre o 1.º sinal do dia e o último sinal anterior (outro dia). */
 export const MA_CROSS_5M_SIGNAL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
-/** Horas PT rentáveis com SL/TP real (análise 2026, força ≥70, dias úteis). Requer cron 24h para incluir 3h e 7h. */
+/** Referência histórica (análise 2026). Filtro de horas desactivado — sinais em qualquer hora PT. */
 export const MA_CROSS_15M_ALLOWED_HOURS_PT: readonly number[] = [3, 7, 15, 17, 19];
 
-/** Complemento de {@link MA_CROSS_15M_ALLOWED_HOURS_PT} (0–23 PT). */
+/** Complemento de {@link MA_CROSS_15M_ALLOWED_HOURS_PT} (scripts de análise). */
 export const MA_CROSS_15M_BLOCKED_HOURS_PT: readonly number[] = Array.from({ length: 24 }, (_, h) => h).filter(
   (h) => !MA_CROSS_15M_ALLOWED_HOURS_PT.includes(h)
 );
@@ -35,8 +35,9 @@ export function isMaCross15mWeekendBlocked(now: Date = new Date()): boolean {
   return dow === 'Sat' || dow === 'Sun';
 }
 
-export function isMaCross15mHourBlocked(now: Date = new Date()): boolean {
-  return !MA_CROSS_15M_ALLOWED_HOURS_PT.includes(hourInLisbon(now));
+/** Sempre false — MA Cross 12×30 aceita sinais a qualquer hora (PT). */
+export function isMaCross15mHourBlocked(_now: Date = new Date()): boolean {
+  return false;
 }
 
 export function isMaCross15mTurnoverBlocked(turnover3hSumUsd: number): boolean {
@@ -100,7 +101,7 @@ async function isSignalProfitable(
 
 /**
  * Regras MA Cross 15m (análise horária 2026):
- * - sem fim-de-semana (cron) e só horas PT permitidas (whitelist)
+ * - sem fim-de-semana (cron); qualquer hora PT
  * - soma turnover 3 últimas velas 1h ≥ $10M USDT
  * - 1.º sinal do dia: cooldown 24h desde o último sinal do par
  * - 2.º sinal no mesmo dia: só se 1.º fechado, verde (líquido) e mesma direção
