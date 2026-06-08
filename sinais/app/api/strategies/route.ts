@@ -11,9 +11,7 @@ import {
   removeDeprecatedStrategies,
   syncAfastamentoMedio30mBuyPrevMax,
   syncEmaRibbonScalpingBuy15m,
-  syncMacdHistogramPmoParams,
   syncMaCrossScanner1UniverseDescriptions,
-  syncMa200Scanner4UniverseDescription,
   syncRsiOverboughtDrop1hConfig,
 } from '@/lib/strategyMigrations';
 
@@ -28,7 +26,7 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   stopPercent: 15,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
   ma80Period: 80,
-  entryMaxAbsPctMa80VsMa200: 3,
+  entryMaxAbsPctMa80VsMa200: 0,
   ma12x30RepeatWhileTrend: true,
   ma12x30RepeatMinSpreadDeltaPct: 0.06,
   ma12x30GainTpPct: 44,
@@ -67,9 +65,7 @@ const EMA_SCALPING_SELL_DESCRIPTION =
 async function ensureMissingStrategies() {
   await removeDeprecatedStrategies(prisma);
   await ensureMissingBuiltinStrategies(prisma);
-  await syncMacdHistogramPmoParams(prisma);
   await syncMaCrossScanner1UniverseDescriptions(prisma);
-  await syncMa200Scanner4UniverseDescription(prisma);
   await syncRsiOverboughtDrop1hConfig(prisma);
   await syncAfastamentoMedio30mBuyPrevMax(prisma);
   await syncEmaRibbonScalpingBuy15m(prisma);
@@ -132,8 +128,9 @@ async function ensureMissingStrategies() {
       if (next.ma80Period == null) {
         next.ma80Period = 80;
       }
-      if (next.entryMaxAbsPctMa80VsMa200 == null || next.entryMaxAbsPctMa80VsMa200 === '') {
-        next.entryMaxAbsPctMa80VsMa200 = 3;
+      // Desactivar filtro MA80 vs MA200 — era demasiado restritivo (bloqueava tendências legítimas do Scanner 1)
+      if (next.entryMaxAbsPctMa80VsMa200 == null || next.entryMaxAbsPctMa80VsMa200 === '' || Number(next.entryMaxAbsPctMa80VsMa200) > 0) {
+        next.entryMaxAbsPctMa80VsMa200 = 0;
       }
       if (
         p.ma200Period === 200 ||

@@ -93,7 +93,7 @@ export const MA_CROSS_5M_PARAMS = {
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
   /** Entrada só se |MA80 − MA200|/MA200×100 ≤ N (velas 15m). 0 = desactiva. */
   ma80Period: 80,
-  entryMaxAbsPctMa80VsMa200: 3,
+  entryMaxAbsPctMa80VsMa200: 0,
   /** Se true: re-entradas quando spread > limiar e alinhado, desde que haja novo impulso (cruzamento de limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). */
   ma12x30RepeatWhileTrend: true,
   /** No modo repetir tendência: mínimo (em pts %) que o spread |MA12−MA30|/MA30 deve aumentar vs a vela anterior para contar como «novidade». */
