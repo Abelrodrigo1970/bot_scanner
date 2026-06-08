@@ -73,8 +73,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   }
 }
 
+/** Guarda o job activo por universeCode para evitar duplicados. */
+const activeScanJobs = new Map<string, Promise<void>>();
+
 /**
- * POST: executa scan Binance e grava histórico na BD.
+ * POST: inicia scan Binance em background e devolve 202 imediatamente.
+ * O cliente deve fazer polling ao GET para obter os resultados quando prontos.
  */
 export async function POST(_request: NextRequest, context: RouteContext) {
   try {
@@ -89,51 +93,50 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Scanner desconhecido' }, { status: 404 });
     }
 
-    console.log(`[universe-scans] A executar ${code}...`);
-    const rows = await scanSymbolUniverse(def);
-    const persisted = await persistUniverseScan({
-      universeCode: code,
-      source: 'ui/universe-scans',
-      rows,
-    });
-
-    if (!persisted.ok) {
+    if (activeScanJobs.has(code)) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Scan concluído mas falhou ao gravar na BD',
-          details: persisted.reason,
-          count: rows.length,
+          busy: true,
+          message: `Scan ${code} já em execução. Aguarde e recarregue a página.`,
         },
-        { status: 503 }
+        { status: 202 }
       );
     }
 
-    const pair = await getLatestUniverseScanPair(code);
-    const run = pair.current;
-    const items = run
-      ? buildScanItemsWithPreviousDelta(run.rows, pair.previous?.rows ?? null)
-      : buildScanItemsWithPreviousDelta(rows, null);
+    const startedAt = new Date().toISOString();
 
-    return NextResponse.json({
-      success: true,
-      code,
-      meta,
-      runId: persisted.runId,
-      scannedAt: run?.scannedAt.toISOString() ?? new Date().toISOString(),
-      previousRun: pair.previous
-        ? { id: pair.previous.id, scannedAt: pair.previous.scannedAt.toISOString() }
-        : null,
-      items,
-      count: rows.length,
-      message: `${meta.displayName} atualizado (${rows.length} símbolos)`,
-    });
+    const job = (async () => {
+      try {
+        console.log(`[universe-scans UI] A executar ${code}...`);
+        const rows = await scanSymbolUniverse(def);
+        await persistUniverseScan({ universeCode: code, source: 'ui/universe-scans', rows });
+        console.log(`[universe-scans UI] ${code}: ${rows.length} símbolos gravados`);
+      } catch (err) {
+        console.error(`[universe-scans UI] erro ${code}:`, err);
+      } finally {
+        activeScanJobs.delete(code);
+      }
+    })();
+
+    activeScanJobs.set(code, job);
+
+    return NextResponse.json(
+      {
+        success: true,
+        background: true,
+        code,
+        startedAt,
+        message: `Scan ${meta.displayName} iniciado em background. Recarregue a página em 2–3 minutos para ver os resultados.`,
+      },
+      { status: 202 }
+    );
   } catch (error) {
     console.error('POST universe-scans:', error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Erro ao executar scan',
+        error: 'Erro ao iniciar scan',
         details: error instanceof Error ? error.message : 'Erro desconhecido',
       },
       { status: 500 }

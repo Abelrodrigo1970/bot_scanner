@@ -74,7 +74,12 @@ export default function UniverseScannerPage() {
         method: 'POST',
       });
       const data = await response.json();
-      if (response.ok && data.success) {
+      if (response.status === 202 && data.background) {
+        // Scan iniciado em background — avisar o utilizador para recarregar após 2-3 min
+        setError(`⏳ ${data.message || 'Scan iniciado em background. Recarregue a página em 2–3 minutos.'}`);
+      } else if (response.status === 202 && data.busy) {
+        setError(`⏳ ${data.message || 'Scan já em execução. Aguarde e recarregue.'}`);
+      } else if (response.ok && data.success) {
         setItems(data.items || []);
         setLastUpdate(new Date(data.scannedAt || Date.now()));
         setScanSource('ui/universe-scans');
