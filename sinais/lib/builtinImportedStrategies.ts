@@ -523,7 +523,8 @@ export async function runAfastamentoMedioStrategy(
 
   const candlesNeeded = Math.max(maPeriod, buyTrendMaPeriod) + smoothPeriod + 40;
   try {
-    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    const rawCandles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    const candles = dropFormingCandle(rawCandles, timeframe);
     const minCloses = Math.max(maPeriod, buyTrendMaPeriod) + smoothPeriod + 3;
     if (candles.length < minCloses) return null;
 
@@ -681,7 +682,8 @@ export async function runAfastamentoMedio30mStrategy(
 
   const candlesNeeded = Math.max(maPeriod, buyTrendMaPeriod) + smoothPeriod + 40;
   try {
-    const candles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    const rawCandles = await fetchCandles(symbol, timeframe, candlesNeeded);
+    const candles = dropFormingCandle(rawCandles, timeframe);
     const minCloses = Math.max(maPeriod, buyTrendMaPeriod) + smoothPeriod + 3;
     if (candles.length < minCloses) return null;
 
