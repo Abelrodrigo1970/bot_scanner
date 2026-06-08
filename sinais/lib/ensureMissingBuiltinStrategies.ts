@@ -1,7 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
 import {
-  MACD_HISTOGRAM_PMO_DESCRIPTION,
-  MACD_HISTOGRAM_PMO_PARAMS,
   AFASTAMENTO_MEDIO_30M_DESCRIPTION,
   AFASTAMENTO_MEDIO_30M_EXIT_PARAMS,
   AFASTAMENTO_MEDIO_30M_DISPLAY,
@@ -22,8 +20,6 @@ import {
   PIVOT_BOSS_BEAR_1H_DISPLAY,
   syncAfastamentoMedio30mBuyPrevMax,
   syncEmaRibbonScalpingBuy15m,
-  syncMacdHistogramPmoParams,
-  syncMa200Scanner4UniverseDescription,
   syncPivotBossBear15mUniverse,
   syncRsiOverboughtDrop1hConfig,
   syncRsiOverboughtDropLegacy1hConfig,
@@ -31,13 +27,6 @@ import {
 
 /** Estratégias importadas (foto + afastamento 80/7) — criadas se faltarem na BD. */
 export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
-  {
-    name: 'MACD_HISTOGRAM_PMO',
-    displayName: 'MACD Histogram 1h + PMO',
-    description: MACD_HISTOGRAM_PMO_DESCRIPTION,
-    isActive: true,
-    params: JSON.stringify(MACD_HISTOGRAM_PMO_PARAMS),
-  },
   {
     name: 'AFASTAMENTO_MEDIO_30M',
     displayName: AFASTAMENTO_MEDIO_30M_DISPLAY,
@@ -98,10 +87,6 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
       console.log(`✅ Estratégia criada: ${def.name}`);
     }
   }
-  const macdSync = await syncMacdHistogramPmoParams(prisma);
-  if (macdSync.updated) {
-    console.log('✅ MACD_HISTOGRAM_PMO: params actualizados (filtros mais selectivos)');
-  }
   const rsiSync = await syncRsiOverboughtDrop1hConfig(prisma);
   if (rsiSync.updated) {
     console.log('✅ RSI_OVERBOUGHT_DROP_1H: params/descrição actualizados (pullback bear 1h)');
@@ -121,9 +106,5 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const pivotBossSync = await syncPivotBossBear15mUniverse(prisma);
   if (pivotBossSync.updated) {
     console.log('✅ PIVOT_BOSS_BEAR: universo/descrição actualizados (15m → Scanner 1; 1h → Scanner 4)');
-  }
-  const ma200Sync = await syncMa200Scanner4UniverseDescription(prisma);
-  if (ma200Sync.updated) {
-    console.log('✅ MA200_VOLATILE: universo actualizado para Scanner 4 (1d)');
   }
 }

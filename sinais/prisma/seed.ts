@@ -4,7 +4,6 @@ import {
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_5M_PARAMS,
-  MA200_VOLATILE_DESCRIPTION,
   migrateVolumeSpike15mToMaCross5m,
   removeDeprecatedStrategies,
 } from '../lib/strategyMigrations';
@@ -42,54 +41,6 @@ async function main() {
       description: MA_CROSS_5M_DESC,
       isActive: true,
       params: JSON.stringify(MA_CROSS_5M_PARAMS),
-    },
-  });
-
-  // Estratégia MA (somente MA200) nos 20 Top Voláteis
-  const ma200VolatileStrategy = await prisma.strategy.upsert({
-    where: { name: 'MA200_VOLATILE' },
-    update: {
-      description: MA200_VOLATILE_DESCRIPTION,
-      params: JSON.stringify({
-        ma200Period: 200,
-        confirmationPct: 2,
-        maxDistancePct: 10,
-        buyStopPercent: 4,
-        buyTp1Percent: 80,
-        buyTp1Position: 70,
-        sellStopPercent: 4,
-        sellTp1Percent: 80,
-        sellTp1Position: 70,
-        closeAfterHours: 24,
-        symbolLimit: 500,
-        minQuoteVolume: 100000,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'binance',
-      }),
-    },
-    create: {
-      name: 'MA200_VOLATILE',
-      displayName: 'MA200 Top Voláteis',
-      description: MA200_VOLATILE_DESCRIPTION,
-      isActive: true,
-      params: JSON.stringify({
-        ma200Period: 200,
-        confirmationPct: 2,
-        maxDistancePct: 10,
-        buyStopPercent: 4,
-        buyTp1Percent: 80,
-        buyTp1Position: 70,
-        sellStopPercent: 4,
-        sellTp1Percent: 80,
-        sellTp1Position: 70,
-        closeAfterHours: 24,
-        symbolLimit: 500,
-        minQuoteVolume: 100000,
-        allowBuy: true,
-        allowSell: true,
-        exchange: 'binance',
-      }),
     },
   });
 
@@ -194,7 +145,6 @@ async function main() {
   console.log('Seed concluído!');
   console.log('Estratégias (ids):', {
     maCross5m: maCross5mStrategy.id,
-    ma200Volatile: ma200VolatileStrategy.id,
   });
 }
 

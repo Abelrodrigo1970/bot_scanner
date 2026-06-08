@@ -10,6 +10,8 @@ export const REMOVED_DEPRECATED_STRATEGY_NAMES = [
   'MA_CROSS_1H',
   'MA_VOLATILE',
   'AFASTAMENTO_MEDIO',
+  'MA200_VOLATILE',
+  'MACD_HISTOGRAM_PMO',
 ] as const;
 
 export interface RemoveDeprecatedStrategiesResult {

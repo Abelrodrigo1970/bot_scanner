@@ -33,15 +33,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
-    strategyName: 'MA200_VOLATILE',
-    displayLabel: 'MA200 Top Voláteis',
-    signalTimeframes: ['4h'],
-    source: 'universe_scan',
-    dataKey: 'UNIVERSE_ABOVE_MA200_1D',
-    description: 'Scanner 4: fecho acima SMA200 (1d); sinais em 4h.',
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-  },
-  {
     strategyName: 'EMA_SCALPING',
     displayLabel: 'EMA Ribbon Scalping BUY (15m)',
     signalTimeframes: ['15m'],
@@ -67,14 +58,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     dataKey: 'UNIVERSE_ABOVE_MA200_1D',
     description: 'Scanner 4: fecho acima SMA200 (1d); sinais em 1h.',
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
-  },
-  {
-    strategyName: 'MACD_HISTOGRAM_PMO',
-    displayLabel: 'MACD Histogram 1h + PMO',
-    signalTimeframes: ['1h'],
-    source: 'runtime_top_movers_1h',
-    dataKey: 'fetchTopSymbolsBy1hPriceChange:50',
-    description: 'Top 50 movers 1h (param. symbolLimit; vela fechada + PMO/MACD confirmados).',
   },
   {
     strategyName: 'RSI_OVERBOUGHT_DROP_1H',

@@ -6,21 +6,17 @@ import {
   autoExecuteNewSignalsForStrategy,
   RSI_1H_AUTO_EXEC_STRATEGY_NAMES,
 } from '@/lib/autoExecuteNewSignals';
-import {
-  cleanupBybitOrphanOpenOrders,
-  closeActivePositionForSymbol,
-  inspectActivePositionForSymbol,
-} from '@/lib/tradingExecutor';
+import { cleanupBybitOrphanOpenOrders } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 
 /**
  * Executa sinais em background (fire-and-forget):
- * MA200_VOLATILE 4h e restantes estratégias 1h activas na BD.
- * Auto-executa ordens: MA200_VOLATILE e estratégias RSI 1h (allowBuy/allowSell).
+ * Estratégias 1h activas na BD (RSI, Pivot Boss).
+ * Auto-executa ordens: estratégias RSI 1h (allowBuy/allowSell).
  */
 async function runSignalsInBackground(hour: number, minute: number): Promise<void> {
   try {
-    console.log('[Run-Signals BG] Iniciando estratégias 1h (MA200 4h, …)...');
+    console.log('[Run-Signals BG] Iniciando estratégias 1h...');
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
 
     const signalsCreated = await runAllStrategies({
@@ -28,60 +24,6 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
     });
 
     const autoMinStrength = getAutoExecuteMinStrength();
-
-    const ma200Strategy = await prisma.strategy.findFirst({
-      where: { name: 'MA200_VOLATILE', isActive: true },
-    });
-
-    if (ma200Strategy) {
-      const ma200Params = JSON.parse(ma200Strategy.params || '{}');
-      const ma200Exchange = (ma200Params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
-      const ma200CloseAfterHours = Number(ma200Params.closeAfterHours ?? 24);
-
-      await autoExecuteNewSignalsForStrategy({
-        strategy: ma200Strategy,
-        startedAt,
-        minStrength: autoMinStrength,
-        logPrefix: '[Run-Signals BG] MA200',
-      });
-
-      const ma200Cutoff = new Date(Date.now() - ma200CloseAfterHours * 60 * 60 * 1000);
-      const expiringSignals = await prisma.signal.findMany({
-        where: {
-          strategyId: ma200Strategy.id,
-          status: 'IN_PROGRESS',
-          generatedAt: { lte: ma200Cutoff },
-        },
-        orderBy: { generatedAt: 'asc' },
-      });
-
-      for (const sig of expiringSignals) {
-        try {
-          const positionState = await inspectActivePositionForSymbol(sig.symbol, ma200Exchange);
-          if (!positionState.inspectable) {
-            console.warn(`[Run-Signals BG] ⚠️ MA200 24h: não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
-            continue;
-          }
-
-          if (!positionState.hasPosition) {
-            await prisma.$executeRaw`UPDATE "Signal" SET status = 'EXPIRED' WHERE id = ${sig.id}`;
-            console.log(`[Run-Signals BG] 🧹 MA200 24h: ${sig.symbol} sem posição real, sinal expirado`);
-            continue;
-          }
-
-          const closeResult = await closeActivePositionForSymbol(sig.symbol, ma200Exchange);
-          if (!closeResult.closed) {
-            console.warn(`[Run-Signals BG] ⚠️ MA200 24h: não foi possível fechar ${sig.symbol}: ${closeResult.message}`);
-            continue;
-          }
-
-          await prisma.$executeRaw`UPDATE "Signal" SET status = 'EXPIRED' WHERE id = ${sig.id}`;
-          console.log(`[Run-Signals BG] ⏰ MA200 24h: posição fechada em ${sig.symbol}`);
-        } catch (err) {
-          console.error(`[Run-Signals BG] ❌ MA200 24h: erro ao fechar ${sig.symbol}:`, err);
-        }
-      }
-    }
 
     const rsiStrategies = await prisma.strategy.findMany({
       where: {
@@ -123,7 +65,7 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
 }
 
 /**
- * Endpoint de cron para MA200 4h e restantes estratégias 1h activas.
+ * Endpoint de cron para estratégias 1h activas (RSI, Pivot Boss).
  * MA Cross 15m (MA12/30): /api/cron/run-volume-spike-15m. EMA 15m: /api/cron/run-rsi-15m.
  */
 export async function GET(request: NextRequest) {
@@ -143,7 +85,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento iniciado em background (MA200 4h e estratégias 1h activas)',
+      message: 'Processamento iniciado em background (estratégias 1h activas)',
       executedAt: now.toISOString(),
       nextExecution: `${(hour + 1) % 24}:00`,
     });

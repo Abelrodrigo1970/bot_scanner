@@ -6,8 +6,6 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
   'PIVOT_BOSS_BEAR_15M',
   'EMA_SCALPING',
   'AFASTAMENTO_MEDIO_30M',
-  'MA200_VOLATILE',
-  'MACD_HISTOGRAM_PMO',
   'RSI_OVERBOUGHT_DROP_1H',
   'RSI_OVERBOUGHT_DROP_LEGACY_1H',
   'PIVOT_BOSS_BEAR_1H',
@@ -52,18 +50,6 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '30m',
     universe: 'Scanner 1 (acima SMA200, 1h)',
   },
-  MA200_VOLATILE: {
-    cron: '1h',
-    cronLabel: 'Cron 1h',
-    timeframe: '4h',
-    universe: 'Scanner 4 (acima SMA200, 1d)',
-  },
-  MACD_HISTOGRAM_PMO: {
-    cron: '1h',
-    cronLabel: 'Cron 1h',
-    timeframe: '1h',
-    universe: 'Top movers 1h',
-  },
   RSI_OVERBOUGHT_DROP_1H: {
     cron: '1h',
     cronLabel: 'Cron 1h',
@@ -87,6 +73,8 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 /** Rótulos legíveis das estratégias descontinuadas (referência na UI). */
 export const REMOVED_STRATEGY_LABELS: Record<string, string> = {
   MA_VOLATILE: 'MA Cross Top Voláteis',
+  MA200_VOLATILE: 'MA200 Top Voláteis (4h)',
+  MACD_HISTOGRAM_PMO: 'MACD Histogram 1h + PMO',
   AFASTAMENTO_MEDIO: 'Afastamento médio 1h',
   EMA_SCALPING_SELL: 'EMA Ribbon Scalping SELL 15m (descontinuado)',
   RSI: 'RSI 1h',
@@ -129,6 +117,6 @@ export const CRON_GROUPS: { key: '15m' | '30m' | '1h'; title: string; descriptio
   {
     key: '1h',
     title: 'Cron 1h',
-    description: 'MA200 4h, MACD+PMO, RSI, Pivot Boss 15m/1h',
+    description: 'RSI, Pivot Boss 15m/1h',
   },
 ];
