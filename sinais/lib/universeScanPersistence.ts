@@ -3,7 +3,7 @@ import { scanSymbolUniverse } from './universeScanner';
 import { getBuiltinScanDefinition } from './symbolUniverseDefaults';
 import { filterToBybitMarketSymbols } from './marketData';
 
-const SCAN_HISTORY_KEEP = 25;
+const SCAN_HISTORY_KEEP = 100;
 
 export type UniverseScanRowSnapshot = {
   symbol: string;
