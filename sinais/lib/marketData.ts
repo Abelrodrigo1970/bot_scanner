@@ -1675,7 +1675,7 @@ export async function fetchBybitInstrumentsInfoAllPages(
     url.searchParams.set('category', category);
     url.searchParams.set('limit', '1000');
     if (cursor) url.searchParams.set('cursor', cursor);
-    const res = await fetch(url.toString());
+    const res = await proxyFetch(url.toString());
     if (!res.ok) {
       throw new Error(`instruments-info ${category}: ${res.status} ${res.statusText}`);
     }

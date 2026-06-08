@@ -5,10 +5,43 @@
  */
 
 import crypto from 'crypto';
+import type { ProxyAgent as UndiciProxyAgent } from 'undici';
 import type { BybitInstrumentPublicRow } from './marketData';
 import { getBybitBaseUrl, hasBybitCredentials } from './bybitConfig';
 
 const RECV_WINDOW = '5000';
+
+// ---------------------------------------------------------------------------
+// Proxy (BYBIT_PROXY_URL ou fallback para MARKET_DATA_PROXY_URL)
+// Usado quando o IP da Railway é bloqueado pelo CloudFront da Bybit.
+// ---------------------------------------------------------------------------
+let _bybitProxyAgent: UndiciProxyAgent | null | undefined = undefined;
+
+async function getBybitProxyAgent(): Promise<UndiciProxyAgent | null> {
+  const proxyUrl = (
+    process.env.BYBIT_PROXY_URL?.trim() ||
+    process.env.MARKET_DATA_PROXY_URL?.trim()
+  );
+  if (!proxyUrl) return null;
+  if (_bybitProxyAgent !== undefined) return _bybitProxyAgent;
+  try {
+    const { ProxyAgent } = await import('undici');
+    _bybitProxyAgent = new ProxyAgent(proxyUrl);
+    console.log(`ℹ️ Bybit client: proxy activo → ${proxyUrl.replace(/:([^@/]+)@/, ':***@')}`);
+  } catch (e) {
+    _bybitProxyAgent = null;
+  }
+  return _bybitProxyAgent;
+}
+
+async function bybitFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const agent = await getBybitProxyAgent();
+  if (agent) {
+    const { fetch: undiciFetch } = await import('undici');
+    return undiciFetch(url, { ...init, dispatcher: agent } as Parameters<typeof undiciFetch>[1]) as unknown as Response;
+  }
+  return fetch(url, init);
+}
 
 function getCredentials() {
   return {
@@ -51,7 +84,7 @@ async function signedGet<T>(path: string, params: Record<string, string> = {}): 
   const signature   = createSignature(sigPayload);
 
   const url = `${getBybitBaseUrl()}${path}${queryString ? `?${queryString}` : ''}`;
-  const response = await fetch(url, {
+  const response = await bybitFetch(url, {
     method: 'GET',
     headers: {
       'X-BAPI-API-KEY':      apiKey,
@@ -78,7 +111,7 @@ async function signedPost<T>(path: string, body: Record<string, unknown> = {}): 
   const sigPayload = `${timestamp}${apiKey}${RECV_WINDOW}${rawBody}`;
   const signature  = createSignature(sigPayload);
 
-  const response = await fetch(`${getBybitBaseUrl()}${path}`, {
+  const response = await bybitFetch(`${getBybitBaseUrl()}${path}`, {
     method: 'POST',
     headers: {
       'X-BAPI-API-KEY':     apiKey,
