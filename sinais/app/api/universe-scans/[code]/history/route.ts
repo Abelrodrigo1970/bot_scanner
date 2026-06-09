@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const url = new URL(request.url);
-    const topN = Math.min(parseInt(url.searchParams.get('top') ?? '5', 10), 20);
+    const topN = Math.min(parseInt(url.searchParams.get('top') ?? '5', 10), 200);
     const limitRuns = Math.min(parseInt(url.searchParams.get('limit') ?? '100', 10), 100);
 
     const runs = await prisma.universeScanRun.findMany({
