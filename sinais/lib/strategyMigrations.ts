@@ -294,6 +294,61 @@ export const PIVOT_BOSS_BEAR_1H_DESCRIPTION =
 export const MA200_VOLATILE_DESCRIPTION =
   'MA200 4h. Universo: Scanner 4 (fecho acima SMA200 em 1d). COMPRA: fecha 2%+ acima MA200, só se a distância à média for inferior a 10% → SL -4% | TP1 +80% (70%) | restante às 24h. VENDA: fecha 2%+ abaixo MA200, só se a distância à média for inferior a 10% → SL +4% | TP1 -80% (70%) | restante às 24h.';
 
+export const SCANNER1_TOP8_DISPLAY = 'Scanner 1 Top 8 (rotação 4h)';
+
+export const SCANNER1_TOP8_DESCRIPTION =
+  'Portefólio rotativo: a cada scan do Scanner 1 (4 h), fecha todas as posições e recompra o top 8 ao preço actual. SL -5% (Bybit). Backtest Jun/2026: +62,8% bruto / +47,8% líquido em 6 dias.';
+
+export const SCANNER1_TOP8_PARAMS = {
+  topN: 8,
+  stopLossPct: 0.05,
+  closeAfterHours: 4,
+  rotationMode: 'full',
+  allowBuy: true,
+  allowSell: false,
+  buyEnabled: true,
+  sellEnabled: false,
+  autoExecuteMinStrength: 80,
+  exchange: 'bybit',
+} as const;
+
+/** Garante registo/descrição da estratégia Scanner 1 Top 8. */
+export async function syncScanner1Top8Config(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'SCANNER1_TOP8' },
+    select: { params: true, description: true, displayName: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = { ...SCANNER1_TOP8_PARAMS, ...p, rotationMode: 'full' as const };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== SCANNER1_TOP8_DISPLAY ||
+    row.description !== SCANNER1_TOP8_DESCRIPTION;
+
+  if (needParams || needMeta) {
+    await prisma.strategy.update({
+      where: { name: 'SCANNER1_TOP8' },
+      data: {
+        displayName: SCANNER1_TOP8_DISPLAY,
+        description: SCANNER1_TOP8_DESCRIPTION,
+        params: JSON.stringify(next),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
   emaMidPeriod: 30,

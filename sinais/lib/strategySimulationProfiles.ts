@@ -56,6 +56,13 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA30 < 0,5%.',
   },
   {
+    strategyName: 'SCANNER1_TOP8',
+    displayNames: ['Scanner 1 Top 8 (rotação 4h)'],
+    buy: side(5, 0, 0, 0, 0, 4),
+    sell: null,
+    summary: 'SL 5%. Sem TP — rotação total a cada scan (4h). Top 8 Scanner 1.',
+  },
+  {
     strategyName: 'MA200_VOLATILE',
     displayNames: ['MA200 Top Voláteis'],
     buy: side(4, 80, 70),

@@ -268,3 +268,39 @@ export async function getLatestUniverseScanPair(
       : null,
   };
 }
+
+export type TopRankedUniverseScanResult =
+  | {
+      ok: true;
+      runId: string;
+      scannedAt: Date;
+      rowCount: number;
+      rows: UniverseScanRowWithDelta[];
+    }
+  | { ok: false; reason: string };
+
+/** Top N símbolos do último scan (ordenados por |pctFromMa| desc). */
+export async function getTopRankedUniverseScanRows(
+  universeCode: string,
+  topN: number
+): Promise<TopRankedUniverseScanResult> {
+  const pair = await getLatestUniverseScanPair(universeCode);
+  if (!pair.current) {
+    return {
+      ok: false,
+      reason:
+        'Nenhum scan gravado na BD. Execute /api/cron/run-universe-scans ou Actualizar scan.',
+    };
+  }
+
+  const ranked = buildScanItemsWithPreviousDelta(pair.current.rows, pair.previous?.rows);
+  const n = Math.max(1, Math.floor(topN));
+
+  return {
+    ok: true,
+    runId: pair.current.id,
+    scannedAt: pair.current.scannedAt,
+    rowCount: pair.current.rowCount,
+    rows: ranked.slice(0, n),
+  };
+}

@@ -3,6 +3,7 @@ import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
 /** Ordem de apresentação na página Estratégias (só activas). */
 export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
   'MA_CROSS_5M',
+  'SCANNER1_TOP8',
   'PIVOT_BOSS_BEAR_15M',
   'EMA_SCALPING',
   'AFASTAMENTO_MEDIO_30M',
@@ -25,6 +26,12 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     cronLabel: 'Cron 15m',
     timeframe: '15m',
     universe: 'Scanner 1 (acima SMA200, 1h)',
+  },
+  SCANNER1_TOP8: {
+    cron: '1h',
+    cronLabel: 'Rotação 4h (pós-scan)',
+    timeframe: '4h',
+    universe: 'Scanner 1 — top 8 por |afastamento|',
   },
   PIVOT_BOSS_BEAR_15M: {
     cron: '1h',

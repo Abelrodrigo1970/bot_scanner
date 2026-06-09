@@ -50,6 +50,8 @@ const ALLOWED_STRATEGIES = [
   'Pivot Boss Bear',
   'PIVOT_BOSS_BEAR_15M',
   'PIVOT_BOSS_BEAR_1H',
+  'Scanner 1 Top 8',
+  'SCANNER1_TOP8',
 ];
 
 /** Força mínima para executar */

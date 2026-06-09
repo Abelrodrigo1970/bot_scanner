@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BUILTIN_UNIVERSE_SCAN } from '@/lib/symbolUniverseDefaults';
 import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
+import { runScanner1Top8Pipeline } from '@/lib/scanner1Top8Strategy';
 
 /**
  * Executa os scanners de universo (MA200 1h/1d, EMA80 -5/+15%, ±4% MA80) e grava na BD.
@@ -35,6 +36,15 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
         : { ok: false, reason: persist.reason },
     });
     console.log(`[Universe-Scans] ${code}: ${rows.length} símbolos`);
+  }
+
+  try {
+    const top8 = await runScanner1Top8Pipeline({
+      logPrefix: '[Universe-Scans → Top8]',
+    });
+    console.log('[Universe-Scans] Scanner 1 Top 8:', top8);
+  } catch (err) {
+    console.error('[Universe-Scans] Scanner 1 Top 8 falhou:', err);
   }
 
   return results;

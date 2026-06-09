@@ -33,6 +33,15 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
   },
   {
+    strategyName: 'SCANNER1_TOP8',
+    displayLabel: 'Scanner 1 Top 8 (rotação 4h)',
+    signalTimeframes: ['4h'],
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+    description: 'Top 8 símbolos por |afastamento| vs SMA200; rotação total a cada scan.',
+    refresh: '/api/cron/run-universe-scans (cada 4 h) + run-scanner1-top8',
+  },
+  {
     strategyName: 'EMA_SCALPING',
     displayLabel: 'EMA Ribbon Scalping BUY (15m)',
     signalTimeframes: ['15m'],

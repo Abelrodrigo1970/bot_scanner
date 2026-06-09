@@ -529,6 +529,23 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'SCANNER1_TOP8':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Rotação <strong>total</strong> a cada scan do <strong>Scanner 1</strong> (4 h): fecha todas as posições
+              e recompra o top N ao preço do scan. SL fixo -5%. Sem take profit — saída na rotação seguinte ou por SL.
+              Corre após <code className="text-[10px]">run-universe-scans</code>.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Top N símbolos', p.topN ?? 8, (v) => upd({ topN: v }))}
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Horas até rotação (ref.)', p.closeAfterHours ?? 4, (v) => upd({ closeAfterHours: v }))}
+              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
+            </div>
+          </div>
+        );
+
       default:
         return <p className="text-sm text-gray-500 dark:text-gray-400">Sem parâmetros configuráveis</p>;
     }
