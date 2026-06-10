@@ -85,7 +85,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'SCANNER1_TOP8',
     displayName: SCANNER1_TOP8_DISPLAY,
     description: SCANNER1_TOP8_DESCRIPTION,
-    isActive: false,
+    isActive: true,
     params: JSON.stringify(SCANNER1_TOP8_PARAMS),
   },
 ] as const;

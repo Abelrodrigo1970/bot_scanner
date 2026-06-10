@@ -318,9 +318,13 @@ export async function syncScanner1Top8Config(
 ): Promise<{ updated: boolean }> {
   const row = await prisma.strategy.findUnique({
     where: { name: 'SCANNER1_TOP8' },
-    select: { params: true, description: true, displayName: true },
+    select: { params: true, description: true, displayName: true, isActive: true, createdAt: true, updatedAt: true },
   });
   if (!row) return { updated: false };
+
+  // Seed inicial cria inactiva; activar na 1.ª sync pós-deploy (antes de edição manual).
+  const bootstrapActive =
+    !row.isActive && row.createdAt.getTime() === row.updatedAt.getTime();
 
   let p: Record<string, unknown> = {};
   try {
@@ -335,13 +339,14 @@ export async function syncScanner1Top8Config(
     row.displayName !== SCANNER1_TOP8_DISPLAY ||
     row.description !== SCANNER1_TOP8_DESCRIPTION;
 
-  if (needParams || needMeta) {
+  if (needParams || needMeta || bootstrapActive) {
     await prisma.strategy.update({
       where: { name: 'SCANNER1_TOP8' },
       data: {
         displayName: SCANNER1_TOP8_DISPLAY,
         description: SCANNER1_TOP8_DESCRIPTION,
         params: JSON.stringify(next),
+        ...(bootstrapActive ? { isActive: true } : {}),
       },
     });
     return { updated: true };
