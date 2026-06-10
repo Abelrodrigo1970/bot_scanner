@@ -49,10 +49,7 @@ function disableBybitProxyForSession(reason: string): void {
 
 async function getBybitProxyAgent(): Promise<UndiciProxyAgent | null> {
   if (_bybitProxyDisabledForSession) return null;
-  const proxyUrl = (
-    process.env.BYBIT_PROXY_URL?.trim() ||
-    process.env.MARKET_DATA_PROXY_URL?.trim()
-  );
+  const proxyUrl = process.env.BYBIT_PROXY_URL?.trim();
   if (!proxyUrl) return null;
   if (_bybitProxyAgent !== undefined) return _bybitProxyAgent;
   try {

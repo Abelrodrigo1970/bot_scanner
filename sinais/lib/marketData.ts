@@ -69,17 +69,34 @@ function isBinanceKlinesApiPath(path: string): boolean {
 }
 
 /**
- * Binance é a fonte primária por defeito (funciona na maioria das regiões Railway, incl. EU).
- * A Bybit entra apenas como fallback automático quando a Binance devolve 451 (ver shouldUseBybitMarketData).
- * Para forçar a Bybit como primária (ex.: servidor numa região onde a Binance bloqueia mas a Bybit não):
- * MARKET_DATA_PRIMARY=bybit (ou MARKET_DATA_BYBIT_PRIMARY=true).
+ * Railway: Bybit.nl directo (recomendado). Binance costuma 451 ou exige proxy pago.
+ * Local/EU: Binance por defeito. Forçar: MARKET_DATA_PRIMARY=binance|bybit.
  */
 function isBybitMarketDataPrimary(): boolean {
   const primary = (process.env.MARKET_DATA_PRIMARY ?? '').trim().toLowerCase();
   if (primary === 'bybit') return true;
   if (primary === 'binance') return false;
   if (process.env.MARKET_DATA_BYBIT_PRIMARY === 'true') return true;
+  if (isRailwayHosted()) return true;
   return false;
+}
+
+function isBinanceMarketUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.includes('binance.com') || host.includes('binance.vision');
+  } catch {
+    return /binance\.com/i.test(url);
+  }
+}
+
+function isBybitMarketUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.includes('bybit') || host.includes('bytick');
+  } catch {
+    return /bybit|bytick/i.test(url);
+  }
 }
 
 /** Hosts públicos Bybit (market data). Railway US bloqueia api.bybit.com — tentar mirrors. */
@@ -146,32 +163,53 @@ let _proxyAgent: UndiciProxyAgent | null | undefined = undefined;
 let _proxyDisabledForSession = false;
 let _proxyDisabledWarned = false;
 
-function isProxyTunnelError(err: unknown): boolean {
+function flattenErrorText(err: unknown): string {
   const parts: string[] = [];
   let cur: unknown = err;
-  for (let i = 0; i < 4 && cur; i++) {
+  for (let i = 0; i < 5 && cur; i++) {
     if (cur instanceof Error) {
       parts.push(cur.message);
+      const code = (cur as Error & { code?: string }).code;
+      if (code) parts.push(code);
       cur = cur.cause;
     } else {
       parts.push(String(cur));
       break;
     }
   }
-  const text = parts.join(' ');
-  return /402|Proxy response|HTTP Tunneling|UND_ERR_ABORTED|proxy/i.test(text);
+  return parts.join(' ');
+}
+
+function isProxyTunnelError(err: unknown): boolean {
+  const text = flattenErrorText(err);
+  return /402|Proxy response|HTTP Tunneling|UND_ERR_ABORTED/i.test(text);
+}
+
+function isConnectTimeoutError(err: unknown): boolean {
+  const text = flattenErrorText(err);
+  return /UND_ERR_CONNECT_TIMEOUT|Connect Timeout/i.test(text);
 }
 
 function disableMarketDataProxyForSession(reason: string): void {
   if (_proxyDisabledForSession) return;
   _proxyDisabledForSession = true;
   _proxyAgent = null;
+  sessionPreferBybitAfter451 = true;
+  resetBybitMarketDataGeoBlock();
   if (!_proxyDisabledWarned) {
     _proxyDisabledWarned = true;
     console.warn(
-      `⚠️ MARKET_DATA_PROXY_URL desactivado nesta sessão (${reason}). Pedidos seguem directos. Renove o proxy ou remova a variável no Railway.`
+      `⚠️ MARKET_DATA_PROXY_URL desactivado nesta sessão (${reason}). Bybit directo; Binance só se acessível. Remova a variável no Railway se o proxy expirou (402).`
     );
   }
+}
+
+function shouldRouteUrlThroughMarketDataProxy(url: string): boolean {
+  if (_proxyDisabledForSession) return false;
+  if (!process.env.MARKET_DATA_PROXY_URL?.trim()) return false;
+  if (isBybitMarketUrl(url)) return false;
+  if (isBinanceMarketUrl(url)) return true;
+  return false;
 }
 
 async function getProxyAgent(): Promise<UndiciProxyAgent | null> {
@@ -194,6 +232,9 @@ async function getProxyAgent(): Promise<UndiciProxyAgent | null> {
 }
 
 async function proxyFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  if (!shouldRouteUrlThroughMarketDataProxy(url)) {
+    return fetch(url, init);
+  }
   const agent = await getProxyAgent();
   if (!agent) return fetch(url, init);
   try {
@@ -757,8 +798,12 @@ function shouldUseBybitMarketData(err?: unknown): boolean {
   if (sessionPreferBybitAfter451 && canUseBybitMarketData()) return true;
   if (!canUseBybitMarketData()) return false;
   if (binanceGeoBlocked) return true;
-  if (!err || typeof err !== 'object') return false;
-  return (err as { status?: number }).status === 451;
+  if (_proxyDisabledForSession && isRailwayHosted()) return true;
+  if (err) {
+    if (isProxyTunnelError(err) || isConnectTimeoutError(err)) return true;
+    if (typeof err === 'object' && (err as { status?: number }).status === 451) return true;
+  }
+  return false;
 }
 
 function marketDataBlockedMessage(): string {
@@ -1708,15 +1753,15 @@ export async function fetchBybitInstrumentsInfoAllPages(
   const all: BybitInstrumentPublicRow[] = [];
   let cursor: string | undefined;
   for (;;) {
-    const url = new URL('https://api.bybit.com/v5/market/instruments-info');
-    url.searchParams.set('category', category);
-    url.searchParams.set('limit', '1000');
-    if (cursor) url.searchParams.set('cursor', cursor);
-    const res = await proxyFetch(url.toString());
-    if (!res.ok) {
-      throw new Error(`instruments-info ${category}: ${res.status} ${res.statusText}`);
-    }
-    const json = await res.json();
+    const path = `/v5/market/instruments-info?category=${category}&limit=1000${
+      cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
+    }`;
+    const bodyText = await fetchBybitMarketText(path);
+    const json = JSON.parse(bodyText) as {
+      retCode?: number;
+      retMsg?: string;
+      result?: { list?: BybitInstrumentPublicRow[]; nextPageCursor?: string };
+    };
     if (typeof json?.retCode === 'number' && json.retCode !== 0) {
       throw new Error(json.retMsg ?? `instruments-info ${category} retCode=${json.retCode}`);
     }
