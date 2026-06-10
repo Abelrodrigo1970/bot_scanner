@@ -16,8 +16,39 @@ const RECV_WINDOW = '5000';
 // Usado quando o IP da Railway é bloqueado pelo CloudFront da Bybit.
 // ---------------------------------------------------------------------------
 let _bybitProxyAgent: UndiciProxyAgent | null | undefined = undefined;
+let _bybitProxyDisabledForSession = false;
+let _bybitProxyDisabledWarned = false;
+
+function isBybitProxyTunnelError(err: unknown): boolean {
+  const parts: string[] = [];
+  let cur: unknown = err;
+  for (let i = 0; i < 4 && cur; i++) {
+    if (cur instanceof Error) {
+      parts.push(cur.message);
+      cur = cur.cause;
+    } else {
+      parts.push(String(cur));
+      break;
+    }
+  }
+  const text = parts.join(' ');
+  return /402|Proxy response|HTTP Tunneling|UND_ERR_ABORTED|proxy/i.test(text);
+}
+
+function disableBybitProxyForSession(reason: string): void {
+  if (_bybitProxyDisabledForSession) return;
+  _bybitProxyDisabledForSession = true;
+  _bybitProxyAgent = null;
+  if (!_bybitProxyDisabledWarned) {
+    _bybitProxyDisabledWarned = true;
+    console.warn(
+      `⚠️ BYBIT_PROXY_URL / MARKET_DATA_PROXY_URL desactivado nesta sessão (${reason}). Pedidos Bybit seguem directos.`
+    );
+  }
+}
 
 async function getBybitProxyAgent(): Promise<UndiciProxyAgent | null> {
+  if (_bybitProxyDisabledForSession) return null;
   const proxyUrl = (
     process.env.BYBIT_PROXY_URL?.trim() ||
     process.env.MARKET_DATA_PROXY_URL?.trim()
@@ -36,11 +67,17 @@ async function getBybitProxyAgent(): Promise<UndiciProxyAgent | null> {
 
 async function bybitFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const agent = await getBybitProxyAgent();
-  if (agent) {
+  if (!agent) return fetch(url, init);
+  try {
     const { fetch: undiciFetch } = await import('undici');
     return undiciFetch(url, { ...init, dispatcher: agent } as Parameters<typeof undiciFetch>[1]) as unknown as Response;
+  } catch (err) {
+    if (isBybitProxyTunnelError(err)) {
+      disableBybitProxyForSession('proxy 402 / túnel HTTP falhou');
+      return fetch(url, init);
+    }
+    throw err;
   }
-  return fetch(url, init);
 }
 
 function getCredentials() {

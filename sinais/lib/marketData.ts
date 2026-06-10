@@ -143,8 +143,39 @@ let marketDataConfigLogged = false;
 let bybitFallbackToBinanceWarned = false;
 
 let _proxyAgent: UndiciProxyAgent | null | undefined = undefined;
+let _proxyDisabledForSession = false;
+let _proxyDisabledWarned = false;
+
+function isProxyTunnelError(err: unknown): boolean {
+  const parts: string[] = [];
+  let cur: unknown = err;
+  for (let i = 0; i < 4 && cur; i++) {
+    if (cur instanceof Error) {
+      parts.push(cur.message);
+      cur = cur.cause;
+    } else {
+      parts.push(String(cur));
+      break;
+    }
+  }
+  const text = parts.join(' ');
+  return /402|Proxy response|HTTP Tunneling|UND_ERR_ABORTED|proxy/i.test(text);
+}
+
+function disableMarketDataProxyForSession(reason: string): void {
+  if (_proxyDisabledForSession) return;
+  _proxyDisabledForSession = true;
+  _proxyAgent = null;
+  if (!_proxyDisabledWarned) {
+    _proxyDisabledWarned = true;
+    console.warn(
+      `⚠️ MARKET_DATA_PROXY_URL desactivado nesta sessão (${reason}). Pedidos seguem directos. Renove o proxy ou remova a variável no Railway.`
+    );
+  }
+}
 
 async function getProxyAgent(): Promise<UndiciProxyAgent | null> {
+  if (_proxyDisabledForSession) return null;
   const proxyUrl = process.env.MARKET_DATA_PROXY_URL?.trim();
   if (!proxyUrl) return null;
   if (_proxyAgent !== undefined) return _proxyAgent;
@@ -164,11 +195,17 @@ async function getProxyAgent(): Promise<UndiciProxyAgent | null> {
 
 async function proxyFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const agent = await getProxyAgent();
-  if (agent) {
+  if (!agent) return fetch(url, init);
+  try {
     const { fetch: undiciFetch } = await import('undici');
     return undiciFetch(url, { ...init, dispatcher: agent } as Parameters<typeof undiciFetch>[1]) as unknown as Response;
+  } catch (err) {
+    if (isProxyTunnelError(err)) {
+      disableMarketDataProxyForSession('proxy 402 / túnel HTTP falhou');
+      return fetch(url, init);
+    }
+    throw err;
   }
-  return fetch(url, init);
 }
 
 function binanceHttpFetch(url: string, timeoutMs = BINANCE_KLINES_TIMEOUT_MS): Promise<Response> {
