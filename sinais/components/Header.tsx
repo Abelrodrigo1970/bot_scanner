@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { DATA_SOURCE_MENU_ITEMS } from '@/lib/strategyUniverses';
 
 const mainMenuItems = [
   { href: '/', label: 'Dashboard' },
@@ -14,14 +15,8 @@ const mainMenuItems = [
   { href: '/analise', label: 'Análise' },
 ];
 
-/** Scans que alimentam estratégias activas (ver lib/strategyUniverses.ts). */
-const dataSourceItems = [
-  { href: '/bybit-ma200-mc20m', label: 'Bybit Vol 1h + MA200 → MA12×MA30' },
-  { href: '/scanners/1', label: 'Scanner 1 — Acima SMA200 (MA Cross + Pivot Boss 15m + Afastamento 30m)' },
-  { href: '/scanners/2', label: 'Scanner 2 — -5% a +15% EMA80 (RSI legado + RSI pullback bear)' },
-  { href: '/scanners/3', label: 'Scanner 3 — ±4% MA80 (4h, Afastamento 1h)' },
-  { href: '/scanners/4', label: 'Scanner 4 — Acima SMA200 (Pivot Boss 1h + MA200 4h + EMA Ribbon BUY)' },
-];
+/** Scans que alimentam estratégias activas (fonte única: lib/strategyUniverses.ts). */
+const dataSourceItems = DATA_SOURCE_MENU_ITEMS;
 
 export default function Header() {
   const router = useRouter();
