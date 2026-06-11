@@ -7,6 +7,13 @@ import { cookies } from 'next/headers';
 const SESSION_COOKIE_NAME = 'crypto-sinais-session';
 const SESSION_VALUE = 'authenticated';
 
+/** Login desactivado explicitamente ou sem ACCESS_CODE configurado. */
+export function isAuthDisabled(): boolean {
+  if (process.env.AUTH_DISABLED === 'true') return true;
+  if (process.env.AUTH_DISABLED === 'false') return false;
+  return !process.env.ACCESS_CODE?.trim();
+}
+
 /**
  * Verifica se o código de acesso está correto
  */
@@ -37,7 +44,7 @@ export async function createSession() {
  * Se AUTH_DISABLED=true, considera sempre autenticado (acesso sem login).
  */
 export async function isAuthenticated(): Promise<boolean> {
-  if (process.env.AUTH_DISABLED === 'true') {
+  if (isAuthDisabled()) {
     return true;
   }
   const cookieStore = await cookies();

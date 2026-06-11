@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+function authDisabled(): boolean {
+  if (process.env.AUTH_DISABLED === 'true') return true;
+  if (process.env.AUTH_DISABLED === 'false') return false;
+  return !process.env.ACCESS_CODE?.trim();
+}
+
 export function middleware(request: NextRequest) {
-  // Se AUTH_DISABLED=true, permite acesso sem login
-  if (process.env.AUTH_DISABLED === 'true') {
+  if (authDisabled()) {
     return NextResponse.next();
   }
 
