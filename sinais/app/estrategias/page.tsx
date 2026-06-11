@@ -565,6 +565,24 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'SCANNER_MA80_4H_TOP6':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Rotação <strong>total</strong> a cada scan do <strong>Scanner 6</strong> (4 h, SMA80): fecha todas as
+              posições e recompra <strong>6 símbolos</strong> (ranks 1, 2, 5, 6, 7, 8 — exclui #3 e #4 do top 8).
+              SL -5%. Corre após <code className="text-[10px]">run-universe-scans</code>.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Posições (após excl.)', p.topN ?? 6, (v) => upd({ topN: v }))}
+              {numField('Scan top N (fonte)', p.scanTopN ?? 8, (v) => upd({ scanTopN: v }))}
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Horas até rotação (ref.)', p.closeAfterHours ?? 4, (v) => upd({ closeAfterHours: v }))}
+              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
+            </div>
+          </div>
+        );
+
       default:
         return <p className="text-sm text-gray-500 dark:text-gray-400">Sem parâmetros configuráveis</p>;
     }

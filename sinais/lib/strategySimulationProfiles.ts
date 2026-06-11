@@ -70,6 +70,13 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     summary: 'SL 5%. Sem TP — rotação total 1×/dia. 6 posições (ranks 1,4–8; excl. #2 #3).',
   },
   {
+    strategyName: 'SCANNER_MA80_4H_TOP6',
+    displayNames: ['Scanner 6 Top 6 (excl. ranks 3–4, rotação 4h)'],
+    buy: side(5, 0, 0, 0, 0, 4),
+    sell: null,
+    summary: 'SL 5%. Sem TP — rotação total a cada scan (4h). 6 posições (ranks 1,2,5–8; excl. #3 #4).',
+  },
+  {
     strategyName: 'MA200_VOLATILE',
     displayNames: ['MA200 Top Voláteis'],
     buy: side(4, 80, 70),

@@ -51,6 +51,15 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     refresh: '/api/cron/run-universe-scans (cada 4 h) + run-scanner-ma80-top6 (diário)',
   },
   {
+    strategyName: 'SCANNER_MA80_4H_TOP6',
+    displayLabel: 'Scanner 6 Top 6 (excl. ranks 3–4)',
+    signalTimeframes: ['4h'],
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
+    description: '6 posições: ranks 1, 2, 5–8 do Scanner 6 (exclui #3 e #4); rotação total a cada scan.',
+    refresh: '/api/cron/run-universe-scans (cada 4 h) + run-scanner-ma80-4h-top6',
+  },
+  {
     strategyName: 'EMA_SCALPING',
     displayLabel: 'EMA Ribbon Scalping BUY (15m)',
     signalTimeframes: ['15m'],
@@ -131,5 +140,9 @@ export const DATA_SOURCE_MENU_ITEMS = [
   {
     href: '/scanners/5',
     label: 'Scanner 5 — Acima SMA80 (1d, Top 6 excl. ranks 2–3)',
+  },
+  {
+    href: '/scanners/6',
+    label: 'Scanner 6 — Acima SMA80 (4h, Top 6 excl. ranks 3–4)',
   },
 ] as const;

@@ -4,9 +4,10 @@ import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
 import { runScanner1Top8Pipeline } from '@/lib/scanner1Top8Strategy';
 import { runScannerMa80Top6Pipeline } from '@/lib/scannerMa80Top6Strategy';
+import { runScannerMa804hTop6Pipeline } from '@/lib/scannerMa804hTop6Strategy';
 
 /**
- * Executa os scanners de universo (MA200 1h/1d, EMA80 1d, EMA80 -5/+15%, ±4% MA80) e grava na BD.
+ * Executa os scanners de universo (MA200 1h/1d, EMA80 1d/4h, EMA80 -5/+15%, ±4% MA80) e grava na BD.
  * Resposta imediata 202 — trabalho pesado em background (evita timeout do cron-job.org).
  * Agendar de 4 em 4 horas (00:00, 04:00, 08:00, …).
  */
@@ -57,6 +58,15 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
     console.error('[Universe-Scans] Scanner 5 MA80 Top 6 falhou:', err);
   }
 
+  try {
+    const ma804h = await runScannerMa804hTop6Pipeline({
+      logPrefix: '[Universe-Scans → MA80 4h Top6]',
+    });
+    console.log('[Universe-Scans] Scanner 6 MA80 4h Top 6:', ma804h);
+  } catch (err) {
+    console.error('[Universe-Scans] Scanner 6 MA80 4h Top 6 falhou:', err);
+  }
+
   return results;
 }
 
@@ -75,7 +85,7 @@ export async function GET(request: NextRequest) {
           accepted: false,
           busy: true,
           message:
-            'Scanners 1/2/3/4/5 já em execução em background. Aguarde a conclusão (pode demorar 15–30 min).',
+            'Scanners 1/2/3/4/5/6 já em execução em background. Aguarde a conclusão (pode demorar 15–30 min).',
           startedAt: new Date().toISOString(),
         },
         { status: 202 }

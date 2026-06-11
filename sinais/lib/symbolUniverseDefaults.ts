@@ -11,6 +11,8 @@ export const UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D = 'UNIVERSE_ABOVE_MA200_1D' 
 
 export const UNIVERSE_CODE_SCANNER_5_ABOVE_MA80_1D = 'UNIVERSE_ABOVE_MA80_1D' as const;
 
+export const UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H = 'UNIVERSE_ABOVE_MA80_4H' as const;
+
 export const SCANNER_1_MIN_DISTANCE_PCT = 2;
 /** Sem tecto: qualquer fecho acima da SMA200 (1h). */
 export const SCANNER_1_MAX_DISTANCE_PCT = null as number | null;
@@ -66,6 +68,15 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     minQuoteVolume: 500000,
     candidateLimit: 400,
   },
+  UNIVERSE_ABOVE_MA80_4H: {
+    ruleType: 'ABOVE_MA',
+    maPeriod: 80,
+    minDistancePct: null,
+    maxDistancePct: null,
+    timeframe: '4h',
+    minQuoteVolume: 500000,
+    candidateLimit: 400,
+  },
 };
 
 export function getBuiltinScanDefinition(code: string): UniverseScanDefinition | null {
@@ -108,15 +119,22 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas diárias (1d). Universo: estratégia Top 6 (excl. ranks 2–3).',
     strategyNames: 'SCANNER_MA80_TOP6',
   },
+  UNIVERSE_ABOVE_MA80_4H: {
+    displayName: 'Scanner 6 — Acima SMA80 (4h)',
+    description:
+      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Universo: estratégia Top 6 (excl. ranks 3–4, rotação 4h).',
+    strategyNames: 'SCANNER_MA80_4H_TOP6',
+  },
 };
 
-/** Rotas UI `/scanners/1` … `/scanners/4` */
+/** Rotas UI `/scanners/1` … `/scanners/6` */
 export const SCANNER_UI_ROUTES = [
   { scannerId: '1', code: UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 },
   { scannerId: '2', code: UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80 },
   { scannerId: '3', code: UNIVERSE_CODE_SCANNER_3_MA80_PCT4 },
   { scannerId: '4', code: UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D },
   { scannerId: '5', code: UNIVERSE_CODE_SCANNER_5_ABOVE_MA80_1D },
+  { scannerId: '6', code: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H },
 ] as const;
 
 export function getScannerByUiId(scannerId: string) {

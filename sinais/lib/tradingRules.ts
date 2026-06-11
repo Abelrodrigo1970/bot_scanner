@@ -54,6 +54,8 @@ const ALLOWED_STRATEGIES = [
   'SCANNER1_TOP8',
   'Scanner 5 Top 6',
   'SCANNER_MA80_TOP6',
+  'Scanner 6 Top 6',
+  'SCANNER_MA80_4H_TOP6',
 ];
 
 /** Força mínima para executar */

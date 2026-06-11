@@ -431,6 +431,74 @@ export async function syncScannerMa80Top6Config(
   return { updated: false };
 }
 
+export const SCANNER_MA80_4H_TOP6_DISPLAY = 'Scanner 6 Top 6 (excl. ranks 3–4, rotação 4h)';
+
+export const SCANNER_MA80_4H_TOP6_DESCRIPTION =
+  'Portefólio rotativo: a cada scan do Scanner 6 (4 h), fecha tudo e recompra 6 posições — ranks 1, 2, 5, 6, 7, 8 (exclui #3 e #4 do top 8, SMA80 4h). SL -5% (Bybit).';
+
+export const SCANNER_MA80_4H_TOP6_PARAMS = {
+  topN: 6,
+  scanTopN: 8,
+  excludeRanks: [3, 4],
+  stopLossPct: 0.05,
+  closeAfterHours: 4,
+  rotationMode: 'full',
+  allowBuy: true,
+  allowSell: false,
+  buyEnabled: true,
+  sellEnabled: false,
+  autoExecuteMinStrength: 80,
+  exchange: 'bybit',
+} as const;
+
+/** Garante registo/descrição da estratégia Scanner 6 MA80 4h Top 6. */
+export async function syncScannerMa804hTop6Config(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'SCANNER_MA80_4H_TOP6' },
+    select: { params: true, description: true, displayName: true, isActive: true, createdAt: true, updatedAt: true },
+  });
+  if (!row) return { updated: false };
+
+  const bootstrapActive =
+    !row.isActive && row.createdAt.getTime() === row.updatedAt.getTime();
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...SCANNER_MA80_4H_TOP6_PARAMS,
+    ...p,
+    topN: SCANNER_MA80_4H_TOP6_PARAMS.topN,
+    scanTopN: SCANNER_MA80_4H_TOP6_PARAMS.scanTopN,
+    excludeRanks: SCANNER_MA80_4H_TOP6_PARAMS.excludeRanks,
+    rotationMode: 'full' as const,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== SCANNER_MA80_4H_TOP6_DISPLAY ||
+    row.description !== SCANNER_MA80_4H_TOP6_DESCRIPTION;
+
+  if (needParams || needMeta || bootstrapActive) {
+    await prisma.strategy.update({
+      where: { name: 'SCANNER_MA80_4H_TOP6' },
+      data: {
+        displayName: SCANNER_MA80_4H_TOP6_DISPLAY,
+        description: SCANNER_MA80_4H_TOP6_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(bootstrapActive ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
   emaMidPeriod: 30,
