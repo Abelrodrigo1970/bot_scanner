@@ -57,10 +57,17 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   },
   {
     strategyName: 'SCANNER1_TOP8',
-    displayNames: ['Scanner 1 Top 8 (rotação 4h)'],
+    displayNames: ['Scanner 1 Top 6 (excl. ranks 3–4, rotação 4h)', 'Scanner 1 Top 8 (rotação 4h)'],
     buy: side(5, 0, 0, 0, 0, 4),
     sell: null,
-    summary: 'SL 5%. Sem TP — rotação total a cada scan (4h). Top 8 Scanner 1.',
+    summary: 'SL 5%. Sem TP — rotação total a cada scan (4h). 6 posições (ranks 1,2,5–8; excl. #3 #4).',
+  },
+  {
+    strategyName: 'SCANNER_MA80_TOP6',
+    displayNames: ['Scanner 5 Top 6 (excl. ranks 2–3, rotação diária)'],
+    buy: side(5, 0, 0, 0, 0, 24),
+    sell: null,
+    summary: 'SL 5%. Sem TP — rotação total 1×/dia. 6 posições (ranks 1,4–8; excl. #2 #3).',
   },
   {
     strategyName: 'MA200_VOLATILE',

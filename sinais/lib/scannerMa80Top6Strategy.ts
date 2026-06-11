@@ -1,34 +1,25 @@
 /**
- * Scanner 1 Top 6 — rotação total a cada scan (4 h).
- * Compra ranks 1, 2, 5, 6, 7, 8 (exclui #3 e #4 do top 8 do Scanner 1). SL -5%.
+ * Scanner 5 — Top 6 acima SMA80 (1d), rotação diária.
+ * Compra ranks 1, 4, 5, 6, 7, 8 (exclui #2 e #3 do top 8). SL -5%.
  */
 
 import { prisma } from './db';
-import { UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 } from './symbolUniverseDefaults';
+import { UNIVERSE_CODE_SCANNER_5_ABOVE_MA80_1D } from './symbolUniverseDefaults';
 import { getTopRankedUniverseScanRows } from './universeScanPersistence';
 import { autoExecuteNewSignalsForStrategy, resolveStrategyExchange } from './autoExecuteNewSignals';
 import { closeActivePositionForSymbol, inspectActivePositionForSymbol } from './tradingExecutor';
 import { strategyAllowsAutoExecuteDirection } from './signalEngine';
+import {
+  filterScanRowsForTop8,
+  type Scanner1Top8Params,
+} from './scanner1Top8Strategy';
 
-export const SCANNER1_TOP8_STRATEGY_NAME = 'SCANNER1_TOP8' as const;
-const LAST_RUN_SETTING_KEY = 'SCANNER1_TOP8_LAST_RUN_ID';
+export const SCANNER_MA80_TOP6_STRATEGY_NAME = 'SCANNER_MA80_TOP6' as const;
+const LAST_RUN_DAY_KEY = 'SCANNER_MA80_TOP6_LAST_RUN_DAY';
 
-export type Scanner1Top8Params = {
-  /** Posições após filtros de rank (default 6). */
-  topN?: number;
-  /** Quantos ranks do scan usar antes de excluir (default 8). */
-  scanTopN?: number;
-  /** Ranks a ignorar (default [3, 4]). */
-  excludeRanks?: number[];
-  stopLossPct?: number;
-  closeAfterHours?: number;
-  exchange?: 'binance' | 'bybit';
-  allowBuy?: boolean;
-  autoExecuteMinStrength?: number;
-  rotationMode?: 'full' | 'incremental';
-};
+export type ScannerMa80Top6Params = Scanner1Top8Params;
 
-export type Scanner1Top8Result =
+export type ScannerMa80Top6Result =
   | { status: 'skipped'; reason: string }
   | {
       status: 'done';
@@ -39,28 +30,31 @@ export type Scanner1Top8Result =
       symbols: string[];
     };
 
-function parseParams(raw: string | null): Scanner1Top8Params {
+function parseParams(raw: string | null): ScannerMa80Top6Params {
   try {
-    return raw ? (JSON.parse(raw) as Scanner1Top8Params) : {};
+    return raw ? (JSON.parse(raw) as ScannerMa80Top6Params) : {};
   } catch {
     return {};
   }
 }
 
-async function getLastProcessedRunId(): Promise<string | null> {
-  const row = await prisma.appSetting.findUnique({ where: { key: LAST_RUN_SETTING_KEY } });
+async function getLastProcessedDay(): Promise<string | null> {
+  const row = await prisma.appSetting.findUnique({ where: { key: LAST_RUN_DAY_KEY } });
   return row?.value ?? null;
 }
 
-async function setLastProcessedRunId(runId: string): Promise<void> {
+async function setLastProcessedDay(dayUtc: string): Promise<void> {
   await prisma.appSetting.upsert({
-    where: { key: LAST_RUN_SETTING_KEY },
-    create: { key: LAST_RUN_SETTING_KEY, value: runId },
-    update: { value: runId },
+    where: { key: LAST_RUN_DAY_KEY },
+    create: { key: LAST_RUN_DAY_KEY, value: dayUtc },
+    update: { value: dayUtc },
   });
 }
 
-/** Fecha todas as posições abertas desta estratégia (rotação total). */
+function utcDayKey(iso: string): string {
+  return iso.slice(0, 10);
+}
+
 async function closeAllStrategyPositions(
   strategyId: string,
   exchange: 'binance' | 'bybit',
@@ -116,39 +110,29 @@ function strengthForRank(rank: number): number {
   return Math.min(98, Math.max(82, 90 - rank));
 }
 
-type ScanRow = { rank: number; symbol: string; close: number; pctFromMa: number };
-
-/** Aplica excludeRanks e limita a topN posições. */
-export function filterScanRowsForTop8(params: Scanner1Top8Params, rows: ScanRow[]): ScanRow[] {
-  const exclude = new Set((params.excludeRanks ?? [3, 4]).map((r) => Math.floor(Number(r))));
-  const topN = Math.min(20, Math.max(1, Math.floor(Number(params.topN ?? 6))));
-  const filtered = exclude.size ? rows.filter((r) => !exclude.has(r.rank)) : rows;
-  return filtered.slice(0, topN);
-}
-
-function resolveScanFetchN(params: Scanner1Top8Params): number {
+function resolveScanFetchN(params: ScannerMa80Top6Params): number {
   const scanTopN = Math.floor(Number(params.scanTopN ?? 8));
   const topN = Math.floor(Number(params.topN ?? 6));
-  const exclude = params.excludeRanks ?? [3, 4];
+  const exclude = params.excludeRanks ?? [2, 3];
   const maxExcluded = exclude.length ? Math.max(...exclude.map((r) => Math.floor(Number(r)))) : 0;
   return Math.min(20, Math.max(1, scanTopN, topN + exclude.length, maxExcluded));
 }
 
 /**
- * Rotação total: fecha tudo no ciclo, recompra top N do último scan Scanner 1.
+ * Rotação total diária: fecha tudo e recompra top 6 (excl. ranks 2–3) do Scanner 5.
  */
-export async function runScanner1Top8Pipeline(options?: {
+export async function runScannerMa80Top6Pipeline(options?: {
   force?: boolean;
   logPrefix?: string;
-}): Promise<Scanner1Top8Result> {
-  const logPrefix = options?.logPrefix ?? '[Scanner1 Top8]';
+}): Promise<ScannerMa80Top6Result> {
+  const logPrefix = options?.logPrefix ?? '[Scanner5 MA80 Top6]';
 
   const strategy = await prisma.strategy.findUnique({
-    where: { name: SCANNER1_TOP8_STRATEGY_NAME },
+    where: { name: SCANNER_MA80_TOP6_STRATEGY_NAME },
   });
 
   if (!strategy) {
-    return { status: 'skipped', reason: 'Estratégia SCANNER1_TOP8 não encontrada (correr seed/sync)' };
+    return { status: 'skipped', reason: 'Estratégia SCANNER_MA80_TOP6 não encontrada (correr seed/sync)' };
   }
   if (!strategy.isActive) {
     return { status: 'skipped', reason: 'Estratégia inactiva' };
@@ -156,38 +140,42 @@ export async function runScanner1Top8Pipeline(options?: {
 
   const params = parseParams(strategy.params);
   const topN = Math.min(20, Math.max(1, Math.floor(Number(params.topN ?? 6))));
-  const excludeRanks = params.excludeRanks ?? [3, 4];
+  const excludeRanks = params.excludeRanks ?? [2, 3];
   const scanFetchN = resolveScanFetchN(params);
   const stopLossPct = Number(params.stopLossPct ?? 0.05);
-  const closeAfterHours = Number(params.closeAfterHours ?? 4);
+  const closeAfterHours = Number(params.closeAfterHours ?? 24);
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
 
-  const scan = await getTopRankedUniverseScanRows(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200, scanFetchN);
+  const scan = await getTopRankedUniverseScanRows(UNIVERSE_CODE_SCANNER_5_ABOVE_MA80_1D, scanFetchN);
   if (!scan.ok) {
     return { status: 'skipped', reason: scan.reason };
   }
 
-  const selectedRows = filterScanRowsForTop8(params, scan.rows);
+  const selectedRows = filterScanRowsForTop8(
+    { ...params, topN, excludeRanks },
+    scan.rows
+  );
   if (selectedRows.length === 0) {
     return { status: 'skipped', reason: 'Nenhum símbolo após filtro de ranks' };
   }
 
-  const lastRunId = await getLastProcessedRunId();
-  if (!options?.force && lastRunId === scan.runId) {
+  const scanDay = utcDayKey(scan.scannedAt.toISOString());
+  const lastDay = await getLastProcessedDay();
+  if (!options?.force && lastDay === scanDay) {
     return {
       status: 'skipped',
-      reason: `Scan ${scan.runId} já processado neste ciclo`,
+      reason: `Rotação já feita hoje (UTC ${scanDay})`,
     };
   }
 
   console.log(
-    `${logPrefix} Rotação total — ${selectedRows.length} pos. (scan top ${scanFetchN}, excl. ranks ${excludeRanks.join(',')}) ${scan.scannedAt.toISOString()} → ${selectedRows.map((r) => `#${r.rank} ${r.symbol}`).join(', ')}`
+    `${logPrefix} Rotação diária — ${selectedRows.length} pos. (scan top ${scanFetchN}, excl. ranks ${excludeRanks.join(',')}) ${scan.scannedAt.toISOString()} → ${selectedRows.map((r) => `#${r.rank} ${r.symbol}`).join(', ')}`
   );
 
   const closed = await closeAllStrategyPositions(strategy.id, exchange, logPrefix);
 
   if (!strategyAllowsAutoExecuteDirection('BUY', params as Record<string, unknown>)) {
-    await setLastProcessedRunId(scan.runId);
+    await setLastProcessedDay(scanDay);
     return {
       status: 'done',
       runId: scan.runId,
@@ -212,7 +200,7 @@ export async function runScanner1Top8Pipeline(options?: {
       data: {
         symbol: row.symbol,
         direction: 'BUY',
-        timeframe: '4h',
+        timeframe: '1d',
         strategyId: strategy.id,
         strategyName: strategy.displayName,
         entryPrice,
@@ -223,7 +211,7 @@ export async function runScanner1Top8Pipeline(options?: {
         strength,
         status: 'NEW',
         extraInfo: JSON.stringify({
-          setup: 'scanner1_top8_rotation',
+          setup: 'scanner_ma80_top6_rotation',
           rank: row.rank,
           pctFromMa: row.pctFromMa,
           scanRunId: scan.runId,
@@ -232,7 +220,7 @@ export async function runScanner1Top8Pipeline(options?: {
           closeAfterHours,
           rotation: 'full',
           excludeRanks,
-          executionProfile: `SL -${(stopLossPct * 100).toFixed(0)}% | rotação 4h | ${selectedRows.length} pos. (excl. ranks ${excludeRanks.join(',')})`,
+          executionProfile: `SL -${(stopLossPct * 100).toFixed(0)}% | rotação diária | ${selectedRows.length} pos. MA80 1d (excl. ranks ${excludeRanks.join(',')})`,
         }),
       },
     });
@@ -250,7 +238,7 @@ export async function runScanner1Top8Pipeline(options?: {
     logPrefix,
   });
 
-  await setLastProcessedRunId(scan.runId);
+  await setLastProcessedDay(scanDay);
 
   console.log(
     `${logPrefix} Concluído: ${closed} fechados, ${signalsCreated} sinais, ${executed} executados`

@@ -9,6 +9,8 @@ export const UNIVERSE_CODE_SCANNER_3_MA80_PCT4 = 'UNIVERSE_NEAR_MA200_PCT4_4H' a
 
 export const UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D = 'UNIVERSE_ABOVE_MA200_1D' as const;
 
+export const UNIVERSE_CODE_SCANNER_5_ABOVE_MA80_1D = 'UNIVERSE_ABOVE_MA80_1D' as const;
+
 export const SCANNER_1_MIN_DISTANCE_PCT = 2;
 /** Sem tecto: qualquer fecho acima da SMA200 (1h). */
 export const SCANNER_1_MAX_DISTANCE_PCT = null as number | null;
@@ -55,6 +57,15 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     minQuoteVolume: 500000,
     candidateLimit: 400,
   },
+  UNIVERSE_ABOVE_MA80_1D: {
+    ruleType: 'ABOVE_MA',
+    maPeriod: 80,
+    minDistancePct: null,
+    maxDistancePct: null,
+    timeframe: '1d',
+    minQuoteVolume: 500000,
+    candidateLimit: 400,
+  },
 };
 
 export function getBuiltinScanDefinition(code: string): UniverseScanDefinition | null {
@@ -91,6 +102,12 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Perpétuos USDT (top volume) com fecho acima da SMA200 em velas diárias (1d). Universo: Pivot Boss Bear 1h e EMA Ribbon BUY 15m.',
     strategyNames: 'PIVOT_BOSS_BEAR_1H, EMA_SCALPING',
   },
+  UNIVERSE_ABOVE_MA80_1D: {
+    displayName: 'Scanner 5 — Acima SMA80 (1d)',
+    description:
+      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas diárias (1d). Universo: estratégia Top 6 (excl. ranks 2–3).',
+    strategyNames: 'SCANNER_MA80_TOP6',
+  },
 };
 
 /** Rotas UI `/scanners/1` … `/scanners/4` */
@@ -99,6 +116,7 @@ export const SCANNER_UI_ROUTES = [
   { scannerId: '2', code: UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80 },
   { scannerId: '3', code: UNIVERSE_CODE_SCANNER_3_MA80_PCT4 },
   { scannerId: '4', code: UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D },
+  { scannerId: '5', code: UNIVERSE_CODE_SCANNER_5_ABOVE_MA80_1D },
 ] as const;
 
 export function getScannerByUiId(scannerId: string) {

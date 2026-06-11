@@ -21,12 +21,16 @@ import {
   SCANNER1_TOP8_DESCRIPTION,
   SCANNER1_TOP8_DISPLAY,
   SCANNER1_TOP8_PARAMS,
+  SCANNER_MA80_TOP6_DESCRIPTION,
+  SCANNER_MA80_TOP6_DISPLAY,
+  SCANNER_MA80_TOP6_PARAMS,
   syncAfastamentoMedio30mBuyPrevMax,
   syncEmaRibbonScalpingBuy15m,
   syncPivotBossBear15mUniverse,
   syncRsiOverboughtDrop1hConfig,
   syncRsiOverboughtDropLegacy1hConfig,
   syncScanner1Top8Config,
+  syncScannerMa80Top6Config,
 } from './strategyMigrations';
 
 /** Estratégias importadas (foto + afastamento 80/7) — criadas se faltarem na BD. */
@@ -88,6 +92,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     isActive: true,
     params: JSON.stringify(SCANNER1_TOP8_PARAMS),
   },
+  {
+    name: 'SCANNER_MA80_TOP6',
+    displayName: SCANNER_MA80_TOP6_DISPLAY,
+    description: SCANNER_MA80_TOP6_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(SCANNER_MA80_TOP6_PARAMS),
+  },
 ] as const;
 
 export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Promise<void> {
@@ -120,6 +131,10 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   }
   const s1Top8Sync = await syncScanner1Top8Config(prisma);
   if (s1Top8Sync.updated) {
-    console.log('✅ SCANNER1_TOP8: params/descrição actualizados (Top 8 rotação 4h, SL -5%)');
+    console.log('✅ SCANNER1_TOP8: params/descrição actualizados (Top 6 excl. ranks 3–4, rotação 4h, SL -5%)');
+  }
+  const ma80Top6Sync = await syncScannerMa80Top6Config(prisma);
+  if (ma80Top6Sync.updated) {
+    console.log('✅ SCANNER_MA80_TOP6: params/descrição actualizados (Top 6 excl. ranks 2–3, rotação diária, SL -5%)');
   }
 }

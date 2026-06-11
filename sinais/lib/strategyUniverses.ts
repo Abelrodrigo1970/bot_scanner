@@ -34,12 +34,21 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
   },
   {
     strategyName: 'SCANNER1_TOP8',
-    displayLabel: 'Scanner 1 Top 8 (rotação 4h)',
+    displayLabel: 'Scanner 1 Top 6 (excl. ranks 3–4)',
     signalTimeframes: ['4h'],
     source: 'universe_scan',
     dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-    description: 'Top 8 símbolos por |afastamento| vs SMA200; rotação total a cada scan.',
+    description: '6 posições: ranks 1, 2, 5–8 do Scanner 1 (exclui #3 e #4); rotação total a cada scan.',
     refresh: '/api/cron/run-universe-scans (cada 4 h) + run-scanner1-top8',
+  },
+  {
+    strategyName: 'SCANNER_MA80_TOP6',
+    displayLabel: 'Scanner 5 Top 6 (excl. ranks 2–3)',
+    signalTimeframes: ['1d'],
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_ABOVE_MA80_1D',
+    description: '6 posições: ranks 1, 4–8 do Scanner 5 (exclui #2 e #3); rotação total 1×/dia UTC.',
+    refresh: '/api/cron/run-universe-scans (cada 4 h) + run-scanner-ma80-top6 (diário)',
   },
   {
     strategyName: 'EMA_SCALPING',
@@ -118,5 +127,9 @@ export const DATA_SOURCE_MENU_ITEMS = [
   {
     href: '/scanners/4',
     label: 'Scanner 4 — Acima SMA200 (Pivot Boss 1h + MA200 4h + EMA Ribbon BUY 15m)',
+  },
+  {
+    href: '/scanners/5',
+    label: 'Scanner 5 — Acima SMA80 (1d, Top 6 excl. ranks 2–3)',
   },
 ] as const;

@@ -294,13 +294,15 @@ export const PIVOT_BOSS_BEAR_1H_DESCRIPTION =
 export const MA200_VOLATILE_DESCRIPTION =
   'MA200 4h. Universo: Scanner 4 (fecho acima SMA200 em 1d). COMPRA: fecha 2%+ acima MA200, só se a distância à média for inferior a 10% → SL -4% | TP1 +80% (70%) | restante às 24h. VENDA: fecha 2%+ abaixo MA200, só se a distância à média for inferior a 10% → SL +4% | TP1 -80% (70%) | restante às 24h.';
 
-export const SCANNER1_TOP8_DISPLAY = 'Scanner 1 Top 8 (rotação 4h)';
+export const SCANNER1_TOP8_DISPLAY = 'Scanner 1 Top 6 (excl. ranks 3–4, rotação 4h)';
 
 export const SCANNER1_TOP8_DESCRIPTION =
-  'Portefólio rotativo: a cada scan do Scanner 1 (4 h), fecha todas as posições e recompra o top 8 ao preço actual. SL -5% (Bybit). Backtest Jun/2026: +62,8% bruto / +47,8% líquido em 6 dias.';
+  'Portefólio rotativo: a cada scan do Scanner 1 (4 h), fecha tudo e recompra 6 posições — ranks 1, 2, 5, 6, 7, 8 (exclui #3 e #4 do top 8). SL -5% (Bybit).';
 
 export const SCANNER1_TOP8_PARAMS = {
-  topN: 8,
+  topN: 6,
+  scanTopN: 8,
+  excludeRanks: [3, 4],
   stopLossPct: 0.05,
   closeAfterHours: 4,
   rotationMode: 'full',
@@ -333,7 +335,14 @@ export async function syncScanner1Top8Config(
     p = {};
   }
 
-  const next = { ...SCANNER1_TOP8_PARAMS, ...p, rotationMode: 'full' as const };
+  const next = {
+    ...SCANNER1_TOP8_PARAMS,
+    ...p,
+    topN: SCANNER1_TOP8_PARAMS.topN,
+    scanTopN: SCANNER1_TOP8_PARAMS.scanTopN,
+    excludeRanks: SCANNER1_TOP8_PARAMS.excludeRanks,
+    rotationMode: 'full' as const,
+  };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== SCANNER1_TOP8_DISPLAY ||
@@ -345,6 +354,74 @@ export async function syncScanner1Top8Config(
       data: {
         displayName: SCANNER1_TOP8_DISPLAY,
         description: SCANNER1_TOP8_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(bootstrapActive ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
+export const SCANNER_MA80_TOP6_DISPLAY = 'Scanner 5 Top 6 (excl. ranks 2–3, rotação diária)';
+
+export const SCANNER_MA80_TOP6_DESCRIPTION =
+  'Portefólio rotativo: uma vez por dia (UTC), fecha tudo e recompra 6 posições — ranks 1, 4, 5, 6, 7, 8 (exclui #2 e #3 do top 8 do Scanner 5, SMA80 1d). SL -5% (Bybit).';
+
+export const SCANNER_MA80_TOP6_PARAMS = {
+  topN: 6,
+  scanTopN: 8,
+  excludeRanks: [2, 3],
+  stopLossPct: 0.05,
+  closeAfterHours: 24,
+  rotationMode: 'full',
+  allowBuy: true,
+  allowSell: false,
+  buyEnabled: true,
+  sellEnabled: false,
+  autoExecuteMinStrength: 80,
+  exchange: 'bybit',
+} as const;
+
+/** Garante registo/descrição da estratégia Scanner 5 MA80 Top 6. */
+export async function syncScannerMa80Top6Config(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'SCANNER_MA80_TOP6' },
+    select: { params: true, description: true, displayName: true, isActive: true, createdAt: true, updatedAt: true },
+  });
+  if (!row) return { updated: false };
+
+  const bootstrapActive =
+    !row.isActive && row.createdAt.getTime() === row.updatedAt.getTime();
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...SCANNER_MA80_TOP6_PARAMS,
+    ...p,
+    topN: SCANNER_MA80_TOP6_PARAMS.topN,
+    scanTopN: SCANNER_MA80_TOP6_PARAMS.scanTopN,
+    excludeRanks: SCANNER_MA80_TOP6_PARAMS.excludeRanks,
+    rotationMode: 'full' as const,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== SCANNER_MA80_TOP6_DISPLAY ||
+    row.description !== SCANNER_MA80_TOP6_DESCRIPTION;
+
+  if (needParams || needMeta || bootstrapActive) {
+    await prisma.strategy.update({
+      where: { name: 'SCANNER_MA80_TOP6' },
+      data: {
+        displayName: SCANNER_MA80_TOP6_DISPLAY,
+        description: SCANNER_MA80_TOP6_DESCRIPTION,
         params: JSON.stringify(next),
         ...(bootstrapActive ? { isActive: true } : {}),
       },
