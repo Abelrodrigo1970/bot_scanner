@@ -55,6 +55,7 @@ const ALLOWED_STRATEGIES = [
   'Scanner 5 Top 6',
   'SCANNER_MA80_TOP6',
   'Scanner 6 Top 6',
+  'Scanner 6 Top 6 (excl. ranks 3–6, rotação 4h)',
   'SCANNER_MA80_4H_TOP6',
 ];
 

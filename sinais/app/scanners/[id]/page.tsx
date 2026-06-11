@@ -8,7 +8,11 @@ import {
   BUILTIN_UNIVERSE_META,
   getBuiltinScanDefinition,
   getScannerByUiId,
+  SCANNER_ROTATION_NOTES,
+  SCANNER_UI_ROUTES,
 } from '@/lib/symbolUniverseDefaults';
+
+const VALID_SCANNER_PATHS = SCANNER_UI_ROUTES.map((s) => `/scanners/${s.scannerId}`).join(', ');
 
 interface ScanRow {
   rank: number;
@@ -98,7 +102,7 @@ export default function UniverseScannerPage() {
   useEffect(() => {
     if (!scanner) {
       setLoading(false);
-      setError('Scanner inválido. Use /scanners/1, /scanners/2, /scanners/3 ou /scanners/4.');
+      setError(`Scanner inválido. Use ${VALID_SCANNER_PATHS}.`);
       return;
     }
     setLoading(true);
@@ -122,7 +126,7 @@ export default function UniverseScannerPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header />
         <main className="max-w-7xl mx-auto px-4 py-12 text-center text-red-600 dark:text-red-400">
-          Scanner não encontrado. Use /scanners/1, /scanners/2, /scanners/3 ou /scanners/4.
+          Scanner não encontrado. Use /scanners/1 a /scanners/6.
         </main>
       </div>
     );
@@ -166,6 +170,11 @@ export default function UniverseScannerPage() {
               <code className="text-[10px]">/api/cron/run-universe-scans</code> de{' '}
               <strong>4 em 4 horas</strong> (não faz parte do run-1h horário)
             </li>
+            {SCANNER_ROTATION_NOTES[scannerId] ? (
+              <li>
+                <strong>Rotação:</strong> {SCANNER_ROTATION_NOTES[scannerId]}
+              </li>
+            ) : null}
           </ul>
         </div>
 

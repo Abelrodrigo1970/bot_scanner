@@ -43,7 +43,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
   },
   SCANNER_MA80_4H_TOP6: {
     cron: '1h',
-    cronLabel: 'Rotação 4h (pós-scan)',
+    cronLabel: 'Rotação 4h (pós-scan) · SL -7%',
     timeframe: '4h',
     universe: 'Scanner 6 — ranks 1,2,4,5,7–8 (excl. #3 #6)',
   },

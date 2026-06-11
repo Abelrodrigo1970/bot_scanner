@@ -122,9 +122,15 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA80_4H: {
     displayName: 'Scanner 6 — Acima SMA80 (4h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Universo: estratégia Top 6 (excl. ranks 3–6, rotação 4h).',
+      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Rotação 4h: compra ranks 1, 2, 4, 5, 7, 8 (excl. #3 e #6 do top 8), SL -7%.',
     strategyNames: 'SCANNER_MA80_4H_TOP6',
   },
+};
+
+/** Notas de rotação exibidas na página /scanners/[id]. */
+export const SCANNER_ROTATION_NOTES: Record<string, string> = {
+  '5': 'Estratégia SCANNER_MA80_TOP6: rotação diária — Top 6 (ranks 1, 4–8, excl. #2 #3), SL -5%.',
+  '6': 'Estratégia SCANNER_MA80_4H_TOP6: rotação 4h — Top 6 (ranks 1, 2, 4, 5, 7, 8, excl. #3 #6), SL -7%.',
 };
 
 /** Rotas UI `/scanners/1` … `/scanners/6` */

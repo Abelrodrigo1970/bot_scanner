@@ -143,6 +143,6 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/6',
-    label: 'Scanner 6 — Acima SMA80 (4h, Top 6 excl. ranks 3–6)',
+    label: 'Scanner 6 — Acima SMA80 (4h, Top 6 excl. #3 #6, SL -7%)',
   },
 ] as const;
