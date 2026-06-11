@@ -1,3 +1,4 @@
+import '@/lib/trim-env';
 import { NextResponse } from 'next/server';
 import { execSync } from 'child_process';
 import fs from 'fs';
@@ -10,41 +11,50 @@ import path from 'path';
 export async function POST() {
   try {
     const results: string[] = [];
+    const databaseUrl = (process.env.DATABASE_URL || '').trim();
+    const isPostgres =
+      databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://');
 
-    // Verificar/criar diretório
-    const dbPath = process.env.DATABASE_URL?.replace('file:', '') || './data/sinais-vol-rsi.db';
-    const dbDir = path.dirname(dbPath);
-    
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
-      results.push(`✅ Diretório ${dbDir} criado`);
+    if (isPostgres) {
+      results.push('✅ PostgreSQL detectado');
     } else {
-      results.push(`✅ Diretório ${dbDir} já existe`);
+      const dbPath = databaseUrl.replace('file:', '') || './data/sinais-vol-rsi.db';
+      const dbDir = path.dirname(dbPath);
+
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+        results.push(`✅ Diretório ${dbDir} criado`);
+      } else {
+        results.push(`✅ Diretório ${dbDir} já existe`);
+      }
     }
 
-    // Gerar Prisma Client
     try {
-      execSync('npx prisma generate', { stdio: 'pipe' });
+      execSync('npx prisma generate', { stdio: 'pipe', cwd: process.cwd(), env: { ...process.env } });
       results.push('✅ Prisma Client gerado');
     } catch (error: any) {
       results.push(`⚠️ Erro ao gerar Prisma Client: ${error.message}`);
     }
 
-    // Criar banco e tabelas
     try {
-      execSync('npx prisma db push --accept-data-loss', { stdio: 'pipe' });
-      results.push('✅ Banco de dados e tabelas criados');
+      const pushArgs = isPostgres ? [] : ['--accept-data-loss'];
+      execSync(`npx prisma db push ${pushArgs.join(' ')}`.trim(), {
+        stdio: 'pipe',
+        cwd: process.cwd(),
+        env: { ...process.env },
+        timeout: 60000,
+      });
+      results.push('✅ Schema aplicado (db push)');
     } catch (error: any) {
-      results.push(`❌ Erro ao criar banco: ${error.message}`);
+      results.push(`❌ Erro ao aplicar schema: ${error.message}`);
       return NextResponse.json(
         { error: 'Erro ao inicializar banco', details: results },
         { status: 500 }
       );
     }
 
-    // Popular estratégias
     try {
-      execSync('npx tsx prisma/seed.ts', { stdio: 'pipe' });
+      execSync('npx tsx prisma/seed.ts', { stdio: 'pipe', cwd: process.cwd(), env: { ...process.env } });
       results.push('✅ Estratégias populadas');
     } catch (error: any) {
       results.push(`⚠️ Seed: ${error.message} (pode ser normal se já existir)`);
@@ -65,9 +75,3 @@ export async function POST() {
     );
   }
 }
-
-
-
-
-
-

@@ -2,6 +2,7 @@
  * Singleton do Prisma Client para evitar múltiplas instâncias
  */
 
+import './trim-env';
 import { PrismaClient } from '@prisma/client';
 import './db-init'; // Inicializa banco em background
 

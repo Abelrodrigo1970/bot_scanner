@@ -4,6 +4,8 @@
  * Usa import dinâmico para evitar dependência circular com db.ts
  */
 
+import './trim-env';
+
 async function getPrisma() {
   const { prisma } = await import('./db');
   return prisma;
