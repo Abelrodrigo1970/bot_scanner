@@ -56,13 +56,6 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA30 < 0,5%.',
   },
   {
-    strategyName: 'MA200_VOLATILE',
-    displayNames: ['MA200 Top Voláteis'],
-    buy: side(4, 80, 70),
-    sell: side(4, 80, 70),
-    summary: 'SL 4%. TP1 ±80% (70% pos.). Restante às 24h.',
-  },
-  {
     strategyName: 'AFASTAMENTO_MEDIO_30M',
     displayNames: [
       'Afastamento médio 30m (≤2→≥2,3)',
@@ -93,27 +86,12 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Só VENDA. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.',
   },
   {
-    strategyName: 'MACD_HISTOGRAM_PMO',
-    displayNames: ['MACD Histogram 1h + PMO'],
-    buy: side(4, 20, 100),
-    sell: side(4, 20, 100),
-    summary: 'SL 4%. TP ±20% (posição total).',
-  },
-  {
     strategyName: 'EMA_SCALPING',
     displayNames: ['EMA Ribbon Scalping BUY (15m)'],
     buy: EMA_RIBBON_SELL,
     sell: null,
     summary:
       'Só COMPRA. Tendência de alta + retração. SL dinâmico (ATR/swing, máx. ~2,9%). TP1 R×1,65 (~4,8%, 55%) | TP2 R×3,2 (~9,3%, 35%).',
-  },
-  {
-    strategyName: 'EMA_SCALPING_SELL',
-    displayNames: ['EMA Ribbon Scalping SELL (15m)'],
-    buy: null,
-    sell: EMA_RIBBON_SELL,
-    summary:
-      'Descontinuado. SL dinâmico (ATR/swing, máx. ~2,9%). TP1 R×1,65 (~4,8%, 55%) | TP2 R×3,2 (~9,3%, 35%).',
   },
   {
     strategyName: 'PIVOT_BOSS_BEAR_15M',

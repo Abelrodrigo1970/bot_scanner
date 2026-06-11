@@ -355,48 +355,6 @@ export default function EstrategiasPage() {
         );
       }
 
-      case 'MA200_VOLATILE': {
-        const defaultBuyStop = 4;
-        const defaultSellStop = 4;
-        const defaultBuyTp1 = 80;
-        const defaultBuyTp1Position = 70;
-        const defaultBuyTp2 = 0;
-        const defaultBuyTp2Position = 0;
-        const defaultSellTp1 = 80;
-        const defaultSellTp1Position = 70;
-        const defaultSellTp2 = 0;
-        const defaultSellTp2Position = 0;
-        return (
-          <div className="space-y-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>4h</strong>. Universo = <strong>Scanner 4</strong> (fecho acima SMA200 em 1d).
-              COMPRA/VENDA quando o preço cruza a MA200 com confirmação de 2%.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {numField('Confirmação (%)', p.confirmationPct ?? 2, (v) => upd({ confirmationPct: v }), 0.5)}
-              {numField('Período MA', p.ma200Period ?? 200, (v) => upd({ ma200Period: v }))}
-              {numField('Distância máx. à MA (%)', p.maxDistancePct ?? 10, (v) => upd({ maxDistancePct: v }), 0.5)}
-            </div>
-            <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">BUY</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {numField('SL (%)', p.buyStopPercent ?? defaultBuyStop, (v) => upd({ buyStopPercent: v }), 0.5)}
-              {numField('TP1 (%) | Posição (%)', p.buyTp1Percent ?? defaultBuyTp1, (v) => upd({ buyTp1Percent: v }), 0.5)}
-              {numField('TP1 Posição (%)', p.buyTp1Position ?? defaultBuyTp1Position, (v) => upd({ buyTp1Position: v }))}
-              {numField('TP2 (%)', p.buyTp2Percent ?? defaultBuyTp2, (v) => upd({ buyTp2Percent: v }), 0.5)}
-              {numField('TP2 Posição (%)', p.buyTp2Position ?? defaultBuyTp2Position, (v) => upd({ buyTp2Position: v }))}
-            </div>
-            <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">SELL</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {numField('SL (%)', p.sellStopPercent ?? defaultSellStop, (v) => upd({ sellStopPercent: v }), 0.5)}
-              {numField('TP1 (%)', p.sellTp1Percent ?? defaultSellTp1, (v) => upd({ sellTp1Percent: v }), 0.5)}
-              {numField('TP1 Posição (%)', p.sellTp1Position ?? defaultSellTp1Position, (v) => upd({ sellTp1Position: v }))}
-              {numField('TP2 (%)', p.sellTp2Percent ?? defaultSellTp2, (v) => upd({ sellTp2Percent: v }), 0.5)}
-              {numField('TP2 Posição (%)', p.sellTp2Position ?? defaultSellTp2Position, (v) => upd({ sellTp2Position: v }))}
-            </div>
-          </div>
-        );
-      }
-
       case 'RSI_OVERBOUGHT_DROP_1H':
         return (
           <div className="space-y-4">
@@ -491,94 +449,6 @@ export default function EstrategiasPage() {
               {numField('Risk-reward TP2', p.rewardRisk2 ?? 3.2, (v) => upd({ rewardRisk2: v }), 0.05)}
               {numField('TP1 — % da posição', p.tp1PositionPct ?? 55, (v) => upd({ tp1PositionPct: v }))}
               {numField('TP2 — % da posição', p.tp2PositionPct ?? 35, (v) => upd({ tp2PositionPct: v }))}
-            </div>
-          </div>
-        );
-
-      case 'EMA_SCALPING_SELL':
-        return (
-          <div className="space-y-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>15m</strong>; dados <strong>Binance Futures</strong>. Espelho bearish do EMA Ribbon: fita em queda, EMA rápida abaixo da lenta; pullback ou consolidação junto à fita; vela <strong>bear</strong> forte a fechar por baixo da EMA rápida. Só <strong>VENDA</strong>. Universo = Top movers 1h (limite abaixo).
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('EMA rápida (base bear)', p.ribbonFastPeriod ?? 8, (v) => upd({ ribbonFastPeriod: v }))}
-              {numField('EMA lenta (topo fita)', p.ribbonSlowPeriod ?? 55, (v) => upd({ ribbonSlowPeriod: v }))}
-              {numField('ATR período', p.atrPeriod ?? 14, (v) => upd({ atrPeriod: v }))}
-              {numField('Lookback inclinação (velas)', p.slopeLookback ?? 5, (v) => upd({ slopeLookback: v }))}
-              {numField('Inclinação mín. EMA lenta (queda, %)', p.minSlowEmaSlopePct ?? 0.85, (v) => upd({ minSlowEmaSlopePct: v }), 0.05)}
-              {numField('Barras lateral (consol.)', p.consolidationLookback ?? 14, (v) => upd({ consolidationLookback: v }))}
-              {numField('Máx. range consolidação (%)', p.consolidationMaxRangePct ?? 1.35, (v) => upd({ consolidationMaxRangePct: v }), 0.05)}
-              {numField('Mín. velas com close > EMA rápida (lateral)', p.minBarsAboveFastInConsolidation ?? Math.ceil((p.consolidationLookback ?? 14) * 0.55), (v) => upd({ minBarsAboveFastInConsolidation: v }))}
-              {numField('Barras máx. pullback', p.pullbackMaxBars ?? 10, (v) => upd({ pullbackMaxBars: v }))}
-              {numField('Corpo mínimo / range', p.strongBodyOfRangeMin ?? 0.58, (v) => upd({ strongBodyOfRangeMin: v }), 0.01)}
-              {numField('Corpo mínimo × ATR', p.strongBodyMinAtrMult ?? 0.42, (v) => upd({ strongBodyMinAtrMult: v }), 0.02)}
-              {numField('Máximo quartil inferior (fecha perto do low)', p.closeLowerThirdMaxFrac ?? 0.32, (v) => upd({ closeLowerThirdMaxFrac: v }), 0.02)}
-              {numField('Lookback swing SL (velas)', p.swingLookback ?? 6, (v) => upd({ swingLookback: v }))}
-              {numField('Margem swing × ATR', p.swingAboveAtrMult ?? 0.14, (v) => upd({ swingAboveAtrMult: v }), 0.02)}
-              {numField('Folga SL vs EMA lenta (%)', p.slowEmaStopBufferPct ?? 0.12, (v) => upd({ slowEmaStopBufferPct: v }), 0.02)}
-              {numField('SL mínimo (% entrada)', p.minStopDistancePct ?? 0.22, (v) => upd({ minStopDistancePct: v }), 0.02)}
-              {numField('SL máximo (% entrada)', p.maxStopDistancePct ?? 2.9, (v) => upd({ maxStopDistancePct: v }), 0.05)}
-              {numField('Fresh break (× ATR)', p.freshBreakAtrFrac ?? 0.07, (v) => upd({ freshBreakAtrFrac: v }), 0.01)}
-              {numField('Máximo símbolos', p.symbolLimit ?? 80, (v) => upd({ symbolLimit: v }))}
-              {numField('Risk-reward TP1', p.rewardRisk1 ?? 1.65, (v) => upd({ rewardRisk1: v }), 0.05)}
-              {numField('Risk-reward TP2', p.rewardRisk2 ?? 3.2, (v) => upd({ rewardRisk2: v }), 0.05)}
-              {numField('TP1 — % da posição', p.tp1PositionPct ?? 55, (v) => upd({ tp1PositionPct: v }))}
-              {numField('TP2 — % da posição', p.tp2PositionPct ?? 35, (v) => upd({ tp2PositionPct: v }))}
-            </div>
-          </div>
-        );
-
-      case 'SCANNER1_TOP8':
-        return (
-          <div className="space-y-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Rotação <strong>total</strong> a cada scan do <strong>Scanner 1</strong> (4 h): fecha todas as posições
-              e recompra <strong>6 símbolos</strong> (ranks 1, 2, 5, 6, 7, 8 — exclui #3 e #4 do top 8). SL -5%.
-              Corre após <code className="text-[10px]">run-universe-scans</code>.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Posições (após excl.)', p.topN ?? 6, (v) => upd({ topN: v }))}
-              {numField('Scan top N (fonte)', p.scanTopN ?? 8, (v) => upd({ scanTopN: v }))}
-              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
-              {numField('Horas até rotação (ref.)', p.closeAfterHours ?? 4, (v) => upd({ closeAfterHours: v }))}
-              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
-            </div>
-          </div>
-        );
-
-      case 'SCANNER_MA80_TOP6':
-        return (
-          <div className="space-y-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Rotação <strong>total diária</strong> (UTC) do <strong>Scanner 5</strong> (SMA80 1d): fecha todas as
-              posições e recompra <strong>6 símbolos</strong> (ranks 1, 4, 5, 6, 7, 8 — exclui #2 e #3 do top 8).
-              SL -5%. Corre após <code className="text-[10px]">run-universe-scans</code> ou cron diário.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Posições (após excl.)', p.topN ?? 6, (v) => upd({ topN: v }))}
-              {numField('Scan top N (fonte)', p.scanTopN ?? 8, (v) => upd({ scanTopN: v }))}
-              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
-              {numField('Horas até rotação (ref.)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
-              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
-            </div>
-          </div>
-        );
-
-      case 'SCANNER_MA80_4H_TOP6':
-        return (
-          <div className="space-y-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Rotação <strong>total</strong> a cada scan do <strong>Scanner 6</strong> (4 h, SMA80): fecha todas as
-              posições e recompra <strong>6 símbolos</strong> (ranks 1, 2, 4, 5, 7, 8 — exclui #3 e #6 do top 8).
-              SL -7%. Corre após <code className="text-[10px]">run-universe-scans</code>.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Posições (após excl.)', p.topN ?? 6, (v) => upd({ topN: v }))}
-              {numField('Scan top N (fonte)', p.scanTopN ?? 8, (v) => upd({ scanTopN: v }))}
-              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.07) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
-              {numField('Horas até rotação (ref.)', p.closeAfterHours ?? 4, (v) => upd({ closeAfterHours: v }))}
-              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
             </div>
           </div>
         );
@@ -707,7 +577,6 @@ export default function EstrategiasPage() {
             {strategies.map((strategy) => {
               const meta = STRATEGY_CATALOG[strategy.name];
               const sellOnly =
-                strategy.name === 'EMA_SCALPING_SELL' ||
                 strategy.name === 'PIVOT_BOSS_BEAR_15M' ||
                 strategy.name === 'PIVOT_BOSS_BEAR_1H' ||
                 strategy.name === 'RSI_OVERBOUGHT_DROP_1H' ||

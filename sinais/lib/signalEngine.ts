@@ -19,6 +19,7 @@ import {
   UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D,
 } from './symbolUniverseDefaults';
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
+import { ACTIVE_SCANNER_STRATEGY_NAMES } from './strategyCatalog';
 import {
   checkMaCross15mSignalGate,
   isMaCross15mHourBlocked,
@@ -1659,7 +1660,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
     });
 
     strategies = strategies.filter(
-      (s) => !(REMOVED_DEPRECATED_STRATEGY_NAMES as readonly string[]).includes(s.name)
+      (s) =>
+        (ACTIVE_SCANNER_STRATEGY_NAMES as readonly string[]).includes(s.name) &&
+        !(REMOVED_DEPRECATED_STRATEGY_NAMES as readonly string[]).includes(s.name)
     );
 
     if (options?.only?.length) {

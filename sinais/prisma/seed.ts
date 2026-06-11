@@ -60,62 +60,6 @@ async function main() {
   }
   console.log(`Estratégias importadas: ${IMPORTED_BUILTIN_STRATEGY_SEEDS.map((s) => s.name).join(', ')}`);
 
-  await prisma.strategy.upsert({
-    where: { name: 'EMA_SCALPING_SELL' },
-    update: {
-      displayName: 'EMA Ribbon Scalping SELL (15m)',
-      description:
-        'Scalping 15m «EMA Ribbon» só VENDA: fita descendente; pullback/consolidação à fita; vela bear forte abaixo da EMA rápida; SL acima do swing ou EMA lenta + folga; TP por R. Binance. Top movers 1h.',
-      params: JSON.stringify({
-        ribbonFastPeriod: 8,
-        ribbonSlowPeriod: 55,
-        atrPeriod: 14,
-        slopeLookback: 5,
-        minSlowEmaSlopePct: 0.85,
-        consolidationLookback: 14,
-        consolidationMaxRangePct: 1.35,
-        pullbackMaxBars: 10,
-        strongBodyOfRangeMin: 0.58,
-        strongBodyMinAtrMult: 0.42,
-        symbolLimit: 80,
-        rewardRisk1: 1.65,
-        rewardRisk2: 3.2,
-        tp1PositionPct: 55,
-        tp2PositionPct: 35,
-        allowBuy: false,
-        allowSell: true,
-        exchange: 'binance',
-      }),
-    },
-    create: {
-      name: 'EMA_SCALPING_SELL',
-      displayName: 'EMA Ribbon Scalping SELL (15m)',
-      description:
-        'Scalping 15m «EMA Ribbon» só VENDA: fita descendente; pullback/consolidação à fita; vela bear forte abaixo da EMA rápida; SL acima do swing ou EMA lenta + folga; TP por R. Binance. Top movers 1h.',
-      isActive: false,
-      params: JSON.stringify({
-        ribbonFastPeriod: 8,
-        ribbonSlowPeriod: 55,
-        atrPeriod: 14,
-        slopeLookback: 5,
-        minSlowEmaSlopePct: 0.85,
-        consolidationLookback: 14,
-        consolidationMaxRangePct: 1.35,
-        pullbackMaxBars: 10,
-        strongBodyOfRangeMin: 0.58,
-        strongBodyMinAtrMult: 0.42,
-        symbolLimit: 80,
-        rewardRisk1: 1.65,
-        rewardRisk2: 3.2,
-        tp1PositionPct: 55,
-        tp2PositionPct: 35,
-        allowBuy: false,
-        allowSell: true,
-        exchange: 'binance',
-      }),
-    },
-  });
-
   // Remover estratégias legadas (não incluir MACD_HISTOGRAM_PMO / afastamento / RSI importados)
   const removed = await prisma.strategy.deleteMany({
     where: {

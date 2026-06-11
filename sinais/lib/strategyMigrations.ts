@@ -12,6 +12,7 @@ export const REMOVED_DEPRECATED_STRATEGY_NAMES = [
   'AFASTAMENTO_MEDIO',
   'MA200_VOLATILE',
   'MACD_HISTOGRAM_PMO',
+  'EMA_SCALPING_SELL',
 ] as const;
 
 export interface RemoveDeprecatedStrategiesResult {

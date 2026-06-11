@@ -12,6 +12,9 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
   'PIVOT_BOSS_BEAR_1H',
 ] as const;
 
+/** Estratégias activas (sinais baseados em scanners 1, 2 e 4). */
+export const ACTIVE_SCANNER_STRATEGY_NAMES = ACTIVE_STRATEGY_DISPLAY_ORDER;
+
 export interface StrategyCatalogEntry {
   cron: '15m' | '30m' | '1h';
   cronLabel: string;
@@ -37,12 +40,6 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     cronLabel: 'Cron 15m',
     timeframe: '15m',
     universe: 'Scanner 4 (acima SMA200, 1d)',
-  },
-  EMA_SCALPING_SELL: {
-    cron: '15m',
-    cronLabel: 'Cron 15m (legado)',
-    timeframe: '15m',
-    universe: 'Top movers 1h',
   },
   AFASTAMENTO_MEDIO_30M: {
     cron: '30m',

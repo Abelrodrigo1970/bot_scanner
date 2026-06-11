@@ -23,23 +23,13 @@ export interface SignalForTrading {
   extraInfo?: string | null;
 }
 
-/** Estratégias permitidas para trading automático */
+/** Estratégias permitidas para trading automático (scanners 1, 2 e 4). */
 const ALLOWED_STRATEGIES = [
-  'Volume Spike',
-  'Volume Spike 1h',
-  '15MVolume',
-  'MA200 Top Voláteis',
-  'MA200_VOLATILE',
-  'MA Cross 5m',
   'MA Cross 15m',
   'MA12/MA30',
   'MA_CROSS_5M',
   'EMA_SCALPING',
   'EMA Ribbon Scalping BUY',
-  'EMA_SCALPING_SELL',
-  'EMA Ribbon Scalping SELL',
-  'MACD Histogram 1h + PMO',
-  'MACD_HISTOGRAM_PMO',
   'Afastamento médio 30m',
   'AFASTAMENTO_MEDIO_30M',
   'RSI pullback bear 1h',

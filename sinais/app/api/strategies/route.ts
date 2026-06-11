@@ -4,13 +4,15 @@ import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
 import {
   ensureMissingBuiltinStrategies,
-  TOP_ROTATION_STRATEGY_NAMES,
 } from '@/lib/ensureMissingBuiltinStrategies';
+import {
+  ACTIVE_SCANNER_STRATEGY_NAMES,
+  sortActiveStrategies,
+} from '@/lib/strategyCatalog';
 import {
   backfillMaCross5mSignalNames,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
-  REMOVED_DEPRECATED_STRATEGY_NAMES,
   removeDeprecatedStrategies,
   syncAfastamentoMedio30mBuyPrevMax,
   syncEmaRibbonScalpingBuy15m,
@@ -40,30 +42,6 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   allowSell: true,
   exchange: 'binance' as const,
 };
-
-const EMA_SCALPING_SELL_DEFAULT_PARAMS = {
-  ribbonFastPeriod: 8,
-  ribbonSlowPeriod: 55,
-  atrPeriod: 14,
-  slopeLookback: 5,
-  minSlowEmaSlopePct: 0.85,
-  consolidationLookback: 14,
-  consolidationMaxRangePct: 1.35,
-  pullbackMaxBars: 10,
-  strongBodyOfRangeMin: 0.58,
-  strongBodyMinAtrMult: 0.42,
-  symbolLimit: 80,
-  rewardRisk1: 1.65,
-  rewardRisk2: 3.2,
-  tp1PositionPct: 55,
-  tp2PositionPct: 35,
-  allowBuy: false,
-  allowSell: true,
-  exchange: 'binance' as const,
-};
-
-const EMA_SCALPING_SELL_DESCRIPTION =
-  'Scalping 15m «EMA Ribbon» só VENDA: fita descendente (EMA lenta em queda forte), EMA rápida por baixo da lenta; preço sob a fita; consolidação com fechos maioritariamente acima da EMA rápida (pullback) ou pullback tocando a fita; entrada em vela bear forte que fecha por baixo da EMA rápida. SL = máximo entre swing high + margem ATR e EMA lenta + folga %. TP por R (igual filosofia ao lado BUY). Binance Futures. Universo = Top movers 1h (limite parametrizável).';
 
 async function ensureMissingStrategies() {
   await removeDeprecatedStrategies(prisma);
@@ -170,22 +148,6 @@ async function ensureMissingStrategies() {
       `✅ MA_CROSS_5M: ${relabeled} sinal(is) com strategyName actualizado → "${MA_CROSS_5M_DISPLAY}"`
     );
   }
-
-  const existingEmaScalpingSell = await prisma.strategy.findUnique({
-    where: { name: 'EMA_SCALPING_SELL' },
-    select: { id: true },
-  });
-  if (!existingEmaScalpingSell) {
-    await prisma.strategy.create({
-      data: {
-        name: 'EMA_SCALPING_SELL',
-        displayName: 'EMA Ribbon Scalping SELL (15m)',
-        description: EMA_SCALPING_SELL_DESCRIPTION,
-        isActive: false,
-        params: JSON.stringify(EMA_SCALPING_SELL_DEFAULT_PARAMS),
-      },
-    });
-  }
 }
 
 export async function GET(request: NextRequest) {
@@ -218,18 +180,13 @@ export async function GET(request: NextRequest) {
     await ensureMissingStrategies();
 
     // Listagem pública - necessário para o dropdown de filtros no dashboard
-    const strategies = await prisma.strategy.findMany({
-      where: {
-        name: {
-          notIn: [
-            ...REMOVED_DEPRECATED_STRATEGY_NAMES,
-            'VOLUME_SPIKE_15M',
-            ...TOP_ROTATION_STRATEGY_NAMES,
-          ],
+    const strategies = sortActiveStrategies(
+      await prisma.strategy.findMany({
+        where: {
+          name: { in: [...ACTIVE_SCANNER_STRATEGY_NAMES] },
         },
-      },
-      orderBy: { name: 'asc' },
-    });
+      })
+    );
 
     return NextResponse.json({ strategies });
   } catch (error) {
