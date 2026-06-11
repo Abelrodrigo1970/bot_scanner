@@ -95,7 +95,7 @@ export async function autoExecuteNewSignalsForStrategy(opts: {
         target2: sig.target2,
         target3: sig.target3 ?? null,
         strength: sig.strength,
-        strategyName: sig.strategyName,
+        strategyName: strategy.name,
         status: sig.status,
         extraInfo: sig.extraInfo,
         exchange,

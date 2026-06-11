@@ -18,26 +18,14 @@ import {
   PIVOT_BOSS_BEAR_1H_DESCRIPTION,
   PIVOT_BOSS_BEAR_1H_PARAMS,
   PIVOT_BOSS_BEAR_1H_DISPLAY,
-  SCANNER1_TOP8_DESCRIPTION,
-  SCANNER1_TOP8_DISPLAY,
-  SCANNER1_TOP8_PARAMS,
-  SCANNER_MA80_TOP6_DESCRIPTION,
-  SCANNER_MA80_TOP6_DISPLAY,
-  SCANNER_MA80_TOP6_PARAMS,
-  SCANNER_MA80_4H_TOP6_DESCRIPTION,
-  SCANNER_MA80_4H_TOP6_DISPLAY,
-  SCANNER_MA80_4H_TOP6_PARAMS,
   syncAfastamentoMedio30mBuyPrevMax,
   syncEmaRibbonScalpingBuy15m,
   syncPivotBossBear15mUniverse,
   syncRsiOverboughtDrop1hConfig,
   syncRsiOverboughtDropLegacy1hConfig,
-  syncScanner1Top8Config,
-  syncScannerMa80Top6Config,
-  syncScannerMa804hTop6Config,
 } from './strategyMigrations';
 
-/** Estratégias importadas (foto + afastamento 80/7) — criadas se faltarem na BD. */
+/** Estratégias de sinal (sem rotações Top — essas estão no bot_cripto). */
 export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
   {
     name: 'AFASTAMENTO_MEDIO_30M',
@@ -89,27 +77,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     isActive: true,
     params: JSON.stringify(PIVOT_BOSS_BEAR_1H_PARAMS),
   },
-  {
-    name: 'SCANNER1_TOP8',
-    displayName: SCANNER1_TOP8_DISPLAY,
-    description: SCANNER1_TOP8_DESCRIPTION,
-    isActive: true,
-    params: JSON.stringify(SCANNER1_TOP8_PARAMS),
-  },
-  {
-    name: 'SCANNER_MA80_TOP6',
-    displayName: SCANNER_MA80_TOP6_DISPLAY,
-    description: SCANNER_MA80_TOP6_DESCRIPTION,
-    isActive: true,
-    params: JSON.stringify(SCANNER_MA80_TOP6_PARAMS),
-  },
-  {
-    name: 'SCANNER_MA80_4H_TOP6',
-    displayName: SCANNER_MA80_4H_TOP6_DISPLAY,
-    description: SCANNER_MA80_4H_TOP6_DESCRIPTION,
-    isActive: true,
-    params: JSON.stringify(SCANNER_MA80_4H_TOP6_PARAMS),
-  },
+] as const;
+
+/** Nomes internos das estratégias Top (não usadas neste projeto). */
+export const TOP_ROTATION_STRATEGY_NAMES = [
+  'SCANNER1_TOP8',
+  'SCANNER_MA80_TOP6',
+  'SCANNER_MA80_4H_TOP6',
 ] as const;
 
 export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Promise<void> {
@@ -139,17 +113,5 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const pivotBossSync = await syncPivotBossBear15mUniverse(prisma);
   if (pivotBossSync.updated) {
     console.log('✅ PIVOT_BOSS_BEAR: universo/descrição actualizados (15m → Scanner 1; 1h → Scanner 4)');
-  }
-  const s1Top8Sync = await syncScanner1Top8Config(prisma);
-  if (s1Top8Sync.updated) {
-    console.log('✅ SCANNER1_TOP8: params/descrição actualizados (Top 6 excl. ranks 3–4, rotação 4h, SL -5%)');
-  }
-  const ma80Top6Sync = await syncScannerMa80Top6Config(prisma);
-  if (ma80Top6Sync.updated) {
-    console.log('✅ SCANNER_MA80_TOP6: params/descrição actualizados (Top 6 excl. ranks 2–3, rotação diária, SL -5%)');
-  }
-  const ma804hTop6Sync = await syncScannerMa804hTop6Config(prisma);
-  if (ma804hTop6Sync.updated) {
-    console.log('✅ SCANNER_MA80_4H_TOP6: params/descrição actualizados (Top 6 excl. ranks 3–6, rotação 4h, SL -7%)');
   }
 }

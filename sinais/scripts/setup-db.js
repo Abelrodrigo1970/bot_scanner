@@ -8,25 +8,29 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 // Resolver referências do Railway (ex: ${{Postgres.DATABASE_URL}})
-let databaseUrl = process.env.DATABASE_URL || '';
+let databaseUrl = (process.env.DATABASE_URL || '').trim();
 
 // Se for uma referência do Railway que não foi resolvida, tentar outras variáveis
-if (databaseUrl.includes('{{') || databaseUrl === '' || !databaseUrl) {
-  // Tentar variáveis alternativas que o Railway pode usar
-  databaseUrl = process.env.POSTGRES_URL || 
-                process.env.DATABASE_URL || 
-                process.env.RAILWAY_DATABASE_URL || 
-                '';
+if (databaseUrl.includes('{{') || databaseUrl === '') {
+  databaseUrl = (
+    process.env.POSTGRES_URL ||
+    process.env.RAILWAY_DATABASE_URL ||
+    process.env.DATABASE_URL ||
+    ''
+  ).trim();
 }
 
-console.log('🔍 Configurando banco de dados...');
-console.log(`   DATABASE_URL: ${databaseUrl ? databaseUrl.replace(/:[^:@]+@/, ':****@') : 'não configurado'}`);
-console.log(`   DATABASE_URL length: ${databaseUrl.length}`);
-console.log(`   DATABASE_URL starts with: ${databaseUrl.substring(0, 20)}...\n`);
+function detectDbType(url) {
+  const u = (url || '').trim();
+  const isPostgreSQL =
+    u.startsWith('postgresql://') ||
+    u.startsWith('postgres://') ||
+    u.includes('railway.internal');
+  const isSQLite = u.startsWith('file:') || u === '';
+  return { isPostgreSQL, isSQLite };
+}
 
-// Detectar tipo de banco pela URL
-const isPostgreSQL = databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://');
-const isSQLite = databaseUrl.startsWith('file:') || !databaseUrl || databaseUrl === '';
+let { isPostgreSQL, isSQLite } = detectDbType(databaseUrl);
 
 // Verificar conflito: schema PostgreSQL mas DATABASE_URL SQLite
 const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
@@ -42,12 +46,54 @@ try {
   // Ignorar erro de leitura
 }
 
+/** Build Railway/CI sem DATABASE_URL ainda ligado — só gera o client. */
+function generatePrismaClientOnly(reason) {
+  console.log(`⚠️  ${reason}`);
+  console.log('   Gerando Prisma Client; schema aplicado no arranque (db-init).\n');
+  execSync('npx prisma generate', {
+    stdio: 'inherit',
+    cwd: process.cwd(),
+    env: { ...process.env },
+  });
+  console.log('✅ Prisma Client gerado!\n');
+  process.exit(0);
+}
+
+console.log('🔍 Configurando banco de dados...');
+console.log(`   DATABASE_URL: ${databaseUrl ? databaseUrl.replace(/:[^:@]+@/, ':****@') : 'não configurado'}`);
+console.log(`   DATABASE_URL length: ${databaseUrl.length}`);
+console.log(`   isPostgreSQL: ${isPostgreSQL}, isSQLite: ${isSQLite}\n`);
+
+if (databaseUrl.includes('{{')) {
+  generatePrismaClientOnly(
+    'Referência DATABASE_URL não resolvida — use o botão "Add reference" no Railway (${{Postgres.DATABASE_URL}}).'
+  );
+}
+
+if (!databaseUrl) {
+  if (schemaProvider === 'postgresql') {
+    generatePrismaClientOnly(
+      'DATABASE_URL não configurado (adicione Postgres no Railway: DATABASE_URL=${{Postgres.DATABASE_URL}}).'
+    );
+  }
+  databaseUrl = 'file:./data/sinais-vol-rsi.db';
+  process.env.DATABASE_URL = databaseUrl;
+  ({ isPostgreSQL, isSQLite } = detectDbType(databaseUrl));
+}
+
+// Build Railway: postgres.railway.internal não responde durante o build
+if (schemaProvider === 'postgresql' && isPostgreSQL && databaseUrl.includes('railway.internal')) {
+  generatePrismaClientOnly(
+    'PostgreSQL railway.internal — build continua; schema aplicado no arranque (db-init).'
+  );
+}
+
 // Verificar conflitos e corrigir automaticamente ANTES de qualquer operação
 let schemaChanged = false;
 
 if (schemaProvider === 'postgresql' && !isPostgreSQL) {
-  // Schema PostgreSQL mas URL SQLite - pode ser desenvolvimento local
-  if (isSQLite) {
+  // Schema PostgreSQL mas URL SQLite — só em dev local (file:)
+  if (isSQLite && databaseUrl.startsWith('file:')) {
     console.log('⚠️  Schema está em PostgreSQL mas DATABASE_URL é SQLite.');
     console.log('   Alterando schema para SQLite (desenvolvimento local)...\n');
     try {
@@ -62,16 +108,9 @@ if (schemaProvider === 'postgresql' && !isPostgreSQL) {
       process.exit(1);
     }
   } else {
-    // Caso Railway: schema PostgreSQL mas URL não é PostgreSQL
-    console.error('\n❌ ERRO CRÍTICO: Conflito de Configuração!');
-    console.error('   Schema está configurado para PostgreSQL');
-    console.error(`   Mas DATABASE_URL está como: ${databaseUrl || '(vazio)'}`);
-    console.error('\n🔧 SOLUÇÃO:');
-    console.error('   1. No Railway, vá no SERVIÇO "crypto-sinais-automaticos"');
-    console.error('   2. Vá em "Variables" (não Shared Variables)');
-    console.error('   3. Adicione ou edite: DATABASE_URL = ${{Postgres.DATABASE_URL}}');
-    console.error('   4. Faça redeploy\n');
-    process.exit(1);
+    generatePrismaClientOnly(
+      'Schema PostgreSQL mas DATABASE_URL não reconhecida. No Railway: bot_scanner → Variables → DATABASE_URL = reference Postgres.DATABASE_URL'
+    );
   }
 }
 

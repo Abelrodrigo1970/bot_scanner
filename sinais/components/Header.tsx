@@ -38,7 +38,7 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-4 md:space-x-8">
             <Link href="/" className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">
-              Crypto Sinais
+              Bot Scanner
             </Link>
 
             <nav className="hidden md:flex items-center space-x-1">

@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
-import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrategies';
+import {
+  ensureMissingBuiltinStrategies,
+  TOP_ROTATION_STRATEGY_NAMES,
+} from '@/lib/ensureMissingBuiltinStrategies';
 import {
   backfillMaCross5mSignalNames,
   MA_CROSS_5M_DESC,
@@ -218,7 +221,11 @@ export async function GET(request: NextRequest) {
     const strategies = await prisma.strategy.findMany({
       where: {
         name: {
-          notIn: [...REMOVED_DEPRECATED_STRATEGY_NAMES, 'VOLUME_SPIKE_15M'],
+          notIn: [
+            ...REMOVED_DEPRECATED_STRATEGY_NAMES,
+            'VOLUME_SPIKE_15M',
+            ...TOP_ROTATION_STRATEGY_NAMES,
+          ],
         },
       },
       orderBy: { name: 'asc' },

@@ -1,11 +1,9 @@
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
+import { TOP_ROTATION_STRATEGY_NAMES } from './ensureMissingBuiltinStrategies';
 
 /** Ordem de apresentação na página Estratégias (só activas). */
 export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
   'MA_CROSS_5M',
-  'SCANNER1_TOP8',
-  'SCANNER_MA80_TOP6',
-  'SCANNER_MA80_4H_TOP6',
   'PIVOT_BOSS_BEAR_15M',
   'EMA_SCALPING',
   'AFASTAMENTO_MEDIO_30M',
@@ -21,31 +19,12 @@ export interface StrategyCatalogEntry {
   universe?: string;
 }
 
-/** Metadados de cron / universo para cartões na UI. */
 export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
   MA_CROSS_5M: {
     cron: '15m',
     cronLabel: 'Cron 15m',
     timeframe: '15m',
     universe: 'Scanner 1 (acima SMA200, 1h)',
-  },
-  SCANNER1_TOP8: {
-    cron: '1h',
-    cronLabel: 'Rotação 4h (pós-scan)',
-    timeframe: '4h',
-    universe: 'Scanner 1 — ranks 1,2,5–8 (excl. #3 #4)',
-  },
-  SCANNER_MA80_TOP6: {
-    cron: '1h',
-    cronLabel: 'Rotação diária (pós-scan)',
-    timeframe: '1d',
-    universe: 'Scanner 5 — ranks 1,4–8 (excl. #2 #3)',
-  },
-  SCANNER_MA80_4H_TOP6: {
-    cron: '1h',
-    cronLabel: 'Rotação 4h (pós-scan) · SL -7%',
-    timeframe: '4h',
-    universe: 'Scanner 6 — ranks 1,2,4,5,7–8 (excl. #3 #6)',
   },
   PIVOT_BOSS_BEAR_15M: {
     cron: '1h',
@@ -91,8 +70,10 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
   },
 };
 
-/** Rótulos legíveis das estratégias descontinuadas (referência na UI). */
 export const REMOVED_STRATEGY_LABELS: Record<string, string> = {
+  SCANNER1_TOP8: 'Scanner 1 Top 6 (rotação — bot_cripto)',
+  SCANNER_MA80_TOP6: 'Scanner 5 Top 6 (rotação — bot_cripto)',
+  SCANNER_MA80_4H_TOP6: 'Scanner 6 Top 6 (rotação — bot_cripto)',
   MA_VOLATILE: 'MA Cross Top Voláteis',
   MA200_VOLATILE: 'MA200 Top Voláteis (4h)',
   MACD_HISTOGRAM_PMO: 'MACD Histogram 1h + PMO',
@@ -109,6 +90,9 @@ export const REMOVED_STRATEGY_LABELS: Record<string, string> = {
 
 const removedSet = new Set<string>(REMOVED_DEPRECATED_STRATEGY_NAMES as readonly string[]);
 removedSet.add('VOLUME_SPIKE_15M');
+for (const n of TOP_ROTATION_STRATEGY_NAMES) {
+  removedSet.add(n);
+}
 
 export function isDeprecatedStrategyName(name: string): boolean {
   return removedSet.has(name);
@@ -128,7 +112,7 @@ export const CRON_GROUPS: { key: '15m' | '30m' | '1h'; title: string; descriptio
   {
     key: '15m',
     title: 'Cron 15m',
-    description: 'MA Cross 15m, EMA Ribbon SELL 15m',
+    description: 'MA Cross 15m, EMA Ribbon BUY 15m',
   },
   {
     key: '30m',

@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BUILTIN_UNIVERSE_SCAN } from '@/lib/symbolUniverseDefaults';
 import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
-import { runScanner1Top8Pipeline } from '@/lib/scanner1Top8Strategy';
-import { runScannerMa80Top6Pipeline } from '@/lib/scannerMa80Top6Strategy';
-import { runScannerMa804hTop6Pipeline } from '@/lib/scannerMa804hTop6Strategy';
 
 /**
- * Executa os scanners de universo (MA200 1h/1d, EMA80 1d/4h, EMA80 -5/+15%, ±4% MA80) e grava na BD.
- * Resposta imediata 202 — trabalho pesado em background (evita timeout do cron-job.org).
+ * Scanners de universo para estratégias de sinal (1, 2, 4). Sem rotações Top.
  * Agendar de 4 em 4 horas (00:00, 04:00, 08:00, …).
  */
 let universeScansJobPromise: Promise<void> | null = null;
@@ -40,33 +36,6 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
     console.log(`[Universe-Scans] ${code}: ${rows.length} símbolos`);
   }
 
-  try {
-    const top8 = await runScanner1Top8Pipeline({
-      logPrefix: '[Universe-Scans → Top8]',
-    });
-    console.log('[Universe-Scans] Scanner 1 Top 8:', top8);
-  } catch (err) {
-    console.error('[Universe-Scans] Scanner 1 Top 8 falhou:', err);
-  }
-
-  try {
-    const ma80 = await runScannerMa80Top6Pipeline({
-      logPrefix: '[Universe-Scans → MA80 Top6]',
-    });
-    console.log('[Universe-Scans] Scanner 5 MA80 Top 6:', ma80);
-  } catch (err) {
-    console.error('[Universe-Scans] Scanner 5 MA80 Top 6 falhou:', err);
-  }
-
-  try {
-    const ma804h = await runScannerMa804hTop6Pipeline({
-      logPrefix: '[Universe-Scans → MA80 4h Top6]',
-    });
-    console.log('[Universe-Scans] Scanner 6 MA80 4h Top 6:', ma804h);
-  } catch (err) {
-    console.error('[Universe-Scans] Scanner 6 MA80 4h Top 6 falhou:', err);
-  }
-
   return results;
 }
 
@@ -85,7 +54,7 @@ export async function GET(request: NextRequest) {
           accepted: false,
           busy: true,
           message:
-            'Scanners 1/2/3/4/5/6 já em execução em background. Aguarde a conclusão (pode demorar 15–30 min).',
+            'Scanners 1/2/4 já em execução em background. Aguarde a conclusão (pode demorar 10–20 min).',
           startedAt: new Date().toISOString(),
         },
         { status: 202 }
@@ -110,7 +79,7 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scanners 1, 2, 3 e 4 iniciados em background. O teste no cron-job.org deve responder já; verifique os logs no Railway para conclusão.',
+          'Scanners 1, 2 e 4 iniciados em background. Verifique os logs no Railway para conclusão.',
         startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN),
       },

@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { IMPORTED_BUILTIN_STRATEGY_SEEDS } from '../lib/ensureMissingBuiltinStrategies';
+import {
+  IMPORTED_BUILTIN_STRATEGY_SEEDS,
+  TOP_ROTATION_STRATEGY_NAMES,
+} from '../lib/ensureMissingBuiltinStrategies';
 import {
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
@@ -133,6 +136,13 @@ async function main() {
 
   if (removed.count > 0) {
     console.log(`Removidas ${removed.count} estratégias antigas`);
+  }
+
+  const topRemoved = await prisma.strategy.deleteMany({
+    where: { name: { in: [...TOP_ROTATION_STRATEGY_NAMES] } },
+  });
+  if (topRemoved.count > 0) {
+    console.log(`Removidas ${topRemoved.count} estratégias Top (bot_cripto)`);
   }
 
   // Configuração: trades na Binance desativados por defeito

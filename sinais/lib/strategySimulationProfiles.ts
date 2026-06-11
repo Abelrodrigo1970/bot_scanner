@@ -56,27 +56,6 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA30 < 0,5%.',
   },
   {
-    strategyName: 'SCANNER1_TOP8',
-    displayNames: ['Scanner 1 Top 6 (excl. ranks 3–4, rotação 4h)', 'Scanner 1 Top 8 (rotação 4h)'],
-    buy: side(5, 0, 0, 0, 0, 4),
-    sell: null,
-    summary: 'SL 5%. Sem TP — rotação total a cada scan (4h). 6 posições (ranks 1,2,5–8; excl. #3 #4).',
-  },
-  {
-    strategyName: 'SCANNER_MA80_TOP6',
-    displayNames: ['Scanner 5 Top 6 (excl. ranks 2–3, rotação diária)'],
-    buy: side(5, 0, 0, 0, 0, 24),
-    sell: null,
-    summary: 'SL 5%. Sem TP — rotação total 1×/dia. 6 posições (ranks 1,4–8; excl. #2 #3).',
-  },
-  {
-    strategyName: 'SCANNER_MA80_4H_TOP6',
-    displayNames: ['Scanner 6 Top 6 (excl. ranks 3–6, rotação 4h)', 'Scanner 6 Top 6 (excl. ranks 3–4, rotação 4h)'],
-    buy: side(7, 0, 0, 0, 0, 4),
-    sell: null,
-    summary: 'SL 7%. Sem TP — rotação total a cada scan (4h). 6 posições (ranks 1,2,4,5,7–8; excl. #3 #6).',
-  },
-  {
     strategyName: 'MA200_VOLATILE',
     displayNames: ['MA200 Top Voláteis'],
     buy: side(4, 80, 70),

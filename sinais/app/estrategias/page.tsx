@@ -635,9 +635,8 @@ export default function EstrategiasPage() {
             ))}
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Removidas do sistema:{' '}
-            {Object.values(REMOVED_STRATEGY_LABELS).join(' · ')}.
-            Scanners 1–3: menu <strong>Origem de dados</strong>.
+            Rotações Top (scanners 5 e 6) estão no projeto <strong>bot_cripto</strong>.
+            Scanners 1, 2 e 4: menu <strong>Origem de dados</strong>.
           </p>
         </div>
 
