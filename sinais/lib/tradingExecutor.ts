@@ -49,6 +49,16 @@ export interface ExecuteResult {
   stopOrderId?: number;
 }
 
+/** Saídas automáticas por estratégia desactivadas — só SL/TP na exchange (ou fecho manual na UI). */
+export const STRATEGY_AUTO_CLOSE_POSITIONS = false;
+
+export type ClosePositionOptions = {
+  /** Fecho iniciado pelo utilizador (botão Executar). Ignora STRATEGY_AUTO_CLOSE_POSITIONS. */
+  manual?: boolean;
+  /** Fecho de rotação Scanner 1 Top 8 (única excepção automática). */
+  rotationClose?: boolean;
+};
+
 export interface ClosePositionResult {
   closed: boolean;
   message: string;
@@ -557,8 +567,16 @@ export async function inspectActivePositionForSymbol(
  */
 export async function closeActivePositionForSymbol(
   symbol: string,
-  exchange?: 'binance' | 'bybit'
+  exchange?: 'binance' | 'bybit',
+  options?: ClosePositionOptions
 ): Promise<ClosePositionResult> {
+  if (!options?.manual && !options?.rotationClose && !STRATEGY_AUTO_CLOSE_POSITIONS) {
+    return {
+      closed: false,
+      message: 'Fecho automático desactivado — saída apenas por SL/TP na exchange',
+    };
+  }
+
   const tradingEnabled = await getTradingEnabled();
   if (!tradingEnabled) return { closed: false, message: 'Trades desativados na aplicação' };
 

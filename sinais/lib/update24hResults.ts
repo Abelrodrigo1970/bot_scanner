@@ -4,8 +4,6 @@
 
 import { prisma } from './db';
 import { fetchCandlesSafe, fetchFallbackPrice } from './marketData';
-import { closeActivePositionForSymbol } from './tradingExecutor';
-
 /**
  * Atualiza sinais já fechados que não têm high24h e low24h
  */
@@ -184,33 +182,12 @@ export async function update24hResults(): Promise<{
           result24h = signal.entryPrice - currentPrice;
         }
 
-        // MA Cross (15m: 30/200, 5m: 12/30): não fechar automaticamente ao fim de 24h — a estratégia
-        // mantém posições até SL/TP serem atingidos, independentemente do tempo.
-        const isMaCross =
-          signal.strategy?.name === 'MA_CROSS_15M' || signal.strategy?.name === 'MA_CROSS_5M';
-
-        // Fechar posição na exchange se o sinal está IN_PROGRESS (exceto MA Cross)
-        let exchangeClosed = false;
-        if (signal.status === 'IN_PROGRESS' && !isMaCross) {
-          try {
-            const strategyParams = JSON.parse(signal.strategy?.params || '{}');
-            const exchange = (strategyParams.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
-            const closeResult = await closeActivePositionForSymbol(signal.symbol, exchange);
-            if (closeResult.closed) {
-              exchangeClosed = true;
-              console.log(`🔒 24h: posição fechada em ${signal.symbol} (${exchange}): ${closeResult.message}`);
-            } else {
-              console.warn(`⚠️  24h: não foi possível fechar posição em ${signal.symbol}: ${closeResult.message}`);
-            }
-          } catch (err) {
-            console.warn(`⚠️  24h: erro ao fechar posição em ${signal.symbol}:`, err);
-          }
-        } else if (signal.status === 'IN_PROGRESS' && isMaCross) {
-          console.log(`⏭️  24h: ${signal.symbol} MA Cross — posição mantida (sem fecho automático por tempo)`);
+        // IN_PROGRESS mantém-se aberto — saída só por SL/TP na exchange.
+        if (signal.status === 'IN_PROGRESS') {
+          console.log(`⏭️  24h: ${signal.symbol} — posição mantida (saída só por SL/TP)`);
         }
 
-        // Atualizar sinal — MA Cross IN_PROGRESS mantém status (não passa a EXPIRED)
-        const shouldExpire = signal.status === 'IN_PROGRESS' && !isMaCross;
+        const shouldExpire = false;
         await prisma.signal.update({
           where: { id: signal.id },
           data: {
@@ -224,7 +201,8 @@ export async function update24hResults(): Promise<{
         });
 
         updated++;
-        const closedTag = shouldExpire ? (exchangeClosed ? ' [posição fechada]' : ' [fechar falhou]') : (isMaCross && signal.status === 'IN_PROGRESS' ? ' [MA Cross: posição mantida]' : '');
+        const closedTag =
+          signal.status === 'IN_PROGRESS' ? ' [posição mantida]' : '';
         console.log(
           `✅ Sinal ${signal.symbol} ${signal.direction} atualizado: Entrada ${signal.entryPrice.toFixed(4)}, 24h ${currentPrice.toFixed(4)}, High ${high24h?.toFixed(4) || 'N/A'}, Low ${low24h?.toFixed(4) || 'N/A'}, Resultado ${result24h >= 0 ? '+' : ''}${result24h.toFixed(4)}${closedTag}`
         );

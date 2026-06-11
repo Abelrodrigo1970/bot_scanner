@@ -4,7 +4,6 @@ import { resolveUniverseScanSymbols } from '@/lib/universeScanPersistence';
 import {
   runAllStrategies,
   runMaCross15mStrategy,
-  shouldCloseMaCross5mByDiff,
   strategyAllowsAutoExecuteDirection,
   type StrategyParams,
 } from '@/lib/signalEngine';
@@ -16,7 +15,6 @@ import {
 import { update24hResults } from '@/lib/update24hResults';
 import {
   cleanupBybitOrphanOpenOrders,
-  closeActivePositionForSymbol,
   executeSignalReal,
   inspectActivePositionForSymbol,
 } from '@/lib/tradingExecutor';
@@ -66,26 +64,6 @@ async function runMaCross15mWorker(
 
   for (const symbol of symbols) {
     try {
-      const closeCheck = await shouldCloseMaCross5mByDiff(symbol, TIMEFRAME_15M, params);
-      if (closeCheck.shouldClose) {
-        const positionState = await inspectActivePositionForSymbol(symbol, ex);
-        if (positionState.inspectable && positionState.hasPosition) {
-          const closeResult = await closeActivePositionForSymbol(symbol, ex);
-          if (closeResult.closed) {
-            await prisma.$executeRaw`
-              UPDATE "Signal"
-              SET status = 'EXPIRED'
-              WHERE symbol = ${symbol}
-                AND "strategyId" = ${strategy.id}
-                AND status = 'IN_PROGRESS'
-            `;
-            console.log(
-              `[MA Cross 15m BG] 🟨 Fecho por compressão MA12/MA30 (${(closeCheck.currentDiffPct ?? 0).toFixed(3)}%): ${symbol}`
-            );
-          }
-        }
-      }
-
       const signalResult = await runMaCross15mStrategy(symbol, TIMEFRAME_15M, params);
 
       if (signalResult && signalResult.strength >= MA_CROSS_5M_MIN_STRENGTH) {
@@ -143,20 +121,10 @@ async function runMaCross15mWorker(
               }
 
               if (positionState.hasPosition && positionState.direction !== created.direction) {
-                const closeResult = await closeActivePositionForSymbol(created.symbol, ex);
-                if (!closeResult.closed) {
-                  console.warn(`[MA Cross 15m BG] ⚠️ Não foi possível fechar posição oposta em ${created.symbol}: ${closeResult.message}`);
-                  continue;
-                }
-
-                await prisma.$executeRaw`
-                  UPDATE "Signal"
-                  SET status = 'EXPIRED'
-                  WHERE symbol = ${created.symbol}
-                    AND "strategyId" = ${strategy.id}
-                    AND status = 'IN_PROGRESS'
-                `;
-                console.log(`[MA Cross 15m BG] 🔄 Posição oposta fechada em ${created.symbol}: ${closeResult.message}`);
+                console.log(
+                  `[MA Cross 15m BG] ⏭️ Posição oposta em ${created.symbol} — sem fecho automático (saída só por SL/TP)`
+                );
+                continue;
               }
 
               const result = await executeSignalReal({

@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runAllStrategies, strategyAllowsAutoExecuteDirection } from '@/lib/signalEngine';
 import { prisma } from '@/lib/db';
-import {
-  executeSignalReal,
-  closeActivePositionForSymbol,
-  inspectActivePositionForSymbol,
-} from '@/lib/tradingExecutor';
+import { executeSignalReal, inspectActivePositionForSymbol } from '@/lib/tradingExecutor';
 
 /**
  * Cron dedicado para MA_VOLATILE (MA60 1h).
@@ -80,20 +76,10 @@ async function runMaVolatileInBackground(): Promise<void> {
           }
 
           if (positionState.hasPosition && positionState.direction !== sig.direction) {
-            const closeResult = await closeActivePositionForSymbol(sig.symbol, maExchange);
-            if (!closeResult.closed) {
-              console.warn(`[Run-MA_VOLATILE BG] ⚠️ Não foi possível fechar posição oposta em ${sig.symbol}: ${closeResult.message}`);
-              continue;
-            }
-
-            await prisma.$executeRaw`
-              UPDATE "Signal"
-              SET status = 'EXPIRED'
-              WHERE symbol = ${sig.symbol}
-                AND "strategyId" = ${maVolatileStrategy.id}
-                AND status = 'IN_PROGRESS'
-            `;
-            console.log(`[Run-MA_VOLATILE BG] 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
+            console.log(
+              `[Run-MA_VOLATILE BG] ⏭️ Posição oposta em ${sig.symbol} — sem fecho automático (saída só por SL/TP)`
+            );
+            continue;
           }
 
           if (!strategyAllowsAutoExecuteDirection(sig.direction as 'BUY' | 'SELL', maParams)) {

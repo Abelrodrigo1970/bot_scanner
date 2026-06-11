@@ -1,6 +1,6 @@
 /**
  * Scanner 1 Top 8 — rotação total a cada scan (4 h).
- * Fecha todas as posições e recompra o top N ao preço do scan actual.
+ * Fecha todas as posições da estratégia e recompra o top N ao preço do scan. SL -5%.
  */
 
 import { prisma } from './db';
@@ -84,7 +84,9 @@ async function closeAllStrategyPositions(
 
     const pos = await inspectActivePositionForSymbol(sig.symbol, exchange);
     if (pos.inspectable && pos.hasPosition) {
-      const result = await closeActivePositionForSymbol(sig.symbol, exchange);
+      const result = await closeActivePositionForSymbol(sig.symbol, exchange, {
+        rotationClose: true,
+      });
       if (result.closed) {
         closed++;
         console.log(`${logPrefix} 🔴 Fechado ${sig.symbol}: ${result.message}`);

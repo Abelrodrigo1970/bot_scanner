@@ -1,11 +1,7 @@
 import { prisma } from '@/lib/db';
 import { isBybitEnabled } from '@/lib/bybitConfig';
 import { strategyAllowsAutoExecuteDirection } from '@/lib/signalEngine';
-import {
-  closeActivePositionForSymbol,
-  executeSignalReal,
-  inspectActivePositionForSymbol,
-} from '@/lib/tradingExecutor';
+import { executeSignalReal, inspectActivePositionForSymbol } from '@/lib/tradingExecutor';
 
 type StrategyRow = {
   id: string;
@@ -76,22 +72,10 @@ export async function autoExecuteNewSignalsForStrategy(opts: {
       }
 
       if (positionState.hasPosition && positionState.direction !== sig.direction) {
-        const closeResult = await closeActivePositionForSymbol(sig.symbol, exchange);
-        if (!closeResult.closed) {
-          console.warn(
-            `${logPrefix} ⚠️ Não foi possível fechar posição oposta em ${sig.symbol}: ${closeResult.message}`
-          );
-          continue;
-        }
-
-        await prisma.$executeRaw`
-          UPDATE "Signal"
-          SET status = 'EXPIRED'
-          WHERE symbol = ${sig.symbol}
-            AND "strategyId" = ${strategy.id}
-            AND status = 'IN_PROGRESS'
-        `;
-        console.log(`${logPrefix} 🔄 Posição oposta fechada em ${sig.symbol}: ${closeResult.message}`);
+        console.log(
+          `${logPrefix} ⏭️ Posição oposta em ${sig.symbol} — sem fecho automático (saída só por SL/TP)`
+        );
+        continue;
       }
 
       if (!strategyAllowsAutoExecuteDirection(sig.direction as 'BUY' | 'SELL', stratParams)) {

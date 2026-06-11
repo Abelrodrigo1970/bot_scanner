@@ -102,7 +102,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (positionState.hasPosition && positionState.direction !== signal.direction) {
-      const closeResult = await closeActivePositionForSymbol(signal.symbol, strategyExchange);
+      const closeResult = await closeActivePositionForSymbol(signal.symbol, strategyExchange, {
+        manual: true,
+      });
       if (!closeResult.closed) {
         return NextResponse.json(
           { success: false, error: closeResult.message },
