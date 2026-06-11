@@ -45,7 +45,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     cron: '1h',
     cronLabel: 'Rotação 4h (pós-scan)',
     timeframe: '4h',
-    universe: 'Scanner 6 — ranks 1,2,5–8 (excl. #3 #4)',
+    universe: 'Scanner 6 — ranks 1,2,4,5,7–8 (excl. #3 #6)',
   },
   PIVOT_BOSS_BEAR_15M: {
     cron: '1h',

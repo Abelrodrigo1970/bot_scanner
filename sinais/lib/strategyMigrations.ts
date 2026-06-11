@@ -431,16 +431,16 @@ export async function syncScannerMa80Top6Config(
   return { updated: false };
 }
 
-export const SCANNER_MA80_4H_TOP6_DISPLAY = 'Scanner 6 Top 6 (excl. ranks 3–4, rotação 4h)';
+export const SCANNER_MA80_4H_TOP6_DISPLAY = 'Scanner 6 Top 6 (excl. ranks 3–6, rotação 4h)';
 
 export const SCANNER_MA80_4H_TOP6_DESCRIPTION =
-  'Portefólio rotativo: a cada scan do Scanner 6 (4 h), fecha tudo e recompra 6 posições — ranks 1, 2, 5, 6, 7, 8 (exclui #3 e #4 do top 8, SMA80 4h). SL -5% (Bybit).';
+  'Portefólio rotativo: a cada scan do Scanner 6 (4 h), fecha tudo e recompra 6 posições — ranks 1, 2, 4, 5, 7, 8 (exclui #3 e #6 do top 8, SMA80 4h). SL -7% (Bybit).';
 
 export const SCANNER_MA80_4H_TOP6_PARAMS = {
   topN: 6,
   scanTopN: 8,
-  excludeRanks: [3, 4],
-  stopLossPct: 0.05,
+  excludeRanks: [3, 6],
+  stopLossPct: 0.07,
   closeAfterHours: 4,
   rotationMode: 'full',
   allowBuy: true,
@@ -477,6 +477,7 @@ export async function syncScannerMa804hTop6Config(
     topN: SCANNER_MA80_4H_TOP6_PARAMS.topN,
     scanTopN: SCANNER_MA80_4H_TOP6_PARAMS.scanTopN,
     excludeRanks: SCANNER_MA80_4H_TOP6_PARAMS.excludeRanks,
+    stopLossPct: SCANNER_MA80_4H_TOP6_PARAMS.stopLossPct,
     rotationMode: 'full' as const,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);

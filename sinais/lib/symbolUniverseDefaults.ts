@@ -122,7 +122,7 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA80_4H: {
     displayName: 'Scanner 6 — Acima SMA80 (4h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Universo: estratégia Top 6 (excl. ranks 3–4, rotação 4h).',
+      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Universo: estratégia Top 6 (excl. ranks 3–6, rotação 4h).',
     strategyNames: 'SCANNER_MA80_4H_TOP6',
   },
 };

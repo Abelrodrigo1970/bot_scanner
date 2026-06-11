@@ -1,6 +1,6 @@
 /**
  * Scanner 6 — Top 6 acima SMA80 (4h), rotação a cada scan (4 h).
- * Compra ranks 1, 2, 5, 6, 7, 8 (exclui #3 e #4 do top 8). SL -5%.
+ * Compra ranks 1, 2, 4, 5, 7, 8 (exclui #3 e #6 do top 8). SL -7%.
  * Mesma lógica que Scanner 1 Top 8.
  */
 
@@ -110,7 +110,7 @@ function strengthForRank(rank: number): number {
 function resolveScanFetchN(params: ScannerMa804hTop6Params): number {
   const scanTopN = Math.floor(Number(params.scanTopN ?? 8));
   const topN = Math.floor(Number(params.topN ?? 6));
-  const exclude = params.excludeRanks ?? [3, 4];
+  const exclude = params.excludeRanks ?? [3, 6];
   const maxExcluded = exclude.length ? Math.max(...exclude.map((r) => Math.floor(Number(r)))) : 0;
   return Math.min(20, Math.max(1, scanTopN, topN + exclude.length, maxExcluded));
 }
@@ -140,9 +140,9 @@ export async function runScannerMa804hTop6Pipeline(options?: {
 
   const params = parseParams(strategy.params);
   const topN = Math.min(20, Math.max(1, Math.floor(Number(params.topN ?? 6))));
-  const excludeRanks = params.excludeRanks ?? [3, 4];
+  const excludeRanks = params.excludeRanks ?? [3, 6];
   const scanFetchN = resolveScanFetchN(params);
-  const stopLossPct = Number(params.stopLossPct ?? 0.05);
+  const stopLossPct = Number(params.stopLossPct ?? 0.07);
   const closeAfterHours = Number(params.closeAfterHours ?? 4);
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
 

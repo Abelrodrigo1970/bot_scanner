@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runScannerMa804hTop6Pipeline } from '@/lib/scannerMa804hTop6Strategy';
 
 /**
- * Rotação Scanner 6 Top 6 — fecha tudo e recompra ranks 1,2,5–8 (excl. #3 #4) após cada scan 4h, SL -5%.
+ * Rotação Scanner 6 Top 6 — fecha tudo e recompra ranks 1,2,4,5,7–8 (excl. #3 #6) após cada scan 4h, SL -7%.
  * Agendar 10–15 min após run-universe-scans ou invocar manualmente com ?force=1.
  */
 async function runInBackground(force: boolean): Promise<void> {

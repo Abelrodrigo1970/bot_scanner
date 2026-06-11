@@ -150,6 +150,6 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   }
   const ma804hTop6Sync = await syncScannerMa804hTop6Config(prisma);
   if (ma804hTop6Sync.updated) {
-    console.log('✅ SCANNER_MA80_4H_TOP6: params/descrição actualizados (Top 6 excl. ranks 3–4, rotação 4h, SL -5%)');
+    console.log('✅ SCANNER_MA80_4H_TOP6: params/descrição actualizados (Top 6 excl. ranks 3–6, rotação 4h, SL -7%)');
   }
 }
