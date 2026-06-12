@@ -1,44 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { run15mStrategiesPipeline } from '@/lib/cron15mStrategies';
 
 /**
- * Cron agregado 1h: Pivot Boss Bear 15m (Scanner 1, via run-signals).
+ * @deprecated Use /api/cron/run-15m — ambas as estratégias activas correm em velas 15m.
+ * Mantido para compatibilidade com jobs antigos no cron-job.org.
  */
-async function run1hInBackground(origin: string, authHeader: string): Promise<void> {
+async function run1hInBackground(now: Date): Promise<void> {
+  console.warn('[Run-1h BG] Obsoleto — migrar cron-job.org para /api/cron/run-15m (*/15 * * * *)');
   try {
-    console.log('[Run-1h BG] Iniciando Pivot Boss Bear 15m...');
-
-    const headers: Record<string, string> = {};
-    if (authHeader) headers.authorization = authHeader;
-
-    const url = `${origin}/api/cron/run-signals`;
-    try {
-      const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
-      console.log(`[Run-1h BG] ${url} -> HTTP ${res.status}`);
-    } catch (reason) {
-      console.error(`[Run-1h BG] ${url} -> erro`, reason);
-    }
-
-    console.log('[Run-1h BG] Agregado 1h finalizado.');
+    await run15mStrategiesPipeline(now);
   } catch (error) {
     console.error('[Run-1h BG] Erro fatal:', error);
   }
-}
-
-function resolveInternalOrigin(request: NextRequest): string {
-  const forwardedHost = request.headers.get('x-forwarded-host');
-  const forwardedProto = request.headers.get('x-forwarded-proto');
-
-  if (forwardedHost) {
-    return `${forwardedProto || 'https'}://${forwardedHost}`;
-  }
-
-  const url = request.nextUrl;
-  const isLocalHost =
-    url.hostname === 'localhost' ||
-    url.hostname === '127.0.0.1' ||
-    url.hostname === '0.0.0.0';
-  const protocol = isLocalHost ? 'http:' : url.protocol;
-  return `${protocol}//${url.host}`;
 }
 
 export async function GET(request: NextRequest) {
@@ -51,17 +24,18 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date();
-    const origin = resolveInternalOrigin(request);
 
-    run1hInBackground(origin, authHeader || (cronSecret ? `Bearer ${cronSecret}` : ''));
+    run1hInBackground(now);
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento Pivot Boss Bear 15m iniciado (Scanner 1)',
+      deprecated: true,
+      message:
+        'Endpoint obsoleto. Configure apenas /api/cron/run-15m (MA Cross + Pivot Boss 15m, de 15 em 15 min).',
       executedAt: now.toISOString(),
     });
   } catch (error) {
-    console.error('Erro no cron agregado 1h:', error);
+    console.error('Erro no cron 1h (legado):', error);
     return NextResponse.json(
       {
         error: 'Ocorreu um erro ao executar cron 1h',

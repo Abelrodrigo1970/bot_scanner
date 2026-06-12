@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db';
 import { UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 } from '@/lib/symbolUniverseDefaults';
 import { resolveUniverseScanSymbols } from '@/lib/universeScanPersistence';
 import {
+  runAllStrategies,
   runMaCross15mStrategy,
   strategyAllowsAutoExecuteDirection,
   type StrategyParams,
@@ -11,6 +12,10 @@ import {
   isMaCross15mHourBlocked,
   isMaCross15mWeekendBlocked,
 } from '@/lib/maCross15mGuard';
+import {
+  isPivotBossBear15mHourBlocked,
+  isPivotBossBear15mWeekendBlocked,
+} from '@/lib/pivotBossGuard';
 import { update24hResults } from '@/lib/update24hResults';
 import {
   cleanupBybitOrphanOpenOrders,
@@ -205,5 +210,44 @@ export async function runMaCross15mPipeline(now: Date = new Date()): Promise<Cro
     params
   );
   return { status: 'done', signalsCreated };
+}
+
+export interface Cron15mAllResult {
+  maCross: Cron15mResult;
+  pivotBoss: Cron15mResult;
+}
+
+/**
+ * Cron único 15m: MA Cross 12×30 + Pivot Boss Bear 15m (velas 15m, Scanner 1).
+ */
+export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
+  const maCross = await runMaCross15mPipeline(now);
+
+  const pivotStrategy = await prisma.strategy.findFirst({ where: { name: 'PIVOT_BOSS_BEAR_15M' } });
+  if (!pivotStrategy) {
+    console.warn('[Pivot Boss 15m] Estratégia PIVOT_BOSS_BEAR_15M não encontrada (correr o seed).');
+    return { maCross, pivotBoss: { status: 'not-found' } };
+  }
+  if (!pivotStrategy.isActive) {
+    console.log('[Pivot Boss 15m] Estratégia inactiva — saltada.');
+    return { maCross, pivotBoss: { status: 'inactive' } };
+  }
+  if (isPivotBossBear15mWeekendBlocked(now)) {
+    console.log('[Pivot Boss 15m] Fim-de-semana (PT) — saltada.');
+    return { maCross, pivotBoss: { status: 'skipped-weekend' } };
+  }
+  if (isPivotBossBear15mHourBlocked(now)) {
+    const h = now.toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hour12: false });
+    console.log(`[Pivot Boss 15m] Horário ${h}h PT bloqueado — saltada.`);
+    return { maCross, pivotBoss: { status: 'skipped-hour' } };
+  }
+
+  try {
+    const signalsCreated = await runAllStrategies({ only: ['PIVOT_BOSS_BEAR_15M'] });
+    return { maCross, pivotBoss: { status: 'done', signalsCreated } };
+  } catch (error) {
+    console.error('[Pivot Boss 15m] Falhou:', error);
+    return { maCross, pivotBoss: { status: 'not-found' } };
+  }
 }
 

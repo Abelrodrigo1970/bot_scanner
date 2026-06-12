@@ -194,7 +194,7 @@ export default function DashboardPage() {
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-500">
               Clique em &quot;Atualizar sinais agora&quot; ou configure os crons no cron-job.org
-              (run-15m, run-1h, run-universe-scans).
+              (run-15m, run-universe-scans).
             </p>
           </div>
         ) : (

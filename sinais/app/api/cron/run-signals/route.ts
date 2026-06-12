@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runAllStrategies } from '@/lib/signalEngine';
 import { update24hResults, updateMissingHighLow24h } from '@/lib/update24hResults';
 import { cleanupBybitOrphanOpenOrders } from '@/lib/tradingExecutor';
 
 /**
- * Executa sinais em background: Pivot Boss Bear 15m (cron 1h).
- * MA Cross 15m corre em /api/cron/run-15m.
+ * @deprecated Use /api/cron/run-15m. Mantido para jobs antigos no cron-job.org.
  */
 async function runSignalsInBackground(hour: number, minute: number): Promise<void> {
   try {
-    console.log('[Run-Signals BG] Iniciando Pivot Boss Bear 15m...');
+    console.warn('[Run-Signals BG] Obsoleto — migrar para /api/cron/run-15m');
 
-    const signalsCreated = await runAllStrategies({
-      exclude: ['MA_CROSS_5M'],
-    });
+    const { run15mStrategiesPipeline } = await import('@/lib/cron15mStrategies');
+    await run15mStrategiesPipeline(new Date());
 
     const update24h = await update24hResults();
 
@@ -31,14 +28,14 @@ async function runSignalsInBackground(hour: number, minute: number): Promise<voi
     }
 
     console.log(
-      `[Run-Signals BG] Concluído: ${signalsCreated} sinais, 24h: ${update24h.updated}, high/low: ${updateHighLow.updated}`
+      `[Run-Signals BG] Concluído (legado): 24h: ${update24h.updated}, high/low: ${updateHighLow.updated}`
     );
   } catch (error) {
     console.error('[Run-Signals BG] Erro fatal:', error);
   }
 }
 
-/** Endpoint de cron: Pivot Boss Bear 15m. MA Cross: /api/cron/run-15m. */
+/** @deprecated Use /api/cron/run-15m */
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -56,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento iniciado em background (Pivot Boss Bear 15m)',
+      message: 'Endpoint obsoleto. Use /api/cron/run-15m (MA Cross + Pivot Boss 15m).',
       executedAt: now.toISOString(),
       nextExecution: `${(hour + 1) % 24}:00`,
     });

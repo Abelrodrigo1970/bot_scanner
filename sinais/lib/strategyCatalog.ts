@@ -52,9 +52,9 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
   PIVOT_BOSS_BEAR_15M: {
 
-    cron: '1h',
+    cron: '15m',
 
-    cronLabel: 'Cron 1h (velas 15m)',
+    cronLabel: 'Cron 15m',
 
     timeframe: '15m',
 
@@ -160,17 +160,7 @@ export const CRON_GROUPS: { key: '15m' | '1h'; title: string; description: strin
 
     title: 'Cron 15m',
 
-    description: 'MA Cross 12×30 (15m)',
-
-  },
-
-  {
-
-    key: '1h',
-
-    title: 'Cron 1h',
-
-    description: 'Pivot Boss Bear 15m',
+    description: 'MA Cross 12×30 (15m) + Pivot Boss Bear 15m',
 
   },
 
