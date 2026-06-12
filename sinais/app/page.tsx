@@ -119,7 +119,10 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(data.message || 'Processamento iniciado. Os sinais aparecem em breve.');
+        setMessage(
+          data.message ||
+            'A gerar scanners e sinais em background (10–20 min na 1.ª vez). Actualize a página daqui a alguns minutos.'
+        );
         fetchSignals();
       } else {
         setMessage(data.error || data.details || 'Erro ao gerar sinais');

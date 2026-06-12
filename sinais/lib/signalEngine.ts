@@ -11,7 +11,10 @@ import {
   runAfastamentoMedioStrategy,
   runAfastamentoMedio30mStrategy,
 } from './builtinImportedStrategies';
-import { resolveUniverseScanSymbols } from './universeScanPersistence';
+import {
+  ensureAllBuiltinUniverseScans,
+  resolveUniverseScanSymbols,
+} from './universeScanPersistence';
 import {
   UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80,
   UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
@@ -1654,6 +1657,20 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
   try {
     await ensureMissingBuiltinStrategies(prisma);
+
+    const scanResults = await ensureAllBuiltinUniverseScans('signalEngine/runAllStrategies');
+    const scanned = scanResults.filter((r) => r.action === 'scanned');
+    const failed = scanResults.filter((r) => r.action === 'failed');
+    if (scanned.length > 0) {
+      console.log(
+        `[runAllStrategies] Scanners preenchidos: ${scanned.map((r) => `${r.universeCode}=${r.rowCount}`).join(', ')}`
+      );
+    }
+    if (failed.length > 0) {
+      console.warn(
+        `[runAllStrategies] Scanners em falha: ${failed.map((r) => `${r.universeCode}: ${r.reason ?? '?'}`).join('; ')}`
+      );
+    }
 
     let strategies = await prisma.strategy.findMany({
       where: { isActive: true },

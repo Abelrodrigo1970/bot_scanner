@@ -1,6 +1,6 @@
 import { prisma } from './db';
 import { scanSymbolUniverse } from './universeScanner';
-import { getBuiltinScanDefinition } from './symbolUniverseDefaults';
+import { BUILTIN_UNIVERSE_SCAN, getBuiltinScanDefinition } from './symbolUniverseDefaults';
 import { filterToBybitMarketSymbols } from './marketData';
 
 const SCAN_HISTORY_KEEP = 100;
@@ -126,6 +126,63 @@ export async function getLatestUniverseScanSymbols(
     console.error('[getLatestUniverseScanSymbols]', reason);
     return { ok: false, reason };
   }
+}
+
+export type EnsureUniverseScanResult = {
+  universeCode: string;
+  action: 'skipped' | 'scanned' | 'failed';
+  rowCount: number;
+  persistOk?: boolean;
+  reason?: string;
+};
+
+/**
+ * Garante que os scanners builtin (1, 2, 4) têm pelo menos um run na BD.
+ * Chamado antes de gerar sinais para não depender só do cron de 4 h.
+ */
+export async function ensureAllBuiltinUniverseScans(
+  source: string
+): Promise<EnsureUniverseScanResult[]> {
+  const results: EnsureUniverseScanResult[] = [];
+
+  for (const [code, def] of Object.entries(BUILTIN_UNIVERSE_SCAN)) {
+    const latest = await getLatestUniverseScanSymbols(code);
+    if (latest.ok && latest.rowCount > 0) {
+      results.push({
+        universeCode: code,
+        action: 'skipped',
+        rowCount: latest.rowCount,
+      });
+      continue;
+    }
+
+    console.log(`[ensureUniverseScans] ${code}: sem dados — a executar scan...`);
+    try {
+      const rows = await scanSymbolUniverse(def);
+      const persist = await persistUniverseScan({
+        universeCode: code,
+        source,
+        rows,
+      });
+      results.push({
+        universeCode: code,
+        action: persist.ok ? 'scanned' : 'failed',
+        rowCount: rows.length,
+        persistOk: persist.ok,
+        reason: persist.ok ? undefined : persist.reason,
+      });
+      console.log(
+        `[ensureUniverseScans] ${code}: ${rows.length} símbolos` +
+          (persist.ok ? '' : ` (falha ao gravar: ${persist.reason})`)
+      );
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      console.error(`[ensureUniverseScans] ${code} falhou:`, reason);
+      results.push({ universeCode: code, action: 'failed', rowCount: 0, reason });
+    }
+  }
+
+  return results;
 }
 
 /** Último scan na BD ou scan em runtime + persistência se ainda não existir. */

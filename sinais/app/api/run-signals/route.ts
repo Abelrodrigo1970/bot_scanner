@@ -10,14 +10,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    // Executa em background para evitar timeout (Railway/Vercel ~60–300s)
+    // Executa em background (scanners 1/2/4 + estratégias; 1.ª vez pode demorar 10–20 min)
     runAllStrategies()
       .then((n) => console.log(`[Run-Signals] Concluído: ${n} sinais criados`))
       .catch((err) => console.error('[Run-Signals] Erro:', err));
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento iniciado em background (RSI + Volume). Os sinais aparecem em breve.',
+      message:
+        'Processamento iniciado em background. Se os scanners estiverem vazios, preenche-os primeiro (10–20 min na 1.ª vez). Actualize a página depois.',
     });
   } catch (error) {
     console.error('Erro ao iniciar motor de sinais:', error);

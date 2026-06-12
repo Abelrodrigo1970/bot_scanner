@@ -8,6 +8,7 @@ import { persistUniverseScan } from '@/lib/universeScanPersistence';
  * Agendar de 4 em 4 horas (00:00, 04:00, 08:00, …).
  */
 let universeScansJobPromise: Promise<void> | null = null;
+let universeScansJobStartedAt: string | null = null;
 
 type ScanJobResult = {
   universeCode: string;
@@ -55,13 +56,14 @@ export async function GET(request: NextRequest) {
           busy: true,
           message:
             'Scanners 1/2/4 já em execução em background. Aguarde a conclusão (pode demorar 10–20 min).',
-          startedAt: new Date().toISOString(),
+          startedAt: universeScansJobStartedAt,
         },
         { status: 202 }
       );
     }
 
     const startedAt = new Date().toISOString();
+    universeScansJobStartedAt = startedAt;
 
     universeScansJobPromise = (async () => {
       try {
@@ -71,6 +73,7 @@ export async function GET(request: NextRequest) {
         console.error('[Universe-Scans] erro em background:', err);
       } finally {
         universeScansJobPromise = null;
+        universeScansJobStartedAt = null;
       }
     })();
 

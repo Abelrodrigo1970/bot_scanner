@@ -44,9 +44,30 @@ export async function GET() {
     };
 
     try {
-      const strategyCount = await prisma.strategy.count();
+      const [strategyCount, signalCount, universeScanRuns] = await Promise.all([
+        prisma.strategy.count(),
+        prisma.signal.count(),
+        prisma.universeScanRun.groupBy({
+          by: ['universeCode'],
+          _max: { scannedAt: true, rowCount: true },
+        }),
+      ]);
       (health.checks as any).database.connection = '✅ Conectado';
       (health.checks as any).database.strategies = strategyCount;
+      (health.checks as any).database.signals = signalCount;
+      (health.checks as any).universeScans = Object.fromEntries(
+        universeScanRuns.map((r) => [
+          r.universeCode,
+          {
+            rowCount: r._max.rowCount ?? 0,
+            scannedAt: r._max.scannedAt?.toISOString() ?? null,
+          },
+        ])
+      );
+      (health.checks as any).marketData = {
+        primary: process.env.MARKET_DATA_PRIMARY || '(auto)',
+        bybitHost: process.env.BYBIT_MARKET_DATA_BASE_URL || '(auto: api.bybit.nl no Railway)',
+      };
     } catch (dbError: any) {
       (health.checks as any).database.connection = '❌ Erro de conexão';
       (health.checks as any).database.error = dbError.message;
