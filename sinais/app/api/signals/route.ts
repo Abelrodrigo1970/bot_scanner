@@ -3,6 +3,7 @@ import { isAuthenticated } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
 import { backfillMaCross5mSignalNames } from '@/lib/strategyMigrations';
+import { ACTIVE_SCANNER_STRATEGY_NAMES } from '@/lib/strategyCatalog';
 
 export async function GET(request: NextRequest) {
   try {
@@ -90,6 +91,12 @@ export async function GET(request: NextRequest) {
     if (onlyClosed) {
       where.status24h = 'CLOSED';
       where.result24h = { not: null };
+    }
+
+    // Dashboard: só estratégias activas (MA Cross + Pivot Boss). Histórico legado omitido.
+    const activeOnly = searchParams.get('activeOnly') !== 'false';
+    if (activeOnly) {
+      where.strategy = { name: { in: [...ACTIVE_SCANNER_STRATEGY_NAMES] } };
     }
 
     // Select explícito: omite executedAt/executionOrderId para funcionar em BD

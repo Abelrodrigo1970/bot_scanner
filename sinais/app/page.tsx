@@ -188,9 +188,13 @@ export default function DashboardPage() {
             <p className="text-gray-600 dark:text-gray-400">Carregando sinais...</p>
           </div>
         ) : signals.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 space-y-2">
             <p className="text-gray-600 dark:text-gray-400">
-              Nenhum sinal encontrado. Clique em "Atualizar sinais agora" para gerar novos sinais.
+              Nenhum sinal das estratégias activas (MA Cross 12×30 + Pivot Boss 15m).
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-500">
+              Clique em &quot;Atualizar sinais agora&quot; ou configure os crons no cron-job.org
+              (run-15m, run-1h, run-universe-scans).
             </p>
           </div>
         ) : (
