@@ -346,7 +346,7 @@ export const EMA_SCALPING_DESCRIPTION =
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
-  'Universo: Scanner 1 (fecho acima SMA200 em 1h). Pivot Boss em 15m, só VENDA — melhor perfil histórico no Scanner 1. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 2 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. Sem FDS; horas 18h e 22h PT bloqueadas; turnover 1h ≤ $5M. SL +7% fixo | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 1 top 10 (maior |afastamento| vs SMA200 em 1h). Pivot Boss em 15m, só VENDA. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 2 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. Sem FDS; horas 18h e 22h PT bloqueadas; turnover 1h ≤ $5M. SL +7% fixo | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_1H_DISPLAY = 'Pivot Boss Bear 1h (4 EMA venda)';
 
@@ -592,6 +592,8 @@ export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   allowSell: true,
   sellEnabled: true,
   exchange: 'binance',
+  /** Top N do Scanner 1 (|pctFromMa| desc) — universo Pivot Boss. */
+  universeTopN: 10,
 } as const;
 
 /** Mesmos parâmetros base; velas 1h. */
@@ -655,6 +657,9 @@ export async function syncPivotBossBear15mUniverse(
     const needsStopLoss =
       p.stopLossPct == null ||
       Number(p.stopLossPct) !== PIVOT_BOSS_BEAR_15M_PARAMS.stopLossPct;
+    const needsUniverseTopN =
+      p.universeTopN == null ||
+      Number(p.universeTopN) !== PIVOT_BOSS_BEAR_15M_PARAMS.universeTopN;
 
     if (
       !needsDesc &&
@@ -663,7 +668,8 @@ export async function syncPivotBossBear15mUniverse(
       !needsSellBlock &&
       !needsMa200Filter &&
       !needsMa200MaxDist &&
-      !needsStopLoss
+      !needsStopLoss &&
+      !needsUniverseTopN
     ) {
       continue;
     }
@@ -686,6 +692,9 @@ export async function syncPivotBossBear15mUniverse(
     if (needsStopLoss) {
       next.stopLossPct = PIVOT_BOSS_BEAR_15M_PARAMS.stopLossPct;
     }
+    if (needsUniverseTopN) {
+      next.universeTopN = PIVOT_BOSS_BEAR_15M_PARAMS.universeTopN;
+    }
 
     await prisma.strategy.update({
       where: { name },
@@ -696,7 +705,8 @@ export async function syncPivotBossBear15mUniverse(
         needsSellBlock ||
         needsMa200Filter ||
         needsMa200MaxDist ||
-        needsStopLoss
+        needsStopLoss ||
+        needsUniverseTopN
           ? { params: JSON.stringify(next) }
           : {}),
       },

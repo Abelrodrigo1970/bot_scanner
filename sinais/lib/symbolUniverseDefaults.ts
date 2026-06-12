@@ -80,9 +80,9 @@ export const BUILTIN_UNIVERSE_META: Record<
 
     description:
 
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Universo: MA Cross 15m e Pivot Boss Bear 15m.',
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. MA Cross: universo completo; Pivot Boss: top 10 por |afastamento|.',
 
-    strategyNames: 'MA Cross 12×30 (15m), Pivot Boss Bear 15m',
+    strategyNames: 'MA Cross 12×30 (15m), Pivot Boss Bear 15m (Scanner 1 top 10)',
 
   },
 

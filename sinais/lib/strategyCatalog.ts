@@ -58,7 +58,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 (acima SMA200, 1h)',
+    universe: 'Scanner 1 top 10 (acima SMA200, 1h)',
 
   },
 

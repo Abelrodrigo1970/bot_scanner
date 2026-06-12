@@ -213,6 +213,24 @@ export async function resolveUniverseScanSymbols(universeCode: string): Promise<
   return filterToBybitMarketSymbols(rows.map((r) => r.symbol));
 }
 
+/** Top N símbolos do último scan Scanner (|pctFromMa| desc), filtrados Bybit. */
+export async function resolveUniverseScanSymbolsTopN(
+  universeCode: string,
+  topN: number
+): Promise<string[]> {
+  const n = Math.max(1, Math.floor(topN));
+  let ranked = await getTopRankedUniverseScanRows(universeCode, n);
+  if (!ranked.ok) {
+    await resolveUniverseScanSymbols(universeCode);
+    ranked = await getTopRankedUniverseScanRows(universeCode, n);
+  }
+  if (!ranked.ok) {
+    console.warn(`[resolveUniverseScanSymbolsTopN] ${universeCode}: ${ranked.reason}`);
+    return [];
+  }
+  return filterToBybitMarketSymbols(ranked.rows.map((r) => r.symbol));
+}
+
 function previousRowMap(
   rows: Array<{ symbol: string; close: number; pctFromMa: number }>
 ): Map<string, { close: number; pctFromMa: number }> {
