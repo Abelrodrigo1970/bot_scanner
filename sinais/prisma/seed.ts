@@ -4,12 +4,23 @@ import {
   TOP_ROTATION_STRATEGY_NAMES,
 } from '../lib/ensureMissingBuiltinStrategies';
 import {
+  deleteStrategiesByNameIfNoSignals,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_5M_PARAMS,
   migrateVolumeSpike15mToMaCross5m,
   removeDeprecatedStrategies,
 } from '../lib/strategyMigrations';
+
+const LEGACY_STRATEGY_NAMES_TO_PURGE = [
+  'MACD_HISTOGRAM',
+  'MA60_CROSSOVER',
+  'SCANNER_APLUS',
+  'MULTI_TIMEFRAME',
+  'PMO',
+  'MA_CROSSOVER',
+  'MACD',
+] as const;
 
 const prisma = new PrismaClient();
 
@@ -60,34 +71,12 @@ async function main() {
   }
   console.log(`Estratégias importadas: ${IMPORTED_BUILTIN_STRATEGY_SEEDS.map((s) => s.name).join(', ')}`);
 
-  // Remover estratégias legadas (não incluir MACD_HISTOGRAM_PMO / afastamento / RSI importados)
-  const removed = await prisma.strategy.deleteMany({
-    where: {
-      name: {
-        in: [
-          'MACD_HISTOGRAM',
-          'MA60_CROSSOVER',
-          'SCANNER_APLUS',
-          'MULTI_TIMEFRAME',
-          'PMO',
-          'MA_CROSSOVER',
-          'MACD',
-          ...deprecated.removed,
-        ],
-      },
-    },
-  });
-
-  if (removed.count > 0) {
-    console.log(`Removidas ${removed.count} estratégias antigas`);
-  }
-
-  const topRemoved = await prisma.strategy.deleteMany({
-    where: { name: { in: [...TOP_ROTATION_STRATEGY_NAMES] } },
-  });
-  if (topRemoved.count > 0) {
-    console.log(`Removidas ${topRemoved.count} estratégias Top (bot_cripto)`);
-  }
+  // Legadas / Top sem sinais (com histórico nunca apaga)
+  await deleteStrategiesByNameIfNoSignals(prisma, [
+    ...LEGACY_STRATEGY_NAMES_TO_PURGE,
+    ...deprecated.removed,
+    ...TOP_ROTATION_STRATEGY_NAMES,
+  ]);
 
   // Configuração: trades na Binance desativados por defeito
   await prisma.appSetting.upsert({

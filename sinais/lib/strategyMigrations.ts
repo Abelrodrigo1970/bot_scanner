@@ -17,20 +17,25 @@ export const REMOVED_DEPRECATED_STRATEGY_NAMES = [
 
 export interface RemoveDeprecatedStrategiesResult {
   removed: string[];
-  signalsDeleted: number;
+  skippedWithSignals: { name: string; signalCount: number }[];
+}
+
+export interface SafeDeleteStrategiesResult {
+  deleted: string[];
+  skippedWithSignals: { name: string; signalCount: number }[];
 }
 
 /**
- * Remove estratégias descontinuadas. Sinais associados são apagados (onDelete: Cascade).
- * Idempotente.
+ * Apaga estratégias pelo nome só se não tiverem sinais (preserva histórico).
  */
-export async function removeDeprecatedStrategies(
-  prisma: PrismaClient
-): Promise<RemoveDeprecatedStrategiesResult> {
-  const removed: string[] = [];
-  let signalsDeleted = 0;
+export async function deleteStrategiesByNameIfNoSignals(
+  prisma: PrismaClient,
+  names: readonly string[]
+): Promise<SafeDeleteStrategiesResult> {
+  const deleted: string[] = [];
+  const skippedWithSignals: { name: string; signalCount: number }[] = [];
 
-  for (const name of REMOVED_DEPRECATED_STRATEGY_NAMES) {
+  for (const name of names) {
     const row = await prisma.strategy.findUnique({
       where: { name },
       select: { id: true },
@@ -40,18 +45,41 @@ export async function removeDeprecatedStrategies(
     const signalCount = await prisma.signal.count({
       where: { strategyId: row.id },
     });
+    if (signalCount > 0) {
+      skippedWithSignals.push({ name, signalCount });
+      continue;
+    }
+
     await prisma.strategy.delete({ where: { id: row.id } });
-    removed.push(name);
-    signalsDeleted += signalCount;
+    deleted.push(name);
   }
 
-  if (removed.length > 0) {
+  if (deleted.length > 0) {
+    console.log(`🗑️ Estratégias removidas (sem sinais): ${deleted.join(', ')}`);
+  }
+  if (skippedWithSignals.length > 0) {
     console.log(
-      `🗑️ Estratégias removidas: ${removed.join(', ')} (${signalsDeleted} sinal(is) em cascade)`
+      `⏭️ Estratégias mantidas (têm histórico): ${skippedWithSignals
+        .map((s) => `${s.name} (${s.signalCount} sinais)`)
+        .join(', ')}`
     );
   }
 
-  return { removed, signalsDeleted };
+  return { deleted, skippedWithSignals };
+}
+
+/**
+ * Remove estratégias descontinuadas sem sinais. Com histórico, mantém o registo.
+ * Idempotente.
+ */
+export async function removeDeprecatedStrategies(
+  prisma: PrismaClient
+): Promise<RemoveDeprecatedStrategiesResult> {
+  const { deleted, skippedWithSignals } = await deleteStrategiesByNameIfNoSignals(
+    prisma,
+    REMOVED_DEPRECATED_STRATEGY_NAMES
+  );
+  return { removed: deleted, skippedWithSignals };
 }
 
 export interface ClearStrategySignalsResult {
