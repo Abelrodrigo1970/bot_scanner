@@ -43,9 +43,6 @@ function side(
   };
 }
 
-/** SL dinâmico (ATR/swing); valores médios para simulação conservadora. */
-const EMA_RIBBON_SELL = side(2.9, 4.8, 55, 9.3, 35);
-
 export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   {
     strategyName: 'MA_CROSS_5M',
@@ -56,58 +53,12 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA30 < 0,5%.',
   },
   {
-    strategyName: 'AFASTAMENTO_MEDIO_30M',
-    displayNames: [
-      'Afastamento médio 30m (≤2→≥2,3)',
-      'Afastamento médio 30m (≤1,5↔≥2,5)',
-      'Afastamento médio 30m (≤2↔≥2)',
-    ],
-    buy: side(6, 9, 50),
-    sell: side(6, 9, 50),
-    summary: 'SL 6%. TP1 ±9% (50% pos.). Restante às 24h.',
-  },
-  {
-    strategyName: 'RSI_OVERBOUGHT_DROP_1H',
-    displayNames: [
-      'RSI pullback bear 1h (queda pós-rally EMA30)',
-      'RSI queda de 70 (mín. 4 pts) + afastamento >12% (1h)',
-    ],
-    buy: null,
-    sell: side(8, 9, 50, 28, 30),
-    summary:
-      'Só VENDA. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.',
-  },
-  {
-    strategyName: 'RSI_OVERBOUGHT_DROP_LEGACY_1H',
-    displayNames: ['RSI queda de 70 (mín. 4 pts) + afastamento >10% (1h)'],
-    buy: null,
-    sell: side(8, 9, 50, 28, 30),
-    summary:
-      'Só VENDA. SL +8%. TP1 -9% (50%) | TP2 -28% (30%) | restante fecho manual.',
-  },
-  {
-    strategyName: 'EMA_SCALPING',
-    displayNames: ['EMA Ribbon Scalping BUY (15m)'],
-    buy: EMA_RIBBON_SELL,
-    sell: null,
-    summary:
-      'Só COMPRA. Tendência de alta + retração. SL dinâmico (ATR/swing, máx. ~2,9%). TP1 R×1,65 (~4,8%, 55%) | TP2 R×3,2 (~9,3%, 35%).',
-  },
-  {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
     displayNames: ['Pivot Boss Bear 15m (4 EMA venda)'],
     buy: null,
     sell: side(8, 9, 50),
     summary:
       'Só VENDA. Stack 12/30/80/200 bearish. SL +8% fixo. TP1 -9% (50%) | restante às 24h.',
-  },
-  {
-    strategyName: 'PIVOT_BOSS_BEAR_1H',
-    displayNames: ['Pivot Boss Bear 1h (4 EMA venda)'],
-    buy: null,
-    sell: side(8, 9, 50),
-    summary:
-      'Só VENDA. Stack 12/30/80/200 bearish em 1h. SL +8% fixo. TP1 -9% (50%) | restante às 24h.',
   },
 ];
 

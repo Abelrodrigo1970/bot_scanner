@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db';
 import { UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 } from '@/lib/symbolUniverseDefaults';
 import { resolveUniverseScanSymbols } from '@/lib/universeScanPersistence';
 import {
-  runAllStrategies,
   runMaCross15mStrategy,
   strategyAllowsAutoExecuteDirection,
   type StrategyParams,
@@ -19,7 +18,6 @@ import {
   inspectActivePositionForSymbol,
 } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
-import { autoExecuteNewSignalsForStrategy } from '@/lib/autoExecuteNewSignals';
 
 const TIMEFRAME_15M = '15m' as const;
 const MA_CROSS_5M_MIN_STRENGTH = 70;
@@ -209,37 +207,3 @@ export async function runMaCross15mPipeline(now: Date = new Date()): Promise<Cro
   return { status: 'done', signalsCreated };
 }
 
-/**
- * Pipeline da EMA Ribbon Scalping BUY 15m (tendência de alta + retração). Prioridade 2 do agregado 15m.
- */
-export async function runEmaRibbonBuy15mPipeline(): Promise<number> {
-  console.log('[Run-15m-strategies BG] Iniciando EMA Ribbon BUY 15m (tendência alta + retração)...');
-  const startedAt = new Date(Date.now() - 2 * 60 * 1000);
-  const signalsCreated = await runAllStrategies({ only: ['EMA_SCALPING'] });
-
-  const emaStrategy = await prisma.strategy.findFirst({
-    where: { name: 'EMA_SCALPING', isActive: true },
-  });
-  if (emaStrategy && signalsCreated > 0) {
-    const executed = await autoExecuteNewSignalsForStrategy({
-      strategy: emaStrategy,
-      startedAt,
-      minStrength: 62,
-      logPrefix: '[Run-15m-strategies BG] EMA Ribbon',
-    });
-    if (executed > 0) {
-      console.log(`[Run-15m-strategies BG] Auto-exec Bybit: ${executed} ordem(ns)`);
-    }
-  }
-
-  const orphanCleanup = await cleanupBybitOrphanOpenOrders();
-  if (orphanCleanup.cancelledSymbols.length > 0 || orphanCleanup.errors.length > 0) {
-    console.log(
-      `[Run-15m-strategies BG] Bybit órfãs: cancelados ${orphanCleanup.cancelledSymbols.length} símbolo(s)` +
-        (orphanCleanup.errors.length ? `; erros: ${orphanCleanup.errors.join('; ')}` : '')
-    );
-  }
-
-  console.log(`[Run-15m-strategies BG] Concluído: ${signalsCreated} sinais criados`);
-  return signalsCreated;
-}

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Cron agregado 1h (24h recomendado — Pivot Boss bloqueia 18h/22h PT no código):
- * - run-scans-ma: Bybit Vol1h/MA200
- * - run-signals: Pivot Boss 15m/1h, MA200 4h, MACD/PMO, RSI queda 70
- *   (AFASTAMENTO_MEDIO_30M → cron separado /api/cron/run-30m)
+ * Cron agregado 1h: Bybit scan + Pivot Boss Bear 15m (via run-signals).
  */
 async function run1hInBackground(origin: string, authHeader: string): Promise<void> {
   try {
@@ -69,7 +66,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message:
-        'Processamento agregado 1h: Bybit scan + MA200 + estratégias importadas (Scanners 1–3: cron 4h separado)',
+        'Processamento agregado 1h: Bybit scan + Pivot Boss Bear 15m (Scanner 1: cron 4h separado)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

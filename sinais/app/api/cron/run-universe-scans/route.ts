@@ -4,8 +4,7 @@ import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
 
 /**
- * Scanners de universo para estratégias de sinal (1, 2, 4). Sem rotações Top.
- * Agendar de 4 em 4 horas (00:00, 04:00, 08:00, …).
+ * Scanner 1 (universo MA Cross + Pivot Boss 15m). Agendar de 4 em 4 horas.
  */
 let universeScansJobPromise: Promise<void> | null = null;
 let universeScansJobStartedAt: string | null = null;
@@ -55,7 +54,7 @@ export async function GET(request: NextRequest) {
           accepted: false,
           busy: true,
           message:
-            'Scanners 1/2/4 já em execução em background. Aguarde a conclusão (pode demorar 10–20 min).',
+            'Scanner 1 já em execução em background. Aguarde a conclusão (pode demorar vários minutos).',
           startedAt: universeScansJobStartedAt,
         },
         { status: 202 }
@@ -82,7 +81,7 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scanners 1, 2 e 4 iniciados em background. Verifique os logs no Railway para conclusão.',
+          'Scanner 1 iniciado em background. Verifique os logs no Railway para conclusão.',
         startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN),
       },

@@ -118,7 +118,5 @@ export async function autoExecuteNewSignalsForStrategy(opts: {
   return executed;
 }
 
-export const RSI_1H_AUTO_EXEC_STRATEGY_NAMES = [
-  'RSI_OVERBOUGHT_DROP_1H',
-  'RSI_OVERBOUGHT_DROP_LEGACY_1H',
-] as const;
+/** RSI removido do bot_scanner. */
+export const RSI_1H_AUTO_EXEC_STRATEGY_NAMES = [] as const;

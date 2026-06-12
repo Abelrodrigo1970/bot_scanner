@@ -1,104 +1,52 @@
-/**
- * Mapa estratégia → universo de símbolos (estratégias de sinal).
- */
-
-export type UniverseSourceKind =
-  | 'runtime_top_movers_1h'
-  | 'runtime_top_volume'
-  | 'table'
-  | 'universe_scan';
-
-export interface StrategyUniverseSpec {
-  strategyName: string;
-  displayLabel: string;
-  signalTimeframes: string[];
-  source: UniverseSourceKind;
-  dataKey: string;
-  description: string;
-  refresh?: string;
-}
-
-export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
-  {
-    strategyName: 'MA_CROSS_5M',
-    displayLabel: 'MA Cross 15m (MA12/MA30)',
-    signalTimeframes: ['15m'],
-    source: 'universe_scan',
-    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-    description: 'Scanner 1: fecho acima SMA200 (1h).',
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-  },
-  {
-    strategyName: 'EMA_SCALPING',
-    displayLabel: 'EMA Ribbon Scalping BUY (15m)',
-    signalTimeframes: ['15m'],
-    source: 'universe_scan',
-    dataKey: 'UNIVERSE_ABOVE_MA200_1D',
-    description: 'Scanner 4: fecho acima SMA200 (1d); sinais em 15m.',
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-  },
-  {
-    strategyName: 'PIVOT_BOSS_BEAR_15M',
-    displayLabel: 'Pivot Boss Bear 15m (4 EMA venda)',
-    signalTimeframes: ['15m'],
-    source: 'universe_scan',
-    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-    description: 'Scanner 1: fecho acima SMA200 (1h); sinais em 15m.',
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-  },
-  {
-    strategyName: 'PIVOT_BOSS_BEAR_1H',
-    displayLabel: 'Pivot Boss Bear 1h (4 EMA venda)',
-    signalTimeframes: ['1h'],
-    source: 'universe_scan',
-    dataKey: 'UNIVERSE_ABOVE_MA200_1D',
-    description: 'Scanner 4: fecho acima SMA200 (1d); sinais em 1h.',
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-  },
-  {
-    strategyName: 'RSI_OVERBOUGHT_DROP_1H',
-    displayLabel: 'RSI pullback bear 1h',
-    signalTimeframes: ['1h'],
-    source: 'universe_scan',
-    dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
-    description: 'Scanner 2: -5% a +15% da EMA80 (1h).',
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-  },
-  {
-    strategyName: 'RSI_OVERBOUGHT_DROP_LEGACY_1H',
-    displayLabel: 'RSI queda de 70 (mín. 4 pts) + afastamento >10% (1h)',
-    signalTimeframes: ['1h'],
-    source: 'universe_scan',
-    dataKey: 'UNIVERSE_NEAR_MA200_PCT10_1H',
-    description: 'Scanner 2: -5% a +15% da EMA80 (1h).',
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-  },
-  {
-    strategyName: 'AFASTAMENTO_MEDIO_30M',
-    displayLabel: 'Afastamento médio 30m',
-    signalTimeframes: ['30m'],
-    source: 'universe_scan',
-    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-    description: 'Scanner 1: fecho acima SMA200 (1h); sinais em 30m.',
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-  },
-];
-
-export const DATA_SOURCE_MENU_ITEMS = [
-  {
-    href: '/bybit-ma200-mc20m',
-    label: 'Bybit Vol 1h + MA200 → MA12×MA30',
-  },
-  {
-    href: '/scanners/1',
-    label: 'Scanner 1 — Acima SMA200 (MA Cross + Pivot Boss 15m + Afastamento 30m)',
-  },
-  {
-    href: '/scanners/2',
-    label: 'Scanner 2 — -5% a +15% EMA80 (RSI legado + RSI pullback bear)',
-  },
-  {
-    href: '/scanners/4',
-    label: 'Scanner 4 — Acima SMA200 (Pivot Boss 1h + EMA Ribbon BUY 15m)',
-  },
-] as const;
+/**
+ * Mapa estratégia → universo de símbolos (estratégias de sinal).
+ */
+
+export type UniverseSourceKind =
+  | 'runtime_top_movers_1h'
+  | 'runtime_top_volume'
+  | 'table'
+  | 'universe_scan';
+
+export interface StrategyUniverseSpec {
+  strategyName: string;
+  displayLabel: string;
+  signalTimeframes: string[];
+  source: UniverseSourceKind;
+  dataKey: string;
+  description: string;
+  refresh?: string;
+}
+
+export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
+  {
+    strategyName: 'MA_CROSS_5M',
+    displayLabel: 'MA Cross 15m (MA12/MA30)',
+    signalTimeframes: ['15m'],
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+    description: 'Scanner 1: fecho acima SMA200 (1h).',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+  },
+  {
+    strategyName: 'PIVOT_BOSS_BEAR_15M',
+    displayLabel: 'Pivot Boss Bear 15m (4 EMA venda)',
+    signalTimeframes: ['15m'],
+    source: 'universe_scan',
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+    description: 'Scanner 1: fecho acima SMA200 (1h); sinais em 15m.',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+  },
+];
+
+export const DATA_SOURCE_MENU_ITEMS = [
+  {
+    href: '/bybit-ma200-mc20m',
+    label: 'Bybit Vol 1h + MA200 → MA12×MA30',
+  },
+  {
+    href: '/scanners/1',
+    label: 'Scanner 1 — Acima SMA200 (MA Cross + Pivot Boss 15m)',
+  },
+] as const;
+

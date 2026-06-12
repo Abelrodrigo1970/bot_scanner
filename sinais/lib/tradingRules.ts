@@ -23,23 +23,13 @@ export interface SignalForTrading {
   extraInfo?: string | null;
 }
 
-/** Estratégias permitidas para trading automático (scanners 1, 2 e 4). */
+/** Estratégias permitidas para trading automático (bot_scanner). */
 const ALLOWED_STRATEGIES = [
   'MA Cross 15m',
   'MA12/MA30',
   'MA_CROSS_5M',
-  'EMA_SCALPING',
-  'EMA Ribbon Scalping BUY',
-  'Afastamento médio 30m',
-  'AFASTAMENTO_MEDIO_30M',
-  'RSI pullback bear 1h',
-  'RSI queda de 70',
-  'RSI_OVERBOUGHT_DROP_1H',
-  'RSI queda de 70 (mín. 4 pts) + afastamento >10% (1h)',
-  'RSI_OVERBOUGHT_DROP_LEGACY_1H',
   'Pivot Boss Bear',
   'PIVOT_BOSS_BEAR_15M',
-  'PIVOT_BOSS_BEAR_1H',
 ];
 
 /** Força mínima para executar */
