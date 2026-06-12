@@ -141,7 +141,7 @@ export const MA_CROSS_5M_PARAMS = {
   exchange: 'binance',
 } as const;
 
-export const MA_CROSS_5M_DISPLAY = 'MA Cross 15m (MA12/MA30)';
+export const MA_CROSS_5M_DISPLAY = 'MA Cross 12×30 (15m)';
 export const MA_CROSS_5M_DESC =
   'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15% (histórico sintético estudado). Filtro SELL se |preço−MA30|/MA30 > 6%. Filtro entrada: |MA80−MA200|/MA200 ≤ 3% (15m). Universo = Scanner 1 (fecho acima SMA200 em 1h, Binance Futures). Regras de frequência (análise 2026): inactivo sáb/dom; horas PT 3, 7, 15, 17, 19; turnover 1h ≥ $10M; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde (líquido ≥0), mesma direção; sem posição aberta no mesmo sentido.';
 /** MA30/MA200 em 15m — mesma lógica de spread que MA12/MA30 (universo = scan Ma30Near6PriceBetween). */
@@ -318,7 +318,7 @@ export const EMA_SCALPING_DESCRIPTION =
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
-  'Universo: Scanner 1 (fecho acima SMA200 em 1h). Pivot Boss em 15m, só VENDA. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 2 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. Sem FDS; horas 18h e 22h PT bloqueadas; turnover 1h ≤ $5M. SL +8% fixo | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 1 (fecho acima SMA200 em 1h). Pivot Boss em 15m, só VENDA — melhor perfil histórico no Scanner 1. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 2 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. Sem FDS; horas 18h e 22h PT bloqueadas; turnover 1h ≤ $5M. SL +7% fixo | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_1H_DISPLAY = 'Pivot Boss Bear 1h (4 EMA venda)';
 
@@ -556,7 +556,7 @@ export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   ema30StopBufferPct: 0.35,
   minStopDistancePct: 2.5,
   maxStopDistancePct: 10,
-  stopLossPct: 0.08,
+  stopLossPct: 0.07,
   tp1Pct: 0.09,
   tp1Position: 50,
   closeAfterHours: 24,
@@ -571,7 +571,7 @@ export const PIVOT_BOSS_BEAR_1H_PARAMS = {
   ...PIVOT_BOSS_BEAR_15M_PARAMS,
 } as const;
 
-/** Actualiza universo/descrição Pivot Boss Bear (15m → Scanner 1; 1h → Scanner 4). */
+/** Actualiza universo/descrição/SL Pivot Boss Bear 15m (Scanner 1). */
 export async function syncPivotBossBear15mUniverse(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -579,7 +579,6 @@ export async function syncPivotBossBear15mUniverse(
 
   for (const [name, description] of [
     ['PIVOT_BOSS_BEAR_15M', PIVOT_BOSS_BEAR_15M_DESCRIPTION] as const,
-    ['PIVOT_BOSS_BEAR_1H', PIVOT_BOSS_BEAR_1H_DESCRIPTION] as const,
   ]) {
     const row = await prisma.strategy.findUnique({
       where: { name },
@@ -626,8 +625,19 @@ export async function syncPivotBossBear15mUniverse(
         PIVOT_BOSS_BEAR_15M_PARAMS.sellBlockMaxDistBelowEma80Pct ||
       p.sellBlockMaxDistBelowEma30Pct != null ||
       p.breakdownLookback != null;
+    const needsStopLoss =
+      p.stopLossPct == null ||
+      Number(p.stopLossPct) !== PIVOT_BOSS_BEAR_15M_PARAMS.stopLossPct;
 
-    if (!needsDesc && !needsParams && !needsPullback && !needsSellBlock && !needsMa200Filter && !needsMa200MaxDist) {
+    if (
+      !needsDesc &&
+      !needsParams &&
+      !needsPullback &&
+      !needsSellBlock &&
+      !needsMa200Filter &&
+      !needsMa200MaxDist &&
+      !needsStopLoss
+    ) {
       continue;
     }
 
@@ -646,12 +656,20 @@ export async function syncPivotBossBear15mUniverse(
       delete next.sellBlockMaxDistBelowEma30Pct;
       delete next.breakdownLookback;
     }
+    if (needsStopLoss) {
+      next.stopLossPct = PIVOT_BOSS_BEAR_15M_PARAMS.stopLossPct;
+    }
 
     await prisma.strategy.update({
       where: { name },
       data: {
         ...(needsDesc ? { description } : {}),
-        ...(needsParams || needsPullback || needsSellBlock || needsMa200Filter || needsMa200MaxDist
+        ...(needsParams ||
+        needsPullback ||
+        needsSellBlock ||
+        needsMa200Filter ||
+        needsMa200MaxDist ||
+        needsStopLoss
           ? { params: JSON.stringify(next) }
           : {}),
       },
@@ -1155,20 +1173,25 @@ export async function syncMaCrossScanner1UniverseDescriptions(
   ]) {
     const row = await prisma.strategy.findUnique({
       where: { name },
-      select: { description: true },
+      select: { description: true, displayName: true },
     });
     if (!row) continue;
-    const needsUpdate =
+    const needsDescUpdate =
       row.description?.includes('Bybit') ||
       row.description?.includes('bybit') ||
       row.description?.includes('+2–20%') ||
       row.description?.includes('+2-20%') ||
       !row.description?.includes('|MA80−MA200|') ||
       row.description !== description;
-    if (needsUpdate) {
+    const needsDisplayUpdate =
+      name === 'MA_CROSS_5M' && row.displayName !== MA_CROSS_5M_DISPLAY;
+    if (needsDescUpdate || needsDisplayUpdate) {
       await prisma.strategy.update({
         where: { name },
-        data: { description },
+        data: {
+          ...(needsDescUpdate ? { description } : {}),
+          ...(needsDisplayUpdate ? { displayName: MA_CROSS_5M_DISPLAY } : {}),
+        },
       });
       updated.push(name);
     }

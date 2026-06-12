@@ -1,32 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Cron agregado 1h: Bybit scan + Pivot Boss Bear 15m (via run-signals).
+ * Cron agregado 1h: Pivot Boss Bear 15m (Scanner 1, via run-signals).
  */
 async function run1hInBackground(origin: string, authHeader: string): Promise<void> {
   try {
-    console.log('[Run-1h BG] Iniciando agregado 1h...');
+    console.log('[Run-1h BG] Iniciando Pivot Boss Bear 15m...');
 
     const headers: Record<string, string> = {};
     if (authHeader) headers.authorization = authHeader;
 
-    const calls = [
-      `${origin}/api/cron/run-scans-ma`,
-      `${origin}/api/cron/run-signals`,
-    ];
-
-    let okCount = 0;
-    for (const url of calls) {
-      try {
-        const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
-        okCount++;
-        console.log(`[Run-1h BG] ${url} -> HTTP ${res.status}`);
-      } catch (reason) {
-        console.error(`[Run-1h BG] ${url} -> erro`, reason);
-      }
+    const url = `${origin}/api/cron/run-signals`;
+    try {
+      const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
+      console.log(`[Run-1h BG] ${url} -> HTTP ${res.status}`);
+    } catch (reason) {
+      console.error(`[Run-1h BG] ${url} -> erro`, reason);
     }
 
-    console.log(`[Run-1h BG] Agregado 1h finalizado: ${okCount}/${calls.length} chamadas OK`);
+    console.log('[Run-1h BG] Agregado 1h finalizado.');
   } catch (error) {
     console.error('[Run-1h BG] Erro fatal:', error);
   }
@@ -65,8 +57,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message:
-        'Processamento agregado 1h: Bybit scan + Pivot Boss Bear 15m (Scanner 1: cron 4h separado)',
+      message: 'Processamento Pivot Boss Bear 15m iniciado (Scanner 1)',
       executedAt: now.toISOString(),
     });
   } catch (error) {

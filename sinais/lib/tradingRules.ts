@@ -26,6 +26,7 @@ export interface SignalForTrading {
 /** Estratégias permitidas para trading automático (bot_scanner). */
 const ALLOWED_STRATEGIES = [
   'MA Cross 15m',
+  'MA Cross 12×30 (15m)',
   'MA12/MA30',
   'MA_CROSS_5M',
   'Pivot Boss Bear',

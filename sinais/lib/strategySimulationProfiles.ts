@@ -46,7 +46,7 @@ function side(
 export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   {
     strategyName: 'MA_CROSS_5M',
-    displayNames: ['MA Cross 15m (MA12/MA30)', 'Volume Spike 15m'],
+    displayNames: ['MA Cross 12×30 (15m)', 'MA Cross 15m (MA12/MA30)', 'Volume Spike 15m'],
     buy: side(15, 44, 60),
     sell: side(15, 44, 60),
     summary:
@@ -56,9 +56,9 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     strategyName: 'PIVOT_BOSS_BEAR_15M',
     displayNames: ['Pivot Boss Bear 15m (4 EMA venda)'],
     buy: null,
-    sell: side(8, 9, 50),
+    sell: side(7, 9, 50),
     summary:
-      'Só VENDA. Stack 12/30/80/200 bearish. SL +8% fixo. TP1 -9% (50%) | restante às 24h.',
+      'Só VENDA. Stack 12/30/80/200 bearish. SL +7% fixo. TP1 -9% (50%) | restante às 24h.',
   },
 ];
 

@@ -1821,7 +1821,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           console.log(`✅ ${symbolsToAnalyze.length} símbolos (MaCrossBelow)`);
         } else {
           console.warn(
-            `⚠️ MaCrossBelow vazio. Corra /api/cron/run-scans-ma ou Origem de dados → MA Cross. Ignorando ${strategy.name}.`
+            `⚠️ MaCrossBelow vazio. Ignorando ${strategy.name} (legado).`
           );
           continue;
         }
