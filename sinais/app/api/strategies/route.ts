@@ -13,11 +13,9 @@ import {
   backfillMaCross5mSignalNames,
   MA_CROSS_5M_DESC,
   MA_CROSS_5M_DISPLAY,
+  MA_CROSS_5M_PARAMS,
   removeDeprecatedStrategies,
-  syncAfastamentoMedio30mBuyPrevMax,
-  syncEmaRibbonScalpingBuy15m,
   syncMaCrossScanner1UniverseDescriptions,
-  syncRsiOverboughtDrop1hConfig,
 } from '@/lib/strategyMigrations';
 
 const MA_CROSS_5M_DEFAULT_PARAMS = {
@@ -47,9 +45,6 @@ async function ensureMissingStrategies() {
   await removeDeprecatedStrategies(prisma);
   await ensureMissingBuiltinStrategies(prisma);
   await syncMaCrossScanner1UniverseDescriptions(prisma);
-  await syncRsiOverboughtDrop1hConfig(prisma);
-  await syncAfastamentoMedio30mBuyPrevMax(prisma);
-  await syncEmaRibbonScalpingBuy15m(prisma);
 
   const existingMaCross5m = await prisma.strategy.findUnique({
     where: { name: 'MA_CROSS_5M' },
@@ -60,10 +55,10 @@ async function ensureMissingStrategies() {
     await prisma.strategy.create({
       data: {
         name: 'MA_CROSS_5M',
-        displayName: 'MA Cross 15m (MA12/MA30)',
+        displayName: MA_CROSS_5M_DISPLAY,
         description: MA_CROSS_5M_DESC,
         isActive: true,
-        params: JSON.stringify(MA_CROSS_5M_DEFAULT_PARAMS),
+        params: JSON.stringify({ ...MA_CROSS_5M_DEFAULT_PARAMS, ...MA_CROSS_5M_PARAMS }),
       },
     });
   } else {
@@ -125,14 +120,14 @@ async function ensureMissingStrategies() {
       }
       const needParams = JSON.stringify(next) !== JSON.stringify(p);
       const needMeta =
-        existingMaCross5m.displayName !== 'MA Cross 15m (MA12/MA30)' ||
+        existingMaCross5m.displayName !== MA_CROSS_5M_DISPLAY ||
         existingMaCross5m.description !== MA_CROSS_5M_DESC;
       if (needParams || needMeta) {
         await prisma.strategy.update({
           where: { name: 'MA_CROSS_5M' },
           data: {
             params: needParams ? JSON.stringify(next) : existingMaCross5m.params!,
-            displayName: 'MA Cross 15m (MA12/MA30)',
+            displayName: MA_CROSS_5M_DISPLAY,
             description: MA_CROSS_5M_DESC,
           },
         });

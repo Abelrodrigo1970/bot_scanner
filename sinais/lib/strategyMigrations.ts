@@ -87,6 +87,34 @@ export async function removeDeprecatedStrategies(
   return { removed: deleted, skippedWithSignals };
 }
 
+/** Desactiva estratégias retiradas que ainda existem na BD (preserva histórico de sinais). */
+export async function deactivateDeprecatedStrategies(
+  prisma: PrismaClient,
+  extraNames: readonly string[] = []
+): Promise<string[]> {
+  const names = [...new Set([...REMOVED_DEPRECATED_STRATEGY_NAMES, ...extraNames])];
+  const deactivated: string[] = [];
+
+  for (const name of names) {
+    const row = await prisma.strategy.findUnique({
+      where: { name },
+      select: { id: true, isActive: true },
+    });
+    if (!row || !row.isActive) continue;
+    await prisma.strategy.update({
+      where: { id: row.id },
+      data: { isActive: false },
+    });
+    deactivated.push(name);
+  }
+
+  if (deactivated.length > 0) {
+    console.log(`⏸️ Estratégias desactivadas (retiradas do bot_scanner): ${deactivated.join(', ')}`);
+  }
+
+  return deactivated;
+}
+
 export interface ClearStrategySignalsResult {
   strategyName: string;
   displayName: string | null;
@@ -606,8 +634,7 @@ export async function syncPivotBossBear15mUniverse(
       row.description?.includes('últimos 3 candles') ||
       row.description?.includes('swing/EMA30') ||
       row.description?.includes('fecho acima SMA200 (1h);') ||
-      (name === 'PIVOT_BOSS_BEAR_15M' && row.description?.includes('Scanner 2')) ||
-      (name === 'PIVOT_BOSS_BEAR_1H' && row.description?.includes('Scanner 2')) ||
+      row.description?.includes('Scanner 2') ||
       row.description !== description;
     const needsParams = p.symbolLimit != null;
     const needsPullback =

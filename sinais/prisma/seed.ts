@@ -9,6 +9,7 @@ import {
   MA_CROSS_5M_DISPLAY,
   MA_CROSS_5M_PARAMS,
   migrateVolumeSpike15mToMaCross5m,
+  deactivateDeprecatedStrategies,
   removeDeprecatedStrategies,
 } from '../lib/strategyMigrations';
 
@@ -31,6 +32,7 @@ async function main() {
   if (deprecated.removed.length > 0) {
     console.log(`[estratégias retiradas] ${deprecated.removed.join(', ')}`);
   }
+  await deactivateDeprecatedStrategies(prisma, [...TOP_ROTATION_STRATEGY_NAMES]);
 
   const mig = await migrateVolumeSpike15mToMaCross5m(prisma);
   console.log(`[migração VOLUME_SPIKE_15M] ${mig.action}: ${mig.message}`);

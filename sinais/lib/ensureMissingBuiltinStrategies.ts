@@ -8,6 +8,8 @@ import {
 
   PIVOT_BOSS_BEAR_15M_DISPLAY,
 
+  deactivateDeprecatedStrategies,
+
   syncMaCrossScanner1UniverseDescriptions,
 
   syncPivotBossBear15mUniverse,
@@ -53,6 +55,7 @@ export const TOP_ROTATION_STRATEGY_NAMES = [
 
 
 export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Promise<void> {
+  await deactivateDeprecatedStrategies(prisma, [...TOP_ROTATION_STRATEGY_NAMES]);
 
   for (const def of IMPORTED_BUILTIN_STRATEGY_SEEDS) {
 
