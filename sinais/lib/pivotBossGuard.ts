@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import {
   hourInLisbon,
-  isMaCross15mWeekendBlocked,
+  isWeekendInLisbon,
   localDayKey,
   MA_CROSS_15M_TZ,
 } from './maCross15mGuard';
@@ -18,7 +18,7 @@ export function isPivotBossBear15mHourBlocked(now: Date = new Date()): boolean {
 }
 
 export function isPivotBossBear15mWeekendBlocked(now: Date = new Date()): boolean {
-  return isMaCross15mWeekendBlocked(now);
+  return isWeekendInLisbon(now);
 }
 
 export function isPivotBossBear15mSessionBlocked(now: Date = new Date()): boolean {

@@ -27,7 +27,7 @@ import { ACTIVE_SCANNER_STRATEGY_NAMES } from './strategyCatalog';
 import {
   checkMaCross15mSignalGate,
   isMaCross15mHourBlocked,
-  isMaCross15mWeekendBlocked,
+  MA_CROSS_15M_MIN_TURNOVER_1H_USD,
 } from './maCross15mGuard';
 import {
   checkPivotBossDailySignalGate,
@@ -1721,11 +1721,6 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
     for (const strategy of strategies) {
       const params = JSON.parse(strategy.params || '{}');
 
-      if (strategy.name === 'MA_CROSS_5M' && isMaCross15mWeekendBlocked()) {
-        console.log('⏭️ MA Cross 15m: ignorado ao fim-de-semana (sáb/dom, horário Portugal)');
-        continue;
-      }
-
       if (strategy.name === 'MA_CROSS_5M' && isMaCross15mHourBlocked()) {
         console.log('⏭️ MA Cross 15m: ignorado — horário PT bloqueado');
         continue;
@@ -1814,9 +1809,13 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'MA_CROSS_5M') {
-        console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima SMA200, 1h)...`);
-        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
-        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
+        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 20)));
+        console.log(`🔍 ${strategy.name}: Scanner 1 top ${topN} (|pct vs SMA200|)...`);
+        symbolsToAnalyze = await resolveUniverseScanSymbolsTopN(
+          UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
+          topN
+        );
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1 top ${topN})`);
         if (symbolsToAnalyze.length === 0) {
           console.warn(
             `⚠️ Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
@@ -1951,6 +1950,10 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                   symbol,
                   strategyId: strategy.id,
                   direction: signalResult.direction,
+                  minTurnover3hUsd: Math.max(
+                    0,
+                    Number(params.minTurnover3hUsd ?? MA_CROSS_15M_MIN_TURNOVER_1H_USD)
+                  ),
                 });
                 canCreate = gate.allowed;
                 if (!gate.allowed) skipReason = gate.reason;

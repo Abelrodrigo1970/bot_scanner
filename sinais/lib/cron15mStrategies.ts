@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 } from '@/lib/symbolUniverseDefaults';
-import { resolveUniverseScanSymbols } from '@/lib/universeScanPersistence';
+import { resolveUniverseScanSymbolsTopN } from '@/lib/universeScanPersistence';
 import {
   runAllStrategies,
   runMaCross15mStrategy,
@@ -10,7 +10,7 @@ import {
 import {
   checkMaCross15mSignalGate,
   isMaCross15mHourBlocked,
-  isMaCross15mWeekendBlocked,
+  MA_CROSS_15M_MIN_TURNOVER_1H_USD,
 } from '@/lib/maCross15mGuard';
 import {
   isPivotBossBear15mHourBlocked,
@@ -46,22 +46,29 @@ export interface Cron15mResult {
 
 /**
  * MA Cross 15m (MA12/MA30). Cálculo em velas 15m.
- * Universo: Scanner 1 — último scan `UNIVERSE_ABOVE_MA200_1H`.
- * Não cria novo sinal se já existir posição real no mesmo sentido.
- * Cooldown 24h entre dias; máx. 2/dia (2.º só se 1.º verde); sem FDS; horas bloqueadas via guard.
+ * Universo: Scanner 1 top 20 — último scan `UNIVERSE_ABOVE_MA200_1H`.
+ * Cooldown 24h entre dias; máx. 2/dia (2.º só se 1.º verde); activo sáb/dom.
  */
 async function runMaCross15mWorker(
   strategy: StrategyData,
   params: StrategyParams
 ): Promise<number> {
   const DELAY_MS = 200;
-  const symbols = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
+  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 20)));
+  const minTurnover3hUsd = Math.max(
+    0,
+    Number(params.minTurnover3hUsd ?? MA_CROSS_15M_MIN_TURNOVER_1H_USD)
+  );
+  const symbols = await resolveUniverseScanSymbolsTopN(
+    UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
+    topN
+  );
   if (symbols.length === 0) {
     console.warn(
       '[MA Cross 15m BG] Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1.'
     );
   }
-  console.log(`[MA Cross 15m BG] Iniciando ${symbols.length} símbolos (15m)…`);
+  console.log(`[MA Cross 15m BG] Iniciando ${symbols.length} símbolos (Scanner 1 top ${topN})…`);
   let signalsCreated = 0;
   const ex = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
 
@@ -83,6 +90,7 @@ async function runMaCross15mWorker(
           symbol,
           strategyId: strategy.id,
           direction: signalResult.direction,
+          minTurnover3hUsd,
         });
 
         if (gate.allowed) {
@@ -193,10 +201,6 @@ export async function runMaCross15mPipeline(now: Date = new Date()): Promise<Cro
   if (!strategy.isActive) {
     console.log('[MA Cross 15m] Estratégia inactiva — saltada.');
     return { status: 'inactive' };
-  }
-  if (isMaCross15mWeekendBlocked(now)) {
-    console.log('[MA Cross 15m] Fim-de-semana (PT) — saltada.');
-    return { status: 'skipped-weekend' };
   }
   if (isMaCross15mHourBlocked(now)) {
     const h = now.toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hour12: false });

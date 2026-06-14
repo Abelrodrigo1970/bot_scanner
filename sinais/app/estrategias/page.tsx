@@ -246,12 +246,12 @@ export default function EstrategiasPage() {
               Velas <strong>15m</strong> — <strong>{maPairLabel}</strong>. Mesma lógica de spread: rápida&gt;lenta (ou &lt;) e |rápida−lenta|/lenta &gt; limiar de entrada; fecho quando a diferença comprime abaixo do limiar de saída (compressão).
               <>
                 {' O cron corre a cada 15 min.'} Símbolos ={' '}
-                <strong>Scanner 1</strong> (fecho acima SMA200 em 1h); actualize em Origem de dados → Scanner 1
+                <strong>Scanner 1 top 20</strong> (maior |afastamento| vs SMA200 em 1h); actualize em Origem de dados → Scanner 1
                 ou aguarde o cron <strong>run-universe-scans</strong> (cada 4 h).
               </>
             </p>
             <p className="text-xs text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-md px-3 py-2">
-              <strong>Frequência (híbrida):</strong> sem sáb/dom; horas 0–2, 4 e 11h PT bloqueadas; cooldown 24h entre dias;
+              <strong>Frequência:</strong> activo sáb/dom; turnover 3×1h ≥ $3M; cooldown 24h entre dias;
               máx. <strong>2 sinais/símbolo/dia</strong> — o 2.º só após o 1.º <strong>fechado e verde</strong> (mesma direção).
               Não abre posição nova se já existir trade aberto no mesmo sentido.
             </p>
