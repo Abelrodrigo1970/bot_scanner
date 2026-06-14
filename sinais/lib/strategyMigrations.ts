@@ -386,9 +386,8 @@ export async function syncScanner1Top8Config(
   });
   if (!row) return { updated: false };
 
-  // Seed inicial cria inactiva; activar na 1.ª sync pós-deploy (antes de edição manual).
-  const bootstrapActive =
-    !row.isActive && row.createdAt.getTime() === row.updatedAt.getTime();
+  // Seed inicial cria inactiva; activar na sync ou se foi desactivada por engano.
+  const shouldActivate = !row.isActive;
 
   let p: Record<string, unknown> = {};
   try {
@@ -410,14 +409,14 @@ export async function syncScanner1Top8Config(
     row.displayName !== SCANNER1_TOP8_DISPLAY ||
     row.description !== SCANNER1_TOP8_DESCRIPTION;
 
-  if (needParams || needMeta || bootstrapActive) {
+  if (needParams || needMeta || shouldActivate) {
     await prisma.strategy.update({
       where: { name: 'SCANNER1_TOP8' },
       data: {
         displayName: SCANNER1_TOP8_DISPLAY,
         description: SCANNER1_TOP8_DESCRIPTION,
         params: JSON.stringify(next),
-        ...(bootstrapActive ? { isActive: true } : {}),
+        ...(shouldActivate ? { isActive: true } : {}),
       },
     });
     return { updated: true };

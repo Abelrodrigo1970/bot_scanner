@@ -1,6 +1,6 @@
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
 
-import { TOP_ROTATION_STRATEGY_NAMES } from './ensureMissingBuiltinStrategies';
+import { DEPRECATED_TOP_ROTATION_NAMES } from './ensureMissingBuiltinStrategies';
 
 
 
@@ -9,6 +9,8 @@ import { TOP_ROTATION_STRATEGY_NAMES } from './ensureMissingBuiltinStrategies';
 export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'MA_CROSS_5M',
+
+  'SCANNER1_TOP8',
 
   'PIVOT_BOSS_BEAR_15M',
 
@@ -50,6 +52,18 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
   },
 
+  SCANNER1_TOP8: {
+
+    cron: '1h',
+
+    cronLabel: 'Rotação 4h (pós-scan)',
+
+    timeframe: '4h',
+
+    universe: 'Scanner 1 — ranks 1,2,5–8 (excl. #3 #4)',
+
+  },
+
   PIVOT_BOSS_BEAR_15M: {
 
     cron: '15m',
@@ -67,8 +81,6 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
 
 export const REMOVED_STRATEGY_LABELS: Record<string, string> = {
-
-  SCANNER1_TOP8: 'Scanner 1 Top 6 (rotação — bot_cripto)',
 
   SCANNER_MA80_TOP6: 'Scanner 5 Top 6 (rotação — bot_cripto)',
 
@@ -116,7 +128,7 @@ const removedSet = new Set<string>(REMOVED_DEPRECATED_STRATEGY_NAMES as readonly
 
 removedSet.add('VOLUME_SPIKE_15M');
 
-for (const n of TOP_ROTATION_STRATEGY_NAMES) {
+for (const n of DEPRECATED_TOP_ROTATION_NAMES) {
 
   removedSet.add(n);
 
@@ -161,6 +173,16 @@ export const CRON_GROUPS: { key: '15m' | '1h'; title: string; description: strin
     title: 'Cron 15m',
 
     description: 'MA Cross 12×30 (15m) + Pivot Boss Bear 15m',
+
+  },
+
+  {
+
+    key: '1h',
+
+    title: 'Rotação 4h',
+
+    description: 'Scanner 1 Top 6 (após run-universe-scans)',
 
   },
 

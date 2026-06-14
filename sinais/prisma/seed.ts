@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import {
   IMPORTED_BUILTIN_STRATEGY_SEEDS,
-  TOP_ROTATION_STRATEGY_NAMES,
+  DEPRECATED_TOP_ROTATION_NAMES,
 } from '../lib/ensureMissingBuiltinStrategies';
 import {
   deleteStrategiesByNameIfNoSignals,
@@ -32,7 +32,7 @@ async function main() {
   if (deprecated.removed.length > 0) {
     console.log(`[estratégias retiradas] ${deprecated.removed.join(', ')}`);
   }
-  await deactivateDeprecatedStrategies(prisma, [...TOP_ROTATION_STRATEGY_NAMES]);
+  await deactivateDeprecatedStrategies(prisma, [...DEPRECATED_TOP_ROTATION_NAMES]);
 
   const mig = await migrateVolumeSpike15mToMaCross5m(prisma);
   console.log(`[migração VOLUME_SPIKE_15M] ${mig.action}: ${mig.message}`);
@@ -77,7 +77,7 @@ async function main() {
   await deleteStrategiesByNameIfNoSignals(prisma, [
     ...LEGACY_STRATEGY_NAMES_TO_PURGE,
     ...deprecated.removed,
-    ...TOP_ROTATION_STRATEGY_NAMES,
+    ...DEPRECATED_TOP_ROTATION_NAMES,
   ]);
 
   // Configuração: trades na Binance desativados por defeito
