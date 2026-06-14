@@ -2,7 +2,7 @@
  * Scanners de universo: filtra perpétuos USDT por regra vs média móvel (SMA ou EMA).
  */
 
-import { fetchCandles, fetchTopSymbolsByVolume } from './marketData';
+import { fetchCandles, fetchTopSymbolsByVolume, fetchTopVolume24hTickers } from './marketData';
 import { calculateLastEMA, calculateSMA, getCloses } from './indicators';
 
 export interface UniverseScanDefinition {
@@ -16,6 +16,8 @@ export interface UniverseScanDefinition {
   timeframe: string;
   minQuoteVolume: number;
   candidateLimit: number;
+  /** Máximo de linhas gravadas (ex.: top 30 volume 24h). */
+  resultLimit?: number;
 }
 
 function maAtClose(closes: number[], def: UniverseScanDefinition): number | null {
@@ -37,9 +39,24 @@ function delay(ms: number): Promise<void> {
 const BATCH = 6;
 const BATCH_DELAY_MS = 120;
 
+async function scanTopVolume24hUniverse(def: UniverseScanDefinition): Promise<UniverseScanRow[]> {
+  const limit = Math.max(1, Math.floor(def.resultLimit ?? def.candidateLimit ?? 30));
+  const tickers = await fetchTopVolume24hTickers(limit, def.minQuoteVolume);
+  return tickers.map((t) => ({
+    symbol: t.symbol,
+    close: t.lastPrice,
+    ma: t.quoteVolume,
+    pctFromMa: t.priceChangePercent,
+  }));
+}
+
 export async function scanSymbolUniverse(
   def: UniverseScanDefinition
 ): Promise<UniverseScanRow[]> {
+  if (def.ruleType === 'TOP_VOLUME_24H') {
+    return scanTopVolume24hUniverse(def);
+  }
+
   const symbols = await fetchTopSymbolsByVolume(
     Math.min(Math.max(def.candidateLimit, 50), 600),
     def.minQuoteVolume

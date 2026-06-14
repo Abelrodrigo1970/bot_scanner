@@ -1,6 +1,6 @@
 import { prisma } from './db';
 import { scanSymbolUniverse } from './universeScanner';
-import { BUILTIN_UNIVERSE_SCAN, getBuiltinScanDefinition } from './symbolUniverseDefaults';
+import { BUILTIN_UNIVERSE_SCAN, getBuiltinScanDefinition, isVolumeRankUniverseScan } from './symbolUniverseDefaults';
 import { filterToBybitMarketSymbols } from './marketData';
 
 const SCAN_HISTORY_KEEP = 100;
@@ -103,7 +103,7 @@ export async function getLatestUniverseScanSymbols(
         id: true,
         scannedAt: true,
         rowCount: true,
-        rows: { select: { symbol: true } },
+        rows: { select: { symbol: true }, orderBy: { id: 'asc' } },
       },
     });
     if (!run) {
@@ -303,6 +303,7 @@ export async function getLatestUniverseScanPair(
     include: {
       rows: {
         select: { symbol: true, close: true, ma: true, pctFromMa: true },
+        orderBy: { id: 'asc' },
       },
     },
   });
@@ -322,9 +323,10 @@ export async function getLatestUniverseScanPair(
     return { current: null, previous: null };
   }
 
-  const currentRows = toSnap(cur.rows).sort(
-    (a, b) => Math.abs(b.pctFromMa) - Math.abs(a.pctFromMa)
-  );
+  const preserveRankOrder = isVolumeRankUniverseScan(universeCode);
+  const currentRows = preserveRankOrder
+    ? toSnap(cur.rows)
+    : toSnap(cur.rows).sort((a, b) => Math.abs(b.pctFromMa) - Math.abs(a.pctFromMa));
 
   return {
     current: {
@@ -354,7 +356,7 @@ export type TopRankedUniverseScanResult =
     }
   | { ok: false; reason: string };
 
-/** Top N símbolos do último scan (ordenados por |pctFromMa| desc). */
+/** Top N símbolos do último scan (|pctFromMa| desc, ou ordem de rank para volume 24h). */
 export async function getTopRankedUniverseScanRows(
   universeCode: string,
   topN: number
@@ -376,6 +378,8 @@ export async function getTopRankedUniverseScanRows(
     runId: pair.current.id,
     scannedAt: pair.current.scannedAt,
     rowCount: pair.current.rowCount,
-    rows: ranked.slice(0, n),
+    rows: isVolumeRankUniverseScan(universeCode)
+      ? ranked.slice(0, n)
+      : [...ranked].sort((a, b) => Math.abs(b.pctFromMa) - Math.abs(a.pctFromMa)).slice(0, n),
   };
 }

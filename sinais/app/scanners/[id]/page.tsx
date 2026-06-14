@@ -33,8 +33,12 @@ export default function UniverseScannerPage() {
   const code = scanner?.code ?? '';
   const meta = code ? BUILTIN_UNIVERSE_META[code] : null;
   const scanDef = code ? getBuiltinScanDefinition(code) : null;
-  const maLabel =
-    scanDef?.maType === 'EMA' ? `EMA${scanDef.maPeriod}` : `SMA${scanDef?.maPeriod ?? 200}`;
+  const isVolumeScanner = scanDef?.ruleType === 'TOP_VOLUME_24H';
+  const maLabel = isVolumeScanner
+    ? 'Vol. 24h'
+    : scanDef?.maType === 'EMA'
+      ? `EMA${scanDef.maPeriod}`
+      : `SMA${scanDef?.maPeriod ?? 200}`;
   const timeframeLabel = scanDef?.timeframe ?? '1h';
 
   const [items, setItems] = useState<ScanRow[]>([]);
@@ -121,12 +125,19 @@ export default function UniverseScannerPage() {
     return `${sign}${value.toFixed(decimals)}%`;
   };
 
+  const formatVolume = (usd: number) => {
+    if (usd >= 1_000_000_000) return `$${(usd / 1_000_000_000).toFixed(2)}B`;
+    if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(2)}M`;
+    if (usd >= 1_000) return `$${(usd / 1_000).toFixed(1)}K`;
+    return `$${usd.toFixed(0)}`;
+  };
+
   if (!scanner || !meta) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header />
         <main className="max-w-7xl mx-auto px-4 py-12 text-center text-red-600 dark:text-red-400">
-          Scanner não encontrado. Use /scanners/1 a /scanners/6.
+          Scanner não encontrado. Use /scanners/1 ou /scanners/2.
         </main>
       </div>
     );
@@ -160,7 +171,14 @@ export default function UniverseScannerPage() {
             Regra do scan
           </h2>
           <ul className="text-xs text-violet-700 dark:text-violet-400 space-y-1 list-disc list-inside">
-            <li>Top 400 por volume 24h (mín. 500k USDT) — Binance Futures, velas {timeframeLabel}</li>
+            {isVolumeScanner ? (
+              <>
+                <li>Top 30 perpétuos USDT por turnover 24h — Binance Futures (ticker/24hr)</li>
+                <li>Ranking por volume; sem filtro de média móvel</li>
+              </>
+            ) : (
+              <li>Top 400 por volume 24h (mín. 500k USDT) — Binance Futures, velas {timeframeLabel}</li>
+            )}
             <li>{meta.description}</li>
             <li>
               Estratégia: <strong>{meta.strategyNames}</strong>
@@ -222,29 +240,33 @@ export default function UniverseScannerPage() {
                       Fecho
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      {maLabel}
+                      {isVolumeScanner ? 'Vol. 24h' : maLabel}
                     </th>
-                    <th
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                      title="Afastamento (% vs MA) no scan anterior"
-                    >
-                      Afast. anterior
-                    </th>
+                    {!isVolumeScanner ? (
+                      <th
+                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                        title="Afastamento (% vs MA) no scan anterior"
+                      >
+                        Afast. anterior
+                      </th>
+                    ) : null}
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      Afast. agora
+                      {isVolumeScanner ? '% 24h' : 'Afast. agora'}
                     </th>
                     <th
                       className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       title="Variação do fecho vs scan anterior"
                     >
-                      Δ fecho
+                      Δ preço
                     </th>
-                    <th
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                      title="Mudança na distância à média vs scan anterior"
-                    >
-                      Δ afast.
-                    </th>
+                    {!isVolumeScanner ? (
+                      <th
+                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                        title="Mudança na distância à média vs scan anterior"
+                      >
+                        Δ afast.
+                      </th>
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -263,18 +285,20 @@ export default function UniverseScannerPage() {
                         ${formatPrice(item.close)}
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
-                        ${formatPrice(item.ma)}
+                        {isVolumeScanner ? formatVolume(item.ma) : `$${formatPrice(item.ma)}`}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
-                        {item.isNewInUniverse || item.pctFromMaPrev === null ? (
-                          <span className="text-gray-400">—</span>
-                        ) : (
-                          <span>
-                            {item.pctFromMaPrev >= 0 ? '+' : ''}
-                            {item.pctFromMaPrev.toFixed(2)}%
-                          </span>
-                        )}
-                      </td>
+                      {!isVolumeScanner ? (
+                        <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
+                          {item.isNewInUniverse || item.pctFromMaPrev === null ? (
+                            <span className="text-gray-400">—</span>
+                          ) : (
+                            <span>
+                              {item.pctFromMaPrev >= 0 ? '+' : ''}
+                              {item.pctFromMaPrev.toFixed(2)}%
+                            </span>
+                          )}
+                        </td>
+                      ) : null}
                       <td className="px-6 py-4 text-right text-sm font-semibold">
                         <span
                           className={
@@ -287,39 +311,61 @@ export default function UniverseScannerPage() {
                           {item.pctFromMa.toFixed(2)}%
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right text-sm font-semibold">
-                        {item.isNewInUniverse ? (
-                          <span className="text-amber-600 dark:text-amber-400 text-xs">novo</span>
-                        ) : item.closeChangePct === null ? (
-                          <span className="text-gray-400">—</span>
-                        ) : (
-                          <span
-                            className={
-                              item.closeChangePct >= 0
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-red-600 dark:text-red-400'
-                            }
-                          >
-                            {formatDeltaPct(item.closeChangePct)}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
-                        {item.isNewInUniverse || item.pctFromMaDelta === null ? (
-                          <span className="text-gray-400">—</span>
-                        ) : (
-                          <span
-                            className={
-                              item.pctFromMaDelta >= 0
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-red-600 dark:text-red-400'
-                            }
-                          >
-                            {item.pctFromMaDelta >= 0 ? '+' : ''}
-                            {item.pctFromMaDelta.toFixed(2)} pts
-                          </span>
-                        )}
-                      </td>
+                      {!isVolumeScanner ? (
+                        <>
+                          <td className="px-6 py-4 text-right text-sm font-semibold">
+                            {item.isNewInUniverse ? (
+                              <span className="text-amber-600 dark:text-amber-400 text-xs">novo</span>
+                            ) : item.closeChangePct === null ? (
+                              <span className="text-gray-400">—</span>
+                            ) : (
+                              <span
+                                className={
+                                  item.closeChangePct >= 0
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-red-600 dark:text-red-400'
+                                }
+                              >
+                                {formatDeltaPct(item.closeChangePct)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
+                            {item.isNewInUniverse || item.pctFromMaDelta === null ? (
+                              <span className="text-gray-400">—</span>
+                            ) : (
+                              <span
+                                className={
+                                  item.pctFromMaDelta >= 0
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-red-600 dark:text-red-400'
+                                }
+                              >
+                                {item.pctFromMaDelta >= 0 ? '+' : ''}
+                                {item.pctFromMaDelta.toFixed(2)} pts
+                              </span>
+                            )}
+                          </td>
+                        </>
+                      ) : (
+                        <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
+                          {item.isNewInUniverse ? (
+                            <span className="text-amber-600 dark:text-amber-400 text-xs">novo</span>
+                          ) : item.closeChangePct === null ? (
+                            <span className="text-gray-400">—</span>
+                          ) : (
+                            <span
+                              className={
+                                item.closeChangePct >= 0
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : 'text-red-600 dark:text-red-400'
+                              }
+                            >
+                              {formatDeltaPct(item.closeChangePct)}
+                            </span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
