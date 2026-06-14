@@ -33,10 +33,10 @@ export default function UniverseScannerPage() {
   const code = scanner?.code ?? '';
   const meta = code ? BUILTIN_UNIVERSE_META[code] : null;
   const scanDef = code ? getBuiltinScanDefinition(code) : null;
-  const isVolumeScanner = scanDef?.ruleType === 'TOP_VOLUME_24H';
-  const maLabel = isVolumeScanner
-    ? 'Vol. 24h'
-    : scanDef?.maType === 'EMA'
+  const isPriceRankScanner = scanDef?.ruleType === 'TOP_PRICE_CHANGE_24H';
+  const isTickerRankScanner = isPriceRankScanner || scanDef?.ruleType === 'TOP_VOLUME_24H';
+  const maLabel =
+    scanDef?.maType === 'EMA'
       ? `EMA${scanDef.maPeriod}`
       : `SMA${scanDef?.maPeriod ?? 200}`;
   const timeframeLabel = scanDef?.timeframe ?? '1h';
@@ -171,7 +171,12 @@ export default function UniverseScannerPage() {
             Regra do scan
           </h2>
           <ul className="text-xs text-violet-700 dark:text-violet-400 space-y-1 list-disc list-inside">
-            {isVolumeScanner ? (
+            {isPriceRankScanner ? (
+              <>
+                <li>Top 30 perpétuos USDT por <strong>variação de preço 24h</strong> (maior % primeiro)</li>
+                <li>Mín. 500k USDT volume 24h — Binance Futures (ticker/24hr)</li>
+              </>
+            ) : isTickerRankScanner ? (
               <>
                 <li>Top 30 perpétuos USDT por turnover 24h — Binance Futures (ticker/24hr)</li>
                 <li>Ranking por volume; sem filtro de média móvel</li>
@@ -240,9 +245,9 @@ export default function UniverseScannerPage() {
                       Fecho
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      {isVolumeScanner ? 'Vol. 24h' : maLabel}
+                      {isTickerRankScanner ? 'Vol. 24h' : maLabel}
                     </th>
-                    {!isVolumeScanner ? (
+                    {!isTickerRankScanner ? (
                       <th
                         className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         title="Afastamento (% vs MA) no scan anterior"
@@ -251,7 +256,7 @@ export default function UniverseScannerPage() {
                       </th>
                     ) : null}
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      {isVolumeScanner ? '% 24h' : 'Afast. agora'}
+                      {isTickerRankScanner ? '% 24h' : 'Afast. agora'}
                     </th>
                     <th
                       className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
@@ -259,7 +264,7 @@ export default function UniverseScannerPage() {
                     >
                       Δ preço
                     </th>
-                    {!isVolumeScanner ? (
+                    {!isTickerRankScanner ? (
                       <th
                         className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         title="Mudança na distância à média vs scan anterior"
@@ -285,9 +290,9 @@ export default function UniverseScannerPage() {
                         ${formatPrice(item.close)}
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
-                        {isVolumeScanner ? formatVolume(item.ma) : `$${formatPrice(item.ma)}`}
+                        {isTickerRankScanner ? formatVolume(item.ma) : `$${formatPrice(item.ma)}`}
                       </td>
-                      {!isVolumeScanner ? (
+                      {!isTickerRankScanner ? (
                         <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
                           {item.isNewInUniverse || item.pctFromMaPrev === null ? (
                             <span className="text-gray-400">—</span>
@@ -311,7 +316,7 @@ export default function UniverseScannerPage() {
                           {item.pctFromMa.toFixed(2)}%
                         </span>
                       </td>
-                      {!isVolumeScanner ? (
+                      {!isTickerRankScanner ? (
                         <>
                           <td className="px-6 py-4 text-right text-sm font-semibold">
                             {item.isNewInUniverse ? (

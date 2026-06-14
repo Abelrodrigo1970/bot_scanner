@@ -1301,6 +1301,40 @@ export async function fetchTopVolume24hTickers(
   }
 }
 
+/** Top N perpétuos USDT por variação de preço 24h (Binance Futures ticker/24hr). */
+export async function fetchTopPriceChange24hTickers(
+  limit: number = 30,
+  minQuoteVolume: number = 0
+): Promise<TopVolume24hTickerRow[]> {
+  try {
+    const data = await fetchBinanceFapiJson<
+      Array<{ symbol: string; quoteVolume: string; lastPrice: string; priceChangePercent: string }>
+    >('/fapi/v1/ticker/24hr');
+
+    const usdtPairs = data
+      .filter((ticker) => {
+        return (
+          ticker.symbol.endsWith('USDT') &&
+          !ticker.symbol.includes('BUSD') &&
+          parseFloat(ticker.quoteVolume) >= minQuoteVolume
+        );
+      })
+      .map((ticker) => ({
+        symbol: ticker.symbol,
+        quoteVolume: parseFloat(ticker.quoteVolume),
+        lastPrice: parseFloat(ticker.lastPrice || '0'),
+        priceChangePercent: parseFloat(ticker.priceChangePercent || '0'),
+      }));
+
+    return usdtPairs
+      .sort((a, b) => b.priceChangePercent - a.priceChangePercent)
+      .slice(0, Math.max(1, limit));
+  } catch (error) {
+    console.error('Erro ao buscar top % preço 24h:', error);
+    throw error;
+  }
+}
+
 /**
  * Busca os top N símbolos USDT perpetual por variação percentual de preço 24h
  * Ordena por priceChangePercent (maior subida primeiro)

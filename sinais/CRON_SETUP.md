@@ -7,7 +7,7 @@
 | Endpoint | Estratégias | Frequência |
 |----------|-------------|------------|
 | `/api/cron/run-15m` | MA Cross 12×30 (15m) + Pivot Boss Bear 15m | `*/15 * * * *` (24h) |
-| `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** (top 30 vol. 24h) + rotação Top 6 | `0 */4 * * *` (24h) |
+| `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** (top 30 % preço 24h) + rotação Top 6 | `0 */4 * * *` (24h) |
 | `/api/cron/run-scanner1-top8` | Scanner 1 Top 6 (rotação manual/backup) | opcional, 10–15 min após scan |
 
 **Obsoleto** (remover do cron-job.org): `run-1h`, `run-30m`, `run-afastamento-30m`, `run-rsi-15m`, `run-scans-ma`, `run-signals`.

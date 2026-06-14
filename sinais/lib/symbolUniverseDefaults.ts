@@ -2,7 +2,10 @@ import type { UniverseScanDefinition } from './universeScanner';
 
 export const UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 = 'UNIVERSE_ABOVE_MA200_1H' as const;
 
-export const UNIVERSE_CODE_SCANNER_2_TOP30_VOLUME_24H = 'UNIVERSE_TOP30_VOLUME_24H' as const;
+export const UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H = 'UNIVERSE_TOP30_PRICE_CHANGE_24H' as const;
+
+/** @deprecated Use UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H */
+export const UNIVERSE_CODE_SCANNER_2_TOP30_VOLUME_24H = UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H;
 
 /** Legado — afastamento / scanners antigos. */
 export const UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80 =
@@ -27,13 +30,13 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     minQuoteVolume: 500000,
     candidateLimit: 400,
   },
-  UNIVERSE_TOP30_VOLUME_24H: {
-    ruleType: 'TOP_VOLUME_24H',
+  UNIVERSE_TOP30_PRICE_CHANGE_24H: {
+    ruleType: 'TOP_PRICE_CHANGE_24H',
     maPeriod: 0,
     minDistancePct: null,
     maxDistancePct: null,
     timeframe: '24h',
-    minQuoteVolume: 0,
+    minQuoteVolume: 500000,
     candidateLimit: 30,
     resultLimit: 30,
   },
@@ -43,9 +46,14 @@ export function getBuiltinScanDefinition(code: string): UniverseScanDefinition |
   return BUILTIN_UNIVERSE_SCAN[code] ?? null;
 }
 
-export function isVolumeRankUniverseScan(code: string): boolean {
-  return BUILTIN_UNIVERSE_SCAN[code]?.ruleType === 'TOP_VOLUME_24H';
+/** Scanners com ranking fixo (ordem de inserção), não |pctFromMa|. */
+export function isTickerRankUniverseScan(code: string): boolean {
+  const rt = BUILTIN_UNIVERSE_SCAN[code]?.ruleType;
+  return rt === 'TOP_PRICE_CHANGE_24H' || rt === 'TOP_VOLUME_24H';
 }
+
+/** @deprecated Use isTickerRankUniverseScan */
+export const isVolumeRankUniverseScan = isTickerRankUniverseScan;
 
 export const BUILTIN_UNIVERSE_META: Record<
   string,
@@ -57,11 +65,11 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. MA Cross: top 20; Pivot Boss: top 10; Top 6: rotação ranks 1,2,5–8.',
     strategyNames: 'MA Cross 12×30 (15m), Pivot Boss Bear 15m, Scanner 1 Top 6',
   },
-  UNIVERSE_TOP30_VOLUME_24H: {
-    displayName: 'Scanner 2 — Top 30 volume 24h',
+  UNIVERSE_TOP30_PRICE_CHANGE_24H: {
+    displayName: 'Scanner 2 — Top 30 % preço 24h',
     description:
-      'Top 30 perpétuos USDT por turnover 24h (Binance Futures). Ranking fixo por volume — sem filtro de média móvel.',
-    strategyNames: '(referência de liquidez — sem estratégia ligada)',
+      'Top 30 perpétuos USDT com maior variação de preço nas últimas 24h (Binance Futures). Mín. 500k USDT volume 24h.',
+    strategyNames: '(referência — sem estratégia ligada)',
   },
 };
 
@@ -69,7 +77,7 @@ export const SCANNER_ROTATION_NOTES: Record<string, string> = {};
 
 export const SCANNER_UI_ROUTES = [
   { scannerId: '1', code: UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 },
-  { scannerId: '2', code: UNIVERSE_CODE_SCANNER_2_TOP30_VOLUME_24H },
+  { scannerId: '2', code: UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H },
 ] as const;
 
 export function getScannerByUiId(scannerId: string) {

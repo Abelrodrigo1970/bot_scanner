@@ -1,6 +1,6 @@
 import { prisma } from './db';
 import { scanSymbolUniverse } from './universeScanner';
-import { BUILTIN_UNIVERSE_SCAN, getBuiltinScanDefinition, isVolumeRankUniverseScan } from './symbolUniverseDefaults';
+import { BUILTIN_UNIVERSE_SCAN, getBuiltinScanDefinition, isTickerRankUniverseScan } from './symbolUniverseDefaults';
 import { filterToBybitMarketSymbols } from './marketData';
 
 const SCAN_HISTORY_KEEP = 100;
@@ -323,7 +323,7 @@ export async function getLatestUniverseScanPair(
     return { current: null, previous: null };
   }
 
-  const preserveRankOrder = isVolumeRankUniverseScan(universeCode);
+  const preserveRankOrder = isTickerRankUniverseScan(universeCode);
   const currentRows = preserveRankOrder
     ? toSnap(cur.rows)
     : toSnap(cur.rows).sort((a, b) => Math.abs(b.pctFromMa) - Math.abs(a.pctFromMa));
@@ -378,7 +378,7 @@ export async function getTopRankedUniverseScanRows(
     runId: pair.current.id,
     scannedAt: pair.current.scannedAt,
     rowCount: pair.current.rowCount,
-    rows: isVolumeRankUniverseScan(universeCode)
+    rows: isTickerRankUniverseScan(universeCode)
       ? ranked.slice(0, n)
       : [...ranked].sort((a, b) => Math.abs(b.pctFromMa) - Math.abs(a.pctFromMa)).slice(0, n),
   };
