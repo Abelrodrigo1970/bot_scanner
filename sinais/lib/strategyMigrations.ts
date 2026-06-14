@@ -428,6 +428,68 @@ export async function syncScanner1Top8Config(
   return { updated: false };
 }
 
+export const ACCUMULATION_BREAKOUT_15M_DISPLAY = 'Rompimento de Acumulação 15m';
+
+export const ACCUMULATION_BREAKOUT_15M_DESCRIPTION =
+  'Velas 15m, só COMPRA. Sinal quando o fecho da última vela rompe ACIMA do máximo das últimas 10 velas (rompimento de acumulação). Universo: Scanner 1 top 50 (|pct vs SMA200|). Confirma com vela de fecho positivo; SL -7% fixo; TP1 = risco × 1,5 (50% pos.); restante às 24h.';
+
+export const ACCUMULATION_BREAKOUT_15M_PARAMS = {
+  breakoutLookback: 10,
+  requireBullishClose: true,
+  volumeMultiplier: 1,
+  stopLossPct: 0.07,
+  rewardRisk1: 1.5,
+  tp1Position: 50,
+  closeAfterHours: 24,
+  universeTopN: 50,
+  allowBuy: true,
+  allowSell: false,
+  buyEnabled: true,
+  sellEnabled: false,
+  exchange: 'binance',
+} as const;
+
+/** Garante registo/descrição da estratégia Rompimento de Acumulação 15m. */
+export async function syncAccumulationBreakout15mConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'ACCUMULATION_BREAKOUT_15M' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  // Preserva ajustes do utilizador; só garante chaves em falta.
+  const next = { ...ACCUMULATION_BREAKOUT_15M_PARAMS, ...p };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== ACCUMULATION_BREAKOUT_15M_DISPLAY ||
+    row.description !== ACCUMULATION_BREAKOUT_15M_DESCRIPTION;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'ACCUMULATION_BREAKOUT_15M' },
+      data: {
+        displayName: ACCUMULATION_BREAKOUT_15M_DISPLAY,
+        description: ACCUMULATION_BREAKOUT_15M_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 export const SCANNER_MA80_TOP6_DISPLAY = 'Scanner 5 Top 6 (excl. ranks 2–3, rotação diária)';
 
 export const SCANNER_MA80_TOP6_DESCRIPTION =

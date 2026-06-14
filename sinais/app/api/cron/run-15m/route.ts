@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { run15mStrategiesPipeline } from '@/lib/cron15mStrategies';
 
 /**
- * Cron 15m: MA Cross 12×30 + Pivot Boss Bear 15m (velas 15m, Scanner 1).
+ * Cron 15m: MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento de Acumulação 15m
+ * (velas 15m, Scanner 1).
  */
 async function run15mInBackground(now: Date): Promise<void> {
-  console.log('[Run-15m BG] Iniciando MA Cross 12×30 + Pivot Boss Bear 15m...');
+  console.log('[Run-15m BG] Iniciando MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento Acumulação 15m...');
 
   try {
     const result = await run15mStrategiesPipeline(now);
     const ma = result.maCross;
     const pb = result.pivotBoss;
+    const bk = result.breakout;
     console.log(
       `[Run-15m BG] MA Cross -> ${ma.status}` +
         (typeof ma.signalsCreated === 'number' ? ` (${ma.signalsCreated} sinais)` : '')
@@ -18,6 +20,10 @@ async function run15mInBackground(now: Date): Promise<void> {
     console.log(
       `[Run-15m BG] Pivot Boss 15m -> ${pb.status}` +
         (typeof pb.signalsCreated === 'number' ? ` (${pb.signalsCreated} sinais)` : '')
+    );
+    console.log(
+      `[Run-15m BG] Rompimento Acumulação 15m -> ${bk.status}` +
+        (typeof bk.signalsCreated === 'number' ? ` (${bk.signalsCreated} sinais)` : '')
     );
   } catch (error) {
     console.error('[Run-15m BG] Falhou:', error);
@@ -43,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento MA Cross 12×30 + Pivot Boss Bear 15m iniciado em background',
+      message: 'Processamento MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento Acumulação 15m iniciado em background',
       executedAt: now.toISOString(),
     });
   } catch (error) {

@@ -219,39 +219,68 @@ export async function runMaCross15mPipeline(now: Date = new Date()): Promise<Cro
 export interface Cron15mAllResult {
   maCross: Cron15mResult;
   pivotBoss: Cron15mResult;
+  breakout: Cron15mResult;
 }
 
-/**
- * Cron único 15m: MA Cross 12×30 + Pivot Boss Bear 15m (velas 15m, Scanner 1).
- */
-export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
-  const maCross = await runMaCross15mPipeline(now);
-
+async function runPivotBoss15mPipeline(now: Date): Promise<Cron15mResult> {
   const pivotStrategy = await prisma.strategy.findFirst({ where: { name: 'PIVOT_BOSS_BEAR_15M' } });
   if (!pivotStrategy) {
     console.warn('[Pivot Boss 15m] Estratégia PIVOT_BOSS_BEAR_15M não encontrada (correr o seed).');
-    return { maCross, pivotBoss: { status: 'not-found' } };
+    return { status: 'not-found' };
   }
   if (!pivotStrategy.isActive) {
     console.log('[Pivot Boss 15m] Estratégia inactiva — saltada.');
-    return { maCross, pivotBoss: { status: 'inactive' } };
+    return { status: 'inactive' };
   }
   if (isPivotBossBear15mWeekendBlocked(now)) {
     console.log('[Pivot Boss 15m] Fim-de-semana (PT) — saltada.');
-    return { maCross, pivotBoss: { status: 'skipped-weekend' } };
+    return { status: 'skipped-weekend' };
   }
   if (isPivotBossBear15mHourBlocked(now)) {
     const h = now.toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hour12: false });
     console.log(`[Pivot Boss 15m] Horário ${h}h PT bloqueado — saltada.`);
-    return { maCross, pivotBoss: { status: 'skipped-hour' } };
+    return { status: 'skipped-hour' };
   }
 
   try {
     const signalsCreated = await runAllStrategies({ only: ['PIVOT_BOSS_BEAR_15M'] });
-    return { maCross, pivotBoss: { status: 'done', signalsCreated } };
+    return { status: 'done', signalsCreated };
   } catch (error) {
     console.error('[Pivot Boss 15m] Falhou:', error);
-    return { maCross, pivotBoss: { status: 'not-found' } };
+    return { status: 'not-found' };
   }
+}
+
+async function runBreakout15mPipeline(): Promise<Cron15mResult> {
+  const strategy = await prisma.strategy.findFirst({
+    where: { name: 'ACCUMULATION_BREAKOUT_15M' },
+  });
+  if (!strategy) {
+    console.warn('[Rompimento 15m] Estratégia ACCUMULATION_BREAKOUT_15M não encontrada (correr o seed).');
+    return { status: 'not-found' };
+  }
+  if (!strategy.isActive) {
+    console.log('[Rompimento 15m] Estratégia inactiva — saltada.');
+    return { status: 'inactive' };
+  }
+
+  try {
+    const signalsCreated = await runAllStrategies({ only: ['ACCUMULATION_BREAKOUT_15M'] });
+    return { status: 'done', signalsCreated };
+  } catch (error) {
+    console.error('[Rompimento 15m] Falhou:', error);
+    return { status: 'not-found' };
+  }
+}
+
+/**
+ * Cron único 15m: MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento de Acumulação 15m
+ * (velas 15m, Scanner 1).
+ */
+export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
+  const maCross = await runMaCross15mPipeline(now);
+  const pivotBoss = await runPivotBoss15mPipeline(now);
+  const breakout = await runBreakout15mPipeline();
+  return { maCross, pivotBoss, breakout };
 }
 

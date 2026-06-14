@@ -89,6 +89,10 @@ export const DATA_SOURCE_MENU_ITEMS = [
     href: '/scanners/2',
     label: 'Scanner 2 — Top 30 % preço 24h',
   },
+  {
+    href: '/scanners/3',
+    label: 'Scanner 3 — RSI > 75 (15m)',
+  },
 ] as const;
 
 

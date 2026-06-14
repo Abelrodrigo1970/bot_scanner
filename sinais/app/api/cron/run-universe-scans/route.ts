@@ -5,7 +5,8 @@ import { persistUniverseScan } from '@/lib/universeScanPersistence';
 import { runScanner1Top8Pipeline } from '@/lib/scanner1Top8Strategy';
 
 /**
- * Scanner 1 + Scanner 2 (top 30 % preço 24h) + rotação Scanner 1 Top 6. Agendar de 4 em 4 horas.
+ * Scanner 1 + Scanner 2 (top 30 % preço 24h) + Scanner 3 (RSI > 75, 15m)
+ * + rotação Scanner 1 Top 6. Agendar de 4 em 4 horas.
  */
 let universeScansJobPromise: Promise<void> | null = null;
 let universeScansJobStartedAt: string | null = null;
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scanners 1 e 2 + rotação Top 6 iniciados em background. Verifique os logs no Railway para conclusão.',
+          'Scanners 1, 2 e 3 + rotação Top 6 iniciados em background. Verifique os logs no Railway para conclusão.',
         startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN),
       },

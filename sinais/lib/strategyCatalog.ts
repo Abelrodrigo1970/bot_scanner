@@ -14,6 +14,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'PIVOT_BOSS_BEAR_15M',
 
+  'ACCUMULATION_BREAKOUT_15M',
+
 ] as const;
 
 
@@ -73,6 +75,18 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '15m',
 
     universe: 'Scanner 1 top 10 (acima SMA200, 1h)',
+
+  },
+
+  ACCUMULATION_BREAKOUT_15M: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m',
+
+    timeframe: '15m',
+
+    universe: 'Scanner 1 top 50 (acima SMA200, 1h)',
 
   },
 

@@ -34,7 +34,11 @@ export default function UniverseScannerPage() {
   const meta = code ? BUILTIN_UNIVERSE_META[code] : null;
   const scanDef = code ? getBuiltinScanDefinition(code) : null;
   const isPriceRankScanner = scanDef?.ruleType === 'TOP_PRICE_CHANGE_24H';
-  const isTickerRankScanner = isPriceRankScanner || scanDef?.ruleType === 'TOP_VOLUME_24H';
+  const isRsiRankScanner = scanDef?.ruleType === 'RSI_ABOVE';
+  const isTickerRankScanner =
+    isPriceRankScanner || isRsiRankScanner || scanDef?.ruleType === 'TOP_VOLUME_24H';
+  const rsiThresholdLabel = scanDef?.rsiThreshold ?? 75;
+  const rsiPeriodLabel = scanDef?.rsiPeriod ?? 14;
   const maLabel =
     scanDef?.maType === 'EMA'
       ? `EMA${scanDef.maPeriod}`
@@ -137,7 +141,7 @@ export default function UniverseScannerPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header />
         <main className="max-w-7xl mx-auto px-4 py-12 text-center text-red-600 dark:text-red-400">
-          Scanner não encontrado. Use /scanners/1 ou /scanners/2.
+          Scanner não encontrado. Use {VALID_SCANNER_PATHS}.
         </main>
       </div>
     );
@@ -171,7 +175,15 @@ export default function UniverseScannerPage() {
             Regra do scan
           </h2>
           <ul className="text-xs text-violet-700 dark:text-violet-400 space-y-1 list-disc list-inside">
-            {isPriceRankScanner ? (
+            {isRsiRankScanner ? (
+              <>
+                <li>
+                  Perpétuos USDT com <strong>RSI({rsiPeriodLabel}) &gt; {rsiThresholdLabel}</strong> em velas de{' '}
+                  <strong>{timeframeLabel}</strong> (maior RSI primeiro)
+                </li>
+                <li>Top 400 por volume 24h (mín. 500k USDT) — Binance Futures, RSI da última vela fechada</li>
+              </>
+            ) : isPriceRankScanner ? (
               <>
                 <li>Top 30 perpétuos USDT por <strong>variação de preço 24h</strong> (maior % primeiro)</li>
                 <li>Mín. 500k USDT volume 24h — Binance Futures (ticker/24hr)</li>
@@ -245,7 +257,7 @@ export default function UniverseScannerPage() {
                       Fecho
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      {isTickerRankScanner ? 'Vol. 24h' : maLabel}
+                      {isRsiRankScanner ? `RSI ${timeframeLabel}` : isTickerRankScanner ? 'Vol. 24h' : maLabel}
                     </th>
                     {!isTickerRankScanner ? (
                       <th
@@ -256,7 +268,7 @@ export default function UniverseScannerPage() {
                       </th>
                     ) : null}
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      {isTickerRankScanner ? '% 24h' : 'Afast. agora'}
+                      {isRsiRankScanner ? 'Δ RSI' : isTickerRankScanner ? '% 24h' : 'Afast. agora'}
                     </th>
                     <th
                       className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
@@ -289,8 +301,12 @@ export default function UniverseScannerPage() {
                       <td className="px-6 py-4 text-right text-sm text-gray-900 dark:text-white">
                         ${formatPrice(item.close)}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
-                        {isTickerRankScanner ? formatVolume(item.ma) : `$${formatPrice(item.ma)}`}
+                      <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900 dark:text-white">
+                        {isRsiRankScanner
+                          ? item.ma.toFixed(1)
+                          : isTickerRankScanner
+                            ? formatVolume(item.ma)
+                            : `$${formatPrice(item.ma)}`}
                       </td>
                       {!isTickerRankScanner ? (
                         <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
@@ -305,16 +321,33 @@ export default function UniverseScannerPage() {
                         </td>
                       ) : null}
                       <td className="px-6 py-4 text-right text-sm font-semibold">
-                        <span
-                          className={
-                            item.pctFromMa >= 0
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-red-600 dark:text-red-400'
-                          }
-                        >
-                          {item.pctFromMa >= 0 ? '+' : ''}
-                          {item.pctFromMa.toFixed(2)}%
-                        </span>
+                        {isRsiRankScanner ? (
+                          item.isNewInUniverse || item.pctFromMaDelta === null ? (
+                            <span className="text-gray-400">—</span>
+                          ) : (
+                            <span
+                              className={
+                                item.pctFromMaDelta >= 0
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : 'text-red-600 dark:text-red-400'
+                              }
+                            >
+                              {item.pctFromMaDelta >= 0 ? '+' : ''}
+                              {item.pctFromMaDelta.toFixed(1)} pts
+                            </span>
+                          )
+                        ) : (
+                          <span
+                            className={
+                              item.pctFromMa >= 0
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-red-600 dark:text-red-400'
+                            }
+                          >
+                            {item.pctFromMa >= 0 ? '+' : ''}
+                            {item.pctFromMa.toFixed(2)}%
+                          </span>
+                        )}
                       </td>
                       {!isTickerRankScanner ? (
                         <>
