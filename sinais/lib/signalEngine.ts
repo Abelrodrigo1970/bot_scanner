@@ -1866,7 +1866,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
       } else if (strategy.name === 'PIVOT_BOSS_BEAR_15M') {
         const topN = Math.max(
           1,
-          Math.floor(Number(params.universeTopN ?? 10))
+          Math.floor(Number(params.universeTopN ?? 30))
         );
         console.log(
           `🔍 ${strategy.name}: Scanner 1 top ${topN} (|pct vs SMA200|); sinais em 15m...`
