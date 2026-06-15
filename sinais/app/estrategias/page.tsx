@@ -477,8 +477,8 @@ export default function EstrategiasPage() {
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Velas <strong>15m</strong>; só <strong>COMPRA</strong>. Sinal quando o <strong>fecho</strong> da última
               vela rompe acima do <strong>máximo das últimas {p.breakoutLookback ?? 10} velas</strong> (rompimento de
-              acumulação). Universo = <strong>Scanner 1 top {p.universeTopN ?? 50}</strong> (acima SMA200, 1h).
-              SL -{((p.stopLossPct ?? 0.07) * 100).toFixed(0)}% fixo; TP1 = risco × {p.rewardRisk1 ?? 1.5}.
+              acumulação). Universo = <strong>Scanner 1 ranks {p.minScannerRank ?? 11}–{p.maxScannerRank ?? 40}</strong>{' '}
+              (exclui top 10). Força máx. <strong>{p.maxStrength ?? 75}</strong>. SL -{((p.stopLossPct ?? 0.07) * 100).toFixed(0)}% fixo; TP1 = risco × {p.rewardRisk1 ?? 1.5}.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Velas de acumulação (lookback)', p.breakoutLookback ?? 10, (v) => upd({ breakoutLookback: v }))}
@@ -487,7 +487,9 @@ export default function EstrategiasPage() {
               {numField('Risk-reward TP1', p.rewardRisk1 ?? 1.5, (v) => upd({ rewardRisk1: v }), 0.1)}
               {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
               {numField('Horas até fechar restante', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
-              {numField('Símbolos (Scanner 1 top N)', p.universeTopN ?? 50, (v) => upd({ universeTopN: v }))}
+              {numField('Rank mín. Scanner 1', p.minScannerRank ?? 11, (v) => upd({ minScannerRank: v }))}
+              {numField('Rank máx. Scanner 1', p.maxScannerRank ?? 40, (v) => upd({ maxScannerRank: v }))}
+              {numField('Força máxima do sinal', p.maxStrength ?? 75, (v) => upd({ maxStrength: v }))}
             </div>
             <label className="flex items-center gap-2 max-w-md text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
               <input

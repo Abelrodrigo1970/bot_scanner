@@ -431,7 +431,7 @@ export async function syncScanner1Top8Config(
 export const ACCUMULATION_BREAKOUT_15M_DISPLAY = 'Rompimento de Acumulação 15m';
 
 export const ACCUMULATION_BREAKOUT_15M_DESCRIPTION =
-  'Velas 15m, só COMPRA. Sinal quando o fecho da última vela rompe ACIMA do máximo das últimas 10 velas (rompimento de acumulação). Universo: Scanner 1 top 50 (|pct vs SMA200|). Confirma com vela de fecho positivo; SL -7% fixo; TP1 = risco × 1,5 (50% pos.); restante às 24h.';
+  'Velas 15m, só COMPRA. Rompimento: fecho > máximo das últimas 10 velas. Universo: Scanner 1 ranks 11–40 (|pct vs SMA200|), exclui top 10. Força máx. 75. SL -7% fixo; TP1 risco × 1,5 (50% pos.); restante às 24h.';
 
 export const ACCUMULATION_BREAKOUT_15M_PARAMS = {
   breakoutLookback: 10,
@@ -441,7 +441,10 @@ export const ACCUMULATION_BREAKOUT_15M_PARAMS = {
   rewardRisk1: 1.5,
   tp1Position: 50,
   closeAfterHours: 24,
-  universeTopN: 50,
+  universeTopN: 40,
+  minScannerRank: 11,
+  maxScannerRank: 40,
+  maxStrength: 75,
   allowBuy: true,
   allowSell: false,
   buyEnabled: true,
@@ -468,8 +471,14 @@ export async function syncAccumulationBreakout15mConfig(
     p = {};
   }
 
-  // Preserva ajustes do utilizador; só garante chaves em falta.
-  const next = { ...ACCUMULATION_BREAKOUT_15M_PARAMS, ...p };
+  // Preserva ajustes do utilizador; garante filtros de rank/força actualizados.
+  const next = {
+    ...ACCUMULATION_BREAKOUT_15M_PARAMS,
+    ...p,
+    minScannerRank: ACCUMULATION_BREAKOUT_15M_PARAMS.minScannerRank,
+    maxScannerRank: ACCUMULATION_BREAKOUT_15M_PARAMS.maxScannerRank,
+    maxStrength: ACCUMULATION_BREAKOUT_15M_PARAMS.maxStrength,
+  };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== ACCUMULATION_BREAKOUT_15M_DISPLAY ||

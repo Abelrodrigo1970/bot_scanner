@@ -357,6 +357,49 @@ export type TopRankedUniverseScanResult =
   | { ok: false; reason: string };
 
 /** Top N símbolos do último scan (|pctFromMa| desc, ou ordem de rank para volume 24h). */
+export async function resolveUniverseScanSymbolsRankRange(
+  universeCode: string,
+  minRank: number,
+  maxRank: number
+): Promise<string[]> {
+  const min = Math.max(1, Math.floor(minRank));
+  const max = Math.max(min, Math.floor(maxRank));
+  let ranked = await getTopRankedUniverseScanRows(universeCode, max);
+  if (!ranked.ok) {
+    await resolveUniverseScanSymbols(universeCode);
+    ranked = await getTopRankedUniverseScanRows(universeCode, max);
+  }
+  if (!ranked.ok) {
+    console.warn(`[resolveUniverseScanSymbolsRankRange] ${universeCode}: ${ranked.reason}`);
+    return [];
+  }
+  const sorted = [...ranked.rows].sort(
+    (a, b) => Math.abs(b.pctFromMa) - Math.abs(a.pctFromMa)
+  );
+  return filterToBybitMarketSymbols(sorted.slice(min - 1, max).map((r) => r.symbol));
+}
+
+/** Mapa símbolo → rank Scanner (|pctFromMa| desc) para os top `maxRank` do último scan. */
+export async function getUniverseScanRankMap(
+  universeCode: string,
+  maxRank: number
+): Promise<Map<string, number>> {
+  const max = Math.max(1, Math.floor(maxRank));
+  let ranked = await getTopRankedUniverseScanRows(universeCode, max);
+  if (!ranked.ok) {
+    await resolveUniverseScanSymbols(universeCode);
+    ranked = await getTopRankedUniverseScanRows(universeCode, max);
+  }
+  const map = new Map<string, number>();
+  if (!ranked.ok) return map;
+  const sorted = [...ranked.rows].sort(
+    (a, b) => Math.abs(b.pctFromMa) - Math.abs(a.pctFromMa)
+  );
+  sorted.forEach((r, i) => map.set(r.symbol, i + 1));
+  return map;
+}
+
+/** Top N símbolos do último scan (|pctFromMa| desc, ou ordem de rank para volume 24h). */
 export async function getTopRankedUniverseScanRows(
   universeCode: string,
   topN: number

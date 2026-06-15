@@ -15,6 +15,8 @@ import {
   ensureAllBuiltinUniverseScans,
   resolveUniverseScanSymbols,
   resolveUniverseScanSymbolsTopN,
+  resolveUniverseScanSymbolsRankRange,
+  getUniverseScanRankMap,
 } from './universeScanPersistence';
 import {
   UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80,
@@ -1229,10 +1231,10 @@ export async function runAccumulationBreakout15mStrategy(
     const target1 = entryPrice + risk * rewardRisk1;
 
     const breakoutMarginPct = ((entryPrice - rangeHigh) / rangeHigh) * 100;
-    const strength = Math.min(
-      95,
-      Math.max(60, Math.round(60 + Math.min(25, breakoutMarginPct * 8)))
-    );
+    const maxStrength = Math.max(60, Math.floor(Number(params.maxStrength ?? 75)));
+    const rawStrength = Math.max(60, Math.round(60 + Math.min(25, breakoutMarginPct * 8)));
+    if (rawStrength > maxStrength) return null;
+    const strength = rawStrength;
 
     return {
       direction: 'BUY',
@@ -1248,6 +1250,7 @@ export async function runAccumulationBreakout15mStrategy(
         rangeHigh,
         rangeLow,
         breakoutMarginPct: Number(breakoutMarginPct.toFixed(3)),
+        maxStrength,
         stopLossPct,
         rewardRisk1,
         tp1Position,
@@ -1846,6 +1849,8 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           : timeframes;
 
       let symbolsToAnalyze: string[] = [];
+      let accumulationRankBySymbol: Map<string, number> | null = null;
+
       if (strategy.name === 'EMA_SCALPING') {
         console.log(`🔍 ${strategy.name}: universo Scanner 4 (acima SMA200, 1d); sinais em 15m...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D);
@@ -1917,16 +1922,25 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'ACCUMULATION_BREAKOUT_15M') {
-        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 50)));
-        console.log(`🔍 ${strategy.name}: Scanner 1 top ${topN} (|pct vs SMA200|); sinais em 15m...`);
-        symbolsToAnalyze = await resolveUniverseScanSymbolsTopN(
-          UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
-          topN
+        const minRank = Math.max(1, Math.floor(Number(params.minScannerRank ?? 11)));
+        const maxRank = Math.max(minRank, Math.floor(Number(params.maxScannerRank ?? 40)));
+        const maxStrength = Math.max(60, Math.floor(Number(params.maxStrength ?? 75)));
+        console.log(
+          `🔍 ${strategy.name}: Scanner 1 ranks ${minRank}–${maxRank} (|pct vs SMA200|); força máx. ${maxStrength}; sinais em 15m...`
         );
-        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1 top ${topN})`);
+        symbolsToAnalyze = await resolveUniverseScanSymbolsRankRange(
+          UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
+          minRank,
+          maxRank
+        );
+        accumulationRankBySymbol = await getUniverseScanRankMap(
+          UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
+          maxRank
+        );
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1 ranks ${minRank}–${maxRank})`);
         if (symbolsToAnalyze.length === 0) {
           console.warn(
-            `⚠️ Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
+            `⚠️ Scanner 1 ranks ${minRank}–${maxRank} vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
           );
           continue;
         }
@@ -2102,6 +2116,22 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
               }
 
               if (canCreate) {
+                let extraInfo = signalResult.extraInfo;
+                if (
+                  strategy.name === 'ACCUMULATION_BREAKOUT_15M' &&
+                  accumulationRankBySymbol?.has(symbol)
+                ) {
+                  try {
+                    const parsed = JSON.parse(signalResult.extraInfo || '{}');
+                    extraInfo = JSON.stringify({
+                      ...parsed,
+                      scannerRank: accumulationRankBySymbol.get(symbol),
+                    });
+                  } catch {
+                    extraInfo = signalResult.extraInfo;
+                  }
+                }
+
                 await prisma.signal.create({
                   data: {
                     symbol,
@@ -2116,7 +2146,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                     target3: signalResult.target3,
                     strength: signalResult.strength,
                     status: 'NEW',
-                    extraInfo: signalResult.extraInfo,
+                    extraInfo,
                   },
                 });
                 signalsCreated++;
