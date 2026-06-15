@@ -496,6 +496,16 @@ type UsdtPerpTicker24hr = {
   volume?: string;
 };
 
+/**
+ * Bybit `price24hPcnt` é ratio decimal (ex. 1.3102 = +131,02%).
+ * Binance `priceChangePercent` já está em % (ex. 131.02).
+ */
+function bybitPrice24hPcntToPercent(pcnt: string | number | undefined): number {
+  const raw = parseFloat(String(pcnt ?? '0'));
+  if (!Number.isFinite(raw)) return 0;
+  return raw * 100;
+}
+
 async function fetchBybitLinearTickers24hr(): Promise<UsdtPerpTicker24hr[]> {
   const bodyText = await fetchBybitMarketText('/v5/market/tickers?category=linear');
   const parsed = JSON.parse(bodyText) as {
@@ -514,7 +524,7 @@ async function fetchBybitLinearTickers24hr(): Promise<UsdtPerpTicker24hr[]> {
     .map((t) => ({
       symbol: t.symbol!,
       quoteVolume: t.turnover24h || t.volume24h || '0',
-      priceChangePercent: t.price24hPcnt || '0',
+      priceChangePercent: String(bybitPrice24hPcntToPercent(t.price24hPcnt)),
       lastPrice: t.lastPrice || '0',
       volume: t.volume24h || '0',
     }));
@@ -1267,15 +1277,13 @@ export type TopVolume24hTickerRow = {
   priceChangePercent: number;
 };
 
-/** Top N perpétuos USDT por quoteVolume 24h (Binance Futures ticker/24hr). */
+/** Top N perpétuos USDT por quoteVolume 24h (Bybit ou Binance ticker/24hr). */
 export async function fetchTopVolume24hTickers(
   limit: number = 30,
   minQuoteVolume: number = 0
 ): Promise<TopVolume24hTickerRow[]> {
   try {
-    const data = await fetchBinanceFapiJson<
-      Array<{ symbol: string; quoteVolume: string; lastPrice: string; priceChangePercent: string }>
-    >('/fapi/v1/ticker/24hr');
+    const data = await fetchUsdtPerpTickers24hr();
 
     const usdtPairs = data
       .filter((ticker) => {
@@ -1301,15 +1309,13 @@ export async function fetchTopVolume24hTickers(
   }
 }
 
-/** Top N perpétuos USDT por variação de preço 24h (Binance Futures ticker/24hr). */
+/** Top N perpétuos USDT por variação de preço 24h (Bybit ou Binance ticker/24hr). */
 export async function fetchTopPriceChange24hTickers(
   limit: number = 30,
   minQuoteVolume: number = 0
 ): Promise<TopVolume24hTickerRow[]> {
   try {
-    const data = await fetchBinanceFapiJson<
-      Array<{ symbol: string; quoteVolume: string; lastPrice: string; priceChangePercent: string }>
-    >('/fapi/v1/ticker/24hr');
+    const data = await fetchUsdtPerpTickers24hr();
 
     const usdtPairs = data
       .filter((ticker) => {
@@ -1348,9 +1354,7 @@ export async function fetchTopSymbolsBy24hPriceChange(
   minQuoteVolume: number = 0
 ): Promise<string[]> {
   try {
-    const data = await fetchBinanceFapiJson<
-      Array<{ symbol: string; quoteVolume: string; priceChangePercent: string }>
-    >('/fapi/v1/ticker/24hr');
+    const data = await fetchUsdtPerpTickers24hr();
 
     const usdtPairs = data
       .filter((ticker) => {
