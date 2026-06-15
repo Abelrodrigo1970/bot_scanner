@@ -5,7 +5,7 @@ import { persistUniverseScan } from '@/lib/universeScanPersistence';
 import { runScanner1Top8Pipeline } from '@/lib/scanner1Top8Strategy';
 
 /**
- * Scanner 1 + Scanner 2 (top 30 % preço 24h) + Scanner 3 (RSI > 75, 15m)
+ * Scanner 1 + Scanner 2 (top 30 subidas 24h) + Scanner 3 (RSI > 75, 15m)
  * + rotação Scanner 1 Top 6. Agendar de 4 em 4 horas.
  */
 let universeScansJobPromise: Promise<void> | null = null;

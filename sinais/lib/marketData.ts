@@ -1313,10 +1313,12 @@ export async function fetchTopPriceChange24hTickers(
 
     const usdtPairs = data
       .filter((ticker) => {
+        const pct = parseFloat(ticker.priceChangePercent || '0');
         return (
           ticker.symbol.endsWith('USDT') &&
           !ticker.symbol.includes('BUSD') &&
-          parseFloat(ticker.quoteVolume) >= minQuoteVolume
+          parseFloat(ticker.quoteVolume) >= minQuoteVolume &&
+          pct > 0
         );
       })
       .map((ticker) => ({

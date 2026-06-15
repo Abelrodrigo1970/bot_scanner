@@ -88,9 +88,9 @@ export const BUILTIN_UNIVERSE_META: Record<
     strategyNames: 'MA Cross 12×30 (15m), Pivot Boss Bear 15m, Scanner 1 Top 6',
   },
   UNIVERSE_TOP30_PRICE_CHANGE_24H: {
-    displayName: 'Scanner 2 — Top 30 % preço 24h',
+    displayName: 'Scanner 2 — Top 30 subidas 24h',
     description:
-      'Top 30 perpétuos USDT com maior variação de preço nas últimas 24h (Binance Futures). Mín. 500k USDT volume 24h.',
+      'Top 30 perpétuos USDT com maior subida de preço nas últimas 24h (apenas variação positiva). Mín. 500k USDT volume 24h.',
     strategyNames: '(referência — sem estratégia ligada)',
   },
   UNIVERSE_RSI_ABOVE_75_15M: {
