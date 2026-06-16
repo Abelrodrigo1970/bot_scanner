@@ -25,8 +25,8 @@ export const SCANNER_2_MIN_DISTANCE_PCT = -5;
 export const SCANNER_2_MAX_DISTANCE_PCT = 15;
 export const SCANNER_2_EMA80_BAND_LABEL = '-5% a +15% da EMA80 (1h)';
 
-/** Scanners 1 e 2 — actualizados juntos em run-universe-scans (4 h). */
-export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
+/** Scanners 1 e 2 — actualizados em run-universe-scans (4 h). */
+export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = {
   UNIVERSE_ABOVE_MA200_1H: {
     ruleType: 'ABOVE_MA',
     maPeriod: 200,
@@ -46,6 +46,10 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     candidateLimit: 30,
     resultLimit: 30,
   },
+};
+
+/** Scanner 3 — RSI > 75 (15m); actualizado em run-15m (cada 15 min). */
+export const BUILTIN_UNIVERSE_SCAN_15M: Record<string, UniverseScanDefinition> = {
   UNIVERSE_RSI_ABOVE_75_15M: {
     ruleType: 'RSI_ABOVE',
     maPeriod: 0,
@@ -57,6 +61,12 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
     rsiPeriod: SCANNER_3_RSI_PERIOD,
     rsiThreshold: SCANNER_3_RSI_THRESHOLD,
   },
+};
+
+/** Todos os scanners builtin (UI, ensure, definições). */
+export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
+  ...BUILTIN_UNIVERSE_SCAN_4H,
+  ...BUILTIN_UNIVERSE_SCAN_15M,
 };
 
 export function getBuiltinScanDefinition(code: string): UniverseScanDefinition | null {
@@ -96,7 +106,7 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_RSI_ABOVE_75_15M: {
     displayName: 'Scanner 3 — RSI > 75 (15m)',
     description:
-      'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 15m, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h.',
+      'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 15m, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h. Actualização a cada 15 min (cron run-15m).',
     strategyNames: '(referência — sem estratégia ligada)',
   },
 };

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BUILTIN_UNIVERSE_SCAN } from '@/lib/symbolUniverseDefaults';
+import { BUILTIN_UNIVERSE_SCAN_4H } from '@/lib/symbolUniverseDefaults';
 import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
 import { runScanner1Top8Pipeline, runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
 
 /**
- * Scanner 1 + Scanner 2 (top 30 subidas 24h) + Scanner 3 (RSI > 75, 15m)
- * + rotação Scanner 1 Top 6. Agendar de 4 em 4 horas.
+ * Scanner 1 + Scanner 2 (top 30 subidas 24h)
+ * + rotação Scanner 1 Top 6 + Scanner 2 Top 8. Agendar de 4 em 4 horas.
+ * (Scanner 3 RSI 15m corre em run-15m.)
  */
 let universeScansJobPromise: Promise<void> | null = null;
 let universeScansJobStartedAt: string | null = null;
@@ -20,7 +21,7 @@ type ScanJobResult = {
 async function runUniverseScansJob(): Promise<ScanJobResult[]> {
   const results: ScanJobResult[] = [];
 
-  for (const [code, def] of Object.entries(BUILTIN_UNIVERSE_SCAN)) {
+  for (const [code, def] of Object.entries(BUILTIN_UNIVERSE_SCAN_4H)) {
     console.log(`[Universe-Scans] A executar ${code}...`);
     const rows = await scanSymbolUniverse(def);
     const persist = await persistUniverseScan({
@@ -101,9 +102,9 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scanners 1, 2 e 3 + rotações Top 6 (Scanner 1) e Top 8 (Scanner 2) iniciados em background. Verifique os logs no Railway para conclusão.',
+          'Scanners 1 e 2 + rotações Top 6 (Scanner 1) e Top 8 (Scanner 2) iniciados em background. Scanner 3 corre em run-15m.',
         startedAt,
-        scanners: Object.keys(BUILTIN_UNIVERSE_SCAN),
+        scanners: Object.keys(BUILTIN_UNIVERSE_SCAN_4H),
       },
       { status: 202 }
     );

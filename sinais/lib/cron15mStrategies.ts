@@ -23,6 +23,7 @@ import {
   inspectActivePositionForSymbol,
 } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
+import { runScanner3Rsi15mScan, type Scanner3ScanResult } from '@/lib/scanner3UniverseScan';
 
 const TIMEFRAME_15M = '15m' as const;
 const MA_CROSS_5M_MIN_STRENGTH = 70;
@@ -220,6 +221,7 @@ export interface Cron15mAllResult {
   maCross: Cron15mResult;
   pivotBoss: Cron15mResult;
   breakout: Cron15mResult;
+  scanner3: Scanner3ScanResult;
 }
 
 async function runPivotBoss15mPipeline(now: Date): Promise<Cron15mResult> {
@@ -274,13 +276,13 @@ async function runBreakout15mPipeline(): Promise<Cron15mResult> {
 }
 
 /**
- * Cron único 15m: MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento de Acumulação 15m
- * (velas 15m, Scanner 1).
+ * Cron único 15m: Scanner 3 RSI + MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento 15m.
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
+  const scanner3 = await runScanner3Rsi15mScan('cron/run-15m');
   const maCross = await runMaCross15mPipeline(now);
   const pivotBoss = await runPivotBoss15mPipeline(now);
   const breakout = await runBreakout15mPipeline();
-  return { maCross, pivotBoss, breakout };
+  return { maCross, pivotBoss, breakout, scanner3 };
 }
 

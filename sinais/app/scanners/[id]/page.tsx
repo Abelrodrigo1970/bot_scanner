@@ -216,9 +216,18 @@ export default function UniverseScannerPage() {
               Estratégia: <strong>{meta.strategyNames}</strong>
             </li>
             <li>
-              Actualização automática: cron{' '}
-              <code className="text-[10px]">/api/cron/run-universe-scans</code> de{' '}
-              <strong>4 em 4 horas</strong> (não faz parte do run-1h horário)
+              Actualização automática:{' '}
+              {isRsiRankScanner ? (
+                <>
+                  cron <code className="text-[10px]">/api/cron/run-15m</code> de{' '}
+                  <strong>15 em 15 minutos</strong>
+                </>
+              ) : (
+                <>
+                  cron <code className="text-[10px]">/api/cron/run-universe-scans</code> de{' '}
+                  <strong>4 em 4 horas</strong>
+                </>
+              )}
             </li>
             {SCANNER_ROTATION_NOTES[scannerId] ? (
               <li>

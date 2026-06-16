@@ -2,14 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { run15mStrategiesPipeline } from '@/lib/cron15mStrategies';
 
 /**
- * Cron 15m: MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento de Acumulação 15m
- * (velas 15m, Scanner 1).
+ * Cron 15m: Scanner 3 RSI + MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento de Acumulação 15m.
  */
 async function run15mInBackground(now: Date): Promise<void> {
-  console.log('[Run-15m BG] Iniciando MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento Acumulação 15m...');
+  console.log('[Run-15m BG] Iniciando Scanner 3 RSI + MA Cross + Pivot Boss + Rompimento...');
 
   try {
     const result = await run15mStrategiesPipeline(now);
+    const s3 = result.scanner3;
+    console.log(
+      `[Run-15m BG] Scanner 3 RSI -> ${s3.status}` +
+        (s3.status === 'done' ? ` (${s3.rowCount} símbolos)` : s3.status === 'failed' ? ` (${s3.reason})` : '')
+    );
     const ma = result.maCross;
     const pb = result.pivotBoss;
     const bk = result.breakout;
@@ -49,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Processamento MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento Acumulação 15m iniciado em background',
+      message: 'Scanner 3 RSI + MA Cross + Pivot Boss + Rompimento iniciado em background',
       executedAt: now.toISOString(),
     });
   } catch (error) {
