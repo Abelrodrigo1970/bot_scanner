@@ -380,15 +380,16 @@ export const SCANNER1_TOP8_PARAMS = {
   exchange: 'bybit',
 } as const;
 
-export const SCANNER1_TOP5_DISPLAY = 'Scanner 1 Top 8 (rotação 4h)';
+export const SCANNER1_TOP5_DISPLAY = 'Scanner 2 Top 8 (rotação 4h)';
 
 export const SCANNER1_TOP5_DESCRIPTION =
-  'Portefólio rotativo: a cada scan do Scanner 1 (4 h), fecha tudo e recompra as 8 primeiras posições (ranks 1–8, sem exclusões). SL -5% (Bybit).';
+  'Portefólio rotativo: a cada scan do Scanner 2 (top 30 subidas 24h, 4 h), fecha tudo e recompra as 8 primeiras posições (ranks 1–8). SL -5% (Bybit).';
 
 export const SCANNER1_TOP5_PARAMS = {
   topN: 8,
   scanTopN: 8,
   excludeRanks: [] as number[],
+  universeCode: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
   stopLossPct: 0.05,
   closeAfterHours: 4,
   rotationMode: 'full',
@@ -473,6 +474,7 @@ export async function syncScanner1Top5Config(
     topN: SCANNER1_TOP5_PARAMS.topN,
     scanTopN: SCANNER1_TOP5_PARAMS.scanTopN,
     excludeRanks: SCANNER1_TOP5_PARAMS.excludeRanks,
+    universeCode: SCANNER1_TOP5_PARAMS.universeCode,
     rotationMode: 'full' as const,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);

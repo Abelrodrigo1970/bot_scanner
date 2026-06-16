@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
 
 /**
- * Rotação Scanner 1 Top 8 — fecha tudo e recompra ranks 1–8 após cada scan, SL -5%.
+ * Rotação Scanner 2 Top 8 — fecha tudo e recompra ranks 1–8 do Scanner 2 após cada scan, SL -5%.
  * Agendar 10–15 min após run-universe-scans ou invocar manualmente (?force=1 para repetir o mesmo scan).
  */
 async function runInBackground(force: boolean): Promise<void> {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Scanner 1 Top 8 iniciado em background',
+      message: 'Scanner 2 Top 8 iniciado em background',
       force,
       executedAt: new Date().toISOString(),
     });
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     console.error('[Scanner1-Top5 Cron] Erro ao iniciar:', error);
     return NextResponse.json(
       {
-        error: 'Erro ao iniciar rotação Scanner 1 Top 8',
+        error: 'Erro ao iniciar rotação Scanner 2 Top 8',
         details: error instanceof Error ? error.message : 'Erro desconhecido',
       },
       { status: 500 }

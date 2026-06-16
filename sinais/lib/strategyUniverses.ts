@@ -116,15 +116,15 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     strategyName: 'SCANNER1_TOP5',
 
-    displayLabel: 'Scanner 1 Top 8 (rotação 4h)',
+    displayLabel: 'Scanner 2 Top 8 (rotação 4h)',
 
     signalTimeframes: ['4h'],
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
 
-    description: 'Rotação ranks 1–8 após cada scan.',
+    description: 'Scanner 2: top 30 subidas 24h; rotação ranks 1–8 após cada scan.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 
@@ -141,7 +141,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/2',
-    label: 'Scanner 2 — Top 30 subidas 24h',
+    label: 'Scanner 2 — Top 30 subidas 24h (rotação Top 8)',
   },
   {
     href: '/scanners/3',

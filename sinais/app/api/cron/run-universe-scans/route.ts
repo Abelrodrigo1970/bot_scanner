@@ -49,11 +49,11 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
 
   try {
     const top8 = await runScanner1Top5Pipeline({
-      logPrefix: '[Universe-Scans → Top8]',
+      logPrefix: '[Universe-Scans → Scanner2 Top8]',
     });
-    console.log('[Universe-Scans] Scanner 1 Top 8:', top8);
+    console.log('[Universe-Scans] Scanner 2 Top 8:', top8);
   } catch (err) {
-    console.error('[Universe-Scans] Scanner 1 Top 8 falhou:', err);
+    console.error('[Universe-Scans] Scanner 2 Top 8 falhou:', err);
   }
 
   return results;
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scanners 1, 2 e 3 + rotações Top 6 e Top 8 iniciados em background. Verifique os logs no Railway para conclusão.',
+          'Scanners 1, 2 e 3 + rotações Top 6 (Scanner 1) e Top 8 (Scanner 2) iniciados em background. Verifique os logs no Railway para conclusão.',
         startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN),
       },

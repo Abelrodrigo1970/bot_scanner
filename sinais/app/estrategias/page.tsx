@@ -441,9 +441,9 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Rotação <strong>total</strong> a cada scan do <strong>Scanner 1</strong> (4 h): fecha todas as posições
-              e recompra as <strong>8 primeiras</strong> (ranks 1–8, sem exclusões). SL -5% (Bybit). Corre automaticamente
-              após <code className="text-[10px]">run-universe-scans</code>.
+              Rotação <strong>total</strong> a cada scan do <strong>Scanner 2</strong> (top 30 subidas 24h, 4 h): fecha
+              todas as posições e recompra as <strong>8 primeiras</strong> (ranks 1–8). SL -5% (Bybit). Corre
+              automaticamente após <code className="text-[10px]">run-universe-scans</code>.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Posições (top N)', p.topN ?? 8, (v) => upd({ topN: v }))}

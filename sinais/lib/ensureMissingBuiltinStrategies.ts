@@ -91,7 +91,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const top5Sync = await syncScanner1Top5Config(prisma);
   if (top5Sync.updated) {
-    console.log('✅ SCANNER1_TOP5: Top 8 + rotação 4h actualizados');
+    console.log('✅ SCANNER1_TOP5: Scanner 2 Top 8 + rotação 4h actualizados');
   }
 
   const breakoutSync = await syncAccumulationBreakout15mConfig(prisma);
