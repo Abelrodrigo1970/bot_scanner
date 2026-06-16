@@ -578,6 +578,36 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'EMA80_SMA7_BREAKDOWN_15M':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Velas <strong>15m</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 1 top {p.universeTopN ?? 50}</strong>.
+              Entrada: preço <strong>abaixo da EMA{p.emaPeriod ?? 80}</strong> com <strong>SMA({p.smaPeriod ?? 7}) &gt; EMA{p.emaPeriod ?? 80}</strong>
+              {p.requireCrossDown !== false ? ' (rompimento na vela actual)' : ''}. SL +{((p.stopLossPct ?? 0.08) * 100).toFixed(0)}%;
+              TP1 -{((p.tp1Pct ?? 0.2) * 100).toFixed(0)}% ({p.tp1Position ?? 50}% pos.).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('EMA período', p.emaPeriod ?? 80, (v) => upd({ emaPeriod: v }))}
+              {numField('SMA período', p.smaPeriod ?? 7, (v) => upd({ smaPeriod: v }))}
+              {numField('Scanner 1 top N', p.universeTopN ?? 50, (v) => upd({ universeTopN: v }))}
+              {numField('SL (%) acima entrada', (p.stopLossPct ?? 0.08) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('TP1 (%) abaixo entrada', (p.tp1Pct ?? 0.2) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
+              {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
+              {numField('Horas até fechar restante', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
+            </div>
+            <label className="flex items-center gap-2 max-w-md text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300 dark:border-gray-600"
+                checked={p.requireCrossDown !== false}
+                onChange={(e) => upd({ requireCrossDown: e.target.checked })}
+              />
+              <span>Exigir rompimento (vela anterior fechou ≥ EMA80)</span>
+            </label>
+          </div>
+        );
+
       default:
         return <p className="text-sm text-gray-500 dark:text-gray-400">Sem parâmetros configuráveis</p>;
     }
@@ -704,6 +734,7 @@ export default function EstrategiasPage() {
               const sellOnly =
                 strategy.name === 'PIVOT_BOSS_BEAR_15M' ||
                 strategy.name === 'PIVOT_BOSS_BEAR_1H' ||
+                strategy.name === 'EMA80_SMA7_BREAKDOWN_15M' ||
                 strategy.name === 'RSI_OVERBOUGHT_DROP_1H' ||
                 strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H';
               const buyOnly =

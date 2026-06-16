@@ -148,6 +148,24 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   },
 
+  {
+
+    strategyName: 'EMA80_SMA7_BREAKDOWN_15M',
+
+    displayLabel: 'Quebra EMA80 (SMA7>EMA80) 15m',
+
+    signalTimeframes: ['15m'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+
+    description: 'Scanner 1 top 50; VENDA quando preço < EMA80 e SMA(7) > EMA80.',
+
+    refresh: '/api/cron/run-15m (cada 15 min)',
+
+  },
+
 ];
 
 

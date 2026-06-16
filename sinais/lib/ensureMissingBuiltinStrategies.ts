@@ -16,6 +16,9 @@ import {
   SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
   SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
   SCANNER3_RSI_BREAKOUT_15M_PARAMS,
+  EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION,
+  EMA80_SMA7_BREAKDOWN_15M_DISPLAY,
+  EMA80_SMA7_BREAKDOWN_15M_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncPivotBossBear15mUniverse,
@@ -23,6 +26,7 @@ import {
   syncScanner1Top5Config,
   syncAccumulationBreakout15mConfig,
   syncScanner3RsiBreakout15mConfig,
+  syncEma80Sma7Breakdown15mConfig,
 } from './strategyMigrations';
 
 /** Estratégias de sinal no bot_scanner (Scanner 1). */
@@ -61,6 +65,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(SCANNER3_RSI_BREAKOUT_15M_PARAMS),
+  },
+  {
+    name: 'EMA80_SMA7_BREAKDOWN_15M',
+    displayName: EMA80_SMA7_BREAKDOWN_15M_DISPLAY,
+    description: EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(EMA80_SMA7_BREAKDOWN_15M_PARAMS),
   },
 ] as const;
 
@@ -113,6 +124,11 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const scanner3BreakoutSync = await syncScanner3RsiBreakout15mConfig(prisma);
   if (scanner3BreakoutSync.updated) {
     console.log('✅ SCANNER3_RSI_BREAKOUT_15M: Scanner 3 RSI rompimento actualizado');
+  }
+
+  const ema80BreakdownSync = await syncEma80Sma7Breakdown15mConfig(prisma);
+  if (ema80BreakdownSync.updated) {
+    console.log('✅ EMA80_SMA7_BREAKDOWN_15M: Quebra EMA80 actualizada');
   }
 
   const reactivated = await prisma.strategy.updateMany({

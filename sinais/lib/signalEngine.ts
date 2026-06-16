@@ -1366,6 +1366,99 @@ export async function runScanner3RsiBreakout15mStrategy(
 }
 
 /**
+ * VENDA 15m: preço abaixo da EMA80 com SMA(7) ainda acima da EMA80 (quebra com média curta elevada).
+ */
+export async function runEma80Sma7Breakdown15mStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  if (timeframe !== '15m') return null;
+  if (params.sellEnabled === false || params.allowSell === false) return null;
+
+  const emaPeriod = Math.max(2, Math.floor(Number(params.emaPeriod ?? 80)));
+  const smaPeriod = Math.max(2, Math.floor(Number(params.smaPeriod ?? 7)));
+  const requireCrossDown = params.requireCrossDown !== false;
+  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.08));
+  const tp1Pct = Math.max(0.01, Number(params.tp1Pct ?? 0.2));
+  const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 50))));
+  const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
+
+  try {
+    const candlesNeeded = Math.min(500, Math.max(emaPeriod + smaPeriod + 20, 100));
+    const candles = await fetchCandles(symbol, '15m', candlesNeeded);
+    if (candles.length < emaPeriod + 3) return null;
+
+    const closedCandles = candles.slice(0, -1);
+    const lc = closedCandles.length - 1;
+    if (lc < emaPeriod) return null;
+
+    const closes = closedCandles.map((c) => c.close);
+    const emaSeries = calculateEMA(closes, emaPeriod);
+    if (!emaSeries) return null;
+
+    const e80 = emaValueAtClosedIdx(emaSeries, emaPeriod, lc);
+    const sma7 = calculateSMA(closes, smaPeriod);
+    if (e80 == null || sma7 == null || !(e80 > 0)) return null;
+
+    const entryPrice = closedCandles[lc].close;
+    if (!(entryPrice < e80)) return null;
+    if (!(sma7 > e80)) return null;
+
+    if (requireCrossDown && lc >= 1) {
+      const prevCloses = closes.slice(0, lc);
+      const prevEmaSeries = calculateEMA(prevCloses, emaPeriod);
+      const prevE80 =
+        prevEmaSeries != null ? emaValueAtClosedIdx(prevEmaSeries, emaPeriod, lc - 1) : null;
+      const prevClose = closedCandles[lc - 1].close;
+      if (prevE80 == null || !(prevClose >= prevE80)) return null;
+    }
+
+    const stopLoss = entryPrice * (1 + stopLossPct);
+    if (!(stopLoss > entryPrice)) return null;
+    const target1 = entryPrice * (1 - tp1Pct);
+
+    const distBelowEma80Pct = ((e80 - entryPrice) / e80) * 100;
+    const sma7PremiumPct = ((sma7 - e80) / e80) * 100;
+    const strength = Math.min(
+      92,
+      Math.max(62, Math.round(65 + Math.min(12, distBelowEma80Pct * 3) + Math.min(10, sma7PremiumPct * 2)))
+    );
+
+    const slLabel = `${(stopLossPct * 100).toFixed(0)}%`;
+    const tpLabel = `${(tp1Pct * 100).toFixed(0)}%`;
+
+    return {
+      direction: 'SELL',
+      entryPrice,
+      stopLoss,
+      target1,
+      target2: undefined,
+      target3: undefined,
+      strength,
+      extraInfo: JSON.stringify({
+        setup: 'ema80_sma7_breakdown',
+        emaPeriod,
+        smaPeriod,
+        ema80: Number(e80.toFixed(6)),
+        sma7: Number(sma7.toFixed(6)),
+        distBelowEma80Pct: Number(distBelowEma80Pct.toFixed(3)),
+        sma7PremiumPct: Number(sma7PremiumPct.toFixed(3)),
+        requireCrossDown,
+        stopLossPct,
+        tp1Pct,
+        tp1Position,
+        closeAfterHours,
+        executionProfile: `SELL | Quebra EMA${emaPeriod} (SMA${smaPeriod}>EMA${emaPeriod}) | SL +${slLabel} | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+      }),
+    };
+  } catch (error) {
+    console.error(`Erro na estratégia Quebra EMA80 SMA7 15m (${symbol}):`, error);
+    return null;
+  }
+}
+
+/**
  * Estratégia RSI 15m — Reversal oversold:
  * BUY quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32
  * Apenas BUY | SL -3% | TP1 +5% | TP2 +14%
@@ -1940,6 +2033,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         strategy.name === 'PIVOT_BOSS_BEAR_15M' ? ['15m'] :
         strategy.name === 'ACCUMULATION_BREAKOUT_15M' ? ['15m'] :
         strategy.name === 'SCANNER3_RSI_BREAKOUT_15M' ? ['15m'] :
+        strategy.name === 'EMA80_SMA7_BREAKDOWN_15M' ? ['15m'] :
         strategy.name === 'PIVOT_BOSS_BEAR_1H' ? ['1h'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
         strategy.name === 'AFASTAMENTO_MEDIO_30M' ? ['30m'] :
@@ -2062,6 +2156,20 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           );
           continue;
         }
+      } else if (strategy.name === 'EMA80_SMA7_BREAKDOWN_15M') {
+        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 50)));
+        console.log(`🔍 ${strategy.name}: Scanner 1 top ${topN}; sinais em 15m...`);
+        symbolsToAnalyze = await resolveUniverseScanSymbolsTopN(
+          UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
+          topN
+        );
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1 top ${topN})`);
+        if (symbolsToAnalyze.length === 0) {
+          console.warn(
+            `⚠️ Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
+          );
+          continue;
+        }
       } else if (strategy.name === 'MA_VOLATILE') {
         console.log(`🔍 MaCrossBelow na BD para ${strategy.name}...`);
         const maCrossProximity = await prisma.maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
@@ -2143,6 +2251,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 break;
               case 'SCANNER3_RSI_BREAKOUT_15M':
                 signalResult = await runScanner3RsiBreakout15mStrategy(symbol, timeframe, params);
+                break;
+              case 'EMA80_SMA7_BREAKDOWN_15M':
+                signalResult = await runEma80Sma7Breakdown15mStrategy(symbol, timeframe, params);
                 break;
               case 'PIVOT_BOSS_BEAR_1H':
                 signalResult = await runPivotBossBear1hStrategy(symbol, timeframe, params);

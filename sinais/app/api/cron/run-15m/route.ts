@@ -19,6 +19,11 @@ async function run15mInBackground(now: Date): Promise<void> {
       `[Run-15m BG] Scanner 3 RSI Rompimento -> ${s3b.status}` +
         (typeof s3b.signalsCreated === 'number' ? ` (${s3b.signalsCreated} sinais)` : '')
     );
+    const emaBd = result.ema80Sma7Breakdown;
+    console.log(
+      `[Run-15m BG] Quebra EMA80 SMA7 -> ${emaBd.status}` +
+        (typeof emaBd.signalsCreated === 'number' ? ` (${emaBd.signalsCreated} sinais)` : '')
+    );
     const ma = result.maCross;
     const pb = result.pivotBoss;
     const bk = result.breakout;

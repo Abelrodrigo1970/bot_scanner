@@ -637,6 +637,73 @@ export async function syncScanner3RsiBreakout15mConfig(
   return { updated: false };
 }
 
+export const EMA80_SMA7_BREAKDOWN_15M_DISPLAY = 'Quebra EMA80 (SMA7>EMA80) 15m';
+
+export const EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION =
+  'Velas 15m, só VENDA. Universo: Scanner 1 (acima SMA200, 1h). Entrada: preço rompe abaixo da EMA80 com SMA(7) ainda acima da EMA80. SL +8% fixo; TP1 -20% (50% pos.); restante às 24h.';
+
+export const EMA80_SMA7_BREAKDOWN_15M_PARAMS = {
+  emaPeriod: 80,
+  smaPeriod: 7,
+  requireCrossDown: true,
+  stopLossPct: 0.08,
+  tp1Pct: 0.2,
+  tp1Position: 50,
+  closeAfterHours: 24,
+  universeTopN: 50,
+  allowBuy: false,
+  allowSell: true,
+  buyEnabled: false,
+  sellEnabled: true,
+  exchange: 'binance',
+} as const;
+
+/** Garante registo/descrição da estratégia Quebra EMA80 15m. */
+export async function syncEma80Sma7Breakdown15mConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'EMA80_SMA7_BREAKDOWN_15M' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...EMA80_SMA7_BREAKDOWN_15M_PARAMS,
+    ...p,
+    stopLossPct: EMA80_SMA7_BREAKDOWN_15M_PARAMS.stopLossPct,
+    tp1Pct: EMA80_SMA7_BREAKDOWN_15M_PARAMS.tp1Pct,
+    tp1Position: EMA80_SMA7_BREAKDOWN_15M_PARAMS.tp1Position,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== EMA80_SMA7_BREAKDOWN_15M_DISPLAY ||
+    row.description !== EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'EMA80_SMA7_BREAKDOWN_15M' },
+      data: {
+        displayName: EMA80_SMA7_BREAKDOWN_15M_DISPLAY,
+        description: EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 export const SCANNER_MA80_TOP6_DISPLAY = 'Scanner 5 Top 6 (excl. ranks 2–3, rotação diária)';
 
 export const SCANNER_MA80_TOP6_DESCRIPTION =
