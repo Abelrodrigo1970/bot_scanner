@@ -18,6 +18,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'ACCUMULATION_BREAKOUT_15M',
 
+  'SCANNER3_RSI_BREAKOUT_15M',
+
 ] as const;
 
 
@@ -101,6 +103,18 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '15m',
 
     universe: 'Scanner 1 ranks 11–40 (acima SMA200, 1h); força máx. 75',
+
+  },
+
+  SCANNER3_RSI_BREAKOUT_15M: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m',
+
+    timeframe: '15m',
+
+    universe: 'Scanner 3 (RSI>75); entrada RSI 72–85 + rompimento',
 
   },
 

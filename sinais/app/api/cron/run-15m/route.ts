@@ -14,6 +14,11 @@ async function run15mInBackground(now: Date): Promise<void> {
       `[Run-15m BG] Scanner 3 RSI -> ${s3.status}` +
         (s3.status === 'done' ? ` (${s3.rowCount} símbolos)` : s3.status === 'failed' ? ` (${s3.reason})` : '')
     );
+    const s3b = result.scanner3RsiBreakout;
+    console.log(
+      `[Run-15m BG] Scanner 3 RSI Rompimento -> ${s3b.status}` +
+        (typeof s3b.signalsCreated === 'number' ? ` (${s3b.signalsCreated} sinais)` : '')
+    );
     const ma = result.maCross;
     const pb = result.pivotBoss;
     const bk = result.breakout;

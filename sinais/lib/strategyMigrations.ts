@@ -521,6 +521,29 @@ export const ACCUMULATION_BREAKOUT_15M_PARAMS = {
   exchange: 'binance',
 } as const;
 
+export const SCANNER3_RSI_BREAKOUT_15M_DISPLAY = 'Scanner 3 RSI Rompimento 15m';
+
+export const SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION =
+  'Velas 15m, só COMPRA. Universo: Scanner 3 (RSI>75). RSI(14) entre 72 e 85 na vela de rompimento. Fecho > máximo das últimas 10 velas + vela bullish + volume. SL -7% fixo; TP1 risco × 1,5 (50% pos.); restante às 24h.';
+
+export const SCANNER3_RSI_BREAKOUT_15M_PARAMS = {
+  rsiPeriod: 14,
+  minRsi: 72,
+  maxRsi: 85,
+  breakoutLookback: 10,
+  requireBullishClose: true,
+  volumeMultiplier: 1,
+  stopLossPct: 0.07,
+  rewardRisk1: 1.5,
+  tp1Position: 50,
+  closeAfterHours: 24,
+  allowBuy: true,
+  allowSell: false,
+  buyEnabled: true,
+  sellEnabled: false,
+  exchange: 'binance',
+} as const;
+
 /** Garante registo/descrição da estratégia Rompimento de Acumulação 15m. */
 export async function syncAccumulationBreakout15mConfig(
   prisma: PrismaClient
@@ -559,6 +582,52 @@ export async function syncAccumulationBreakout15mConfig(
       data: {
         displayName: ACCUMULATION_BREAKOUT_15M_DISPLAY,
         description: ACCUMULATION_BREAKOUT_15M_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
+/** Garante registo/descrição da estratégia Scanner 3 RSI Rompimento 15m. */
+export async function syncScanner3RsiBreakout15mConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'SCANNER3_RSI_BREAKOUT_15M' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...SCANNER3_RSI_BREAKOUT_15M_PARAMS,
+    ...p,
+    minRsi: SCANNER3_RSI_BREAKOUT_15M_PARAMS.minRsi,
+    maxRsi: SCANNER3_RSI_BREAKOUT_15M_PARAMS.maxRsi,
+    rsiPeriod: SCANNER3_RSI_BREAKOUT_15M_PARAMS.rsiPeriod,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== SCANNER3_RSI_BREAKOUT_15M_DISPLAY ||
+    row.description !== SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'SCANNER3_RSI_BREAKOUT_15M' },
+      data: {
+        displayName: SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
+        description: SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
         params: JSON.stringify(next),
         ...(shouldActivate ? { isActive: true } : {}),
       },

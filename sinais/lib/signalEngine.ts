@@ -22,6 +22,7 @@ import {
   UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80,
   UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
   UNIVERSE_CODE_SCANNER_3_MA80_PCT4,
+  UNIVERSE_CODE_SCANNER_3_RSI75_15M,
   UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D,
 } from './symbolUniverseDefaults';
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
@@ -1265,6 +1266,106 @@ export async function runAccumulationBreakout15mStrategy(
 }
 
 /**
+ * Scanner 3 — RSI entre min/max + rompimento de acumulação 15m (só COMPRA).
+ */
+export async function runScanner3RsiBreakout15mStrategy(
+  symbol: string,
+  timeframe: Timeframe,
+  params: StrategyParams
+): Promise<SignalResult | null> {
+  if (timeframe !== '15m') return null;
+  if (params.buyEnabled === false || params.allowBuy === false) return null;
+
+  const rsiPeriod = Math.max(2, Math.floor(Number(params.rsiPeriod ?? 14)));
+  const minRsi = Number(params.minRsi ?? 72);
+  const maxRsi = Number(params.maxRsi ?? 85);
+  const lookback = Math.max(2, Math.floor(Number(params.breakoutLookback ?? 10)));
+  const requireBullishClose = params.requireBullishClose !== false;
+  const volumeMultiplier = Math.max(0, Number(params.volumeMultiplier ?? 1));
+  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.07));
+  const rewardRisk1 = Math.max(0.2, Number(params.rewardRisk1 ?? 1.5));
+  const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 50))));
+  const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
+
+  if (!(minRsi < maxRsi)) return null;
+
+  try {
+    const candlesNeeded = Math.min(500, Math.max(lookback + rsiPeriod + 20, 60));
+    const candles = await fetchCandles(symbol, '15m', candlesNeeded);
+    if (candles.length < lookback + rsiPeriod + 2) return null;
+
+    const closedCandles = candles.slice(0, -1);
+    if (closedCandles.length < lookback + rsiPeriod + 1) return null;
+
+    const breakoutCandle = closedCandles[closedCandles.length - 1];
+    const rangeCandles = closedCandles.slice(
+      closedCandles.length - 1 - lookback,
+      closedCandles.length - 1
+    );
+    if (rangeCandles.length < lookback) return null;
+
+    const closedCloses = closedCandles.map((c) => c.close);
+    const rsi = calculateRSI(closedCloses, rsiPeriod);
+    if (rsi == null || rsi <= minRsi || rsi >= maxRsi) return null;
+
+    const rangeHigh = Math.max(...rangeCandles.map((c) => c.high));
+    const rangeLow = Math.min(...rangeCandles.map((c) => c.low));
+    if (!(rangeHigh > 0) || !(rangeLow > 0)) return null;
+
+    if (!(breakoutCandle.close > rangeHigh)) return null;
+    if (requireBullishClose && !(breakoutCandle.close > breakoutCandle.open)) return null;
+
+    if (volumeMultiplier > 0) {
+      const avgVol =
+        rangeCandles.reduce((sum, c) => sum + (c.volume || 0), 0) / rangeCandles.length;
+      if (avgVol > 0 && breakoutCandle.volume < avgVol * volumeMultiplier) return null;
+    }
+
+    const entryPrice = breakoutCandle.close;
+    const stopLoss = entryPrice * (1 - stopLossPct);
+    if (!(stopLoss < entryPrice)) return null;
+
+    const risk = entryPrice - stopLoss;
+    const target1 = entryPrice + risk * rewardRisk1;
+
+    const breakoutMarginPct = ((entryPrice - rangeHigh) / rangeHigh) * 100;
+    const strength = Math.min(
+      95,
+      Math.max(60, Math.round(60 + Math.min(20, breakoutMarginPct * 6) + Math.min(10, (rsi - minRsi) / 2)))
+    );
+
+    return {
+      direction: 'BUY',
+      entryPrice,
+      stopLoss,
+      target1,
+      target2: undefined,
+      target3: undefined,
+      strength,
+      extraInfo: JSON.stringify({
+        setup: 'scanner3_rsi_breakout',
+        rsiPeriod,
+        rsi: Number(rsi.toFixed(2)),
+        minRsi,
+        maxRsi,
+        breakoutLookback: lookback,
+        rangeHigh,
+        rangeLow,
+        breakoutMarginPct: Number(breakoutMarginPct.toFixed(3)),
+        stopLossPct,
+        rewardRisk1,
+        tp1Position,
+        closeAfterHours,
+        executionProfile: `BUY | Scanner 3 RSI ${minRsi}–${maxRsi} + rompimento 15m (fecho > máx. ${lookback} velas) | SL -${(stopLossPct * 100).toFixed(0)}% | TP1 R×${rewardRisk1} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+      }),
+    };
+  } catch (error) {
+    console.error(`Erro na estratégia Scanner 3 RSI Rompimento 15m (${symbol}):`, error);
+    return null;
+  }
+}
+
+/**
  * Estratégia RSI 15m — Reversal oversold:
  * BUY quando o RSI da vela anterior está abaixo de 28 e o RSI actual fecha acima de 32
  * Apenas BUY | SL -3% | TP1 +5% | TP2 +14%
@@ -1838,6 +1939,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL' ? ['15m'] :
         strategy.name === 'PIVOT_BOSS_BEAR_15M' ? ['15m'] :
         strategy.name === 'ACCUMULATION_BREAKOUT_15M' ? ['15m'] :
+        strategy.name === 'SCANNER3_RSI_BREAKOUT_15M' ? ['15m'] :
         strategy.name === 'PIVOT_BOSS_BEAR_1H' ? ['1h'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
         strategy.name === 'AFASTAMENTO_MEDIO_30M' ? ['30m'] :
@@ -1850,6 +1952,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
       let symbolsToAnalyze: string[] = [];
       let accumulationRankBySymbol: Map<string, number> | null = null;
+      let scanner3RankBySymbol: Map<string, number> | null = null;
 
       if (strategy.name === 'EMA_SCALPING') {
         console.log(`🔍 ${strategy.name}: universo Scanner 4 (acima SMA200, 1d); sinais em 15m...`);
@@ -1943,6 +2046,22 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           );
           continue;
         }
+      } else if (strategy.name === 'SCANNER3_RSI_BREAKOUT_15M') {
+        console.log(
+          `🔍 ${strategy.name}: universo Scanner 3 (RSI>75, 15m); filtro entrada RSI 72–85 + rompimento...`
+        );
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_3_RSI75_15M);
+        scanner3RankBySymbol = await getUniverseScanRankMap(
+          UNIVERSE_CODE_SCANNER_3_RSI75_15M,
+          400
+        );
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 3)`);
+        if (symbolsToAnalyze.length === 0) {
+          console.warn(
+            `⚠️ Scanner 3 vazio. Corra /api/cron/run-15m ou Origem de dados → Scanner 3. Ignorando ${strategy.name}.`
+          );
+          continue;
+        }
       } else if (strategy.name === 'MA_VOLATILE') {
         console.log(`🔍 MaCrossBelow na BD para ${strategy.name}...`);
         const maCrossProximity = await prisma.maCrossBelow.findMany({ orderBy: { rank: 'asc' } });
@@ -2021,6 +2140,9 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                 break;
               case 'ACCUMULATION_BREAKOUT_15M':
                 signalResult = await runAccumulationBreakout15mStrategy(symbol, timeframe, params);
+                break;
+              case 'SCANNER3_RSI_BREAKOUT_15M':
+                signalResult = await runScanner3RsiBreakout15mStrategy(symbol, timeframe, params);
                 break;
               case 'PIVOT_BOSS_BEAR_1H':
                 signalResult = await runPivotBossBear1hStrategy(symbol, timeframe, params);
@@ -2125,6 +2247,19 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                     extraInfo = JSON.stringify({
                       ...parsed,
                       scannerRank: accumulationRankBySymbol.get(symbol),
+                    });
+                  } catch {
+                    extraInfo = signalResult.extraInfo;
+                  }
+                } else if (
+                  strategy.name === 'SCANNER3_RSI_BREAKOUT_15M' &&
+                  scanner3RankBySymbol?.has(symbol)
+                ) {
+                  try {
+                    const parsed = JSON.parse(signalResult.extraInfo || '{}');
+                    extraInfo = JSON.stringify({
+                      ...parsed,
+                      scannerRank: scanner3RankBySymbol.get(symbol),
                     });
                   } catch {
                     extraInfo = signalResult.extraInfo;

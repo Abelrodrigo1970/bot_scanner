@@ -107,7 +107,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 3 — RSI > 75 (15m)',
     description:
       'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 15m, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h. Actualização a cada 15 min (cron run-15m).',
-    strategyNames: '(referência — sem estratégia ligada)',
+    strategyNames: 'Scanner 3 RSI Rompimento 15m',
   },
 };
 

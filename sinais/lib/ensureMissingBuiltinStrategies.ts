@@ -13,12 +13,16 @@ import {
   ACCUMULATION_BREAKOUT_15M_DESCRIPTION,
   ACCUMULATION_BREAKOUT_15M_DISPLAY,
   ACCUMULATION_BREAKOUT_15M_PARAMS,
+  SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
+  SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
+  SCANNER3_RSI_BREAKOUT_15M_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncPivotBossBear15mUniverse,
   syncScanner1Top8Config,
   syncScanner1Top5Config,
   syncAccumulationBreakout15mConfig,
+  syncScanner3RsiBreakout15mConfig,
 } from './strategyMigrations';
 
 /** Estratégias de sinal no bot_scanner (Scanner 1). */
@@ -50,6 +54,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: ACCUMULATION_BREAKOUT_15M_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(ACCUMULATION_BREAKOUT_15M_PARAMS),
+  },
+  {
+    name: 'SCANNER3_RSI_BREAKOUT_15M',
+    displayName: SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
+    description: SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(SCANNER3_RSI_BREAKOUT_15M_PARAMS),
   },
 ] as const;
 
@@ -97,6 +108,11 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const breakoutSync = await syncAccumulationBreakout15mConfig(prisma);
   if (breakoutSync.updated) {
     console.log('✅ ACCUMULATION_BREAKOUT_15M: rompimento de acumulação actualizado');
+  }
+
+  const scanner3BreakoutSync = await syncScanner3RsiBreakout15mConfig(prisma);
+  if (scanner3BreakoutSync.updated) {
+    console.log('✅ SCANNER3_RSI_BREAKOUT_15M: Scanner 3 RSI rompimento actualizado');
   }
 
   const reactivated = await prisma.strategy.updateMany({

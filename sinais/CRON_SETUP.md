@@ -6,7 +6,7 @@
 
 | Endpoint | Estratégias | Frequência |
 |----------|-------------|------------|
-| `/api/cron/run-15m` | **Scanner 3** (RSI > 75, 15m) + MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento de Acumulação 15m | `*/15 * * * *` (24h) |
+| `/api/cron/run-15m` | **Scanner 3** (RSI > 75) + **Scanner 3 RSI Rompimento** + MA Cross + Pivot Boss + Rompimento Scanner 1 | `*/15 * * * *` (24h) |
 | `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** (top 30 subidas 24h) + rotações **Top 6** e **Top 8** | `0 */4 * * *` (24h) |
 | `/api/cron/run-scanner1-top8` | Scanner 1 Top 6 (rotação manual/backup) | opcional, 10–15 min após scan |
 | `/api/cron/run-scanner1-top5` | Scanner 2 Top 8 (rotação manual/backup) | opcional, 10–15 min após scan |

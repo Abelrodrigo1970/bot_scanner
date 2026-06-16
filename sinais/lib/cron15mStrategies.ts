@@ -222,6 +222,7 @@ export interface Cron15mAllResult {
   pivotBoss: Cron15mResult;
   breakout: Cron15mResult;
   scanner3: Scanner3ScanResult;
+  scanner3RsiBreakout: Cron15mResult;
 }
 
 async function runPivotBoss15mPipeline(now: Date): Promise<Cron15mResult> {
@@ -275,14 +276,39 @@ async function runBreakout15mPipeline(): Promise<Cron15mResult> {
   }
 }
 
+async function runScanner3RsiBreakout15mPipeline(): Promise<Cron15mResult> {
+  const strategy = await prisma.strategy.findFirst({
+    where: { name: 'SCANNER3_RSI_BREAKOUT_15M' },
+  });
+  if (!strategy) {
+    console.warn(
+      '[Scanner3 RSI Rompimento 15m] Estratégia SCANNER3_RSI_BREAKOUT_15M não encontrada (correr o seed).'
+    );
+    return { status: 'not-found' };
+  }
+  if (!strategy.isActive) {
+    console.log('[Scanner3 RSI Rompimento 15m] Estratégia inactiva — saltada.');
+    return { status: 'inactive' };
+  }
+
+  try {
+    const signalsCreated = await runAllStrategies({ only: ['SCANNER3_RSI_BREAKOUT_15M'] });
+    return { status: 'done', signalsCreated };
+  } catch (error) {
+    console.error('[Scanner3 RSI Rompimento 15m] Falhou:', error);
+    return { status: 'not-found' };
+  }
+}
+
 /**
- * Cron único 15m: Scanner 3 RSI + MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento 15m.
+ * Cron único 15m: Scanner 3 RSI + MA Cross 12×30 + Pivot Boss Bear 15m + Rompimento 15m + Scanner 3 RSI Rompimento.
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
   const scanner3 = await runScanner3Rsi15mScan('cron/run-15m');
+  const scanner3RsiBreakout = await runScanner3RsiBreakout15mPipeline();
   const maCross = await runMaCross15mPipeline(now);
   const pivotBoss = await runPivotBoss15mPipeline(now);
   const breakout = await runBreakout15mPipeline();
-  return { maCross, pivotBoss, breakout, scanner3 };
+  return { maCross, pivotBoss, breakout, scanner3, scanner3RsiBreakout };
 }
 
