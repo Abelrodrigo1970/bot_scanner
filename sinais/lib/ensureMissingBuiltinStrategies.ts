@@ -7,6 +7,9 @@ import {
   SCANNER1_TOP8_DESCRIPTION,
   SCANNER1_TOP8_DISPLAY,
   SCANNER1_TOP8_PARAMS,
+  SCANNER1_TOP5_DESCRIPTION,
+  SCANNER1_TOP5_DISPLAY,
+  SCANNER1_TOP5_PARAMS,
   ACCUMULATION_BREAKOUT_15M_DESCRIPTION,
   ACCUMULATION_BREAKOUT_15M_DISPLAY,
   ACCUMULATION_BREAKOUT_15M_PARAMS,
@@ -14,6 +17,7 @@ import {
   syncMaCrossScanner1UniverseDescriptions,
   syncPivotBossBear15mUniverse,
   syncScanner1Top8Config,
+  syncScanner1Top5Config,
   syncAccumulationBreakout15mConfig,
 } from './strategyMigrations';
 
@@ -32,6 +36,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: SCANNER1_TOP8_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(SCANNER1_TOP8_PARAMS),
+  },
+  {
+    name: 'SCANNER1_TOP5',
+    displayName: SCANNER1_TOP5_DISPLAY,
+    description: SCANNER1_TOP5_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(SCANNER1_TOP5_PARAMS),
   },
   {
     name: 'ACCUMULATION_BREAKOUT_15M',
@@ -78,16 +89,21 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
     console.log('✅ SCANNER1_TOP8: Top 6 + rotação 4h actualizados');
   }
 
+  const top5Sync = await syncScanner1Top5Config(prisma);
+  if (top5Sync.updated) {
+    console.log('✅ SCANNER1_TOP5: Top 8 + rotação 4h actualizados');
+  }
+
   const breakoutSync = await syncAccumulationBreakout15mConfig(prisma);
   if (breakoutSync.updated) {
     console.log('✅ ACCUMULATION_BREAKOUT_15M: rompimento de acumulação actualizado');
   }
 
   const reactivated = await prisma.strategy.updateMany({
-    where: { name: 'SCANNER1_TOP8', isActive: false },
+    where: { name: { in: ['SCANNER1_TOP8', 'SCANNER1_TOP5'] }, isActive: false },
     data: { isActive: true },
   });
   if (reactivated.count > 0) {
-    console.log('✅ SCANNER1_TOP8: estratégia reactivada');
+    console.log('✅ Rotações Scanner 1 reactivadas');
   }
 }

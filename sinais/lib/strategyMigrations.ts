@@ -350,7 +350,7 @@ export const EMA_SCALPING_DESCRIPTION =
 export const PIVOT_BOSS_BEAR_15M_DISPLAY = 'Pivot Boss Bear 15m (4 EMA venda)';
 
 export const PIVOT_BOSS_BEAR_15M_DESCRIPTION =
-  'Universo: Scanner 1 top 30 (maior |afastamento| vs SMA200 em 1h). Pivot Boss em 15m, só VENDA. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 2 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. Sem FDS; horas 18h e 22h PT bloqueadas; turnover 1h ≤ $5M. SL +7% fixo | TP1 -9% (50%) | restante às 24h.';
+  'Universo: Scanner 1 ranks 11–40 (|afastamento| vs SMA200 em 1h), exclui top 10. Pivot Boss em 15m, só VENDA. Filtro: fecho acima SMA200 (1h) ou até −5% abaixo; EMA12 e EMA30 abaixo da EMA80; preço abaixo EMA80 (não >5% abaixo). Entrada: pullback EMA30 nos últimos 2 candles + vela bear forte. Máx. 1 sinal/símbolo/dia PT. Sem FDS; horas 18h e 22h PT bloqueadas; turnover 1h ≤ $5M. SL +7% fixo | TP1 -9% (50%) | restante às 24h.';
 
 export const PIVOT_BOSS_BEAR_1H_DISPLAY = 'Pivot Boss Bear 1h (4 EMA venda)';
 
@@ -369,6 +369,26 @@ export const SCANNER1_TOP8_PARAMS = {
   topN: 6,
   scanTopN: 8,
   excludeRanks: [3, 4],
+  stopLossPct: 0.05,
+  closeAfterHours: 4,
+  rotationMode: 'full',
+  allowBuy: true,
+  allowSell: false,
+  buyEnabled: true,
+  sellEnabled: false,
+  autoExecuteMinStrength: 80,
+  exchange: 'bybit',
+} as const;
+
+export const SCANNER1_TOP5_DISPLAY = 'Scanner 1 Top 8 (rotação 4h)';
+
+export const SCANNER1_TOP5_DESCRIPTION =
+  'Portefólio rotativo: a cada scan do Scanner 1 (4 h), fecha tudo e recompra as 8 primeiras posições (ranks 1–8, sem exclusões). SL -5% (Bybit).';
+
+export const SCANNER1_TOP5_PARAMS = {
+  topN: 8,
+  scanTopN: 8,
+  excludeRanks: [] as number[],
   stopLossPct: 0.05,
   closeAfterHours: 4,
   rotationMode: 'full',
@@ -419,6 +439,53 @@ export async function syncScanner1Top8Config(
       data: {
         displayName: SCANNER1_TOP8_DISPLAY,
         description: SCANNER1_TOP8_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
+/** Garante registo/descrição da estratégia Scanner 1 Top 8 (rotação ranks 1–8). */
+export async function syncScanner1Top5Config(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'SCANNER1_TOP5' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...SCANNER1_TOP5_PARAMS,
+    ...p,
+    topN: SCANNER1_TOP5_PARAMS.topN,
+    scanTopN: SCANNER1_TOP5_PARAMS.scanTopN,
+    excludeRanks: SCANNER1_TOP5_PARAMS.excludeRanks,
+    rotationMode: 'full' as const,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== SCANNER1_TOP5_DISPLAY ||
+    row.description !== SCANNER1_TOP5_DESCRIPTION;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'SCANNER1_TOP5' },
+      data: {
+        displayName: SCANNER1_TOP5_DISPLAY,
+        description: SCANNER1_TOP5_DESCRIPTION,
         params: JSON.stringify(next),
         ...(shouldActivate ? { isActive: true } : {}),
       },
@@ -667,7 +734,9 @@ export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   sellEnabled: true,
   exchange: 'binance',
   /** Top N do Scanner 1 (|pctFromMa| desc) — universo Pivot Boss. */
-  universeTopN: 30,
+  universeTopN: 40,
+  minScannerRank: 11,
+  maxScannerRank: 40,
 } as const;
 
 /** Mesmos parâmetros base; velas 1h. */
@@ -734,6 +803,9 @@ export async function syncPivotBossBear15mUniverse(
     const needsUniverseTopN =
       p.universeTopN == null ||
       Number(p.universeTopN) !== PIVOT_BOSS_BEAR_15M_PARAMS.universeTopN;
+    const needsRankRange =
+      Number(p.minScannerRank) !== PIVOT_BOSS_BEAR_15M_PARAMS.minScannerRank ||
+      Number(p.maxScannerRank) !== PIVOT_BOSS_BEAR_15M_PARAMS.maxScannerRank;
 
     if (
       !needsDesc &&
@@ -743,7 +815,8 @@ export async function syncPivotBossBear15mUniverse(
       !needsMa200Filter &&
       !needsMa200MaxDist &&
       !needsStopLoss &&
-      !needsUniverseTopN
+      !needsUniverseTopN &&
+      !needsRankRange
     ) {
       continue;
     }
@@ -769,6 +842,10 @@ export async function syncPivotBossBear15mUniverse(
     if (needsUniverseTopN) {
       next.universeTopN = PIVOT_BOSS_BEAR_15M_PARAMS.universeTopN;
     }
+    if (needsRankRange) {
+      next.minScannerRank = PIVOT_BOSS_BEAR_15M_PARAMS.minScannerRank;
+      next.maxScannerRank = PIVOT_BOSS_BEAR_15M_PARAMS.maxScannerRank;
+    }
 
     await prisma.strategy.update({
       where: { name },
@@ -780,7 +857,8 @@ export async function syncPivotBossBear15mUniverse(
         needsMa200Filter ||
         needsMa200MaxDist ||
         needsStopLoss ||
-        needsUniverseTopN
+        needsUniverseTopN ||
+        needsRankRange
           ? { params: JSON.stringify(next) }
           : {}),
       },

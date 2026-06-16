@@ -84,8 +84,8 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA200_1H: {
     displayName: 'Scanner 1 — Acima SMA200 (1h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. MA Cross: top 20; Pivot Boss: top 30; Top 6: rotação ranks 1,2,5–8.',
-    strategyNames: 'MA Cross 12×30 (15m), Pivot Boss Bear 15m, Scanner 1 Top 6',
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. MA Cross: top 20; Pivot Boss / Rompimento: ranks 11–40; Top 6 e Top 8: rotação.',
+    strategyNames: 'MA Cross 12×30 (15m), Pivot Boss Bear 15m, Rompimento 15m, Scanner 1 Top 6, Scanner 1 Top 8',
   },
   UNIVERSE_TOP30_PRICE_CHANGE_24H: {
     displayName: 'Scanner 2 — Top 30 subidas 24h',

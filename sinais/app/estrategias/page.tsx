@@ -437,6 +437,24 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'SCANNER1_TOP5':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Rotação <strong>total</strong> a cada scan do <strong>Scanner 1</strong> (4 h): fecha todas as posições
+              e recompra as <strong>8 primeiras</strong> (ranks 1–8, sem exclusões). SL -5% (Bybit). Corre automaticamente
+              após <code className="text-[10px]">run-universe-scans</code>.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Posições (top N)', p.topN ?? 8, (v) => upd({ topN: v }))}
+              {numField('Scan top N (fonte)', p.scanTopN ?? 8, (v) => upd({ scanTopN: v }))}
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Horas até rotação (ref.)', p.closeAfterHours ?? 4, (v) => upd({ closeAfterHours: v }))}
+              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
+            </div>
+          </div>
+        );
+
       case 'EMA_SCALPING':
         return (
           <div className="space-y-4">
@@ -467,6 +485,27 @@ export default function EstrategiasPage() {
               {numField('Risk-reward TP2', p.rewardRisk2 ?? 3.2, (v) => upd({ rewardRisk2: v }), 0.05)}
               {numField('TP1 — % da posição', p.tp1PositionPct ?? 55, (v) => upd({ tp1PositionPct: v }))}
               {numField('TP2 — % da posição', p.tp2PositionPct ?? 35, (v) => upd({ tp2PositionPct: v }))}
+            </div>
+          </div>
+        );
+
+      case 'PIVOT_BOSS_BEAR_15M':
+      case 'PIVOT_BOSS_BEAR_1H':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Só <strong>VENDA</strong>. Universo = <strong>Scanner 1 ranks {p.minScannerRank ?? 11}–{p.maxScannerRank ?? 40}</strong>{' '}
+              (exclui top 10). EMA12/30 abaixo EMA80; pullback EMA30 + vela bear forte. SL +{((p.stopLossPct ?? 0.07) * 100).toFixed(0)}%;
+              TP1 −{((p.tp1Pct ?? 0.09) * 100).toFixed(0)}% ({p.tp1Position ?? 50}% pos.).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Rank mín. Scanner 1', p.minScannerRank ?? 11, (v) => upd({ minScannerRank: v }))}
+              {numField('Rank máx. Scanner 1', p.maxScannerRank ?? 40, (v) => upd({ maxScannerRank: v }))}
+              {numField('Pullback EMA30 (velas)', p.pullbackMaxBars ?? 2, (v) => upd({ pullbackMaxBars: v }))}
+              {numField('SL (%) acima entrada', (p.stopLossPct ?? 0.07) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('TP1 (%) abaixo entrada', (p.tp1Pct ?? 0.09) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
+              {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
+              {numField('Horas até fechar restante', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
             </div>
           </div>
         );
@@ -637,7 +676,9 @@ export default function EstrategiasPage() {
                 strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H';
               const buyOnly =
                 strategy.name === 'EMA_SCALPING' ||
-                strategy.name === 'ACCUMULATION_BREAKOUT_15M';
+                strategy.name === 'ACCUMULATION_BREAKOUT_15M' ||
+                strategy.name === 'SCANNER1_TOP8' ||
+                strategy.name === 'SCANNER1_TOP5';
 
               return (
               <div

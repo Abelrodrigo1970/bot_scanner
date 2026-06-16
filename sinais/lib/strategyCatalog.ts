@@ -12,6 +12,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'SCANNER1_TOP8',
 
+  'SCANNER1_TOP5',
+
   'PIVOT_BOSS_BEAR_15M',
 
   'ACCUMULATION_BREAKOUT_15M',
@@ -66,6 +68,18 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
   },
 
+  SCANNER1_TOP5: {
+
+    cron: '1h',
+
+    cronLabel: 'Rotação 4h (pós-scan)',
+
+    timeframe: '4h',
+
+    universe: 'Scanner 1 — ranks 1–8 (top 8)',
+
+  },
+
   PIVOT_BOSS_BEAR_15M: {
 
     cron: '15m',
@@ -74,7 +88,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 top 30 (acima SMA200, 1h)',
+    universe: 'Scanner 1 ranks 11–40 (acima SMA200, 1h)',
 
   },
 
@@ -196,7 +210,7 @@ export const CRON_GROUPS: { key: '15m' | '1h'; title: string; description: strin
 
     title: 'Rotação 4h',
 
-    description: 'Scanner 1 Top 6 (após run-universe-scans)',
+    description: 'Scanner 1 Top 6 + Top 8 (após run-universe-scans)',
 
   },
 

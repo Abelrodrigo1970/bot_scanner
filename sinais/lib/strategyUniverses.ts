@@ -70,7 +70,61 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     dataKey: 'UNIVERSE_ABOVE_MA200_1H',
 
-    description: 'Scanner 1: fecho acima SMA200 (1h); sinais em 15m.',
+    description: 'Scanner 1 ranks 11–40 (|pct vs SMA200|); sinais em 15m.',
+
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+
+  },
+
+  {
+
+    strategyName: 'ACCUMULATION_BREAKOUT_15M',
+
+    displayLabel: 'Rompimento de Acumulação 15m',
+
+    signalTimeframes: ['15m'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+
+    description: 'Scanner 1 ranks 11–40 (|pct vs SMA200|); sinais em 15m.',
+
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+
+  },
+
+  {
+
+    strategyName: 'SCANNER1_TOP8',
+
+    displayLabel: 'Scanner 1 Top 6 (rotação 4h)',
+
+    signalTimeframes: ['4h'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+
+    description: 'Rotação ranks 1,2,5–8 após cada scan.',
+
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+
+  },
+
+  {
+
+    strategyName: 'SCANNER1_TOP5',
+
+    displayLabel: 'Scanner 1 Top 8 (rotação 4h)',
+
+    signalTimeframes: ['4h'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+
+    description: 'Rotação ranks 1–8 após cada scan.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 
@@ -83,7 +137,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 export const DATA_SOURCE_MENU_ITEMS = [
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — Acima SMA200 (MA Cross + Pivot Boss + Top 6)',
+    label: 'Scanner 1 — Acima SMA200 (MA Cross, Pivot Boss, Rompimento, rotações)',
   },
   {
     href: '/scanners/2',

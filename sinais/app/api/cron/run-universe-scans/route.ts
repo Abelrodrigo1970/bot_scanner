@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BUILTIN_UNIVERSE_SCAN } from '@/lib/symbolUniverseDefaults';
 import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
-import { runScanner1Top8Pipeline } from '@/lib/scanner1Top8Strategy';
+import { runScanner1Top8Pipeline, runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
 
 /**
  * Scanner 1 + Scanner 2 (top 30 subidas 24h) + Scanner 3 (RSI > 75, 15m)
@@ -45,6 +45,15 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
     console.log('[Universe-Scans] Scanner 1 Top 6:', top6);
   } catch (err) {
     console.error('[Universe-Scans] Scanner 1 Top 6 falhou:', err);
+  }
+
+  try {
+    const top8 = await runScanner1Top5Pipeline({
+      logPrefix: '[Universe-Scans → Top8]',
+    });
+    console.log('[Universe-Scans] Scanner 1 Top 8:', top8);
+  } catch (err) {
+    console.error('[Universe-Scans] Scanner 1 Top 8 falhou:', err);
   }
 
   return results;
@@ -92,7 +101,7 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scanners 1, 2 e 3 + rotação Top 6 iniciados em background. Verifique os logs no Railway para conclusão.',
+          'Scanners 1, 2 e 3 + rotações Top 6 e Top 8 iniciados em background. Verifique os logs no Railway para conclusão.',
         startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN),
       },

@@ -1869,21 +1869,20 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           `✅ EMA Ribbon Scalping SELL: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
       } else if (strategy.name === 'PIVOT_BOSS_BEAR_15M') {
-        const topN = Math.max(
-          1,
-          Math.floor(Number(params.universeTopN ?? 30))
-        );
+        const minRank = Math.max(1, Math.floor(Number(params.minScannerRank ?? 11)));
+        const maxRank = Math.max(minRank, Math.floor(Number(params.maxScannerRank ?? 40)));
         console.log(
-          `🔍 ${strategy.name}: Scanner 1 top ${topN} (|pct vs SMA200|); sinais em 15m...`
+          `🔍 ${strategy.name}: Scanner 1 ranks ${minRank}–${maxRank} (|pct vs SMA200|); sinais em 15m...`
         );
-        symbolsToAnalyze = await resolveUniverseScanSymbolsTopN(
+        symbolsToAnalyze = await resolveUniverseScanSymbolsRankRange(
           UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
-          topN
+          minRank,
+          maxRank
         );
-        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1 top ${topN})`);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1 ranks ${minRank}–${maxRank})`);
         if (symbolsToAnalyze.length === 0) {
           console.warn(
-            `⚠️ Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
+            `⚠️ Scanner 1 ranks ${minRank}–${maxRank} vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
           );
           continue;
         }
