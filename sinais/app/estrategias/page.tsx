@@ -269,7 +269,8 @@ export default function EstrategiasPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período MA rápida (ex. 12)', p.ma30Period ?? 12, (v) => upd({ ma30Period: v }))}
               {numField('Período MA lenta (ex. 30)', p.ma200Period ?? 30, (v) => upd({ ma200Period: v }))}
-              {numField(`Entrada: dif. ${diffLabel} (%)`, p.entryDiffPct ?? 0.9, (v) => upd({ entryDiffPct: v }), 0.1)}
+              {numField(`Entrada: dif. mín. ${diffLabel} (%)`, p.entryDiffPct ?? 0.9, (v) => upd({ entryDiffPct: v }), 0.1)}
+              {numField(`Entrada: dif. máx. ${diffLabel} (%)`, p.entryMaxDiffPct ?? 1.8, (v) => upd({ entryMaxDiffPct: v }), 0.1)}
               {numField(`Saída/fecho: dif. ${diffLabel} (%)`, p.exitDiffPct ?? 0.5, (v) => upd({ exitDiffPct: v }), 0.1)}
               {numField('SL (%)', p.stopPercent ?? 15, (v) => upd({ stopPercent: v }), 0.5)}
               {numField(
@@ -344,6 +345,7 @@ export default function EstrategiasPage() {
               Mesma unidade que «Entrada: dif.». Aumentar (ex.: 0,08–0,15) reduz falsos repetidos em tendência forte com spread já largo.
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500">
+              Entrada: spread |MA12−MA30|/MA30 entre o mínimo e o máximo (ex. &gt;0,9% e &lt;1,8%). 0 no máximo desactiva o tecto.
               BUY / SELL (modo spread): se |preço − MA lenta|/MA lenta (%) for maior que o limite desse lado, não gera sinal.
               0 desactiva o filtro desse lado (ex.: BUY a 0 = sem filtro de distância à MA na compra).
               {' O campo «MA30 − MA200» limita o afastamento entre a MA lenta (30) e uma MA200 no mesmo timeframe.'}

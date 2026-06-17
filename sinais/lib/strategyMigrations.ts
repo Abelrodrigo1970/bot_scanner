@@ -150,6 +150,8 @@ export const MA_CROSS_5M_PARAMS = {
   ma200Period: 30,
   maType: 'EMA' as const,
   entryDiffPct: 0.9,
+  /** Tecto do spread |EMA12−EMA30|/EMA30 na entrada. 0 = sem máximo. */
+  entryMaxDiffPct: 1.8,
   exitDiffPct: 0.5,
   stopPercent: 15,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
@@ -175,7 +177,7 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 12×30 (15m)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 top 20 (|afastamento| vs SMA200 1h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% e < 1,8% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 top 20 (|afastamento| vs SMA200 1h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
 /** MA30/MA200 em 15m — mesma lógica de spread que MA12/MA30 (universo = scan Ma30Near6PriceBetween). */
 export const MA_CROSS_15M_STRATEGY_DESCRIPTION =
   'MA30 / MA200 em 15m: mesma lógica que MA12/MA30 (spread |rápida−lenta|/lenta). Entrada quando o spread ultrapassa o limiar na direção; modo repetir tendência com Δ mínimo opcional; TP parcial quando o preço favorece N% vs entrada; restante fecha quando o spread comprime abaixo do limiar de saída. SL 5%. Filtro SELL por distância do preço à MA200. Universo = scan MA30 entre −6% e +1% vs MA200 (1h) — menu Ma30Near6PriceBetween; actualiza esse scan antes de gerar sinais.';
@@ -1528,10 +1530,12 @@ export async function syncMaCrossScanner1UniverseDescriptions(
         ...p,
         universeTopN: MA_CROSS_5M_PARAMS.universeTopN,
         minTurnover3hUsd: MA_CROSS_5M_PARAMS.minTurnover3hUsd,
+        entryMaxDiffPct: MA_CROSS_5M_PARAMS.entryMaxDiffPct,
       };
       needsParamsUpdate =
         Number(p.universeTopN) !== MA_CROSS_5M_PARAMS.universeTopN ||
-        Number(p.minTurnover3hUsd) !== MA_CROSS_5M_PARAMS.minTurnover3hUsd;
+        Number(p.minTurnover3hUsd) !== MA_CROSS_5M_PARAMS.minTurnover3hUsd ||
+        Number(p.entryMaxDiffPct ?? 0) !== MA_CROSS_5M_PARAMS.entryMaxDiffPct;
       if (needsParamsUpdate) nextParams = JSON.stringify(next);
     }
 

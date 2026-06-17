@@ -1552,6 +1552,10 @@ async function runMaCrossM30M200OnTimeframe(
   const maType: 'SMA' | 'EMA' = params.maType === 'SMA' ? 'SMA' : 'EMA';
   const confirmationPct = params.confirmationPct ?? 0;
   const entryDiffPct = Number(params.entryDiffPct ?? 0.9);
+  /** Tecto do spread |MA rápida − MA lenta|/MA lenta na entrada (ex. 1,8). 0 = sem máximo. */
+  const entryMaxDiffPct = Number(
+    params.entryMaxDiffPct ?? (bar === '15m' ? 1.8 : 0)
+  );
   const exitDiffPct = Number(params.exitDiffPct ?? 0.5);
   const stopPercent     = params.stopPercent     ?? 8;
   const buyTp1Percent   = params.buyTp1Percent   ?? params.tp1Percent ?? (bar === '5m' ? 18 : 85);
@@ -1700,9 +1704,13 @@ async function runMaCrossM30M200OnTimeframe(
     const confirmUp   = maSlow * (1 + confirmationPct / 100);
     const confirmDown = maSlow * (1 - confirmationPct / 100);
 
+    const spreadInEntryBand =
+      currentDiffPct > entryDiffPct &&
+      (entryMaxDiffPct <= 0 || currentDiffPct < entryMaxDiffPct);
+
     const ma12x30BuyOk =
       bullishNow &&
-      currentDiffPct > entryDiffPct &&
+      spreadInEntryBand &&
       (repeatSpreadWhileTrend
         ? ma12x30RepeatEligibleBuy
         : !bullishPrev || prevDiffPct <= entryDiffPct);
@@ -1742,10 +1750,13 @@ async function runMaCrossM30M200OnTimeframe(
           diffPct: currentDiffPct.toFixed(3),
           distCloseMaSlowAbsPct: distCloseSlowAbsPct.toFixed(2),
           entryDiffPct,
+          entryMaxDiffPct: entryMaxDiffPct > 0 ? entryMaxDiffPct : 'off',
           exitDiffPct,
           confirmationPct,
           crossover: isMa12x30Mode
-            ? `${fastLabel}/${slowLabel} bullish spread > ${entryDiffPct}% (BUY)`
+            ? entryMaxDiffPct > 0
+              ? `${fastLabel}/${slowLabel} bullish spread ${entryDiffPct}–${entryMaxDiffPct}% (BUY)`
+              : `${fastLabel}/${slowLabel} bullish spread > ${entryDiffPct}% (BUY)`
             : `${fastLabel} crosses +${confirmationPct}% above ${slowLabel} (BUY)`,
           stopPercent,
           ...(isMa12x30Mode
@@ -1783,7 +1794,7 @@ async function runMaCrossM30M200OnTimeframe(
 
     const ma12x30SellOk =
       bearishNow &&
-      currentDiffPct > entryDiffPct &&
+      spreadInEntryBand &&
       (repeatSpreadWhileTrend
         ? ma12x30RepeatEligibleSell
         : !bearishPrev || prevDiffPct <= entryDiffPct);
@@ -1827,13 +1838,16 @@ async function runMaCrossM30M200OnTimeframe(
           ma200: maSlow.toFixed(4),
           diffPct: currentDiffPct.toFixed(3),
           entryDiffPct,
+          entryMaxDiffPct: entryMaxDiffPct > 0 ? entryMaxDiffPct : 'off',
           exitDiffPct,
           distCloseMa200AbsPct: distCloseSlowAbsPct.toFixed(2),
           sellBlockAbsCloseDistanceFromMa200Pct:
             sellBlockAbsCloseDistanceFromMa200Pct || 'off',
           confirmationPct,
           crossover: isMa12x30Mode
-            ? `${fastLabel}/${slowLabel} bearish spread > ${entryDiffPct}% (SELL)`
+            ? entryMaxDiffPct > 0
+              ? `${fastLabel}/${slowLabel} bearish spread ${entryDiffPct}–${entryMaxDiffPct}% (SELL)`
+              : `${fastLabel}/${slowLabel} bearish spread > ${entryDiffPct}% (SELL)`
             : `${fastLabel} crosses -${confirmationPct}% below ${slowLabel} (SELL)`,
           stopPercent,
           ...(isMa12x30Mode

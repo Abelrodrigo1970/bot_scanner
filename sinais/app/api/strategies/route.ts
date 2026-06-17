@@ -25,6 +25,7 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   useDiffMode: true,
   confirmationPct: 0,
   entryDiffPct: 0.9,
+  entryMaxDiffPct: 1.8,
   exitDiffPct: 0.5,
   stopPercent: 15,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
