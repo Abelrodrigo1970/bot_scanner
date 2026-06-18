@@ -70,7 +70,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     dataKey: 'UNIVERSE_ABOVE_MA200_1H',
 
-    description: 'Scanner 1 ranks 11–40 (|pct vs SMA200|); sinais em 15m.',
+    description: 'Scanner 1 top 30 (|pct vs SMA200|); sinais em 15m.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 

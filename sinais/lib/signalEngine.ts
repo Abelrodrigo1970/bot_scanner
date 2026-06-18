@@ -1005,7 +1005,7 @@ export async function runEmaRibbonScalpingSellStrategy(
 
 /**
  * Pivot Boss Bear — só VENDA (15m ou 1h).
- * EMA12 e EMA30 abaixo da EMA80; fecho acima SMA200 (1h) ou até −5% abaixo; pullback EMA30 + rejeição bear.
+ * Pullback EMA30 + vela bear; opcional stack bearish (EMA12/30 abaixo EMA80).
  */
 async function runPivotBossBearOnTimeframe(
   symbol: string,
@@ -1073,8 +1073,11 @@ async function runPivotBossBearOnTimeframe(
     const distBelowSma200Pct = ((sma200_1h - close1h) / sma200_1h) * 100;
     if (distBelowSma200Pct > ma200MaxDistBelowPct) return null;
 
-    if (!(e12 < e80 && e30 < e80)) return null;
-    if (!(entryPrice < e80)) return null;
+    const requireBearStack = params.requireBearStack === true;
+    if (requireBearStack) {
+      if (!(e12 < e80 && e30 < e80)) return null;
+      if (!(entryPrice < e80)) return null;
+    }
 
     if (entryPrice < e80 && sellBlockMaxDistBelowEma80Pct > 0) {
       const distBelowEma80Pct = ((e80 - entryPrice) / e80) * 100;
@@ -1144,7 +1147,7 @@ async function runPivotBossBearOnTimeframe(
         closeAfterHours,
         bodyRangePct: Number(((body / range) * 100).toFixed(1)),
         executionProfile:
-          `SELL apenas | Pivot Boss bear ${timeframe} (EMA12/30 abaixo EMA80, SMA200 1h acima ou ≤−${ma200MaxDistBelowPct}%) | SL +${slLabel} fixo | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+          `SELL apenas | Pivot Boss ${timeframe} (pullback EMA30 + vela bear; SMA200 1h acima ou ≤−${ma200MaxDistBelowPct}%) | SL +${slLabel} fixo | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
       }),
     };
   } catch (error) {
@@ -2080,20 +2083,18 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           `✅ EMA Ribbon Scalping SELL: ${symbolsToAnalyze.length} símbolos (Top movers 1h, até ${lim})`
         );
       } else if (strategy.name === 'PIVOT_BOSS_BEAR_15M') {
-        const minRank = Math.max(1, Math.floor(Number(params.minScannerRank ?? 11)));
-        const maxRank = Math.max(minRank, Math.floor(Number(params.maxScannerRank ?? 40)));
+        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 30)));
         console.log(
-          `🔍 ${strategy.name}: Scanner 1 ranks ${minRank}–${maxRank} (|pct vs SMA200|); sinais em 15m...`
+          `🔍 ${strategy.name}: Scanner 1 top ${topN} (|pct vs SMA200|); sinais em 15m...`
         );
-        symbolsToAnalyze = await resolveUniverseScanSymbolsRankRange(
+        symbolsToAnalyze = await resolveUniverseScanSymbolsTopN(
           UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
-          minRank,
-          maxRank
+          topN
         );
-        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1 ranks ${minRank}–${maxRank})`);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1 top ${topN})`);
         if (symbolsToAnalyze.length === 0) {
           console.warn(
-            `⚠️ Scanner 1 ranks ${minRank}–${maxRank} vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
+            `⚠️ Scanner 1 top ${topN} vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
           );
           continue;
         }

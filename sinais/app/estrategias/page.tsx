@@ -496,13 +496,12 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Só <strong>VENDA</strong>. Universo = <strong>Scanner 1 ranks {p.minScannerRank ?? 11}–{p.maxScannerRank ?? 40}</strong>{' '}
-              (exclui top 10). EMA12/30 abaixo EMA80; pullback EMA30 + vela bear forte. SL +{((p.stopLossPct ?? 0.07) * 100).toFixed(0)}%;
+              Só <strong>VENDA</strong>. Universo = <strong>Scanner 1 top {p.universeTopN ?? 30}</strong>.
+              Pullback EMA30 + vela bear forte (sem exigir EMA12/30 abaixo EMA80). SL +{((p.stopLossPct ?? 0.07) * 100).toFixed(0)}%;
               TP1 −{((p.tp1Pct ?? 0.09) * 100).toFixed(0)}% ({p.tp1Position ?? 50}% pos.).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Rank mín. Scanner 1', p.minScannerRank ?? 11, (v) => upd({ minScannerRank: v }))}
-              {numField('Rank máx. Scanner 1', p.maxScannerRank ?? 40, (v) => upd({ maxScannerRank: v }))}
+              {numField('Top N Scanner 1', p.universeTopN ?? 30, (v) => upd({ universeTopN: v }))}
               {numField('Pullback EMA30 (velas)', p.pullbackMaxBars ?? 2, (v) => upd({ pullbackMaxBars: v }))}
               {numField('SL (%) acima entrada', (p.stopLossPct ?? 0.07) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
               {numField('TP1 (%) abaixo entrada', (p.tp1Pct ?? 0.09) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
