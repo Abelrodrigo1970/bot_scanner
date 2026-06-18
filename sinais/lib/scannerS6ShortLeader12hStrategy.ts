@@ -7,7 +7,6 @@ import { UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H } from './symbolUniverseDefaults'
 import { getTopRankedUniverseScanRows } from './universeScanPersistence';
 import { autoExecuteNewSignalsForStrategy, resolveStrategyExchange } from './autoExecuteNewSignals';
 import { closeActivePositionForSymbol, inspectActivePositionForSymbol } from './tradingExecutor';
-import { strategyAllowsAutoExecuteDirection } from './signalEngine';
 
 export const SCANNER_S6_SHORT_LEADER_12H_STRATEGY_NAME = 'SCANNER_S6_SHORT_LEADER_12H' as const;
 const LAST_RUN_SETTING_KEY = 'SCANNER_S6_SHORT_LEADER_12H_LAST_RUN_ID';
@@ -32,7 +31,8 @@ export type ScannerS6ShortLeader12hResult =
   | {
       status: 'done';
       runId: string;
-      entrySlotPt: number;
+      /** Slot PT (0/8/12/20) ou null se fora de janela de entrada */
+      entrySlotPt: number | null;
       timedClosed: number;
       signalsCreated: number;
       executed: number;
@@ -47,13 +47,34 @@ function parseParams(raw: string | null): ScannerS6ShortLeader12hParams {
   }
 }
 
-function entrySlotPt(iso: string | Date): number {
-  const h = +new Date(iso).toLocaleString('en-GB', {
+/** Hora 0–23 em Europe/Lisbon (Intl — estável em Linux/Railway). */
+export function getLisbonHour(date: string | Date = new Date()): number {
+  const h = new Intl.DateTimeFormat('en-GB', {
     timeZone: TZ,
-    hour: '2-digit',
+    hour: 'numeric',
     hour12: false,
-  });
-  return Math.round(h / 4) * 4 % 24;
+  }).format(new Date(date));
+  const n = parseInt(h, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Janela de 4 h a partir de cada slot PT (ex.: 20 → 20–23h).
+ * Usa a hora de execução do pipeline, não scannedAt (scan pode terminar horas depois do cron).
+ */
+export function resolveEntrySlotPt(
+  date: string | Date,
+  allowedSlots: number[] = [0, 8, 12, 20]
+): number | null {
+  const h = getLisbonHour(date);
+  for (const slot of allowedSlots) {
+    if (slot === 20) {
+      if (h >= 20) return 20;
+    } else if (h >= slot && h < slot + 4) {
+      return slot;
+    }
+  }
+  return null;
 }
 
 async function getLastProcessedRunId(): Promise<string | null> {
@@ -157,18 +178,23 @@ export async function runScannerS6ShortLeader12hPipeline(options?: {
     logPrefix
   );
 
-  const slot = entrySlotPt(scan.scannedAt);
+  const now = new Date();
+  const lisbonHour = getLisbonHour(now);
+  const slot = resolveEntrySlotPt(now, allowedHours);
   const lastRunId = await getLastProcessedRunId();
   if (!options?.force && lastRunId === scan.runId) {
     return {
       status: 'skipped',
-      reason: `Scan ${scan.runId} já processado (slot ${slot}h PT)`,
+      reason: `Scan ${scan.runId} já processado (slot ${slot ?? 'fora'}h PT)`,
     };
   }
 
   await setLastProcessedRunId(scan.runId);
 
-  if (!allowedHours.includes(slot)) {
+  if (slot == null || !allowedHours.includes(slot)) {
+    console.log(
+      `${logPrefix} Fora de janela de entrada (${lisbonHour}h PT; slots ${allowedHours.join(',')}h) — sem novo sinal`
+    );
     return {
       status: 'done',
       runId: scan.runId,
@@ -187,29 +213,16 @@ export async function runScannerS6ShortLeader12hPipeline(options?: {
     };
   }
 
-  const existingOpen = await prisma.signal.findFirst({
+  const existingInProgress = await prisma.signal.findFirst({
     where: {
       strategyId: strategy.id,
       symbol: leader.symbol,
-      status: { in: ['NEW', 'IN_PROGRESS'] },
+      status: 'IN_PROGRESS',
     },
     select: { id: true },
   });
-  if (existingOpen) {
-    console.log(`${logPrefix} ⏭️ Já existe sinal aberto em ${leader.symbol} — ignorado`);
-    return {
-      status: 'done',
-      runId: scan.runId,
-      entrySlotPt: slot,
-      timedClosed,
-      signalsCreated: 0,
-      executed: 0,
-      symbol: leader.symbol,
-    };
-  }
-
-  if (!strategyAllowsAutoExecuteDirection('SELL', params as Record<string, unknown>)) {
-    console.log(`${logPrefix} ⏭️ Auto-exec SELL desactivada — sem novo sinal`);
+  if (existingInProgress) {
+    console.log(`${logPrefix} ⏭️ Posição IN_PROGRESS em ${leader.symbol} — ignorado`);
     return {
       status: 'done',
       runId: scan.runId,
@@ -230,8 +243,20 @@ export async function runScannerS6ShortLeader12hPipeline(options?: {
   const strength = 92;
 
   console.log(
-    `${logPrefix} 🔻 SHORT #${leader.rank} ${leader.symbol} @ ${entryPrice} (slot ${slot}h PT, hold ${closeAfterHours}h, pctMA ${leader.pctFromMa.toFixed(1)}%)`
+    `${logPrefix} 🔻 SHORT #${leader.rank} ${leader.symbol} @ ${entryPrice} (slot ${slot}h PT, hora ${lisbonHour}h, hold ${closeAfterHours}h, pctMA ${leader.pctFromMa.toFixed(1)}%)`
   );
+
+  const clearedNew = await prisma.signal.updateMany({
+    where: {
+      strategyId: strategy.id,
+      symbol: leader.symbol,
+      status: 'NEW',
+    },
+    data: { status: 'EXPIRED' },
+  });
+  if (clearedNew.count > 0) {
+    console.log(`${logPrefix} 🧹 ${clearedNew.count} sinal(is) NEW anterior(es) em ${leader.symbol} expirados`);
+  }
 
   const startedAt = new Date();
   await prisma.signal.create({
@@ -254,6 +279,8 @@ export async function runScannerS6ShortLeader12hPipeline(options?: {
         pctFromMa: leader.pctFromMa,
         scanRunId: scan.runId,
         scannedAt: scan.scannedAt.toISOString(),
+        pipelineAt: now.toISOString(),
+        lisbonHourPt: lisbonHour,
         entrySlotPt: slot,
         stopLossPct,
         closeAfterHours,
