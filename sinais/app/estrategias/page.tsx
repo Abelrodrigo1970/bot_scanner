@@ -609,6 +609,28 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'SCANNER_S6_SHORT_LEADER_12H':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              <strong>SHORT</strong> só no <strong>rank #1</strong> do Scanner 6 (SMA80 4h). Entradas às{' '}
+              <strong>0h, 8h, 12h e 20h PT</strong>; fecho automático <strong>12h</strong> depois. SL +7%.
+              Várias posições em paralelo (símbolos diferentes). Corre após{' '}
+              <code className="text-[10px]">run-universe-scans</code>.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Rank mín.', p.rankMin ?? 1, (v) => upd({ rankMin: v }))}
+              {numField('Rank máx.', p.rankMax ?? 1, (v) => upd({ rankMax: v }))}
+              {numField('SL (%) acima entrada (short)', (p.stopLossPct ?? 0.07) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Horas até fecho', p.closeAfterHours ?? 12, (v) => upd({ closeAfterHours: v }))}
+              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-500">
+              Slots PT: {(p.allowedEntryHoursPt ?? [0, 8, 12, 20]).join('h, ')}h (editar JSON se precisar alterar)
+            </p>
+          </div>
+        );
+
       default:
         return <p className="text-sm text-gray-500 dark:text-gray-400">Sem parâmetros configuráveis</p>;
     }
@@ -736,6 +758,7 @@ export default function EstrategiasPage() {
                 strategy.name === 'PIVOT_BOSS_BEAR_15M' ||
                 strategy.name === 'PIVOT_BOSS_BEAR_1H' ||
                 strategy.name === 'EMA80_SMA7_BREAKDOWN_15M' ||
+                strategy.name === 'SCANNER_S6_SHORT_LEADER_12H' ||
                 strategy.name === 'RSI_OVERBOUGHT_DROP_1H' ||
                 strategy.name === 'RSI_OVERBOUGHT_DROP_LEGACY_1H';
               const buyOnly =

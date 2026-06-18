@@ -27,6 +27,10 @@ import {
   syncAccumulationBreakout15mConfig,
   syncScanner3RsiBreakout15mConfig,
   syncEma80Sma7Breakdown15mConfig,
+  syncScannerS6ShortLeader12hConfig,
+  SCANNER_S6_SHORT_LEADER_12H_DESCRIPTION,
+  SCANNER_S6_SHORT_LEADER_12H_DISPLAY,
+  SCANNER_S6_SHORT_LEADER_12H_PARAMS,
 } from './strategyMigrations';
 
 /** Estratégias de sinal no bot_scanner (Scanner 1). */
@@ -72,6 +76,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(EMA80_SMA7_BREAKDOWN_15M_PARAMS),
+  },
+  {
+    name: 'SCANNER_S6_SHORT_LEADER_12H',
+    displayName: SCANNER_S6_SHORT_LEADER_12H_DISPLAY,
+    description: SCANNER_S6_SHORT_LEADER_12H_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(SCANNER_S6_SHORT_LEADER_12H_PARAMS),
   },
 ] as const;
 
@@ -129,6 +140,11 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const ema80BreakdownSync = await syncEma80Sma7Breakdown15mConfig(prisma);
   if (ema80BreakdownSync.updated) {
     console.log('✅ EMA80_SMA7_BREAKDOWN_15M: Quebra EMA80 actualizada');
+  }
+
+  const s6ShortSync = await syncScannerS6ShortLeader12hConfig(prisma);
+  if (s6ShortSync.updated) {
+    console.log('✅ SCANNER_S6_SHORT_LEADER_12H: SHORT rank #1, slots 0/8/12/20h, hold 12h');
   }
 
   const reactivated = await prisma.strategy.updateMany({

@@ -843,6 +843,76 @@ export async function syncScannerMa804hTop6Config(
   return { updated: false };
 }
 
+export const SCANNER_S6_SHORT_LEADER_12H_DISPLAY = 'Scanner 6 Short Leader 12h';
+
+export const SCANNER_S6_SHORT_LEADER_12H_DESCRIPTION =
+  'SHORT no rank #1 do Scanner 6 (SMA80 4h). Entradas às 0h, 8h, 12h e 20h PT; fecho automático 12h depois. SL +7% (Bybit). Várias posições em paralelo (símbolos diferentes).';
+
+export const SCANNER_S6_SHORT_LEADER_12H_PARAMS = {
+  rankMin: 1,
+  rankMax: 1,
+  allowedEntryHoursPt: [0, 8, 12, 20],
+  stopLossPct: 0.07,
+  closeAfterHours: 12,
+  allowBuy: false,
+  allowSell: true,
+  buyEnabled: false,
+  sellEnabled: true,
+  autoExecuteMinStrength: 80,
+  exchange: 'bybit',
+} as const;
+
+/** Garante registo/descrição da estratégia Scanner 6 Short Leader 12h. */
+export async function syncScannerS6ShortLeader12hConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'SCANNER_S6_SHORT_LEADER_12H' },
+    select: { params: true, description: true, displayName: true, isActive: true, createdAt: true, updatedAt: true },
+  });
+  if (!row) return { updated: false };
+
+  const bootstrapActive =
+    !row.isActive && row.createdAt.getTime() === row.updatedAt.getTime();
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...SCANNER_S6_SHORT_LEADER_12H_PARAMS,
+    ...p,
+    rankMin: SCANNER_S6_SHORT_LEADER_12H_PARAMS.rankMin,
+    rankMax: SCANNER_S6_SHORT_LEADER_12H_PARAMS.rankMax,
+    allowedEntryHoursPt: SCANNER_S6_SHORT_LEADER_12H_PARAMS.allowedEntryHoursPt,
+    stopLossPct: SCANNER_S6_SHORT_LEADER_12H_PARAMS.stopLossPct,
+    closeAfterHours: SCANNER_S6_SHORT_LEADER_12H_PARAMS.closeAfterHours,
+    allowBuy: false,
+    allowSell: true,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== SCANNER_S6_SHORT_LEADER_12H_DISPLAY ||
+    row.description !== SCANNER_S6_SHORT_LEADER_12H_DESCRIPTION;
+
+  if (needParams || needMeta || bootstrapActive) {
+    await prisma.strategy.update({
+      where: { name: 'SCANNER_S6_SHORT_LEADER_12H' },
+      data: {
+        displayName: SCANNER_S6_SHORT_LEADER_12H_DISPLAY,
+        description: SCANNER_S6_SHORT_LEADER_12H_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(bootstrapActive ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 export const PIVOT_BOSS_BEAR_15M_PARAMS = {
   emaFastPeriod: 12,
   emaMidPeriod: 30,

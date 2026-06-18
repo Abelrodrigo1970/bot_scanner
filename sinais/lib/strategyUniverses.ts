@@ -166,6 +166,24 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   },
 
+  {
+
+    strategyName: 'SCANNER_S6_SHORT_LEADER_12H',
+
+    displayLabel: 'Scanner 6 Short Leader 12h',
+
+    signalTimeframes: ['4h'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
+
+    description: 'SHORT rank #1 Scanner 6 (SMA80 4h); slots 0/8/12/20h PT; fecho 12h.',
+
+    refresh: '/api/cron/run-universe-scans (cada 4 h) + run-scanner-s6-short-leader-12h',
+
+  },
+
 ];
 
 
@@ -182,6 +200,10 @@ export const DATA_SOURCE_MENU_ITEMS = [
   {
     href: '/scanners/3',
     label: 'Scanner 3 — RSI > 75 (15m)',
+  },
+  {
+    href: '/scanners/6',
+    label: 'Scanner 6 — Acima SMA80 4h (SHORT rank #1)',
   },
 ] as const;
 

@@ -57,6 +57,8 @@ export type ClosePositionOptions = {
   manual?: boolean;
   /** Fecho de rotação Scanner 1 Top 8 (única excepção automática). */
   rotationClose?: boolean;
+  /** Fecho por tempo (ex. Scanner 6 Short Leader 12h). */
+  timedClose?: boolean;
 };
 
 export interface ClosePositionResult {
@@ -570,7 +572,7 @@ export async function closeActivePositionForSymbol(
   exchange?: 'binance' | 'bybit',
   options?: ClosePositionOptions
 ): Promise<ClosePositionResult> {
-  if (!options?.manual && !options?.rotationClose && !STRATEGY_AUTO_CLOSE_POSITIONS) {
+  if (!options?.manual && !options?.rotationClose && !options?.timedClose && !STRATEGY_AUTO_CLOSE_POSITIONS) {
     return {
       closed: false,
       message: 'Fecho automático desactivado — saída apenas por SL/TP na exchange',

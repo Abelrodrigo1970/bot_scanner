@@ -18,6 +18,8 @@ export const UNIVERSE_CODE_SCANNER_3_MA80_PCT4 = 'UNIVERSE_NEAR_MA200_PCT4_4H' a
 
 export const UNIVERSE_CODE_SCANNER_3_RSI75_15M = 'UNIVERSE_RSI_ABOVE_75_15M' as const;
 
+export const UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H = 'UNIVERSE_ABOVE_MA80_4H' as const;
+
 export const SCANNER_3_RSI_PERIOD = 14;
 export const SCANNER_3_RSI_THRESHOLD = 75;
 
@@ -45,6 +47,15 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
     minQuoteVolume: 500000,
     candidateLimit: 30,
     resultLimit: 30,
+  },
+  UNIVERSE_ABOVE_MA80_4H: {
+    ruleType: 'ABOVE_MA',
+    maPeriod: 80,
+    minDistancePct: null,
+    maxDistancePct: null,
+    timeframe: '4h',
+    minQuoteVolume: 500000,
+    candidateLimit: 400,
   },
 };
 
@@ -109,14 +120,23 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 15m, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h. Actualização a cada 15 min (cron run-15m).',
     strategyNames: 'Scanner 3 RSI Rompimento 15m',
   },
+  UNIVERSE_ABOVE_MA80_4H: {
+    displayName: 'Scanner 6 — Acima SMA80 (4h)',
+    description:
+      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Estratégia SHORT no rank #1 (slots 0/8/12/20h PT, hold 12h, SL +7%).',
+    strategyNames: 'SCANNER_S6_SHORT_LEADER_12H',
+  },
 };
 
-export const SCANNER_ROTATION_NOTES: Record<string, string> = {};
+export const SCANNER_ROTATION_NOTES: Record<string, string> = {
+  '6': 'Estratégia SCANNER_S6_SHORT_LEADER_12H: SHORT rank #1 — slots 0/8/12/20h PT, hold 12h, SL +7%.',
+};
 
 export const SCANNER_UI_ROUTES = [
   { scannerId: '1', code: UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 },
   { scannerId: '2', code: UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H },
   { scannerId: '3', code: UNIVERSE_CODE_SCANNER_3_RSI75_15M },
+  { scannerId: '6', code: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H },
 ] as const;
 
 export function getScannerByUiId(scannerId: string) {

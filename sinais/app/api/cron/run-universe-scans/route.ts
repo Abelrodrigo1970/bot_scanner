@@ -3,10 +3,11 @@ import { BUILTIN_UNIVERSE_SCAN_4H } from '@/lib/symbolUniverseDefaults';
 import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
 import { runScanner1Top8Pipeline, runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
+import { runScannerS6ShortLeader12hPipeline } from '@/lib/scannerS6ShortLeader12hStrategy';
 
 /**
- * Scanner 1 + Scanner 2 (top 30 subidas 24h)
- * + rotação Scanner 1 Top 6 + Scanner 2 Top 8. Agendar de 4 em 4 horas.
+ * Scanner 1 + Scanner 2 (top 30 subidas 24h) + Scanner 6 (SMA80 4h)
+ * + rotação Scanner 1 Top 6 + Scanner 2 Top 8 + SHORT Scanner 6 rank #1. Agendar de 4 em 4 horas.
  * (Scanner 3 RSI 15m corre em run-15m.)
  */
 let universeScansJobPromise: Promise<void> | null = null;
@@ -55,6 +56,15 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
     console.log('[Universe-Scans] Scanner 2 Top 8:', top8);
   } catch (err) {
     console.error('[Universe-Scans] Scanner 2 Top 8 falhou:', err);
+  }
+
+  try {
+    const shortLeader = await runScannerS6ShortLeader12hPipeline({
+      logPrefix: '[Universe-Scans → S6 Short Leader 12h]',
+    });
+    console.log('[Universe-Scans] Scanner 6 Short Leader 12h:', shortLeader);
+  } catch (err) {
+    console.error('[Universe-Scans] Scanner 6 Short Leader 12h falhou:', err);
   }
 
   return results;
