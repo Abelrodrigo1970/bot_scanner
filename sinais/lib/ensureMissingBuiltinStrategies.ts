@@ -27,10 +27,11 @@ import {
   syncAccumulationBreakout15mConfig,
   syncScanner3RsiBreakout15mConfig,
   syncEma80Sma7Breakdown15mConfig,
-  syncScannerS6ShortLeader12hConfig,
-  SCANNER_S6_SHORT_LEADER_12H_DESCRIPTION,
-  SCANNER_S6_SHORT_LEADER_12H_DISPLAY,
-  SCANNER_S6_SHORT_LEADER_12H_PARAMS,
+  migrateScannerS6ShortToScanner2ShortLeader24h,
+  syncScanner2ShortLeader24hConfig,
+  SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
+  SCANNER2_SHORT_LEADER_24H_DISPLAY,
+  SCANNER2_SHORT_LEADER_24H_PARAMS,
 } from './strategyMigrations';
 
 /** Estratégias de sinal no bot_scanner (Scanner 1). */
@@ -78,11 +79,11 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     params: JSON.stringify(EMA80_SMA7_BREAKDOWN_15M_PARAMS),
   },
   {
-    name: 'SCANNER_S6_SHORT_LEADER_12H',
-    displayName: SCANNER_S6_SHORT_LEADER_12H_DISPLAY,
-    description: SCANNER_S6_SHORT_LEADER_12H_DESCRIPTION,
+    name: 'SCANNER2_SHORT_LEADER_24H',
+    displayName: SCANNER2_SHORT_LEADER_24H_DISPLAY,
+    description: SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
     isActive: true,
-    params: JSON.stringify(SCANNER_S6_SHORT_LEADER_12H_PARAMS),
+    params: JSON.stringify(SCANNER2_SHORT_LEADER_24H_PARAMS),
   },
 ] as const;
 
@@ -142,9 +143,14 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
     console.log('✅ EMA80_SMA7_BREAKDOWN_15M: Quebra EMA80 actualizada');
   }
 
-  const s6ShortSync = await syncScannerS6ShortLeader12hConfig(prisma);
-  if (s6ShortSync.updated) {
-    console.log('✅ SCANNER_S6_SHORT_LEADER_12H: SHORT rank #1, slots 0/8/12/20h, hold 12h');
+  const migratedShort = await migrateScannerS6ShortToScanner2ShortLeader24h(prisma);
+  if (migratedShort.migrated) {
+    console.log('✅ SCANNER_S6_SHORT_LEADER_12H → SCANNER2_SHORT_LEADER_24H (migrado)');
+  }
+
+  const s2ShortSync = await syncScanner2ShortLeader24hConfig(prisma);
+  if (s2ShortSync.updated) {
+    console.log('✅ SCANNER2_SHORT_LEADER_24H: SHORT ranks #1–#2, pump ≥25%, hold 24h, SL +40%');
   }
 
   const reactivated = await prisma.strategy.updateMany({

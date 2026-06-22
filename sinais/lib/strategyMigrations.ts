@@ -843,31 +843,72 @@ export async function syncScannerMa804hTop6Config(
   return { updated: false };
 }
 
-export const SCANNER_S6_SHORT_LEADER_12H_DISPLAY = 'Scanner 6 Short Leader 12h';
+export const SCANNER2_SHORT_LEADER_24H_DISPLAY = 'Scanner 2 Short Leader 24h';
 
-export const SCANNER_S6_SHORT_LEADER_12H_DESCRIPTION =
-  'SHORT no rank #1 do Scanner 6 (SMA80 4h). Entradas às 0h, 8h, 12h e 20h PT; fecho automático 12h depois. SL +7% (Bybit). Várias posições em paralelo (símbolos diferentes).';
+export const SCANNER2_SHORT_LEADER_24H_DESCRIPTION =
+  'SHORT nos ranks #1–#2 do Scanner 2 (top subidas 24h). Após cada scan 4h; pump 24h ≥25%; bloqueia entradas 10h–14h PT. Fecho automático 24h. SL +40% (Binance). Até 2 posições em paralelo.';
 
-export const SCANNER_S6_SHORT_LEADER_12H_PARAMS = {
+export const SCANNER2_SHORT_LEADER_24H_PARAMS = {
   rankMin: 1,
-  rankMax: 1,
-  allowedEntryHoursPt: [0, 8, 12, 20],
-  stopLossPct: 0.07,
-  closeAfterHours: 12,
+  rankMax: 2,
+  minPumpPct24h: 25,
+  blockedEntryHoursPt: [10, 11, 12, 13, 14],
+  stopLossPct: 0.4,
+  closeAfterHours: 24,
   allowBuy: false,
   allowSell: true,
   buyEnabled: false,
   sellEnabled: true,
   autoExecuteMinStrength: 80,
-  exchange: 'bybit',
+  exchange: 'binance',
 } as const;
 
-/** Garante registo/descrição da estratégia Scanner 6 Short Leader 12h. */
-export async function syncScannerS6ShortLeader12hConfig(
+/** Renomeia SCANNER_S6_SHORT_LEADER_12H → SCANNER2_SHORT_LEADER_24H (uma vez). */
+export async function migrateScannerS6ShortToScanner2ShortLeader24h(
+  prisma: PrismaClient
+): Promise<{ migrated: boolean }> {
+  const old = await prisma.strategy.findUnique({ where: { name: 'SCANNER_S6_SHORT_LEADER_12H' } });
+  if (!old) return { migrated: false };
+
+  const existing = await prisma.strategy.findUnique({ where: { name: 'SCANNER2_SHORT_LEADER_24H' } });
+  if (existing) {
+    await prisma.strategy.update({
+      where: { name: 'SCANNER_S6_SHORT_LEADER_12H' },
+      data: { isActive: false },
+    });
+    return { migrated: false };
+  }
+
+  await prisma.strategy.update({
+    where: { id: old.id },
+    data: {
+      name: 'SCANNER2_SHORT_LEADER_24H',
+      displayName: SCANNER2_SHORT_LEADER_24H_DISPLAY,
+      description: SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
+      params: JSON.stringify(SCANNER2_SHORT_LEADER_24H_PARAMS),
+    },
+  });
+
+  const oldRun = await prisma.appSetting.findUnique({
+    where: { key: 'SCANNER_S6_SHORT_LEADER_12H_LAST_RUN_ID' },
+  });
+  if (oldRun) {
+    await prisma.appSetting.upsert({
+      where: { key: 'SCANNER2_SHORT_LEADER_24H_LAST_RUN_ID' },
+      create: { key: 'SCANNER2_SHORT_LEADER_24H_LAST_RUN_ID', value: oldRun.value },
+      update: { value: oldRun.value },
+    });
+  }
+
+  return { migrated: true };
+}
+
+/** Garante registo/descrição da estratégia Scanner 2 Short Leader 24h. */
+export async function syncScanner2ShortLeader24hConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
   const row = await prisma.strategy.findUnique({
-    where: { name: 'SCANNER_S6_SHORT_LEADER_12H' },
+    where: { name: 'SCANNER2_SHORT_LEADER_24H' },
     select: { params: true, description: true, displayName: true, isActive: true, createdAt: true, updatedAt: true },
   });
   if (!row) return { updated: false };
@@ -883,27 +924,28 @@ export async function syncScannerS6ShortLeader12hConfig(
   }
 
   const next = {
-    ...SCANNER_S6_SHORT_LEADER_12H_PARAMS,
+    ...SCANNER2_SHORT_LEADER_24H_PARAMS,
     ...p,
-    rankMin: SCANNER_S6_SHORT_LEADER_12H_PARAMS.rankMin,
-    rankMax: SCANNER_S6_SHORT_LEADER_12H_PARAMS.rankMax,
-    allowedEntryHoursPt: SCANNER_S6_SHORT_LEADER_12H_PARAMS.allowedEntryHoursPt,
-    stopLossPct: SCANNER_S6_SHORT_LEADER_12H_PARAMS.stopLossPct,
-    closeAfterHours: SCANNER_S6_SHORT_LEADER_12H_PARAMS.closeAfterHours,
+    rankMin: SCANNER2_SHORT_LEADER_24H_PARAMS.rankMin,
+    rankMax: SCANNER2_SHORT_LEADER_24H_PARAMS.rankMax,
+    minPumpPct24h: SCANNER2_SHORT_LEADER_24H_PARAMS.minPumpPct24h,
+    blockedEntryHoursPt: SCANNER2_SHORT_LEADER_24H_PARAMS.blockedEntryHoursPt,
+    stopLossPct: SCANNER2_SHORT_LEADER_24H_PARAMS.stopLossPct,
+    closeAfterHours: SCANNER2_SHORT_LEADER_24H_PARAMS.closeAfterHours,
     allowBuy: false,
     allowSell: true,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
-    row.displayName !== SCANNER_S6_SHORT_LEADER_12H_DISPLAY ||
-    row.description !== SCANNER_S6_SHORT_LEADER_12H_DESCRIPTION;
+    row.displayName !== SCANNER2_SHORT_LEADER_24H_DISPLAY ||
+    row.description !== SCANNER2_SHORT_LEADER_24H_DESCRIPTION;
 
   if (needParams || needMeta || bootstrapActive) {
     await prisma.strategy.update({
-      where: { name: 'SCANNER_S6_SHORT_LEADER_12H' },
+      where: { name: 'SCANNER2_SHORT_LEADER_24H' },
       data: {
-        displayName: SCANNER_S6_SHORT_LEADER_12H_DISPLAY,
-        description: SCANNER_S6_SHORT_LEADER_12H_DESCRIPTION,
+        displayName: SCANNER2_SHORT_LEADER_24H_DISPLAY,
+        description: SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
         params: JSON.stringify(next),
         ...(bootstrapActive ? { isActive: true } : {}),
       },

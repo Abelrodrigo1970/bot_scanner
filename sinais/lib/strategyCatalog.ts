@@ -22,7 +22,7 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'EMA80_SMA7_BREAKDOWN_15M',
 
-  'SCANNER_S6_SHORT_LEADER_12H',
+  'SCANNER2_SHORT_LEADER_24H',
 
 ] as const;
 
@@ -134,7 +134,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
   },
 
-  SCANNER_S6_SHORT_LEADER_12H: {
+  SCANNER2_SHORT_LEADER_24H: {
 
     cron: '1h',
 
@@ -142,7 +142,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '4h',
 
-    universe: 'Scanner 6 — rank #1 (SMA80 4h)',
+    universe: 'Scanner 2 — ranks #1–#2 (top subidas 24h)',
 
   },
 
@@ -151,6 +151,8 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
 
 export const REMOVED_STRATEGY_LABELS: Record<string, string> = {
+
+  SCANNER_S6_SHORT_LEADER_12H: 'Scanner 6 Short Leader 12h (substituído por Scanner 2 Short Leader 24h)',
 
   SCANNER_MA80_TOP6: 'Scanner 5 Top 6 (rotação — bot_cripto)',
 
@@ -252,7 +254,7 @@ export const CRON_GROUPS: { key: '15m' | '1h'; title: string; description: strin
 
     title: 'Rotação 4h',
 
-    description: 'Scanner 1 Top 6 + Scanner 2 Top 8 + Scanner 6 Short rank #1 (após run-universe-scans)',
+    description: 'Scanner 1 Top 6 + Scanner 2 Top 8 + Scanner 2 Short ranks #1–#2 (após run-universe-scans)',
 
   },
 

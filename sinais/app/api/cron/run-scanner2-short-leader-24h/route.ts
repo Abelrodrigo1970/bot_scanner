@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runScannerS6ShortLeader12hPipeline } from '@/lib/scannerS6ShortLeader12hStrategy';
+import { runScanner2ShortLeader24hPipeline } from '@/lib/scanner2ShortLeader24hStrategy';
 
 /**
- * Scanner 6 Short Leader 12h — SHORT rank #1 (0h/8h/12h/20h PT), fecho 12h, SL +7%.
+ * Scanner 2 Short Leader 24h — SHORT ranks #1–#2, fecho 24h, SL +40%.
  * Agendar 10–15 min após run-universe-scans ou invocar manualmente com ?force=1.
  */
 async function runInBackground(force: boolean): Promise<void> {
   try {
-    const result = await runScannerS6ShortLeader12hPipeline({
+    const result = await runScanner2ShortLeader24hPipeline({
       force,
-      logPrefix: '[Scanner6-Short-Leader-12h Cron]',
+      logPrefix: '[Scanner2-Short-Leader-24h Cron]',
     });
-    console.log('[Scanner6-Short-Leader-12h Cron] resultado:', result);
+    console.log('[Scanner2-Short-Leader-24h Cron] resultado:', result);
   } catch (err) {
-    console.error('[Scanner6-Short-Leader-12h Cron] erro:', err);
+    console.error('[Scanner2-Short-Leader-24h Cron] erro:', err);
   }
 }
 
@@ -32,15 +32,15 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Scanner 6 Short Leader 12h iniciado em background',
+      message: 'Scanner 2 Short Leader 24h iniciado em background',
       force,
       executedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('[Scanner6-Short-Leader-12h Cron] Erro ao iniciar:', error);
+    console.error('[Scanner2-Short-Leader-24h Cron] Erro ao iniciar:', error);
     return NextResponse.json(
       {
-        error: 'Erro ao iniciar Scanner 6 Short Leader 12h',
+        error: 'Erro ao iniciar Scanner 2 Short Leader 24h',
         details: error instanceof Error ? error.message : 'Erro desconhecido',
       },
       { status: 500 }

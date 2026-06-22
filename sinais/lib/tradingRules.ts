@@ -31,8 +31,8 @@ const ALLOWED_STRATEGIES = [
   'MA_CROSS_5M',
   'Pivot Boss Bear',
   'PIVOT_BOSS_BEAR_15M',
-  'Scanner 6 Short Leader 12h',
-  'SCANNER_S6_SHORT_LEADER_12H',
+  'Scanner 2 Short Leader 24h',
+  'SCANNER2_SHORT_LEADER_24H',
 ];
 
 /** Força mínima para executar */

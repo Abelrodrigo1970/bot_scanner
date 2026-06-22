@@ -61,11 +61,11 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Só VENDA. Stack 12/30/80/200 bearish. SL +7% fixo. TP1 -9% (50%) | restante às 24h.',
   },
   {
-    strategyName: 'SCANNER_S6_SHORT_LEADER_12H',
-    displayNames: ['Scanner 6 Short Leader 12h'],
+    strategyName: 'SCANNER2_SHORT_LEADER_24H',
+    displayNames: ['Scanner 2 Short Leader 24h'],
     buy: null,
-    sell: side(7, 0, 0, 0, 0, 12),
-    summary: 'SHORT rank #1 Scanner 6. SL +7%. Fecho 12h (slots 0/8/12/20h PT).',
+    sell: side(40, 0, 0, 0, 0, 24),
+    summary: 'SHORT ranks #1–#2 Scanner 2. Pump ≥25%. SL +40%. Fecho 24h.',
   },
 ];
 

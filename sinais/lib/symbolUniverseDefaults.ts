@@ -112,7 +112,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 2 — Top 30 subidas 24h',
     description:
       'Top 30 perpétuos USDT com maior subida de preço nas últimas 24h (apenas variação positiva). Mín. 500k USDT volume 24h.',
-    strategyNames: 'Scanner 2 Top 8 (rotação 4h)',
+    strategyNames: 'Scanner 2 Top 8 (rotação 4h), Scanner 2 Short Leader 24h',
   },
   UNIVERSE_RSI_ABOVE_75_15M: {
     displayName: 'Scanner 3 — RSI > 75 (15m)',
@@ -123,13 +123,13 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA80_4H: {
     displayName: 'Scanner 6 — Acima SMA80 (4h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Estratégia SHORT no rank #1 (slots 0/8/12/20h PT, hold 12h, SL +7%).',
-    strategyNames: 'SCANNER_S6_SHORT_LEADER_12H',
+      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Rotação long no bot_cripto.',
+    strategyNames: 'SCANNER_MA80_4H_TOP6 (bot_cripto)',
   },
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
-  '6': 'Estratégia SCANNER_S6_SHORT_LEADER_12H: SHORT rank #1 — slots 0/8/12/20h PT, hold 12h, SL +7%.',
+  '2': 'Scanner 2 Short Leader 24h: SHORT ranks #1–#2 — pump ≥25%, hold 24h, SL +40%.',
 };
 
 export const SCANNER_UI_ROUTES = [

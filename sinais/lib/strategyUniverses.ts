@@ -168,19 +168,19 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
-    strategyName: 'SCANNER_S6_SHORT_LEADER_12H',
+    strategyName: 'SCANNER2_SHORT_LEADER_24H',
 
-    displayLabel: 'Scanner 6 Short Leader 12h',
+    displayLabel: 'Scanner 2 Short Leader 24h',
 
     signalTimeframes: ['4h'],
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
+    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
 
-    description: 'SHORT rank #1 Scanner 6 (SMA80 4h); slots 0/8/12/20h PT; fecho 12h.',
+    description: 'SHORT ranks #1–#2 Scanner 2 (top subidas 24h); pump ≥25%; fecho 24h.',
 
-    refresh: '/api/cron/run-universe-scans (cada 4 h) + run-scanner-s6-short-leader-12h',
+    refresh: '/api/cron/run-universe-scans (cada 4 h) + run-scanner2-short-leader-24h',
 
   },
 
