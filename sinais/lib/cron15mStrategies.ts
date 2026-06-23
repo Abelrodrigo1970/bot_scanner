@@ -23,7 +23,6 @@ import {
   inspectActivePositionForSymbol,
 } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
-import { runScanner3Rsi15mScan, type Scanner3ScanResult } from '@/lib/scanner3UniverseScan';
 
 const TIMEFRAME_15M = '15m' as const;
 const MA_CROSS_5M_MIN_STRENGTH = 70;
@@ -221,8 +220,6 @@ export interface Cron15mAllResult {
   maCross: Cron15mResult;
   pivotBoss: Cron15mResult;
   breakout: Cron15mResult;
-  scanner3: Scanner3ScanResult;
-  scanner3RsiBreakout: Cron15mResult;
   ema80Sma7Breakdown: Cron15mResult;
 }
 
@@ -277,30 +274,6 @@ async function runBreakout15mPipeline(): Promise<Cron15mResult> {
   }
 }
 
-async function runScanner3RsiBreakout15mPipeline(): Promise<Cron15mResult> {
-  const strategy = await prisma.strategy.findFirst({
-    where: { name: 'SCANNER3_RSI_BREAKOUT_15M' },
-  });
-  if (!strategy) {
-    console.warn(
-      '[Scanner3 RSI Rompimento 15m] Estratégia SCANNER3_RSI_BREAKOUT_15M não encontrada (correr o seed).'
-    );
-    return { status: 'not-found' };
-  }
-  if (!strategy.isActive) {
-    console.log('[Scanner3 RSI Rompimento 15m] Estratégia inactiva — saltada.');
-    return { status: 'inactive' };
-  }
-
-  try {
-    const signalsCreated = await runAllStrategies({ only: ['SCANNER3_RSI_BREAKOUT_15M'] });
-    return { status: 'done', signalsCreated };
-  } catch (error) {
-    console.error('[Scanner3 RSI Rompimento 15m] Falhou:', error);
-    return { status: 'not-found' };
-  }
-}
-
 async function runEma80Sma7Breakdown15mPipeline(): Promise<Cron15mResult> {
   const strategy = await prisma.strategy.findFirst({
     where: { name: 'EMA80_SMA7_BREAKDOWN_15M' },
@@ -326,15 +299,13 @@ async function runEma80Sma7Breakdown15mPipeline(): Promise<Cron15mResult> {
 }
 
 /**
- * Cron único 15m: Scanner 3 + estratégias 15m (MA Cross, Pivot Boss, Rompimentos, Quebra EMA80).
+ * Cron único 15m: estratégias 15m (MA Cross, Pivot Boss, Rompimentos, Quebra EMA80).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
-  const scanner3 = await runScanner3Rsi15mScan('cron/run-15m');
-  const scanner3RsiBreakout = await runScanner3RsiBreakout15mPipeline();
   const ema80Sma7Breakdown = await runEma80Sma7Breakdown15mPipeline();
   const maCross = await runMaCross15mPipeline(now);
   const pivotBoss = await runPivotBoss15mPipeline(now);
   const breakout = await runBreakout15mPipeline();
-  return { maCross, pivotBoss, breakout, scanner3, scanner3RsiBreakout, ema80Sma7Breakdown };
+  return { maCross, pivotBoss, breakout, ema80Sma7Breakdown };
 }
 

@@ -10,15 +10,11 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'MA_CROSS_5M',
 
-  'SCANNER1_TOP8',
-
   'SCANNER1_TOP5',
 
   'PIVOT_BOSS_BEAR_15M',
 
   'ACCUMULATION_BREAKOUT_15M',
-
-  'SCANNER3_RSI_BREAKOUT_15M',
 
   'EMA80_SMA7_BREAKDOWN_15M',
 
@@ -110,18 +106,6 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
   },
 
-  SCANNER3_RSI_BREAKOUT_15M: {
-
-    cron: '15m',
-
-    cronLabel: 'Cron 15m',
-
-    timeframe: '15m',
-
-    universe: 'Scanner 3 (RSI>75); entrada RSI 72–85 + rompimento',
-
-  },
-
   EMA80_SMA7_BREAKDOWN_15M: {
 
     cron: '15m',
@@ -153,6 +137,10 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 export const REMOVED_STRATEGY_LABELS: Record<string, string> = {
 
   SCANNER_S6_SHORT_LEADER_12H: 'Scanner 6 Short Leader 12h (substituído por Scanner 2 Short Leader 24h)',
+
+  SCANNER1_TOP8: 'Scanner 1 Top 6 (rotação — descontinuado)',
+
+  SCANNER3_RSI_BREAKOUT_15M: 'Scanner 3 RSI Rompimento 15m (descontinuado)',
 
   SCANNER_MA80_TOP6: 'Scanner 5 Top 6 (rotação — bot_cripto)',
 
@@ -254,7 +242,7 @@ export const CRON_GROUPS: { key: '15m' | '1h'; title: string; description: strin
 
     title: 'Rotação 4h',
 
-    description: 'Scanner 1 Top 6 + Scanner 2 Top 8 + Scanner 2 Short ranks #1–#2 (após run-universe-scans)',
+    description: 'Scanner 2 Top 8 + Scanner 2 Short ranks #1–#2 (após run-universe-scans)',
 
   },
 

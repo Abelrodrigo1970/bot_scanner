@@ -421,24 +421,6 @@ export default function EstrategiasPage() {
           </div>
         );
 
-      case 'SCANNER1_TOP8':
-        return (
-          <div className="space-y-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Rotação <strong>total</strong> a cada scan do <strong>Scanner 1</strong> (4 h): fecha todas as posições
-              e recompra <strong>6 símbolos</strong> (ranks 1, 2, 5, 6, 7, 8 — exclui #3 e #4 do top 8). SL -5% (Bybit).
-              Corre automaticamente após <code className="text-[10px]">run-universe-scans</code>.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Posições (após excl.)', p.topN ?? 6, (v) => upd({ topN: v }))}
-              {numField('Scan top N (fonte)', p.scanTopN ?? 8, (v) => upd({ scanTopN: v }))}
-              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
-              {numField('Horas até rotação (ref.)', p.closeAfterHours ?? 4, (v) => upd({ closeAfterHours: v }))}
-              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
-            </div>
-          </div>
-        );
-
       case 'SCANNER1_TOP5':
         return (
           <div className="space-y-4">
@@ -544,38 +526,6 @@ export default function EstrategiasPage() {
               Confirmação de volume: 0 desactiva; 1 exige volume ≥ média das velas de acumulação. SL fixo em % abaixo
               da entrada; TP1 = (entrada − SL) × risk-reward.
             </p>
-          </div>
-        );
-
-      case 'SCANNER3_RSI_BREAKOUT_15M':
-        return (
-          <div className="space-y-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Velas <strong>15m</strong>; só <strong>COMPRA</strong>. Universo = <strong>Scanner 3</strong> (RSI&gt;75).
-              Entrada: RSI({p.rsiPeriod ?? 14}) entre <strong>{p.minRsi ?? 72}</strong> e <strong>{p.maxRsi ?? 85}</strong>{' '}
-              + rompimento (fecho &gt; máximo das últimas {p.breakoutLookback ?? 10} velas). SL -{((p.stopLossPct ?? 0.07) * 100).toFixed(0)}%;
-              TP1 = risco × {p.rewardRisk1 ?? 1.5}.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('RSI mín. (exclusive)', p.minRsi ?? 72, (v) => upd({ minRsi: v }))}
-              {numField('RSI máx. (exclusive)', p.maxRsi ?? 85, (v) => upd({ maxRsi: v }))}
-              {numField('Período RSI', p.rsiPeriod ?? 14, (v) => upd({ rsiPeriod: v }))}
-              {numField('Velas de acumulação (lookback)', p.breakoutLookback ?? 10, (v) => upd({ breakoutLookback: v }))}
-              {numField('Confirmação volume (× média)', p.volumeMultiplier ?? 1, (v) => upd({ volumeMultiplier: v }), 0.1)}
-              {numField('SL (%) fixo abaixo entrada', (p.stopLossPct ?? 0.07) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
-              {numField('Risk-reward TP1', p.rewardRisk1 ?? 1.5, (v) => upd({ rewardRisk1: v }), 0.1)}
-              {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
-              {numField('Horas até fechar restante', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
-            </div>
-            <label className="flex items-center gap-2 max-w-md text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-              <input
-                type="checkbox"
-                className="rounded border-gray-300 dark:border-gray-600"
-                checked={p.requireBullishClose !== false}
-                onChange={(e) => upd({ requireBullishClose: e.target.checked })}
-              />
-              <span>Exigir vela de fecho positivo (close &gt; open) no rompimento</span>
-            </label>
           </div>
         );
 
@@ -765,8 +715,6 @@ export default function EstrategiasPage() {
               const buyOnly =
                 strategy.name === 'EMA_SCALPING' ||
                 strategy.name === 'ACCUMULATION_BREAKOUT_15M' ||
-                strategy.name === 'SCANNER3_RSI_BREAKOUT_15M' ||
-                strategy.name === 'SCANNER1_TOP8' ||
                 strategy.name === 'SCANNER1_TOP5';
 
               return (

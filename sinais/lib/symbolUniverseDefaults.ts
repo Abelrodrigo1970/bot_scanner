@@ -59,7 +59,7 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
   },
 };
 
-/** Scanner 3 — RSI > 75 (15m); actualizado em run-15m (cada 15 min). */
+/** Scanner 3 — RSI > 75 (15m); scan descontinuado (dados históricos na UI). */
 export const BUILTIN_UNIVERSE_SCAN_15M: Record<string, UniverseScanDefinition> = {
   UNIVERSE_RSI_ABOVE_75_15M: {
     ruleType: 'RSI_ABOVE',
@@ -106,7 +106,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 1 — Acima SMA200 (1h)',
     description:
       'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. MA Cross: top 20; Pivot Boss: top 30; Rompimento: ranks 11–40; Top 6: rotação.',
-    strategyNames: 'MA Cross 12×30 (15m), Pivot Boss Bear 15m, Rompimento 15m, Scanner 1 Top 6, Quebra EMA80 15m',
+    strategyNames: 'MA Cross 12×30 (15m), Pivot Boss Bear 15m, Rompimento 15m, Quebra EMA80 15m',
   },
   UNIVERSE_TOP30_PRICE_CHANGE_24H: {
     displayName: 'Scanner 2 — Top 30 subidas 24h',
@@ -118,7 +118,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 3 — RSI > 75 (15m)',
     description:
       'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 15m, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h. Actualização a cada 15 min (cron run-15m).',
-    strategyNames: 'Scanner 3 RSI Rompimento 15m',
+    strategyNames: '— (sem estratégia activa)',
   },
   UNIVERSE_ABOVE_MA80_4H: {
     displayName: 'Scanner 6 — Acima SMA80 (4h)',

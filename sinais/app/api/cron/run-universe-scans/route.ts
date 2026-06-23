@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BUILTIN_UNIVERSE_SCAN_4H } from '@/lib/symbolUniverseDefaults';
 import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
-import { runScanner1Top8Pipeline, runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
+import { runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
 import { runScanner2ShortLeader24hPipeline } from '@/lib/scanner2ShortLeader24hStrategy';
 
 /**
  * Scanner 1 + Scanner 2 (top 30 subidas 24h) + Scanner 6 (SMA80 4h)
- * + rotação Scanner 1 Top 6 + Scanner 2 Top 8 + SHORT Scanner 2 ranks #1–#2. Agendar de 4 em 4 horas.
- * (Scanner 3 RSI 15m corre em run-15m.)
+ * + rotação Scanner 2 Top 8 + SHORT Scanner 2 ranks #1–#2. Agendar de 4 em 4 horas.
+ * Scanners 1, 2 e 6 (SMA80 4h) + rotações Top 8 e Short Leader.
  */
 let universeScansJobPromise: Promise<void> | null = null;
 let universeScansJobStartedAt: string | null = null;
@@ -38,15 +38,6 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
         : { ok: false, reason: persist.reason },
     });
     console.log(`[Universe-Scans] ${code}: ${rows.length} símbolos`);
-  }
-
-  try {
-    const top6 = await runScanner1Top8Pipeline({
-      logPrefix: '[Universe-Scans → Top6]',
-    });
-    console.log('[Universe-Scans] Scanner 1 Top 6:', top6);
-  } catch (err) {
-    console.error('[Universe-Scans] Scanner 1 Top 6 falhou:', err);
   }
 
   try {
@@ -112,7 +103,7 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scanners 1 e 2 + rotações Top 6 (Scanner 1) e Top 8 (Scanner 2) iniciados em background. Scanner 3 corre em run-15m.',
+          'Scanners 1 e 2 + rotação Top 8 (Scanner 2) + Short ranks #1–#2 iniciados em background.',
         startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN_4H),
       },

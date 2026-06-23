@@ -4,28 +4,20 @@ import {
   PIVOT_BOSS_BEAR_15M_DESCRIPTION,
   PIVOT_BOSS_BEAR_15M_PARAMS,
   PIVOT_BOSS_BEAR_15M_DISPLAY,
-  SCANNER1_TOP8_DESCRIPTION,
-  SCANNER1_TOP8_DISPLAY,
-  SCANNER1_TOP8_PARAMS,
   SCANNER1_TOP5_DESCRIPTION,
   SCANNER1_TOP5_DISPLAY,
   SCANNER1_TOP5_PARAMS,
   ACCUMULATION_BREAKOUT_15M_DESCRIPTION,
   ACCUMULATION_BREAKOUT_15M_DISPLAY,
   ACCUMULATION_BREAKOUT_15M_PARAMS,
-  SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
-  SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
-  SCANNER3_RSI_BREAKOUT_15M_PARAMS,
   EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION,
   EMA80_SMA7_BREAKDOWN_15M_DISPLAY,
   EMA80_SMA7_BREAKDOWN_15M_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncPivotBossBear15mUniverse,
-  syncScanner1Top8Config,
   syncScanner1Top5Config,
   syncAccumulationBreakout15mConfig,
-  syncScanner3RsiBreakout15mConfig,
   syncEma80Sma7Breakdown15mConfig,
   migrateScannerS6ShortToScanner2ShortLeader24h,
   syncScanner2ShortLeader24hConfig,
@@ -44,13 +36,6 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     params: JSON.stringify(PIVOT_BOSS_BEAR_15M_PARAMS),
   },
   {
-    name: 'SCANNER1_TOP8',
-    displayName: SCANNER1_TOP8_DISPLAY,
-    description: SCANNER1_TOP8_DESCRIPTION,
-    isActive: true,
-    params: JSON.stringify(SCANNER1_TOP8_PARAMS),
-  },
-  {
     name: 'SCANNER1_TOP5',
     displayName: SCANNER1_TOP5_DISPLAY,
     description: SCANNER1_TOP5_DESCRIPTION,
@@ -63,13 +48,6 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: ACCUMULATION_BREAKOUT_15M_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(ACCUMULATION_BREAKOUT_15M_PARAMS),
-  },
-  {
-    name: 'SCANNER3_RSI_BREAKOUT_15M',
-    displayName: SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
-    description: SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
-    isActive: true,
-    params: JSON.stringify(SCANNER3_RSI_BREAKOUT_15M_PARAMS),
   },
   {
     name: 'EMA80_SMA7_BREAKDOWN_15M',
@@ -87,10 +65,12 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
   },
 ] as const;
 
-/** Rotações Top de outros scanners (não usadas neste projeto). */
+/** Rotações Top descontinuadas neste projeto. */
 export const DEPRECATED_TOP_ROTATION_NAMES = [
   'SCANNER_MA80_TOP6',
   'SCANNER_MA80_4H_TOP6',
+  'SCANNER1_TOP8',
+  'SCANNER3_RSI_BREAKOUT_15M',
 ] as const;
 
 /** @deprecated Use DEPRECATED_TOP_ROTATION_NAMES */
@@ -118,11 +98,6 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
     console.log('✅ PIVOT_BOSS_BEAR_15M: Scanner 1 + SL 7% actualizados');
   }
 
-  const top6Sync = await syncScanner1Top8Config(prisma);
-  if (top6Sync.updated) {
-    console.log('✅ SCANNER1_TOP8: Top 6 + rotação 4h actualizados');
-  }
-
   const top5Sync = await syncScanner1Top5Config(prisma);
   if (top5Sync.updated) {
     console.log('✅ SCANNER1_TOP5: Scanner 2 Top 8 + rotação 4h actualizados');
@@ -131,11 +106,6 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const breakoutSync = await syncAccumulationBreakout15mConfig(prisma);
   if (breakoutSync.updated) {
     console.log('✅ ACCUMULATION_BREAKOUT_15M: rompimento de acumulação actualizado');
-  }
-
-  const scanner3BreakoutSync = await syncScanner3RsiBreakout15mConfig(prisma);
-  if (scanner3BreakoutSync.updated) {
-    console.log('✅ SCANNER3_RSI_BREAKOUT_15M: Scanner 3 RSI rompimento actualizado');
   }
 
   const ema80BreakdownSync = await syncEma80Sma7Breakdown15mConfig(prisma);
@@ -154,10 +124,10 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   }
 
   const reactivated = await prisma.strategy.updateMany({
-    where: { name: { in: ['SCANNER1_TOP8', 'SCANNER1_TOP5'] }, isActive: false },
+    where: { name: 'SCANNER1_TOP5', isActive: false },
     data: { isActive: true },
   });
   if (reactivated.count > 0) {
-    console.log('✅ Rotações Scanner 1 reactivadas');
+    console.log('✅ Rotação Scanner 2 Top 8 reactivada');
   }
 }

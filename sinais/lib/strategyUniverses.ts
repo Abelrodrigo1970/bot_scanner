@@ -96,24 +96,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
-    strategyName: 'SCANNER1_TOP8',
-
-    displayLabel: 'Scanner 1 Top 6 (rotação 4h)',
-
-    signalTimeframes: ['4h'],
-
-    source: 'universe_scan',
-
-    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
-
-    description: 'Rotação ranks 1,2,5–8 após cada scan.',
-
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-
-  },
-
-  {
-
     strategyName: 'SCANNER1_TOP5',
 
     displayLabel: 'Scanner 2 Top 8 (rotação 4h)',
@@ -127,24 +109,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     description: 'Scanner 2: top 30 subidas 24h; rotação ranks 1–8 após cada scan.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
-
-  },
-
-  {
-
-    strategyName: 'SCANNER3_RSI_BREAKOUT_15M',
-
-    displayLabel: 'Scanner 3 RSI Rompimento 15m',
-
-    signalTimeframes: ['15m'],
-
-    source: 'universe_scan',
-
-    dataKey: 'UNIVERSE_RSI_ABOVE_75_15M',
-
-    description: 'Scanner 3 (RSI>75); sinais com RSI 72–85 + rompimento 15m.',
-
-    refresh: '/api/cron/run-15m (cada 15 min)',
 
   },
 
