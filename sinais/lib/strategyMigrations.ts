@@ -846,13 +846,13 @@ export async function syncScannerMa804hTop6Config(
 export const SCANNER2_SHORT_LEADER_24H_DISPLAY = 'Scanner 2 Short Leader 24h';
 
 export const SCANNER2_SHORT_LEADER_24H_DESCRIPTION =
-  'SHORT nos ranks #1–#2 do Scanner 2 (top subidas 24h). Após cada scan 4h; pump 24h ≥25%; bloqueia entradas 10h–14h PT. Fecho automático 24h. SL +40% (Binance). Até 2 posições em paralelo.';
+  'SHORT nos ranks #1–#2 do Scanner 2 (top subidas 24h). Após cada scan 4h; pump 24h ≥50%. Fecho automático 24h. SL +40% (Binance). Até 2 posições em paralelo.';
 
 export const SCANNER2_SHORT_LEADER_24H_PARAMS = {
   rankMin: 1,
   rankMax: 2,
-  minPumpPct24h: 25,
-  blockedEntryHoursPt: [10, 11, 12, 13, 14],
+  minPumpPct24h: 50,
+  blockedEntryHoursPt: [] as number[],
   stopLossPct: 0.4,
   closeAfterHours: 24,
   allowBuy: false,

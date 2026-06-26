@@ -1,6 +1,6 @@
 /**
  * Scanner 2 — SHORT ranks #1–#2 (top subidas 24h), fecho 24h, SL +40%.
- * Mean-reversion pós-pump; filtro pump ≥25%; bloqueia entradas 10h–14h PT.
+ * Mean-reversion pós-pump; filtro pump ≥50%.
  */
 
 import { prisma } from './db';
@@ -147,8 +147,8 @@ export async function runScanner2ShortLeader24hPipeline(options?: {
   const params = parseParams(strategy.params);
   const rankMin = Math.max(1, Math.floor(Number(params.rankMin ?? 1)));
   const rankMax = Math.max(rankMin, Math.floor(Number(params.rankMax ?? 2)));
-  const minPumpPct = Number(params.minPumpPct24h ?? 25);
-  const blockedHours = new Set(params.blockedEntryHoursPt ?? [10, 11, 12, 13, 14]);
+  const minPumpPct = Number(params.minPumpPct24h ?? 50);
+  const blockedHours = new Set(params.blockedEntryHoursPt ?? []);
   const stopLossPct = Number(params.stopLossPct ?? 0.4);
   const closeAfterHours = Number(params.closeAfterHours ?? 24);
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);

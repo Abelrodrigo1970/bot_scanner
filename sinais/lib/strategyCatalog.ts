@@ -126,7 +126,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '4h',
 
-    universe: 'Scanner 2 — ranks #1–#2 (top subidas 24h)',
+    universe: 'Scanner 2 — ranks #1–#2; pump ≥50%',
 
   },
 
