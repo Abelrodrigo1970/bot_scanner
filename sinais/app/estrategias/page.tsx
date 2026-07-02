@@ -563,16 +563,17 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              <strong>SHORT</strong> nos <strong>ranks #1–#2</strong> do Scanner 2 (top subidas 24h). Após cada scan
-              4h; pump 24h <strong>≥50%</strong>. Fecho automático <strong>24h</strong>. SL +40%.
-              Até 2 posições em paralelo. Corre após{' '}
+              <strong>SHORT</strong> só no <strong>rank #2</strong> do Scanner 2 (top subidas 24h). Após cada scan
+              ~2h; pump 24h <strong>50–90%</strong>. Fecho automático <strong>24h</strong>. SL +25%.
+              Sem entradas <strong>10–14h PT</strong>. Corre após{' '}
               <code className="text-[10px]">run-universe-scans</code>.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Rank mín.', p.rankMin ?? 1, (v) => upd({ rankMin: v }))}
+              {numField('Rank mín.', p.rankMin ?? 2, (v) => upd({ rankMin: v }))}
               {numField('Rank máx.', p.rankMax ?? 2, (v) => upd({ rankMax: v }))}
               {numField('Pump 24h mín. (%)', p.minPumpPct24h ?? 50, (v) => upd({ minPumpPct24h: v }))}
-              {numField('SL (%) acima entrada (short)', (p.stopLossPct ?? 0.4) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Pump 24h máx. (%)', p.maxPumpPct24h ?? 90, (v) => upd({ maxPumpPct24h: v }))}
+              {numField('SL (%) acima entrada (short)', (p.stopLossPct ?? 0.25) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
               {numField('Horas até fecho', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
               {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
             </div>

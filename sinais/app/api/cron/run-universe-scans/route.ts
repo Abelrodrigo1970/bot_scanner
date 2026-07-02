@@ -7,7 +7,7 @@ import { runScanner2ShortLeader24hPipeline } from '@/lib/scanner2ShortLeader24hS
 
 /**
  * Scanner 1 + Scanner 2 (top 30 subidas 24h) + Scanner 6 (SMA80 4h)
- * + rotação Scanner 2 Top 8 + SHORT Scanner 2 ranks #1–#2. Agendar de 4 em 4 horas.
+ * + rotação Scanner 2 Top 8 + SHORT Scanner 2 rank #2. Agendar de 4 em 4 horas.
  * Scanners 1, 2 e 6 (SMA80 4h) + rotações Top 8 e Short Leader.
  */
 let universeScansJobPromise: Promise<void> | null = null;
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         accepted: true,
         background: true,
         message:
-          'Scanners 1 e 2 + rotação Top 8 (Scanner 2) + Short ranks #1–#2 iniciados em background.',
+          'Scanners 1 e 2 + rotação Top 8 (Scanner 2) + Short rank #2 iniciados em background.',
         startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN_4H),
       },

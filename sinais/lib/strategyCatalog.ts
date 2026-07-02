@@ -126,7 +126,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '4h',
 
-    universe: 'Scanner 2 — ranks #1–#2; pump ≥50%',
+    universe: 'Scanner 2 — rank #2; pump 50–90%',
 
   },
 
@@ -242,7 +242,7 @@ export const CRON_GROUPS: { key: '15m' | '1h'; title: string; description: strin
 
     title: 'Rotação 4h',
 
-    description: 'Scanner 2 Top 8 + Scanner 2 Short ranks #1–#2 (após run-universe-scans)',
+    description: 'Scanner 2 Top 8 + Scanner 2 Short rank #2 (após run-universe-scans)',
 
   },
 

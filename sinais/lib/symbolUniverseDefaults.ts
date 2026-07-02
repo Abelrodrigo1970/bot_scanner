@@ -129,7 +129,7 @@ export const BUILTIN_UNIVERSE_META: Record<
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
-  '2': 'Scanner 2 Short Leader 24h: SHORT ranks #1–#2 — pump ≥50%, hold 24h, SL +40%.',
+  '2': 'Scanner 2 Short Leader 24h: SHORT rank #2 — pump 50–90%, hold 24h, SL +25%, bloqueio 10–14h PT.',
 };
 
 export const SCANNER_UI_ROUTES = [

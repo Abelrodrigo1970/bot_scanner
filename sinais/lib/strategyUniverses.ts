@@ -142,7 +142,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
 
-    description: 'SHORT ranks #1–#2 Scanner 2 (top subidas 24h); pump ≥50%; fecho 24h.',
+    description: 'SHORT rank #2 Scanner 2 (top subidas 24h); pump 50–90%; fecho 24h; bloqueio 10–14h PT.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h) + run-scanner2-short-leader-24h',
 

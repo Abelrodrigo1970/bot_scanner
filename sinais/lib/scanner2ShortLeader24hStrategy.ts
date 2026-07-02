@@ -1,6 +1,6 @@
 /**
- * Scanner 2 — SHORT ranks #1–#2 (top subidas 24h), fecho 24h, SL +40%.
- * Mean-reversion pós-pump; filtro pump ≥50%.
+ * Scanner 2 — SHORT rank #2 (top subidas 24h), fecho 24h, SL +25%.
+ * Mean-reversion pós-pump; pump 50–90%; sem entradas 10–14h PT.
  */
 
 import { prisma } from './db';
@@ -18,6 +18,8 @@ export type Scanner2ShortLeader24hParams = {
   rankMax?: number;
   /** Subida 24h mínima (pctFromMa no scan = variação 24h). 0 = sem filtro. */
   minPumpPct24h?: number;
+  /** Subida 24h máxima (0 = sem tecto). Evita shorts em pumps parabólicos. */
+  maxPumpPct24h?: number;
   /** Horas PT em que não abre novo SHORT (ex.: 10–14). */
   blockedEntryHoursPt?: number[];
   stopLossPct?: number;
@@ -60,7 +62,7 @@ export function getLisbonHour(date: string | Date = new Date()): number {
 }
 
 function strengthForRank(rank: number): number {
-  return rank === 1 ? 92 : 88;
+  return rank === 1 ? 92 : 88; // rank #2 → 88
 }
 
 async function getLastProcessedRunId(): Promise<string | null> {
@@ -122,7 +124,7 @@ async function closeTimedOutPositions(
 
 /**
  * Após cada scan do Scanner 2: fecha posições ≥ closeAfterHours;
- * abre SHORT nos ranks #1–#2 (com filtro de pump e hora PT).
+ * abre SHORT no rank configurado (filtro pump min/max e hora PT).
  */
 export async function runScanner2ShortLeader24hPipeline(options?: {
   force?: boolean;
@@ -145,11 +147,13 @@ export async function runScanner2ShortLeader24hPipeline(options?: {
   }
 
   const params = parseParams(strategy.params);
-  const rankMin = Math.max(1, Math.floor(Number(params.rankMin ?? 1)));
+  const rankMin = Math.max(1, Math.floor(Number(params.rankMin ?? 2)));
   const rankMax = Math.max(rankMin, Math.floor(Number(params.rankMax ?? 2)));
   const minPumpPct = Number(params.minPumpPct24h ?? 50);
-  const blockedHours = new Set(params.blockedEntryHoursPt ?? []);
-  const stopLossPct = Number(params.stopLossPct ?? 0.4);
+  const maxPumpPctRaw = Number(params.maxPumpPct24h ?? 90);
+  const maxPumpPct = maxPumpPctRaw > 0 ? maxPumpPctRaw : null;
+  const blockedHours = new Set(params.blockedEntryHoursPt ?? [10, 11, 12, 13, 14]);
+  const stopLossPct = Number(params.stopLossPct ?? 0.25);
   const closeAfterHours = Number(params.closeAfterHours ?? 24);
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
 
@@ -191,13 +195,20 @@ export async function runScanner2ShortLeader24hPipeline(options?: {
     };
   }
 
-  const candidates = scan.rows.filter(
-    (r) => r.rank >= rankMin && r.rank <= rankMax && r.pctFromMa >= minPumpPct
-  );
+  const candidates = scan.rows.filter((r) => {
+    if (r.rank < rankMin || r.rank > rankMax) return false;
+    if (r.pctFromMa < minPumpPct) return false;
+    if (maxPumpPct != null && r.pctFromMa > maxPumpPct) return false;
+    return true;
+  });
 
   if (candidates.length === 0) {
+    const pumpRange =
+      maxPumpPct != null
+        ? `pump ${minPumpPct}–${maxPumpPct}%`
+        : `pump ≥${minPumpPct}%`;
     console.log(
-      `${logPrefix} Sem ranks ${rankMin}–${rankMax} com pump ≥${minPumpPct}% — sem sinal`
+      `${logPrefix} Sem rank ${rankMin}${rankMax !== rankMin ? `–${rankMax}` : ''} com ${pumpRange} — sem sinal`
     );
     return {
       status: 'done',
@@ -265,9 +276,14 @@ export async function runScanner2ShortLeader24hPipeline(options?: {
           pipelineAt: now.toISOString(),
           lisbonHourPt: lisbonHour,
           minPumpPct24h: minPumpPct,
+          maxPumpPct24h: maxPumpPct,
           stopLossPct,
           closeAfterHours,
-          executionProfile: `SHORT ranks #${rankMin}–#${rankMax} | Scanner 2 top subidas 24h | pump ≥${minPumpPct}% | SL +${(stopLossPct * 100).toFixed(0)}% | fecho ${closeAfterHours}h`,
+          blockedEntryHoursPt: [...blockedHours],
+          executionProfile:
+            maxPumpPct != null
+              ? `SHORT rank #${rankMin}${rankMax !== rankMin ? `–#${rankMax}` : ''} | pump ${minPumpPct}–${maxPumpPct}% | SL +${(stopLossPct * 100).toFixed(0)}% | fecho ${closeAfterHours}h | bloqueio ${[...blockedHours].sort((a, b) => a - b).join('/')}h PT`
+              : `SHORT rank #${rankMin}–#${rankMax} | pump ≥${minPumpPct}% | SL +${(stopLossPct * 100).toFixed(0)}% | fecho ${closeAfterHours}h`,
         }),
       },
     });

@@ -64,8 +64,8 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     strategyName: 'SCANNER2_SHORT_LEADER_24H',
     displayNames: ['Scanner 2 Short Leader 24h'],
     buy: null,
-    sell: side(40, 0, 0, 0, 0, 24),
-    summary: 'SHORT ranks #1–#2 Scanner 2. Pump ≥50%. SL +40%. Fecho 24h.',
+    sell: side(25, 0, 0, 0, 0, 24),
+    summary: 'SHORT rank #2 Scanner 2. Pump 50–90%. SL +25%. Fecho 24h. Bloqueio 10–14h PT.',
   },
 ];
 

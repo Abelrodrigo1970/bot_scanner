@@ -120,7 +120,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const s2ShortSync = await syncScanner2ShortLeader24hConfig(prisma);
   if (s2ShortSync.updated) {
-    console.log('✅ SCANNER2_SHORT_LEADER_24H: SHORT ranks #1–#2, pump ≥50%, hold 24h, SL +40%');
+    console.log('✅ SCANNER2_SHORT_LEADER_24H: SHORT rank #2, pump 50–90%, SL +25%, bloqueio 10–14h PT');
   }
 
   const reactivated = await prisma.strategy.updateMany({

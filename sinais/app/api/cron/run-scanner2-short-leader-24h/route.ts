@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runScanner2ShortLeader24hPipeline } from '@/lib/scanner2ShortLeader24hStrategy';
 
 /**
- * Scanner 2 Short Leader 24h — SHORT ranks #1–#2, fecho 24h, SL +40%.
+ * Scanner 2 Short Leader 24h — SHORT rank #2, pump 50–90%, fecho 24h, SL +25%.
  * Agendar 10–15 min após run-universe-scans ou invocar manualmente com ?force=1.
  */
 async function runInBackground(force: boolean): Promise<void> {

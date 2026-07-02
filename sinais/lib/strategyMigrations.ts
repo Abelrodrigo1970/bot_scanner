@@ -846,14 +846,15 @@ export async function syncScannerMa804hTop6Config(
 export const SCANNER2_SHORT_LEADER_24H_DISPLAY = 'Scanner 2 Short Leader 24h';
 
 export const SCANNER2_SHORT_LEADER_24H_DESCRIPTION =
-  'SHORT nos ranks #1–#2 do Scanner 2 (top subidas 24h). Após cada scan 4h; pump 24h ≥50%. Fecho automático 24h. SL +40% (Binance). Até 2 posições em paralelo.';
+  'SHORT no rank #2 do Scanner 2 (top subidas 24h). Após cada scan ~2h; pump 24h 50–90%. Fecho automático 24h. SL +25% (Binance). Sem entradas 10–14h PT.';
 
 export const SCANNER2_SHORT_LEADER_24H_PARAMS = {
-  rankMin: 1,
+  rankMin: 2,
   rankMax: 2,
   minPumpPct24h: 50,
-  blockedEntryHoursPt: [] as number[],
-  stopLossPct: 0.4,
+  maxPumpPct24h: 90,
+  blockedEntryHoursPt: [10, 11, 12, 13, 14] as number[],
+  stopLossPct: 0.25,
   closeAfterHours: 24,
   allowBuy: false,
   allowSell: true,
@@ -929,6 +930,7 @@ export async function syncScanner2ShortLeader24hConfig(
     rankMin: SCANNER2_SHORT_LEADER_24H_PARAMS.rankMin,
     rankMax: SCANNER2_SHORT_LEADER_24H_PARAMS.rankMax,
     minPumpPct24h: SCANNER2_SHORT_LEADER_24H_PARAMS.minPumpPct24h,
+    maxPumpPct24h: SCANNER2_SHORT_LEADER_24H_PARAMS.maxPumpPct24h,
     blockedEntryHoursPt: SCANNER2_SHORT_LEADER_24H_PARAMS.blockedEntryHoursPt,
     stopLossPct: SCANNER2_SHORT_LEADER_24H_PARAMS.stopLossPct,
     closeAfterHours: SCANNER2_SHORT_LEADER_24H_PARAMS.closeAfterHours,
