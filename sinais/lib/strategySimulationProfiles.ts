@@ -61,6 +61,13 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Só VENDA. Stack 12/30/80/200 bearish. SL +7% fixo. TP1 -9% (50%) | restante às 24h.',
   },
   {
+    strategyName: 'SCANNER1_TOP5',
+    displayNames: ['Scanner 2 Top 4 (rotação 4h)'],
+    buy: side(3, 0, 0, 0, 0, 4),
+    sell: side(25, 0, 0, 0, 0, 4),
+    summary: 'LONG top 4 (SL 3%) + SHORT saídas (SL 25%). Rotação 4h.',
+  },
+  {
     strategyName: 'SCANNER2_SHORT_LEADER_24H',
     displayNames: ['Scanner 2 Short Leader 24h'],
     buy: null,

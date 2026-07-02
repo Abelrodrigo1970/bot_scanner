@@ -385,7 +385,7 @@ export const SCANNER1_TOP8_PARAMS = {
 export const SCANNER1_TOP5_DISPLAY = 'Scanner 2 Top 4 (rotação 4h)';
 
 export const SCANNER1_TOP5_DESCRIPTION =
-  'Portefólio rotativo: a cada scan do Scanner 2 (top 30 subidas 24h, 4 h), fecha tudo e recompra 4 posições (ranks 1–4). SL -3% (Bybit).';
+  'Portefólio rotativo: a cada scan do Scanner 2 (top 30 subidas 24h, 4 h), fecha tudo, recompra ranks 1–4 (LONG, SL -3%) e abre SHORT nas que saíram do top 4 (SL +25%, fecho 4h).';
 
 export const SCANNER1_TOP5_PARAMS = {
   topN: 4,
@@ -395,10 +395,13 @@ export const SCANNER1_TOP5_PARAMS = {
   stopLossPct: 0.03,
   closeAfterHours: 4,
   rotationMode: 'full',
+  shortOnExit: true,
+  shortStopLossPct: 0.25,
+  shortCloseAfterHours: 4,
   allowBuy: true,
-  allowSell: false,
+  allowSell: true,
   buyEnabled: true,
-  sellEnabled: false,
+  sellEnabled: true,
   autoExecuteMinStrength: 80,
   exchange: 'bybit',
 } as const;
@@ -480,6 +483,13 @@ export async function syncScanner1Top5Config(
     stopLossPct: SCANNER1_TOP5_PARAMS.stopLossPct,
     closeAfterHours: SCANNER1_TOP5_PARAMS.closeAfterHours,
     exchange: SCANNER1_TOP5_PARAMS.exchange,
+    shortOnExit: SCANNER1_TOP5_PARAMS.shortOnExit,
+    shortStopLossPct: SCANNER1_TOP5_PARAMS.shortStopLossPct,
+    shortCloseAfterHours: SCANNER1_TOP5_PARAMS.shortCloseAfterHours,
+    allowBuy: SCANNER1_TOP5_PARAMS.allowBuy,
+    allowSell: SCANNER1_TOP5_PARAMS.allowSell,
+    buyEnabled: SCANNER1_TOP5_PARAMS.buyEnabled,
+    sellEnabled: SCANNER1_TOP5_PARAMS.sellEnabled,
     rotationMode: 'full' as const,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);

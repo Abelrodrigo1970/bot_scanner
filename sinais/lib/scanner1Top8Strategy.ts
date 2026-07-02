@@ -2,7 +2,7 @@
 
  * Rotação Scanner 1 — fecha tudo e recompra no próximo scan (4 h).
 
- * SCANNER1_TOP8: ranks 1,2,5–8 (excl. #3 #4). SCANNER1_TOP5: ranks 1–4.
+ * SCANNER1_TOP8: ranks 1,2,5–8 (excl. #3 #4). SCANNER1_TOP5: ranks 1–4 LONG + SHORT saídas.
 
  */
 
@@ -13,9 +13,15 @@ import { prisma } from './db';
 import {
   UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
   UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H,
+  isTickerRankUniverseScan,
 } from './symbolUniverseDefaults';
 
-import { getTopRankedUniverseScanRows } from './universeScanPersistence';
+import {
+  buildScanItemsWithPreviousDelta,
+  getLatestUniverseScanPair,
+  getTopRankedUniverseScanRows,
+  type UniverseScanRowSnapshot,
+} from './universeScanPersistence';
 
 import { autoExecuteNewSignalsForStrategy, resolveStrategyExchange } from './autoExecuteNewSignals';
 
@@ -61,6 +67,13 @@ export type Scanner1Top8Params = {
   exchange?: 'binance' | 'bybit';
 
   allowBuy?: boolean;
+  allowSell?: boolean;
+  buyEnabled?: boolean;
+  sellEnabled?: boolean;
+  /** SHORT nas moedas que saíram do top (Scanner 2 Top 4). */
+  shortOnExit?: boolean;
+  shortStopLossPct?: number;
+  shortCloseAfterHours?: number;
 
   autoExecuteMinStrength?: number;
 
@@ -83,6 +96,12 @@ export type Scanner1Top8Result =
       closed: number;
 
       signalsCreated: number;
+
+      longSignals?: number;
+
+      shortSignals?: number;
+
+      exited?: string[];
 
       executed: number;
 
@@ -246,7 +265,21 @@ function strengthForRank(rank: number): number {
 
 type ScanRow = { rank: number; symbol: string; close: number; pctFromMa: number };
 
+function rankUniverseRows(
+  universeCode: string,
+  rows: UniverseScanRowSnapshot[],
+  previousRows?: UniverseScanRowSnapshot[] | null
+): ScanRow[] {
+  const ordered = isTickerRankUniverseScan(universeCode)
+    ? rows
+    : [...rows].sort((a, b) => Math.abs(b.pctFromMa) - Math.abs(a.pctFromMa));
+  return buildScanItemsWithPreviousDelta(ordered, previousRows ?? null);
+}
 
+function priceInRankedRows(rows: ScanRow[], symbol: string, fallback: number): number | null {
+  const row = rows.find((r) => r.symbol === symbol);
+  return row?.close ?? fallback;
+}
 
 export function filterScanRowsForTop8(params: Scanner1Top8Params, rows: ScanRow[]): ScanRow[] {
 
@@ -347,17 +380,49 @@ export async function runScannerRotationPipeline(options: {
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const universeCode = resolveRotationUniverseCode(options.strategyName, params);
 
-  const scan = await getTopRankedUniverseScanRows(universeCode, scanFetchN);
+  const shortOnExit = params.shortOnExit === true;
+  const shortStopLossPct = Number(params.shortStopLossPct ?? 0.25);
+  const shortCloseAfterHours = Number(params.shortCloseAfterHours ?? closeAfterHours);
 
-  if (!scan.ok) {
+  let scanRunId: string;
+  let scanScannedAt: Date;
+  let rankedRows: ScanRow[];
+  let exitedRows: ScanRow[] = [];
 
-    return { status: 'skipped', reason: scan.reason };
+  if (shortOnExit) {
+    const pair = await getLatestUniverseScanPair(universeCode);
+    if (!pair.current) {
+      return { status: 'skipped', reason: 'Nenhum scan gravado na BD' };
+    }
+    rankedRows = rankUniverseRows(universeCode, pair.current.rows, pair.previous?.rows).slice(
+      0,
+      scanFetchN
+    );
+    scanRunId = pair.current.id;
+    scanScannedAt = pair.current.scannedAt;
 
+    if (pair.previous) {
+      const prevRanked = rankUniverseRows(universeCode, pair.previous.rows, null).slice(
+        0,
+        scanFetchN
+      );
+      const prevSelected = filterScanRowsForTop8(params, prevRanked);
+      const currSymbols = new Set(
+        filterScanRowsForTop8(params, rankedRows).map((r) => r.symbol)
+      );
+      exitedRows = prevSelected.filter((r) => !currSymbols.has(r.symbol));
+    }
+  } else {
+    const scan = await getTopRankedUniverseScanRows(universeCode, scanFetchN);
+    if (!scan.ok) {
+      return { status: 'skipped', reason: scan.reason };
+    }
+    rankedRows = scan.rows;
+    scanRunId = scan.runId;
+    scanScannedAt = scan.scannedAt;
   }
 
-
-
-  const selectedRows = filterScanRowsForTop8(params, scan.rows);
+  const selectedRows = filterScanRowsForTop8(params, rankedRows);
 
   if (selectedRows.length === 0) {
 
@@ -369,13 +434,13 @@ export async function runScannerRotationPipeline(options: {
 
   const lastRunId = await getLastProcessedRunId(lastRunKey);
 
-  if (!options?.force && lastRunId === scan.runId) {
+  if (!options?.force && lastRunId === scanRunId) {
 
     return {
 
       status: 'skipped',
 
-      reason: `Scan ${scan.runId} já processado neste ciclo`,
+      reason: `Scan ${scanRunId} já processado neste ciclo`,
 
     };
 
@@ -386,28 +451,38 @@ export async function runScannerRotationPipeline(options: {
   const excludeLabel = excludeRanks.length ? `excl. ranks ${excludeRanks.join(',')}` : 'sem exclusões';
 
   console.log(
-    `${logPrefix} Rotação total — ${selectedRows.length} pos. (${universeCode}, scan top ${scanFetchN}, ${excludeLabel}) ${scan.scannedAt.toISOString()} → ${selectedRows.map((r) => `#${r.rank} ${r.symbol}`).join(', ')}`
+    `${logPrefix} Rotação total — ${selectedRows.length} LONG${shortOnExit ? ` | ${exitedRows.length} SHORT saídas` : ''} (${universeCode}, scan top ${scanFetchN}, ${excludeLabel}) ${scanScannedAt.toISOString()} → ${selectedRows.map((r) => `#${r.rank} ${r.symbol}`).join(', ')}`
   );
+  if (exitedRows.length) {
+    console.log(`${logPrefix} 🔻 Saídas → SHORT: ${exitedRows.map((r) => r.symbol).join(', ')}`);
+  }
 
 
 
   const closed = await closeAllStrategyPositions(strategy.id, exchange, logPrefix);
 
+  const allowBuy = strategyAllowsAutoExecuteDirection('BUY', params as Record<string, unknown>);
+  const allowSell = strategyAllowsAutoExecuteDirection('SELL', params as Record<string, unknown>);
 
+  if (!allowBuy && !allowSell) {
 
-  if (!strategyAllowsAutoExecuteDirection('BUY', params as Record<string, unknown>)) {
-
-    await setLastProcessedRunId(lastRunKey, scan.runId);
+    await setLastProcessedRunId(lastRunKey, scanRunId);
 
     return {
 
       status: 'done',
 
-      runId: scan.runId,
+      runId: scanRunId,
 
       closed,
 
       signalsCreated: 0,
+
+      longSignals: 0,
+
+      shortSignals: 0,
+
+      exited: exitedRows.map((r) => r.symbol),
 
       executed: 0,
 
@@ -421,93 +496,145 @@ export async function runScannerRotationPipeline(options: {
 
   const startedAt = new Date();
 
-  let signalsCreated = 0;
+  let longSignals = 0;
+  let shortSignals = 0;
 
-  const setupTag =
+  const longSetupTag =
     options.strategyName === SCANNER1_TOP5_STRATEGY_NAME
-      ? 'scanner2_top8_rotation'
+      ? 'scanner2_top4_rotation'
       : 'scanner1_top8_rotation';
 
 
 
-  for (const row of selectedRows) {
+  if (allowBuy) {
+    for (const row of selectedRows) {
 
-    const entryPrice = row.close;
+      const entryPrice = row.close;
 
-    if (!(entryPrice > 0)) continue;
-
-
-
-    const stopLoss = entryPrice * (1 - stopLossPct);
-
-    const strength = strengthForRank(row.rank);
+      if (!(entryPrice > 0)) continue;
 
 
 
-    const created = await prisma.signal.create({
+      const stopLoss = entryPrice * (1 - stopLossPct);
 
-      data: {
+      const strength = strengthForRank(row.rank);
 
-        symbol: row.symbol,
 
-        direction: 'BUY',
 
-        timeframe: '4h',
+      const created = await prisma.signal.create({
 
-        strategyId: strategy.id,
+        data: {
 
-        strategyName: strategy.displayName,
+          symbol: row.symbol,
 
-        entryPrice,
+          direction: 'BUY',
 
-        stopLoss,
+          timeframe: '4h',
 
-        target1: null,
+          strategyId: strategy.id,
 
-        target2: null,
+          strategyName: strategy.displayName,
 
-        target3: null,
+          entryPrice,
 
-        strength,
+          stopLoss,
 
-        status: 'NEW',
+          target1: null,
 
-        extraInfo: JSON.stringify({
-          setup: setupTag,
-          universeCode,
-          rank: row.rank,
+          target2: null,
 
-          pctFromMa: row.pctFromMa,
+          target3: null,
 
-          scanRunId: scan.runId,
+          strength,
 
-          scannedAt: scan.scannedAt.toISOString(),
+          status: 'NEW',
 
-          stopLossPct,
+          extraInfo: JSON.stringify({
+            setup: longSetupTag,
+            leg: 'long_rotation',
+            universeCode,
+            rank: row.rank,
 
-          closeAfterHours,
+            pctFromMa: row.pctFromMa,
 
-          rotation: 'full',
+            scanRunId: scanRunId,
 
-          excludeRanks,
+            scannedAt: scanScannedAt.toISOString(),
 
-          executionProfile: `SL -${(stopLossPct * 100).toFixed(0)}% | rotação 4h | ${selectedRows.length} pos.${excludeRanks.length ? ` (excl. ranks ${excludeRanks.join(',')})` : ''}`,
+            stopLossPct,
 
-        }),
+            closeAfterHours,
 
-      },
+            rotation: 'full',
 
-    });
+            excludeRanks,
 
-    signalsCreated++;
+            executionProfile: `LONG rotação | SL -${(stopLossPct * 100).toFixed(0)}% | 4h | ${selectedRows.length} pos.${excludeRanks.length ? ` (excl. ranks ${excludeRanks.join(',')})` : ''}`,
 
-    console.log(
+          }),
 
-      `${logPrefix} 🟢 #${row.rank} ${row.symbol} @ ${entryPrice} (força ${strength}) id=${created.id}`
+        },
 
-    );
+      });
 
+      longSignals++;
+
+      console.log(
+
+        `${logPrefix} 🟢 LONG #${row.rank} ${row.symbol} @ ${entryPrice} (força ${strength}) id=${created.id}`
+
+      );
+
+    }
   }
+
+  if (allowSell && shortOnExit) {
+    for (const row of exitedRows) {
+      const entryPrice = priceInRankedRows(rankedRows, row.symbol, row.close);
+      if (!(entryPrice != null && entryPrice > 0)) continue;
+
+      const stopLoss = entryPrice * (1 + shortStopLossPct);
+      const strength = 88;
+
+      const created = await prisma.signal.create({
+        data: {
+          symbol: row.symbol,
+          direction: 'SELL',
+          timeframe: '4h',
+          strategyId: strategy.id,
+          strategyName: strategy.displayName,
+          entryPrice,
+          stopLoss,
+          target1: null,
+          target2: null,
+          target3: null,
+          strength,
+          status: 'NEW',
+          extraInfo: JSON.stringify({
+            setup: 'scanner2_top4_exit_short',
+            leg: 'exit_short',
+            universeCode,
+            rankBefore: row.rank,
+            pctFromMa: row.pctFromMa,
+            scanRunId: scanRunId,
+            scannedAt: scanScannedAt.toISOString(),
+            stopLossPct: shortStopLossPct,
+            closeAfterHours: shortCloseAfterHours,
+            rotation: 'full_long_exit_short',
+            excludeRanks,
+            executionProfile: `SHORT saída top 4 | SL +${(shortStopLossPct * 100).toFixed(0)}% | ${shortCloseAfterHours}h`,
+          }),
+        },
+      });
+
+      shortSignals++;
+      console.log(
+        `${logPrefix} 🔻 SHORT saída ${row.symbol} @ ${entryPrice} (força ${strength}) id=${created.id}`
+      );
+    }
+  }
+
+  const signalsCreated = longSignals + shortSignals;
 
 
 
@@ -527,13 +654,13 @@ export async function runScannerRotationPipeline(options: {
 
 
 
-  await setLastProcessedRunId(lastRunKey, scan.runId);
+  await setLastProcessedRunId(lastRunKey, scanRunId);
 
 
 
   console.log(
 
-    `${logPrefix} Concluído: ${closed} fechados, ${signalsCreated} sinais, ${executed} executados`
+    `${logPrefix} Concluído: ${closed} fechados, ${signalsCreated} sinais (${longSignals} LONG, ${shortSignals} SHORT), ${executed} executados`
 
   );
 
@@ -543,15 +670,21 @@ export async function runScannerRotationPipeline(options: {
 
     status: 'done',
 
-    runId: scan.runId,
+    runId: scanRunId,
 
     closed,
 
     signalsCreated,
 
+    longSignals,
+
+    shortSignals,
+
+    exited: exitedRows.map((r) => r.symbol),
+
     executed,
 
-    symbols: selectedRows.map((r) => r.symbol),
+    symbols: [...selectedRows.map((r) => r.symbol), ...exitedRows.map((r) => r.symbol)],
 
   };
 

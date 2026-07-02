@@ -242,7 +242,7 @@ export const CRON_GROUPS: { key: '15m' | '1h'; title: string; description: strin
 
     title: 'Rotação 4h',
 
-    description: 'Scanner 2 Top 4 + Scanner 2 Short rank #2 (após run-universe-scans)',
+    description: 'Scanner 2 Top 4 (LONG + SHORT saídas) + Scanner 2 Short rank #2 (após run-universe-scans)',
 
   },
 
