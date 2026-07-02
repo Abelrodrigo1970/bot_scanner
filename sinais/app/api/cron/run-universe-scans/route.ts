@@ -7,7 +7,7 @@ import { runScanner2ShortLeader24hPipeline } from '@/lib/scanner2ShortLeader24hS
 
 /**
  * Scanner 1 + Scanner 2 (top 30 subidas 24h) + Scanner 6 (SMA80 4h)
- * + rotação Scanner 2 Top 8 + SHORT Scanner 2 rank #2. Agendar de 4 em 4 horas.
+ * + rotação Scanner 2 Top 4 + SHORT Scanner 2 rank #2. Agendar de 4 em 4 horas.
  * Scanners 1, 2 e 6 (SMA80 4h) + rotações Top 8 e Short Leader.
  */
 let universeScansJobPromise: Promise<void> | null = null;
@@ -44,9 +44,9 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
     const top8 = await runScanner1Top5Pipeline({
       logPrefix: '[Universe-Scans → Scanner2 Top8]',
     });
-    console.log('[Universe-Scans] Scanner 2 Top 8:', top8);
+    console.log('[Universe-Scans] Scanner 2 Top 4:', top8);
   } catch (err) {
-    console.error('[Universe-Scans] Scanner 2 Top 8 falhou:', err);
+    console.error('[Universe-Scans] Scanner 2 Top 4 falhou:', err);
   }
 
   try {

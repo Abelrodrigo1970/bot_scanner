@@ -112,7 +112,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 2 — Top 30 subidas 24h',
     description:
       'Top 30 perpétuos USDT com maior subida de preço nas últimas 24h (apenas variação positiva). Mín. 500k USDT volume 24h.',
-    strategyNames: 'Scanner 2 Top 8 (rotação 4h), Scanner 2 Short Leader 24h',
+    strategyNames: 'Scanner 2 Top 4 (rotação 4h), Scanner 2 Short Leader 24h',
   },
   UNIVERSE_RSI_ABOVE_75_15M: {
     displayName: 'Scanner 3 — RSI > 75 (15m)',

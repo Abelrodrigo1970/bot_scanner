@@ -382,17 +382,17 @@ export const SCANNER1_TOP8_PARAMS = {
   exchange: 'bybit',
 } as const;
 
-export const SCANNER1_TOP5_DISPLAY = 'Scanner 2 Top 8 (rotação 4h)';
+export const SCANNER1_TOP5_DISPLAY = 'Scanner 2 Top 4 (rotação 4h)';
 
 export const SCANNER1_TOP5_DESCRIPTION =
-  'Portefólio rotativo: a cada scan do Scanner 2 (top 30 subidas 24h, 4 h), fecha tudo e recompra as 8 primeiras posições (ranks 1–8). SL -5% (Bybit).';
+  'Portefólio rotativo: a cada scan do Scanner 2 (top 30 subidas 24h, 4 h), fecha tudo e recompra 4 posições (ranks 1–4). SL -3% (Bybit).';
 
 export const SCANNER1_TOP5_PARAMS = {
-  topN: 8,
-  scanTopN: 8,
+  topN: 4,
+  scanTopN: 4,
   excludeRanks: [] as number[],
   universeCode: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
-  stopLossPct: 0.05,
+  stopLossPct: 0.03,
   closeAfterHours: 4,
   rotationMode: 'full',
   allowBuy: true,
@@ -477,6 +477,9 @@ export async function syncScanner1Top5Config(
     scanTopN: SCANNER1_TOP5_PARAMS.scanTopN,
     excludeRanks: SCANNER1_TOP5_PARAMS.excludeRanks,
     universeCode: SCANNER1_TOP5_PARAMS.universeCode,
+    stopLossPct: SCANNER1_TOP5_PARAMS.stopLossPct,
+    closeAfterHours: SCANNER1_TOP5_PARAMS.closeAfterHours,
+    exchange: SCANNER1_TOP5_PARAMS.exchange,
     rotationMode: 'full' as const,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);

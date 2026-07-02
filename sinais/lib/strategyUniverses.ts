@@ -98,7 +98,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     strategyName: 'SCANNER1_TOP5',
 
-    displayLabel: 'Scanner 2 Top 8 (rotação 4h)',
+    displayLabel: 'Scanner 2 Top 4 (rotação 4h)',
 
     signalTimeframes: ['4h'],
 
@@ -159,7 +159,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/2',
-    label: 'Scanner 2 — Top 30 subidas 24h (rotação Top 8)',
+    label: 'Scanner 2 — Top 30 subidas 24h (rotação Top 4)',
   },
   {
     href: '/scanners/3',

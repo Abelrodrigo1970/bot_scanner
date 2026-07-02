@@ -426,13 +426,13 @@ export default function EstrategiasPage() {
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Rotação <strong>total</strong> a cada scan do <strong>Scanner 2</strong> (top 30 subidas 24h, 4 h): fecha
-              todas as posições e recompra as <strong>8 primeiras</strong> (ranks 1–8). SL -5% (Bybit). Corre
+              todas as posições e recompra as <strong>4 primeiras</strong> (ranks 1–4). SL -3% (Bybit). Corre
               automaticamente após <code className="text-[10px]">run-universe-scans</code>.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Posições (top N)', p.topN ?? 8, (v) => upd({ topN: v }))}
-              {numField('Scan top N (fonte)', p.scanTopN ?? 8, (v) => upd({ scanTopN: v }))}
-              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Posições (top N)', p.topN ?? 4, (v) => upd({ topN: v }))}
+              {numField('Scan top N (fonte)', p.scanTopN ?? 4, (v) => upd({ scanTopN: v }))}
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.03) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
               {numField('Horas até rotação (ref.)', p.closeAfterHours ?? 4, (v) => upd({ closeAfterHours: v }))}
               {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
             </div>

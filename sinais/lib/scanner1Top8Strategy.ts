@@ -2,7 +2,7 @@
 
  * Rotação Scanner 1 — fecha tudo e recompra no próximo scan (4 h).
 
- * SCANNER1_TOP8: ranks 1,2,5–8 (excl. #3 #4). SCANNER1_TOP5: ranks 1–8.
+ * SCANNER1_TOP8: ranks 1,2,5–8 (excl. #3 #4). SCANNER1_TOP5: ranks 1–4.
 
  */
 
@@ -256,7 +256,7 @@ export function filterScanRowsForTop8(params: Scanner1Top8Params, rows: ScanRow[
 
   const exclude = new Set(excludeList.map((r) => Math.floor(Number(r))));
 
-  const defaultTopN = excludeList.length === 0 ? 8 : 6;
+  const defaultTopN = excludeList.length === 0 ? 4 : 6;
 
   const topN = Math.min(20, Math.max(1, Math.floor(Number(params.topN ?? defaultTopN))));
 
@@ -270,9 +270,9 @@ export function filterScanRowsForTop8(params: Scanner1Top8Params, rows: ScanRow[
 
 function resolveScanFetchN(params: Scanner1Top8Params): number {
 
-  const scanTopN = Math.floor(Number(params.scanTopN ?? 8));
+  const scanTopN = Math.floor(Number(params.scanTopN ?? 4));
 
-  const topN = Math.floor(Number(params.topN ?? (params.excludeRanks?.length === 0 ? 8 : 6)));
+  const topN = Math.floor(Number(params.topN ?? (params.excludeRanks?.length === 0 ? 4 : 6)));
 
   const exclude = params.excludeRanks !== undefined ? params.excludeRanks : [3, 4];
 
@@ -340,7 +340,7 @@ export async function runScannerRotationPipeline(options: {
 
   const scanFetchN = resolveScanFetchN(params);
 
-  const stopLossPct = Number(params.stopLossPct ?? 0.05);
+  const stopLossPct = Number(params.stopLossPct ?? 0.03);
 
   const closeAfterHours = Number(params.closeAfterHours ?? 4);
 
