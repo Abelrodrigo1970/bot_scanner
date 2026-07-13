@@ -380,7 +380,10 @@ export async function runScannerRotationPipeline(options: {
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const universeCode = resolveRotationUniverseCode(options.strategyName, params);
 
-  const shortOnExit = params.shortOnExit === true;
+  const shortOnExit =
+    options.strategyName === SCANNER1_TOP5_STRATEGY_NAME
+      ? params.shortOnExit !== false
+      : params.shortOnExit === true;
   const shortStopLossPct = Number(params.shortStopLossPct ?? 0.25);
   const shortCloseAfterHours = Number(params.shortCloseAfterHours ?? closeAfterHours);
 
@@ -728,7 +731,7 @@ export async function runScanner1Top5Pipeline(options?: {
 
     force: options?.force,
 
-    logPrefix: options?.logPrefix ?? '[Scanner2 Top8]',
+    logPrefix: options?.logPrefix ?? '[Scanner2 Top4]',
 
   });
 

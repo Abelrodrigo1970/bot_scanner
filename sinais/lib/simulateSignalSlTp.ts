@@ -144,6 +144,16 @@ export function resolveSignalSlTpLevels(
   };
 }
 
+/** Rotação temporizada (ex. 4h): fecho no scan, sem TP — SL só no P&L do hold, não em low/high 24h. */
+export function isRotationTimedProfile(profileSide: StrategySimulationSide): boolean {
+  return (
+    profileSide.finalCloseHours > 0 &&
+    profileSide.finalCloseHours < 24 &&
+    profileSide.tp1Pct === 0 &&
+    profileSide.tp2Pct === 0
+  );
+}
+
 /** Simula P&L líquido (%) para posição $100 — SL/TP do sinal + parciais + fee round-trip. */
 export function simulateSignalNetResultPercent(
   signal: SimulateSignalInput,
@@ -170,6 +180,10 @@ export function simulateSignalNetResultPercent(
       : (signal.result24h / signal.entryPrice) * 100;
   const hoursMultiplier = Math.max(0.25, finalHours / 24);
   const finalResultPercent = base24hPercent * hoursMultiplier;
+
+  if (isRotationTimedProfile(profileSide)) {
+    return Math.max(finalResultPercent, -stopLossPercent) - feeRoundTripPct;
+  }
 
   let grossPercentResult = 0;
 

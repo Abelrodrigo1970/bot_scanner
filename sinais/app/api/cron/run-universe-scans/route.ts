@@ -42,7 +42,7 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
 
   try {
     const top8 = await runScanner1Top5Pipeline({
-      logPrefix: '[Universe-Scans → Scanner2 Top8]',
+      logPrefix: '[Universe-Scans → Scanner2 Top4]',
     });
     console.log('[Universe-Scans] Scanner 2 Top 4:', top8);
   } catch (err) {
