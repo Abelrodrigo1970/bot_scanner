@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runScanner3Rsi1hPipeline } from '@/lib/scanner3Rsi1hPipeline';
 
 /**
- * Scanner 3 RSI 1h — actualiza universo RSI>75 (1h) e gera sinais de rompimento.
+ * Scanner 3 RSI 1h — actualiza universo RSI>75 (1h) + RSI Flip
+ * (LONG ao entrar / SHORT se RSI < 70, SL 5%).
  * Agendar: 0 * * * * (início de cada hora, Europe/Lisbon).
  */
 let jobPromise: Promise<void> | null = null;
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
       {
         accepted: true,
         background: true,
-        message: 'Scanner 3 RSI 1h iniciado (scan + sinais).',
+        message: 'Scanner 3 RSI 1h iniciado (scan + Flip).',
         startedAt,
       },
       { status: 202 }

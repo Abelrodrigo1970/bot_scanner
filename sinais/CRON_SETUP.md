@@ -8,7 +8,7 @@
 |----------|-------------|------------|
 | `/api/cron/run-15m` | MA Cross + Pivot Boss + Rompimentos + **Quebra EMA80** | `*/15 * * * *` (24h) |
 | `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** + Scanner 6 (SMA80 4h) + rotação Top 4 + **SHORT rank #2** | `0 */4 * * *` (24h) |
-| `/api/cron/run-scanner3-rsi-1h` | **Scanner 3 RSI > 75 (1h)** + rompimento | `0 * * * *` (24h) |
+| `/api/cron/run-scanner3-rsi-1h` | **Scanner 3 RSI > 75 (1h)** + **RSI Flip** (LONG entrada / SHORT RSI&lt;70, SL 5%) | `0 * * * *` (24h) |
 | `/api/cron/run-scanner1-top5` | Scanner 2 Top 4 (rotação manual/backup) | opcional, 10–15 min após scan |
 | `/api/cron/run-scanner2-short-leader-24h` | Scanner 2 Short ranks #1–#2 (backup manual) | opcional, 10–15 min após scan |
 

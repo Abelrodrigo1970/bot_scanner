@@ -20,6 +20,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'SCANNER2_SHORT_LEADER_24H',
 
+  'SCANNER3_RSI_FLIP_1H',
+
   'SCANNER3_RSI_BREAKOUT_15M',
 
 ] as const;
@@ -129,6 +131,18 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '4h',
 
     universe: 'Scanner 2 — rank #2; pump 50–90%',
+
+  },
+
+  SCANNER3_RSI_FLIP_1H: {
+
+    cron: '1h',
+
+    cronLabel: 'Cron 1h (após scan Scanner 3)',
+
+    timeframe: '1h',
+
+    universe: 'Scanner 3 — RSI > 75 (1h); flip SHORT se RSI < 70',
 
   },
 

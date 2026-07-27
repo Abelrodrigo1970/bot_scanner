@@ -75,6 +75,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     summary: 'SHORT rank #2 Scanner 2. Pump 50–90%. SL +25%. Fecho 24h. Bloqueio 10–14h PT.',
   },
   {
+    strategyName: 'SCANNER3_RSI_FLIP_1H',
+    displayNames: ['Scanner 3 RSI Flip 1h'],
+    buy: side(5, 0, 0, 0, 0, 72),
+    sell: side(5, 0, 0, 0, 0, 72),
+    summary:
+      'LONG ao entrar Scanner 3 (RSI>75). SHORT se RSI < 70. SL ±5%. Sem TP; fecho por flip/SL/72h.',
+  },
+  {
     strategyName: 'SCANNER3_RSI_BREAKOUT_15M',
     displayNames: ['Scanner 3 RSI Rompimento 1h', 'Scanner 3 RSI Rompimento 15m'],
     buy: side(7, 10.5, 50),

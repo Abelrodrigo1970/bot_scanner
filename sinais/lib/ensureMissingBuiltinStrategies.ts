@@ -16,6 +16,9 @@ import {
   SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
   SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
   SCANNER3_RSI_BREAKOUT_15M_PARAMS,
+  SCANNER3_RSI_FLIP_1H_DESCRIPTION,
+  SCANNER3_RSI_FLIP_1H_DISPLAY,
+  SCANNER3_RSI_FLIP_1H_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncPivotBossBear15mUniverse,
@@ -23,6 +26,7 @@ import {
   syncAccumulationBreakout15mConfig,
   syncEma80Sma7Breakdown15mConfig,
   syncScanner3RsiBreakout15mConfig,
+  syncScanner3RsiFlip1hConfig,
   migrateScannerS6ShortToScanner2ShortLeader24h,
   syncScanner2ShortLeader24hConfig,
   SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
@@ -71,8 +75,15 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'SCANNER3_RSI_BREAKOUT_15M',
     displayName: SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
     description: SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(SCANNER3_RSI_BREAKOUT_15M_PARAMS),
+  },
+  {
+    name: 'SCANNER3_RSI_FLIP_1H',
+    displayName: SCANNER3_RSI_FLIP_1H_DISPLAY,
+    description: SCANNER3_RSI_FLIP_1H_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(SCANNER3_RSI_FLIP_1H_PARAMS),
   },
 ] as const;
 
@@ -138,6 +149,11 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
     console.log('✅ SCANNER3_RSI_BREAKOUT_15M: Scanner 3 RSI Rompimento 1h actualizado');
   }
 
+  const scanner3FlipSync = await syncScanner3RsiFlip1hConfig(prisma);
+  if (scanner3FlipSync.updated) {
+    console.log('✅ SCANNER3_RSI_FLIP_1H: LONG entrada Scanner 3 / SHORT RSI<70, SL 5%');
+  }
+
   const reactivated = await prisma.strategy.updateMany({
     where: { name: 'SCANNER1_TOP5', isActive: false },
     data: { isActive: true },
@@ -147,10 +163,15 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   }
 
   const reactivatedS3 = await prisma.strategy.updateMany({
-    where: { name: 'SCANNER3_RSI_BREAKOUT_15M', isActive: false },
+    where: { name: 'SCANNER3_RSI_FLIP_1H', isActive: false },
     data: { isActive: true },
   });
   if (reactivatedS3.count > 0) {
-    console.log('✅ Scanner 3 RSI Rompimento 1h reactivado');
+    console.log('✅ SCANNER3_RSI_FLIP_1H reactivada');
   }
+
+  await prisma.strategy.updateMany({
+    where: { name: 'SCANNER3_RSI_BREAKOUT_15M', isActive: true },
+    data: { isActive: false },
+  });
 }

@@ -560,6 +560,24 @@ export const SCANNER3_RSI_BREAKOUT_15M_PARAMS = {
   exchange: 'binance',
 } as const;
 
+export const SCANNER3_RSI_FLIP_1H_DISPLAY = 'Scanner 3 RSI Flip 1h';
+
+export const SCANNER3_RSI_FLIP_1H_DESCRIPTION =
+  'Universo Scanner 3 (RSI>75 em 1h). LONG quando o símbolo entra no scanner (SL -5%). Quando o RSI fecha abaixo de 70, inverte para SHORT (SL +5%). Ao reentrar no scanner, volta a LONG. Sem TP — saída por SL, flip ou fecho de segurança 72h.';
+
+export const SCANNER3_RSI_FLIP_1H_PARAMS = {
+  entryRsiMin: 75,
+  flipShortRsiBelow: 70,
+  stopLossPct: 0.05,
+  closeAfterHours: 72,
+  autoExecuteMinStrength: 80,
+  allowBuy: true,
+  allowSell: true,
+  buyEnabled: true,
+  sellEnabled: true,
+  exchange: 'bybit',
+} as const;
+
 /** Garante registo/descrição da estratégia Rompimento de Acumulação 15m. */
 export async function syncAccumulationBreakout15mConfig(
   prisma: PrismaClient
@@ -617,8 +635,7 @@ export async function syncScanner3RsiBreakout15mConfig(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
-
+  // Rompimento fica inactivo por defeito — Flip é a estratégia activa no Scanner 3.
   let p: Record<string, unknown> = {};
   try {
     p = row.params ? JSON.parse(row.params) : {};
@@ -639,12 +656,57 @@ export async function syncScanner3RsiBreakout15mConfig(
     row.displayName !== SCANNER3_RSI_BREAKOUT_15M_DISPLAY ||
     row.description !== SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta) {
     await prisma.strategy.update({
       where: { name: 'SCANNER3_RSI_BREAKOUT_15M' },
       data: {
         displayName: SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
         description: SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
+        params: JSON.stringify(next),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
+/** Garante registo/descrição da estratégia Scanner 3 RSI Flip 1h. */
+export async function syncScanner3RsiFlip1hConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'SCANNER3_RSI_FLIP_1H' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...SCANNER3_RSI_FLIP_1H_PARAMS,
+    ...p,
+    flipShortRsiBelow: SCANNER3_RSI_FLIP_1H_PARAMS.flipShortRsiBelow,
+    stopLossPct: SCANNER3_RSI_FLIP_1H_PARAMS.stopLossPct,
+    entryRsiMin: SCANNER3_RSI_FLIP_1H_PARAMS.entryRsiMin,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== SCANNER3_RSI_FLIP_1H_DISPLAY ||
+    row.description !== SCANNER3_RSI_FLIP_1H_DESCRIPTION;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'SCANNER3_RSI_FLIP_1H' },
+      data: {
+        displayName: SCANNER3_RSI_FLIP_1H_DISPLAY,
+        description: SCANNER3_RSI_FLIP_1H_DESCRIPTION,
         params: JSON.stringify(next),
         ...(shouldActivate ? { isActive: true } : {}),
       },
