@@ -1,6 +1,12 @@
 import { prisma } from './db';
 import { scanSymbolUniverse } from './universeScanner';
-import { BUILTIN_UNIVERSE_SCAN, getBuiltinScanDefinition, isTickerRankUniverseScan } from './symbolUniverseDefaults';
+import { BUILTIN_UNIVERSE_SCAN_4H, BUILTIN_UNIVERSE_SCAN_1H, getBuiltinScanDefinition, isTickerRankUniverseScan } from './symbolUniverseDefaults';
+
+/** Scanners activos (exclui legado 15m só para histórico). */
+const ACTIVE_BUILTIN_UNIVERSE_SCAN = {
+  ...BUILTIN_UNIVERSE_SCAN_4H,
+  ...BUILTIN_UNIVERSE_SCAN_1H,
+};
 import { filterToBybitMarketSymbols } from './marketData';
 
 const SCAN_HISTORY_KEEP = 100;
@@ -145,7 +151,7 @@ export async function ensureAllBuiltinUniverseScans(
 ): Promise<EnsureUniverseScanResult[]> {
   const results: EnsureUniverseScanResult[] = [];
 
-  for (const [code, def] of Object.entries(BUILTIN_UNIVERSE_SCAN)) {
+  for (const [code, def] of Object.entries(ACTIVE_BUILTIN_UNIVERSE_SCAN)) {
     const latest = await getLatestUniverseScanSymbols(code);
     if (latest.ok && latest.rowCount > 0) {
       results.push({

@@ -74,6 +74,13 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     sell: side(25, 0, 0, 0, 0, 24),
     summary: 'SHORT rank #2 Scanner 2. Pump 50–90%. SL +25%. Fecho 24h. Bloqueio 10–14h PT.',
   },
+  {
+    strategyName: 'SCANNER3_RSI_BREAKOUT_15M',
+    displayNames: ['Scanner 3 RSI Rompimento 1h', 'Scanner 3 RSI Rompimento 15m'],
+    buy: side(7, 10.5, 50),
+    sell: null,
+    summary: 'Só COMPRA. Velas 1h. SL -7%. TP1 R×1,5 (~10,5%, 50% pos.). Restante às 24h.',
+  },
 ];
 
 export function findStrategySimulationProfile(

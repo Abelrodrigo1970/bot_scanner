@@ -13,12 +13,16 @@ import {
   EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION,
   EMA80_SMA7_BREAKDOWN_15M_DISPLAY,
   EMA80_SMA7_BREAKDOWN_15M_PARAMS,
+  SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
+  SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
+  SCANNER3_RSI_BREAKOUT_15M_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncPivotBossBear15mUniverse,
   syncScanner1Top5Config,
   syncAccumulationBreakout15mConfig,
   syncEma80Sma7Breakdown15mConfig,
+  syncScanner3RsiBreakout15mConfig,
   migrateScannerS6ShortToScanner2ShortLeader24h,
   syncScanner2ShortLeader24hConfig,
   SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
@@ -63,6 +67,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     isActive: true,
     params: JSON.stringify(SCANNER2_SHORT_LEADER_24H_PARAMS),
   },
+  {
+    name: 'SCANNER3_RSI_BREAKOUT_15M',
+    displayName: SCANNER3_RSI_BREAKOUT_15M_DISPLAY,
+    description: SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(SCANNER3_RSI_BREAKOUT_15M_PARAMS),
+  },
 ] as const;
 
 /** Rotações Top descontinuadas neste projeto. */
@@ -70,7 +81,6 @@ export const DEPRECATED_TOP_ROTATION_NAMES = [
   'SCANNER_MA80_TOP6',
   'SCANNER_MA80_4H_TOP6',
   'SCANNER1_TOP8',
-  'SCANNER3_RSI_BREAKOUT_15M',
 ] as const;
 
 /** @deprecated Use DEPRECATED_TOP_ROTATION_NAMES */
@@ -123,11 +133,24 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
     console.log('✅ SCANNER2_SHORT_LEADER_24H: SHORT rank #2, pump 50–90%, SL +25%, bloqueio 10–14h PT');
   }
 
+  const scanner3Sync = await syncScanner3RsiBreakout15mConfig(prisma);
+  if (scanner3Sync.updated) {
+    console.log('✅ SCANNER3_RSI_BREAKOUT_15M: Scanner 3 RSI Rompimento 1h actualizado');
+  }
+
   const reactivated = await prisma.strategy.updateMany({
     where: { name: 'SCANNER1_TOP5', isActive: false },
     data: { isActive: true },
   });
   if (reactivated.count > 0) {
     console.log('✅ Rotação Scanner 2 Top 4 reactivada');
+  }
+
+  const reactivatedS3 = await prisma.strategy.updateMany({
+    where: { name: 'SCANNER3_RSI_BREAKOUT_15M', isActive: false },
+    data: { isActive: true },
+  });
+  if (reactivatedS3.count > 0) {
+    console.log('✅ Scanner 3 RSI Rompimento 1h reactivado');
   }
 }

@@ -22,7 +22,7 @@ import {
   UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80,
   UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
   UNIVERSE_CODE_SCANNER_3_MA80_PCT4,
-  UNIVERSE_CODE_SCANNER_3_RSI75_15M,
+  UNIVERSE_CODE_SCANNER_3_RSI75_1H,
   UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D,
 } from './symbolUniverseDefaults';
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
@@ -1269,14 +1269,14 @@ export async function runAccumulationBreakout15mStrategy(
 }
 
 /**
- * Scanner 3 — RSI entre min/max + rompimento de acumulação 15m (só COMPRA).
+ * Scanner 3 — RSI entre min/max + rompimento de acumulação 1h (só COMPRA).
  */
 export async function runScanner3RsiBreakout15mStrategy(
   symbol: string,
   timeframe: Timeframe,
   params: StrategyParams
 ): Promise<SignalResult | null> {
-  if (timeframe !== '15m') return null;
+  if (timeframe !== '1h') return null;
   if (params.buyEnabled === false || params.allowBuy === false) return null;
 
   const rsiPeriod = Math.max(2, Math.floor(Number(params.rsiPeriod ?? 14)));
@@ -1294,7 +1294,7 @@ export async function runScanner3RsiBreakout15mStrategy(
 
   try {
     const candlesNeeded = Math.min(500, Math.max(lookback + rsiPeriod + 20, 60));
-    const candles = await fetchCandles(symbol, '15m', candlesNeeded);
+    const candles = await fetchCandles(symbol, '1h', candlesNeeded);
     if (candles.length < lookback + rsiPeriod + 2) return null;
 
     const closedCandles = candles.slice(0, -1);
@@ -1347,6 +1347,7 @@ export async function runScanner3RsiBreakout15mStrategy(
       strength,
       extraInfo: JSON.stringify({
         setup: 'scanner3_rsi_breakout',
+        chartTimeframe: '1h',
         rsiPeriod,
         rsi: Number(rsi.toFixed(2)),
         minRsi,
@@ -1359,11 +1360,11 @@ export async function runScanner3RsiBreakout15mStrategy(
         rewardRisk1,
         tp1Position,
         closeAfterHours,
-        executionProfile: `BUY | Scanner 3 RSI ${minRsi}–${maxRsi} + rompimento 15m (fecho > máx. ${lookback} velas) | SL -${(stopLossPct * 100).toFixed(0)}% | TP1 R×${rewardRisk1} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+        executionProfile: `BUY | Scanner 3 RSI ${minRsi}–${maxRsi} + rompimento 1h (fecho > máx. ${lookback} velas) | SL -${(stopLossPct * 100).toFixed(0)}% | TP1 R×${rewardRisk1} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
       }),
     };
   } catch (error) {
-    console.error(`Erro na estratégia Scanner 3 RSI Rompimento 15m (${symbol}):`, error);
+    console.error(`Erro na estratégia Scanner 3 RSI Rompimento 1h (${symbol}):`, error);
     return null;
   }
 }
@@ -2049,7 +2050,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL' ? ['15m'] :
         strategy.name === 'PIVOT_BOSS_BEAR_15M' ? ['15m'] :
         strategy.name === 'ACCUMULATION_BREAKOUT_15M' ? ['15m'] :
-        strategy.name === 'SCANNER3_RSI_BREAKOUT_15M' ? ['15m'] :
+        strategy.name === 'SCANNER3_RSI_BREAKOUT_15M' ? ['1h'] :
         strategy.name === 'EMA80_SMA7_BREAKDOWN_15M' ? ['15m'] :
         strategy.name === 'PIVOT_BOSS_BEAR_1H' ? ['1h'] :
         strategy.name === 'MA200_VOLATILE' ? ['4h'] :
@@ -2157,17 +2158,17 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         }
       } else if (strategy.name === 'SCANNER3_RSI_BREAKOUT_15M') {
         console.log(
-          `🔍 ${strategy.name}: universo Scanner 3 (RSI>75, 15m); filtro entrada RSI 72–85 + rompimento...`
+          `🔍 ${strategy.name}: universo Scanner 3 (RSI>75, 1h); filtro entrada RSI 72–85 + rompimento...`
         );
-        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_3_RSI75_15M);
+        symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_3_RSI75_1H);
         scanner3RankBySymbol = await getUniverseScanRankMap(
-          UNIVERSE_CODE_SCANNER_3_RSI75_15M,
+          UNIVERSE_CODE_SCANNER_3_RSI75_1H,
           400
         );
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 3)`);
         if (symbolsToAnalyze.length === 0) {
           console.warn(
-            `⚠️ Scanner 3 vazio. Corra /api/cron/run-15m ou Origem de dados → Scanner 3. Ignorando ${strategy.name}.`
+            `⚠️ Scanner 3 vazio. Corra /api/cron/run-scanner3-rsi-1h ou Origem de dados → Scanner 3. Ignorando ${strategy.name}.`
           );
           continue;
         }

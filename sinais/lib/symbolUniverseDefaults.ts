@@ -13,10 +13,14 @@ export const UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80 =
 
 export const UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D = 'UNIVERSE_ABOVE_MA200_1D' as const;
 
-/** @deprecated Scanner 3 legado (MA80 ±4% 4h) — substituído pelo Scanner 3 RSI 15m. */
+/** @deprecated Scanner 3 legado (MA80 ±4% 4h) — substituído pelo Scanner 3 RSI. */
 export const UNIVERSE_CODE_SCANNER_3_MA80_PCT4 = 'UNIVERSE_NEAR_MA200_PCT4_4H' as const;
 
-export const UNIVERSE_CODE_SCANNER_3_RSI75_15M = 'UNIVERSE_RSI_ABOVE_75_15M' as const;
+/** Scanner 3 actual — RSI > 75 em velas 1h. */
+export const UNIVERSE_CODE_SCANNER_3_RSI75_1H = 'UNIVERSE_RSI_ABOVE_75_1H' as const;
+
+/** @deprecated Use UNIVERSE_CODE_SCANNER_3_RSI75_1H (migração 15m → 1h). */
+export const UNIVERSE_CODE_SCANNER_3_RSI75_15M = UNIVERSE_CODE_SCANNER_3_RSI75_1H;
 
 export const UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H = 'UNIVERSE_ABOVE_MA80_4H' as const;
 
@@ -59,7 +63,22 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
   },
 };
 
-/** Scanner 3 — RSI > 75 (15m); scan descontinuado (dados históricos na UI). */
+/** Scanner 3 — RSI > 75 (1h); actualizado via cron horário. */
+export const BUILTIN_UNIVERSE_SCAN_1H: Record<string, UniverseScanDefinition> = {
+  UNIVERSE_RSI_ABOVE_75_1H: {
+    ruleType: 'RSI_ABOVE',
+    maPeriod: 0,
+    minDistancePct: null,
+    maxDistancePct: null,
+    timeframe: '1h',
+    minQuoteVolume: 500000,
+    candidateLimit: 400,
+    rsiPeriod: SCANNER_3_RSI_PERIOD,
+    rsiThreshold: SCANNER_3_RSI_THRESHOLD,
+  },
+};
+
+/** @deprecated Histórico 15m — só leitura de scans antigos na UI. */
 export const BUILTIN_UNIVERSE_SCAN_15M: Record<string, UniverseScanDefinition> = {
   UNIVERSE_RSI_ABOVE_75_15M: {
     ruleType: 'RSI_ABOVE',
@@ -77,6 +96,7 @@ export const BUILTIN_UNIVERSE_SCAN_15M: Record<string, UniverseScanDefinition> =
 /** Todos os scanners builtin (UI, ensure, definições). */
 export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
   ...BUILTIN_UNIVERSE_SCAN_4H,
+  ...BUILTIN_UNIVERSE_SCAN_1H,
   ...BUILTIN_UNIVERSE_SCAN_15M,
 };
 
@@ -114,11 +134,17 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Top 30 perpétuos USDT com maior subida de preço nas últimas 24h (apenas variação positiva). Mín. 500k USDT volume 24h.',
     strategyNames: 'Scanner 2 Top 4 (rotação 4h), Scanner 2 Short Leader 24h',
   },
-  UNIVERSE_RSI_ABOVE_75_15M: {
-    displayName: 'Scanner 3 — RSI > 75 (15m)',
+  UNIVERSE_RSI_ABOVE_75_1H: {
+    displayName: 'Scanner 3 — RSI > 75 (1h)',
     description:
-      'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 15m, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h. Actualização a cada 15 min (cron run-15m).',
-    strategyNames: '— (sem estratégia activa)',
+      'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 1h, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h. Actualização a cada hora (cron run-scanner3-rsi-1h).',
+    strategyNames: 'Scanner 3 RSI Rompimento 1h',
+  },
+  UNIVERSE_RSI_ABOVE_75_15M: {
+    displayName: 'Scanner 3 — RSI > 75 (15m, legado)',
+    description:
+      'Histórico: RSI(14) > 75 em velas 15m. Substituído pelo Scanner 3 RSI 1h (UNIVERSE_RSI_ABOVE_75_1H).',
+    strategyNames: '— (legado)',
   },
   UNIVERSE_ABOVE_MA80_4H: {
     displayName: 'Scanner 6 — Acima SMA80 (4h)',
@@ -135,7 +161,7 @@ export const SCANNER_ROTATION_NOTES: Record<string, string> = {
 export const SCANNER_UI_ROUTES = [
   { scannerId: '1', code: UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 },
   { scannerId: '2', code: UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H },
-  { scannerId: '3', code: UNIVERSE_CODE_SCANNER_3_RSI75_15M },
+  { scannerId: '3', code: UNIVERSE_CODE_SCANNER_3_RSI75_1H },
   { scannerId: '6', code: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H },
 ] as const;
 

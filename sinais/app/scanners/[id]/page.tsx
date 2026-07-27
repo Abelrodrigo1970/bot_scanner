@@ -219,8 +219,8 @@ export default function UniverseScannerPage() {
               Actualização automática:{' '}
               {isRsiRankScanner ? (
                 <>
-                  cron <code className="text-[10px]">/api/cron/run-15m</code> de{' '}
-                  <strong>15 em 15 minutos</strong>
+                  cron <code className="text-[10px]">/api/cron/run-scanner3-rsi-1h</code> de{' '}
+                  <strong>hora em hora</strong>
                 </>
               ) : (
                 <>

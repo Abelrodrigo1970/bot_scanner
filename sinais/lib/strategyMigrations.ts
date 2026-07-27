@@ -536,10 +536,10 @@ export const ACCUMULATION_BREAKOUT_15M_PARAMS = {
   exchange: 'binance',
 } as const;
 
-export const SCANNER3_RSI_BREAKOUT_15M_DISPLAY = 'Scanner 3 RSI Rompimento 15m';
+export const SCANNER3_RSI_BREAKOUT_15M_DISPLAY = 'Scanner 3 RSI Rompimento 1h';
 
 export const SCANNER3_RSI_BREAKOUT_15M_DESCRIPTION =
-  'Velas 15m, só COMPRA. Universo: Scanner 3 (RSI>75). RSI(14) entre 72 e 85 na vela de rompimento. Fecho > máximo das últimas 10 velas + vela bullish + volume. SL -7% fixo; TP1 risco × 1,5 (50% pos.); restante às 24h.';
+  'Velas 1h, só COMPRA. Universo: Scanner 3 (RSI>75 em 1h). RSI(14) entre 72 e 85 na vela de rompimento. Fecho > máximo das últimas 10 velas + vela bullish + volume. SL -7% fixo; TP1 risco × 1,5 (50% pos.); restante às 24h.';
 
 export const SCANNER3_RSI_BREAKOUT_15M_PARAMS = {
   rsiPeriod: 14,
@@ -552,6 +552,7 @@ export const SCANNER3_RSI_BREAKOUT_15M_PARAMS = {
   rewardRisk1: 1.5,
   tp1Position: 50,
   closeAfterHours: 24,
+  chartTimeframe: '1h',
   allowBuy: true,
   allowSell: false,
   buyEnabled: true,
@@ -606,7 +607,7 @@ export async function syncAccumulationBreakout15mConfig(
   return { updated: false };
 }
 
-/** Garante registo/descrição da estratégia Scanner 3 RSI Rompimento 15m. */
+/** Garante registo/descrição da estratégia Scanner 3 RSI Rompimento 1h. */
 export async function syncScanner3RsiBreakout15mConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -631,6 +632,7 @@ export async function syncScanner3RsiBreakout15mConfig(
     minRsi: SCANNER3_RSI_BREAKOUT_15M_PARAMS.minRsi,
     maxRsi: SCANNER3_RSI_BREAKOUT_15M_PARAMS.maxRsi,
     rsiPeriod: SCANNER3_RSI_BREAKOUT_15M_PARAMS.rsiPeriod,
+    chartTimeframe: '1h',
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =

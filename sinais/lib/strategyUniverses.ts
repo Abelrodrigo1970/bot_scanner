@@ -148,6 +148,24 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   },
 
+  {
+
+    strategyName: 'SCANNER3_RSI_BREAKOUT_15M',
+
+    displayLabel: 'Scanner 3 RSI Rompimento 1h',
+
+    signalTimeframes: ['1h'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_RSI_ABOVE_75_1H',
+
+    description: 'Scanner 3: RSI>75 em 1h; rompimento RSI 72–85 + fecho > máx. 10 velas.',
+
+    refresh: '/api/cron/run-scanner3-rsi-1h (cada 1 h)',
+
+  },
+
 ];
 
 
@@ -163,7 +181,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/3',
-    label: 'Scanner 3 — RSI > 75 (15m)',
+    label: 'Scanner 3 — RSI > 75 (1h)',
   },
   {
     href: '/scanners/6',

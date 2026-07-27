@@ -20,6 +20,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'SCANNER2_SHORT_LEADER_24H',
 
+  'SCANNER3_RSI_BREAKOUT_15M',
+
 ] as const;
 
 
@@ -130,6 +132,18 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
   },
 
+  SCANNER3_RSI_BREAKOUT_15M: {
+
+    cron: '1h',
+
+    cronLabel: 'Cron 1h (scan + sinais)',
+
+    timeframe: '1h',
+
+    universe: 'Scanner 3 — RSI > 75 (1h)',
+
+  },
+
 };
 
 
@@ -139,8 +153,6 @@ export const REMOVED_STRATEGY_LABELS: Record<string, string> = {
   SCANNER_S6_SHORT_LEADER_12H: 'Scanner 6 Short Leader 12h (substituído por Scanner 2 Short Leader 24h)',
 
   SCANNER1_TOP8: 'Scanner 1 Top 6 (rotação — descontinuado)',
-
-  SCANNER3_RSI_BREAKOUT_15M: 'Scanner 3 RSI Rompimento 15m (descontinuado)',
 
   SCANNER_MA80_TOP6: 'Scanner 5 Top 6 (rotação — bot_cripto)',
 
