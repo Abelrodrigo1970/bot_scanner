@@ -11,6 +11,7 @@ import {
   type StrategySimulationSide,
 } from '@/lib/strategySimulationProfiles';
 import { simulateSignalNetResultPercent } from '@/lib/simulateSignalSlTp';
+import { ACTIVE_STRATEGY_DISPLAY_ORDER } from '@/lib/strategyCatalog';
 
 interface Signal {
   id: string;
@@ -148,26 +149,67 @@ export default function EstatisticasPage() {
   const [sellTp2PositionPercent, setSellTp2PositionPercent] = useState<string>('0');
   const [finalCloseHours, setFinalCloseHours] = useState<string>('24');
   const [simulatedStats, setSimulatedStats] = useState<Statistics | null>(null);
+  /** Display names das estratégias activas na BD (e aliases do perfil de simulação). */
+  const [existingStrategyNames, setExistingStrategyNames] = useState<Set<string> | null>(null);
 
   const strategyOptions = useMemo(() => {
     const unique = new Set(signals.map((s) => s.strategyName).filter(Boolean));
-    return Array.from(unique).sort((a, b) => a.localeCompare(b));
-  }, [signals]);
+    return Array.from(unique)
+      .filter((name) => !existingStrategyNames || existingStrategyNames.has(name))
+      .sort((a, b) => a.localeCompare(b));
+  }, [signals, existingStrategyNames]);
+
+  const activeSimulationProfiles = useMemo(() => {
+    const activeNames = new Set<string>(ACTIVE_STRATEGY_DISPLAY_ORDER);
+    return STRATEGY_SIMULATION_PROFILES.filter(
+      (p) =>
+        (p.strategyName != null && activeNames.has(p.strategyName)) ||
+        (existingStrategyNames != null &&
+          p.displayNames.some((d) => existingStrategyNames.has(d)))
+    );
+  }, [existingStrategyNames]);
 
   const filteredSignals = useMemo(() => {
     return signals.filter((s) => {
+      const matchesExisting =
+        !existingStrategyNames || existingStrategyNames.has(s.strategyName);
       const matchesStrategy = !selectedStrategy || s.strategyName === selectedStrategy;
       const matchesDirection = !selectedDirection || s.direction === selectedDirection;
       const signalDate = new Date(s.generatedAt);
       const matchesStart = !startDate || signalDate >= new Date(startDate + 'T00:00:00');
       const matchesEnd = !endDate || signalDate <= new Date(endDate + 'T23:59:59');
-      return matchesStrategy && matchesDirection && matchesStart && matchesEnd;
+      return matchesExisting && matchesStrategy && matchesDirection && matchesStart && matchesEnd;
     });
-  }, [signals, selectedStrategy, selectedDirection, startDate, endDate]);
+  }, [signals, existingStrategyNames, selectedStrategy, selectedDirection, startDate, endDate]);
 
   useEffect(() => {
     fetchSignals();
+    fetch('/api/strategies')
+      .then((r) => r.json())
+      .then((data) => {
+        const names = new Set<string>();
+        for (const s of data.strategies ?? []) {
+          if (s.isActive === false) continue;
+          if (typeof s.displayName === 'string' && s.displayName) names.add(s.displayName);
+          const profile = STRATEGY_SIMULATION_PROFILES.find((p) => p.strategyName === s.name);
+          if (profile) {
+            for (const d of profile.displayNames) names.add(d);
+          }
+        }
+        setExistingStrategyNames(names);
+      })
+      .catch(() => setExistingStrategyNames(new Set()));
   }, []);
+
+  useEffect(() => {
+    if (
+      selectedStrategy &&
+      existingStrategyNames &&
+      !existingStrategyNames.has(selectedStrategy)
+    ) {
+      setSelectedStrategy('');
+    }
+  }, [selectedStrategy, existingStrategyNames]);
 
   useEffect(() => {
     if (!selectedStrategy) return;
@@ -661,7 +703,7 @@ export default function EstatisticasPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {STRATEGY_SIMULATION_PROFILES.map((p) => {
+                {activeSimulationProfiles.map((p) => {
                   const fmt = (s: StrategySimulationSide | null) => {
                     if (!s) return '—';
                     const tp2 =
