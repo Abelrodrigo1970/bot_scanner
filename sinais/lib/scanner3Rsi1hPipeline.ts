@@ -1,6 +1,6 @@
 /**
  * Pipeline horário: scan Scanner 3 (RSI>75 1h) + estratégia RSI Flip
- * (LONG ao entrar / SHORT se RSI < 70).
+ * (LONG 15m ao entrar / SHORT 15m se RSI 15m < 70).
  */
 
 import { runScanner3Rsi1hScan } from '@/lib/scanner3UniverseScan';

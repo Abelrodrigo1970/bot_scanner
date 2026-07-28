@@ -1,7 +1,7 @@
 /**
- * Scanner 3 — RSI Flip 1h
- * - Entra no universo (RSI>75, novo vs scan anterior) → LONG, SL -5%
- * - RSI cai abaixo de 70 → inverte para SHORT, SL +5%
+ * Scanner 3 — RSI Flip (scan 1h, trades 15m)
+ * - Entra no universo 1h (RSI>75, novo vs scan anterior) → LONG 15m, SL -5%
+ * - RSI 15m cai abaixo de 70 → inverte para SHORT 15m, SL +5%
  * - Volta a entrar no scanner → inverte de novo para LONG
  */
 
@@ -20,10 +20,13 @@ export const SCANNER3_RSI_FLIP_1H_STRATEGY_NAME = 'SCANNER3_RSI_FLIP_1H' as cons
 const LAST_RUN_SETTING_KEY = 'SCANNER3_RSI_FLIP_1H_LAST_RUN_ID';
 
 export type Scanner3RsiFlip1hParams = {
-  /** RSI mínimo para estar no Scanner 3 (alinhado com o scan). */
+  /** RSI mínimo para estar no Scanner 3 (alinhado com o scan 1h). */
   entryRsiMin?: number;
-  /** Abaixo deste RSI inverte para SHORT. */
+  /** Abaixo deste RSI (velas de trade) inverte para SHORT. */
   flipShortRsiBelow?: number;
+  /** Timeframe das velas para entrada, flip e sinais (15m). */
+  chartTimeframe?: string;
+  rsiPeriod?: number;
   stopLossPct?: number;
   /** Segurança: expira sinais IN_PROGRESS após N horas (0 = sem fecho por tempo). */
   closeAfterHours?: number;
@@ -69,12 +72,28 @@ async function setLastProcessedRunId(runId: string): Promise<void> {
   });
 }
 
-async function fetchClosedRsi1h(symbol: string, period = 14): Promise<number | null> {
+async function fetchClosedRsi(
+  symbol: string,
+  timeframe: string,
+  period = 14
+): Promise<number | null> {
   try {
-    const candles = await fetchCandles(symbol, '1h', period + 80);
+    const candles = await fetchCandles(symbol, timeframe, period + 80);
     if (candles.length < period + 2) return null;
     const closed = candles.slice(0, -1);
     return calculateRSI(getCloses(closed), period);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchClosedCandleClose(symbol: string, timeframe: string): Promise<number | null> {
+  try {
+    const candles = await fetchCandles(symbol, timeframe, 3);
+    if (!candles.length) return null;
+    const closed = candles.length >= 2 ? candles.slice(0, -1) : candles;
+    const close = closed[closed.length - 1]?.close;
+    return close != null && close > 0 ? close : null;
   } catch {
     return null;
   }
@@ -107,13 +126,16 @@ async function expireOpenSignals(
 }
 
 /**
- * Após cada scan Scanner 3 (1h): LONG nos novos; SHORT se RSI < flipShortRsiBelow.
+ * Após scan Scanner 3 (1h): LONG nos novos; SHORT se RSI trade < flipShortRsiBelow.
+ * mode `flips_only`: só verifica flips (cron 15m); entradas LONG só no cron 1h.
  */
 export async function runScanner3RsiFlip1hPipeline(options?: {
   force?: boolean;
   logPrefix?: string;
+  mode?: 'full' | 'flips_only';
 }): Promise<Scanner3RsiFlip1hResult> {
-  const logPrefix = options?.logPrefix ?? '[Scanner3 RSI Flip 1h]';
+  const logPrefix = options?.logPrefix ?? '[Scanner3 RSI Flip 15m]';
+  const mode = options?.mode ?? 'full';
 
   const strategy = await prisma.strategy.findUnique({
     where: { name: SCANNER3_RSI_FLIP_1H_STRATEGY_NAME },
@@ -129,6 +151,8 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
   }
 
   const params = parseParams(strategy.params);
+  const chartTimeframe = String(params.chartTimeframe ?? '15m');
+  const rsiPeriod = Math.max(2, Math.floor(Number(params.rsiPeriod ?? 14)));
   const flipShortRsiBelow = Number(params.flipShortRsiBelow ?? 70);
   const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.05));
   const closeAfterHours = Math.max(0, Math.floor(Number(params.closeAfterHours ?? 72)));
@@ -141,14 +165,18 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
     return { status: 'skipped', reason: 'Sem scan Scanner 3 (RSI 1h) na BD' };
   }
 
-  const lastRunId = await getLastProcessedRunId();
-  if (!options?.force && lastRunId === pair.current.id) {
-    return { status: 'skipped', reason: `Scan ${pair.current.id} já processado` };
+  if (mode === 'full') {
+    const lastRunId = await getLastProcessedRunId();
+    if (!options?.force && lastRunId === pair.current.id) {
+      return { status: 'skipped', reason: `Scan ${pair.current.id} já processado` };
+    }
+    await setLastProcessedRunId(pair.current.id);
   }
 
-  await setLastProcessedRunId(pair.current.id);
-
-  const items = buildScanItemsWithPreviousDelta(pair.current.rows, pair.previous?.rows);
+  const items =
+    mode === 'full'
+      ? buildScanItemsWithPreviousDelta(pair.current.rows, pair.previous?.rows)
+      : [];
 
   const startedAt = new Date();
   let longCreated = 0;
@@ -157,11 +185,13 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
   const longSymbols: string[] = [];
   const shortSymbols: string[] = [];
 
-  // ── 1) LONG: novos no scanner (precisa de scan anterior) ─────────────────
-  if (allowBuy && pair.previous) {
+  // ── 1) LONG: novos no scanner 1h (precisa de scan anterior) ──────────────
+  if (mode === 'full' && allowBuy && pair.previous) {
     for (const row of items) {
       if (!row.isNewInUniverse) continue;
-      if (!(row.close > 0)) continue;
+
+      const entryPrice = await fetchClosedCandleClose(row.symbol, chartTimeframe);
+      if (entryPrice == null) continue;
 
       const openSame = await prisma.signal.findFirst({
         where: {
@@ -177,19 +207,18 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       const closed = await expireOpenSignals(strategy.id, row.symbol, exchange, logPrefix);
       if (closed) flippedClosed++;
 
-      const entryPrice = row.close;
       const stopLoss = entryPrice * (1 - stopLossPct);
-      const rsi = row.pctFromMa; // no scan RSI_ABOVE, pctFromMa = RSI
+      const rsi = row.pctFromMa; // scan 1h: pctFromMa = RSI
 
       console.log(
-        `${logPrefix} 🟢 LONG ${row.symbol} @ ${entryPrice} (entrou no Scanner 3, RSI ${rsi.toFixed(1)}, SL -${(stopLossPct * 100).toFixed(0)}%)`
+        `${logPrefix} 🟢 LONG ${row.symbol} @ ${entryPrice} (${chartTimeframe}, entrou Scanner 3 1h RSI ${rsi.toFixed(1)}, SL -${(stopLossPct * 100).toFixed(0)}%)`
       );
 
       await prisma.signal.create({
         data: {
           symbol: row.symbol,
           direction: 'BUY',
-          timeframe: '1h',
+          timeframe: chartTimeframe,
           strategyId: strategy.id,
           strategyName: strategy.displayName,
           entryPrice,
@@ -207,7 +236,8 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
             stopLossPct,
             closeAfterHours: closeAfterHours || null,
             flipShortRsiBelow,
-            executionProfile: `LONG ao entrar Scanner 3 (RSI>75) | SL -${(stopLossPct * 100).toFixed(0)}% | inverte SHORT se RSI < ${flipShortRsiBelow}`,
+            chartTimeframe,
+            executionProfile: `LONG ${chartTimeframe} ao entrar Scanner 3 (RSI 1h>75) | SL -${(stopLossPct * 100).toFixed(0)}% | inverte SHORT se RSI ${chartTimeframe} < ${flipShortRsiBelow}`,
           }),
         },
       });
@@ -215,11 +245,11 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       longCreated++;
       longSymbols.push(row.symbol);
     }
-  } else if (!pair.previous) {
+  } else if (mode === 'full' && !pair.previous) {
     console.log(`${logPrefix} Sem scan anterior — sem LONGs de entrada neste ciclo`);
   }
 
-  // ── 2) SHORT: inverte LONGs abertos quando RSI < flipShortRsiBelow ────────
+  // ── 2) SHORT: inverte LONGs quando RSI trade < flipShortRsiBelow ─────────
   if (allowSell) {
     const openLongs = await prisma.signal.findMany({
       where: {
@@ -244,13 +274,11 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       });
       if (openShort) continue;
 
-      const rsi = await fetchClosedRsi1h(symbol);
+      const rsi = await fetchClosedRsi(symbol, chartTimeframe, rsiPeriod);
       if (rsi == null || rsi >= flipShortRsiBelow) continue;
 
-      const candles = await fetchCandles(symbol, '1h', 3).catch(() => []);
-      const closed = candles.length >= 2 ? candles.slice(0, -1) : candles;
-      const entryPrice = closed.length ? closed[closed.length - 1].close : 0;
-      if (!(entryPrice > 0)) continue;
+      const entryPrice = await fetchClosedCandleClose(symbol, chartTimeframe);
+      if (entryPrice == null) continue;
 
       const closedPos = await expireOpenSignals(strategy.id, symbol, exchange, logPrefix);
       if (closedPos) flippedClosed++;
@@ -258,14 +286,14 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       const stopLoss = entryPrice * (1 + stopLossPct);
 
       console.log(
-        `${logPrefix} 🔴 SHORT ${symbol} @ ${entryPrice} (RSI ${rsi.toFixed(1)} < ${flipShortRsiBelow}, SL +${(stopLossPct * 100).toFixed(0)}%)`
+        `${logPrefix} 🔴 SHORT ${symbol} @ ${entryPrice} (${chartTimeframe} RSI ${rsi.toFixed(1)} < ${flipShortRsiBelow}, SL +${(stopLossPct * 100).toFixed(0)}%)`
       );
 
       await prisma.signal.create({
         data: {
           symbol,
           direction: 'SELL',
-          timeframe: '1h',
+          timeframe: chartTimeframe,
           strategyId: strategy.id,
           strategyName: strategy.displayName,
           entryPrice,
@@ -283,7 +311,8 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
             scannedAt: pair.current.scannedAt.toISOString(),
             stopLossPct,
             closeAfterHours: closeAfterHours || null,
-            executionProfile: `SHORT quando RSI < ${flipShortRsiBelow} | SL +${(stopLossPct * 100).toFixed(0)}% | volta a LONG ao reentrar Scanner 3`,
+            chartTimeframe,
+            executionProfile: `SHORT ${chartTimeframe} quando RSI < ${flipShortRsiBelow} | SL +${(stopLossPct * 100).toFixed(0)}% | volta a LONG ao reentrar Scanner 3 1h`,
           }),
         },
       });

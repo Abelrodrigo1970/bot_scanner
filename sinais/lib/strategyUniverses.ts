@@ -152,18 +152,18 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     strategyName: 'SCANNER3_RSI_FLIP_1H',
 
-    displayLabel: 'Scanner 3 RSI Flip 1h',
+    displayLabel: 'Scanner 3 RSI Flip 15m',
 
-    signalTimeframes: ['1h'],
+    signalTimeframes: ['15m'],
 
     source: 'universe_scan',
 
     dataKey: 'UNIVERSE_RSI_ABOVE_75_1H',
 
     description:
-      'LONG ao entrar no Scanner 3 (RSI>75); SHORT quando RSI < 70; SL ±5%.',
+      'Scan 1h (RSI>75). LONG 15m ao entrar; SHORT 15m se RSI 15m < 70; SL ±5%.',
 
-    refresh: '/api/cron/run-scanner3-rsi-1h (cada 1 h)',
+    refresh: '/api/cron/run-scanner3-rsi-1h (1h) + /api/cron/run-15m (flip 15m)',
 
   },
 

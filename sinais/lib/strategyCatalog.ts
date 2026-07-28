@@ -136,13 +136,13 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
   SCANNER3_RSI_FLIP_1H: {
 
-    cron: '1h',
+    cron: '1h+15m',
 
-    cronLabel: 'Cron 1h (após scan Scanner 3)',
+    cronLabel: 'Cron 1h (scan + LONG) + 15m (flip RSI)',
 
-    timeframe: '1h',
+    timeframe: '15m',
 
-    universe: 'Scanner 3 — RSI > 75 (1h); flip SHORT se RSI < 70',
+    universe: 'Scanner 3 RSI > 75 (1h); trades 15m; flip SHORT se RSI 15m < 70',
 
   },
 

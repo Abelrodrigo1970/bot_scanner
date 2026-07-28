@@ -23,6 +23,7 @@ import {
   inspectActivePositionForSymbol,
 } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
+import { runScanner3RsiFlip1hPipeline } from '@/lib/scanner3RsiFlip1hStrategy';
 
 const TIMEFRAME_15M = '15m' as const;
 const MA_CROSS_5M_MIN_STRENGTH = 70;
@@ -221,6 +222,7 @@ export interface Cron15mAllResult {
   pivotBoss: Cron15mResult;
   breakout: Cron15mResult;
   ema80Sma7Breakdown: Cron15mResult;
+  scanner3RsiFlip: Awaited<ReturnType<typeof runScanner3RsiFlip1hPipeline>>;
 }
 
 async function runPivotBoss15mPipeline(now: Date): Promise<Cron15mResult> {
@@ -299,13 +301,32 @@ async function runEma80Sma7Breakdown15mPipeline(): Promise<Cron15mResult> {
 }
 
 /**
- * Cron único 15m: estratégias 15m (MA Cross, Pivot Boss, Rompimentos, Quebra EMA80).
+ * Scanner 3 RSI Flip — só verifica flips (RSI 15m < 70) em LONGs abertos.
+ * Entradas LONG continuam no cron horário após scan 1h.
+ */
+export async function runScanner3RsiFlip15mFlipsPipeline(): Promise<
+  Awaited<ReturnType<typeof runScanner3RsiFlip1hPipeline>>
+> {
+  try {
+    return await runScanner3RsiFlip1hPipeline({
+      mode: 'flips_only',
+      logPrefix: '[Cron 15m → Scanner3 RSI Flip]',
+    });
+  } catch (error) {
+    console.error('[Scanner3 RSI Flip 15m] Falhou:', error);
+    return { status: 'skipped', reason: 'Erro no pipeline flip 15m' };
+  }
+}
+
+/**
+ * Cron único 15m: estratégias 15m (MA Cross, Pivot Boss, Rompimentos, Quebra EMA80, Scanner3 Flip).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
+  const scanner3RsiFlip = await runScanner3RsiFlip15mFlipsPipeline();
   const ema80Sma7Breakdown = await runEma80Sma7Breakdown15mPipeline();
   const maCross = await runMaCross15mPipeline(now);
   const pivotBoss = await runPivotBoss15mPipeline(now);
   const breakout = await runBreakout15mPipeline();
-  return { maCross, pivotBoss, breakout, ema80Sma7Breakdown };
+  return { maCross, pivotBoss, breakout, ema80Sma7Breakdown, scanner3RsiFlip };
 }
 

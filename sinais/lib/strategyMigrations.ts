@@ -560,14 +560,16 @@ export const SCANNER3_RSI_BREAKOUT_15M_PARAMS = {
   exchange: 'binance',
 } as const;
 
-export const SCANNER3_RSI_FLIP_1H_DISPLAY = 'Scanner 3 RSI Flip 1h';
+export const SCANNER3_RSI_FLIP_1H_DISPLAY = 'Scanner 3 RSI Flip 15m';
 
 export const SCANNER3_RSI_FLIP_1H_DESCRIPTION =
-  'Universo Scanner 3 (RSI>75 em 1h). LONG quando o símbolo entra no scanner (SL -5%). Quando o RSI fecha abaixo de 70, inverte para SHORT (SL +5%). Ao reentrar no scanner, volta a LONG. Sem TP — saída por SL, flip ou fecho de segurança 72h.';
+  'Universo Scanner 3 (RSI>75 em 1h). LONG em 15m quando o símbolo entra no scanner (SL -5%). Quando o RSI 15m fecha abaixo de 70, inverte para SHORT 15m (SL +5%). Ao reentrar no scanner, volta a LONG. Sem TP — saída por SL, flip ou fecho de segurança 72h.';
 
 export const SCANNER3_RSI_FLIP_1H_PARAMS = {
   entryRsiMin: 75,
   flipShortRsiBelow: 70,
+  chartTimeframe: '15m',
+  rsiPeriod: 14,
   stopLossPct: 0.05,
   closeAfterHours: 72,
   autoExecuteMinStrength: 80,
@@ -695,6 +697,8 @@ export async function syncScanner3RsiFlip1hConfig(
     flipShortRsiBelow: SCANNER3_RSI_FLIP_1H_PARAMS.flipShortRsiBelow,
     stopLossPct: SCANNER3_RSI_FLIP_1H_PARAMS.stopLossPct,
     entryRsiMin: SCANNER3_RSI_FLIP_1H_PARAMS.entryRsiMin,
+    chartTimeframe: SCANNER3_RSI_FLIP_1H_PARAMS.chartTimeframe,
+    rsiPeriod: SCANNER3_RSI_FLIP_1H_PARAMS.rsiPeriod,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
