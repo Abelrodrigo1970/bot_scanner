@@ -36,7 +36,7 @@ export const ACTIVE_SCANNER_STRATEGY_NAMES = ACTIVE_STRATEGY_DISPLAY_ORDER;
 
 export interface StrategyCatalogEntry {
 
-  cron: '15m' | '1h';
+  cron: '15m' | '1h' | '1h+15m';
 
   cronLabel: string;
 
@@ -250,7 +250,7 @@ export function sortActiveStrategies<T extends { name: string }>(items: T[]): T[
 
 
 
-export const CRON_GROUPS: { key: '15m' | '1h'; title: string; description: string }[] = [
+export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; description: string }[] = [
 
   {
 
@@ -269,6 +269,16 @@ export const CRON_GROUPS: { key: '15m' | '1h'; title: string; description: strin
     title: 'Rotação 4h',
 
     description: 'Scanner 2 Top 4 (LONG + SHORT saídas) + Scanner 2 Short rank #2 (após run-universe-scans)',
+
+  },
+
+  {
+
+    key: '1h+15m',
+
+    title: 'Scanner 3 (1h + 15m)',
+
+    description: 'Scan RSI>75 1h + Flip (LONG entrada / SHORT RSI 15m < 70)',
 
   },
 
