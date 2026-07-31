@@ -923,7 +923,7 @@ export async function syncScannerMa804hTop6Config(
 export const SCANNER2_SHORT_LEADER_24H_DISPLAY = 'Scanner 2 Short Leader 24h';
 
 export const SCANNER2_SHORT_LEADER_24H_DESCRIPTION =
-  'SHORT no rank #2 do Scanner 2 (top subidas 24h). Após cada scan ~2h; pump 24h 50–90%. Fecho automático 24h. SL +25% (Binance). Sem entradas 10–14h PT.';
+  'SHORT no rank #2 do Scanner 2 (top subidas 24h). Após cada scan ~2h; pump 24h 50–90%. Fecho automático 24h. SL +25% (Bybit). Sem entradas 10–14h PT.';
 
 export const SCANNER2_SHORT_LEADER_24H_PARAMS = {
   rankMin: 2,
@@ -938,8 +938,45 @@ export const SCANNER2_SHORT_LEADER_24H_PARAMS = {
   buyEnabled: false,
   sellEnabled: true,
   autoExecuteMinStrength: 80,
-  exchange: 'binance',
+  exchange: 'bybit',
 } as const;
+
+/** Uma vez: força Scanner 2 (Top 4 + Short Leader) para exchange Bybit. */
+export async function migrateScanner2StrategiesToBybit(
+  prisma: PrismaClient
+): Promise<{ migrated: string[] }> {
+  const key = 'MIGRATED_SCANNER2_EXCHANGE_BYBIT';
+  const done = await prisma.appSetting.findUnique({ where: { key } });
+  if (done?.value === '1') return { migrated: [] };
+
+  const migrated: string[] = [];
+  for (const name of ['SCANNER1_TOP5', 'SCANNER2_SHORT_LEADER_24H'] as const) {
+    const row = await prisma.strategy.findUnique({
+      where: { name },
+      select: { params: true },
+    });
+    if (!row) continue;
+    let p: Record<string, unknown> = {};
+    try {
+      p = row.params ? JSON.parse(row.params) : {};
+    } catch {
+      p = {};
+    }
+    if (p.exchange === 'bybit') continue;
+    await prisma.strategy.update({
+      where: { name },
+      data: { params: JSON.stringify({ ...p, exchange: 'bybit' }) },
+    });
+    migrated.push(name);
+  }
+
+  await prisma.appSetting.upsert({
+    where: { key },
+    create: { key, value: '1' },
+    update: { value: '1' },
+  });
+  return { migrated };
+}
 
 /** Renomeia SCANNER_S6_SHORT_LEADER_12H → SCANNER2_SHORT_LEADER_24H (uma vez). */
 export async function migrateScannerS6ShortToScanner2ShortLeader24h(

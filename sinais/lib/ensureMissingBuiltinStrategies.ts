@@ -32,6 +32,7 @@ import {
   SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
   SCANNER2_SHORT_LEADER_24H_DISPLAY,
   SCANNER2_SHORT_LEADER_24H_PARAMS,
+  migrateScanner2StrategiesToBybit,
 } from './strategyMigrations';
 
 /** Estratégias de sinal no bot_scanner (Scanner 1). */
@@ -137,6 +138,11 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const migratedShort = await migrateScannerS6ShortToScanner2ShortLeader24h(prisma);
   if (migratedShort.migrated) {
     console.log('✅ SCANNER_S6_SHORT_LEADER_12H → SCANNER2_SHORT_LEADER_24H (migrado)');
+  }
+
+  const s2Bybit = await migrateScanner2StrategiesToBybit(prisma);
+  if (s2Bybit.migrated.length > 0) {
+    console.log(`✅ Scanner 2 → Bybit: ${s2Bybit.migrated.join(', ')}`);
   }
 
   const s2ShortSync = await syncScanner2ShortLeader24hConfig(prisma);
