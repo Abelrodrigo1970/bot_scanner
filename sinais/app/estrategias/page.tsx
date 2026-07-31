@@ -161,20 +161,30 @@ export default function EstrategiasPage() {
 
   const handleSetExchange = async (strategy: Strategy, ex: 'binance' | 'bybit') => {
     const params = parseStrategyParams(strategy.params);
-    if (params.exchange === ex) return;
+    if ((params.exchange || 'binance') === ex) return;
     try {
       setSaving(strategy.id + 'exchange');
+      const nextParams = { ...params, exchange: ex };
       const response = await fetch('/api/strategies', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: strategy.id, params: { ...params, exchange: ex } }),
+        body: JSON.stringify({ id: strategy.id, params: nextParams }),
       });
       if (response.ok) {
-        await fetchStrategies();
+        setStrategies((prev) =>
+          prev.map((s) =>
+            s.id === strategy.id ? { ...s, params: JSON.stringify(nextParams) } : s
+          )
+        );
         setMessage(`Exchange de ${strategy.displayName} alterada para ${ex === 'bybit' ? 'Bybit' : 'Binance'}`);
         setTimeout(() => setMessage(''), 3000);
       } else {
-        setMessage('Erro ao atualizar exchange');
+        const err = await response.json().catch(() => ({}));
+        setMessage(
+          response.status === 401
+            ? 'Sessão expirada — volte a iniciar sessão para alterar exchange'
+            : err.error || 'Erro ao atualizar exchange'
+        );
       }
     } catch {
       setMessage('Erro ao atualizar exchange');
@@ -186,20 +196,40 @@ export default function EstrategiasPage() {
   const handleToggleDirection = async (strategy: Strategy, direction: 'BUY' | 'SELL') => {
     const params = parseStrategyParams(strategy.params);
     const field = direction === 'BUY' ? 'allowBuy' : 'allowSell';
-    const current = params[field] !== false; // default true
+    const enabledField = direction === 'BUY' ? 'buyEnabled' : 'sellEnabled';
+    const current = params[field] !== false && params[enabledField] !== false;
+    const nextVal = !current;
     try {
       setSaving(strategy.id + direction);
+      const nextParams = {
+        ...params,
+        [field]: nextVal,
+        [enabledField]: nextVal,
+      };
       const response = await fetch('/api/strategies', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: strategy.id, [field]: !current }),
+        body: JSON.stringify({
+          id: strategy.id,
+          params: nextParams,
+          [field]: nextVal,
+        }),
       });
       if (response.ok) {
-        await fetchStrategies();
-        setMessage(`${direction} ${!current ? 'ativado' : 'desativado'} em ${strategy.displayName}`);
+        setStrategies((prev) =>
+          prev.map((s) =>
+            s.id === strategy.id ? { ...s, params: JSON.stringify(nextParams) } : s
+          )
+        );
+        setMessage(`${direction} ${nextVal ? 'ativado' : 'desativado'} em ${strategy.displayName}`);
         setTimeout(() => setMessage(''), 3000);
       } else {
-        setMessage('Erro ao atualizar');
+        const err = await response.json().catch(() => ({}));
+        setMessage(
+          response.status === 401
+            ? 'Sessão expirada — volte a iniciar sessão para alterar compra/venda'
+            : err.error || 'Erro ao atualizar'
+        );
       }
     } catch {
       setMessage('Erro ao atualizar');
@@ -795,7 +825,8 @@ export default function EstrategiasPage() {
                     {(['BUY', 'SELL'] as const).map((dir) => {
                       const params   = parseStrategyParams(strategy.params);
                       const field    = dir === 'BUY' ? 'allowBuy' : 'allowSell';
-                      const enabled  = params[field] !== false;
+                      const enabledField = dir === 'BUY' ? 'buyEnabled' : 'sellEnabled';
+                      const enabled  = params[field] !== false && params[enabledField] !== false;
                       const isSaving = saving === strategy.id + dir;
                       return (
                         <button

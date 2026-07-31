@@ -482,15 +482,11 @@ export async function syncScanner1Top5Config(
     universeCode: SCANNER1_TOP5_PARAMS.universeCode,
     stopLossPct: SCANNER1_TOP5_PARAMS.stopLossPct,
     closeAfterHours: SCANNER1_TOP5_PARAMS.closeAfterHours,
-    exchange: SCANNER1_TOP5_PARAMS.exchange,
     shortOnExit: SCANNER1_TOP5_PARAMS.shortOnExit,
     shortStopLossPct: SCANNER1_TOP5_PARAMS.shortStopLossPct,
     shortCloseAfterHours: SCANNER1_TOP5_PARAMS.shortCloseAfterHours,
-    allowBuy: SCANNER1_TOP5_PARAMS.allowBuy,
-    allowSell: SCANNER1_TOP5_PARAMS.allowSell,
-    buyEnabled: SCANNER1_TOP5_PARAMS.buyEnabled,
-    sellEnabled: SCANNER1_TOP5_PARAMS.sellEnabled,
     rotationMode: 'full' as const,
+    // Preserva exchange / allowBuy / allowSell / buyEnabled / sellEnabled do utilizador
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
@@ -1015,8 +1011,7 @@ export async function syncScanner2ShortLeader24hConfig(
     blockedEntryHoursPt: SCANNER2_SHORT_LEADER_24H_PARAMS.blockedEntryHoursPt,
     stopLossPct: SCANNER2_SHORT_LEADER_24H_PARAMS.stopLossPct,
     closeAfterHours: SCANNER2_SHORT_LEADER_24H_PARAMS.closeAfterHours,
-    allowBuy: false,
-    allowSell: true,
+    // Preserva exchange / allowBuy / allowSell do utilizador
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
@@ -1311,10 +1306,7 @@ export async function syncEmaRibbonScalpingBuy15m(
       existing.displayName !== EMA_SCALPING_DISPLAY ||
       existing.description !== EMA_SCALPING_DESCRIPTION;
     const needsParams =
-      Number(p.ribbonFastPeriod ?? 0) !== EMA_SCALPING_PARAMS.ribbonFastPeriod ||
-      p.allowBuy !== true ||
-      p.allowSell !== false ||
-      p.exchange !== 'bybit';
+      Number(p.ribbonFastPeriod ?? 0) !== EMA_SCALPING_PARAMS.ribbonFastPeriod;
     const needsActive = !existing.isActive;
 
     if (needsMeta || needsParams || needsActive) {
@@ -1324,7 +1316,13 @@ export async function syncEmaRibbonScalpingBuy15m(
           displayName: EMA_SCALPING_DISPLAY,
           description: EMA_SCALPING_DESCRIPTION,
           isActive: true,
-          params: JSON.stringify({ ...p, ...EMA_SCALPING_PARAMS }),
+          // Preserva exchange / allowBuy / allowSell do utilizador
+          params: JSON.stringify({
+            ...EMA_SCALPING_PARAMS,
+            ...p,
+            ribbonFastPeriod: EMA_SCALPING_PARAMS.ribbonFastPeriod,
+            ribbonSlowPeriod: EMA_SCALPING_PARAMS.ribbonSlowPeriod,
+          }),
         },
       });
       updated = true;
