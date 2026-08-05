@@ -12,6 +12,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'SCANNER1_TOP5',
 
+  'SCANNER2_STOCH_RSI_5M',
+
   'PIVOT_BOSS_BEAR_15M',
 
   'ACCUMULATION_BREAKOUT_15M',
@@ -36,7 +38,7 @@ export const ACTIVE_SCANNER_STRATEGY_NAMES = ACTIVE_STRATEGY_DISPLAY_ORDER;
 
 export interface StrategyCatalogEntry {
 
-  cron: '15m' | '1h' | '1h+15m';
+  cron: '5m' | '15m' | '1h' | '1h+15m';
 
   cronLabel: string;
 
@@ -83,6 +85,18 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '4h',
 
     universe: 'Scanner 2 — ranks 1–4 (top subidas 24h)',
+
+  },
+
+  SCANNER2_STOCH_RSI_5M: {
+
+    cron: '5m',
+
+    cronLabel: 'Cron 5m',
+
+    timeframe: '5m',
+
+    universe: 'Scanner 2 Top 4; Stoch RSI (50/50/40/11) K×D up LONG / down fecha; SL 5%',
 
   },
 

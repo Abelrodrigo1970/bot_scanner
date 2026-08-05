@@ -19,6 +19,9 @@ import {
   SCANNER3_RSI_FLIP_1H_DESCRIPTION,
   SCANNER3_RSI_FLIP_1H_DISPLAY,
   SCANNER3_RSI_FLIP_1H_PARAMS,
+  SCANNER2_STOCH_RSI_5M_DESCRIPTION,
+  SCANNER2_STOCH_RSI_5M_DISPLAY,
+  SCANNER2_STOCH_RSI_5M_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncPivotBossBear15mUniverse,
@@ -27,6 +30,7 @@ import {
   syncEma80Sma7Breakdown15mConfig,
   syncScanner3RsiBreakout15mConfig,
   syncScanner3RsiFlip1hConfig,
+  syncScanner2StochRsi5mConfig,
   resetScanner3RsiFlipHistoryOnce,
   migrateScannerS6ShortToScanner2ShortLeader24h,
   syncScanner2ShortLeader24hConfig,
@@ -86,6 +90,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: SCANNER3_RSI_FLIP_1H_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(SCANNER3_RSI_FLIP_1H_PARAMS),
+  },
+  {
+    name: 'SCANNER2_STOCH_RSI_5M',
+    displayName: SCANNER2_STOCH_RSI_5M_DISPLAY,
+    description: SCANNER2_STOCH_RSI_5M_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(SCANNER2_STOCH_RSI_5M_PARAMS),
   },
 ] as const;
 
@@ -161,6 +172,11 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
     console.log(
       '✅ SCANNER3_RSI_FLIP_1H: ranks 6–14 | LONG SL 5%/72h | SHORT SL 5%/24h | flip RSI 15m<70'
     );
+  }
+
+  const stoch5mSync = await syncScanner2StochRsi5mConfig(prisma);
+  if (stoch5mSync.updated) {
+    console.log('✅ SCANNER2_STOCH_RSI_5M: Top 4 Scanner 2 | Stoch RSI 5m K×D | SL 5%');
   }
 
   const flipHistoryReset = await resetScanner3RsiFlipHistoryOnce(prisma);

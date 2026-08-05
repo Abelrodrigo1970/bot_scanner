@@ -3,7 +3,7 @@
  * Usa a biblioteca technicalindicators
  */
 
-import { RSI, SMA, MACD, EMA, ATR, BollingerBands } from 'technicalindicators';
+import { RSI, SMA, MACD, EMA, ATR, BollingerBands, StochasticRSI } from 'technicalindicators';
 import type { Candle } from './marketData';
 
 /**
@@ -28,6 +28,55 @@ export function calculateRSISeries(closes: number[], period: number = 14): numbe
     return [];
   }
   return RSI.calculate({ values: closes, period });
+}
+
+export type StochRsiPoint = {
+  stochRSI: number;
+  k: number;
+  d: number;
+};
+
+/**
+ * Stochastic RSI (TradingView): LengthRSI / LengthStoch / SmoothK / SmoothD.
+ * Retorna série %K e %D alinhada às velas após warm-up.
+ */
+export function calculateStochasticRsiSeries(
+  closes: number[],
+  opts?: {
+    rsiPeriod?: number;
+    stochasticPeriod?: number;
+    kPeriod?: number;
+    dPeriod?: number;
+  }
+): StochRsiPoint[] {
+  const rsiPeriod = Math.max(2, Math.floor(opts?.rsiPeriod ?? 14));
+  const stochasticPeriod = Math.max(2, Math.floor(opts?.stochasticPeriod ?? 14));
+  const kPeriod = Math.max(1, Math.floor(opts?.kPeriod ?? 3));
+  const dPeriod = Math.max(1, Math.floor(opts?.dPeriod ?? 3));
+  const minLen = rsiPeriod + stochasticPeriod + kPeriod + dPeriod;
+  if (closes.length < minLen) return [];
+
+  const raw = StochasticRSI.calculate({
+    values: closes,
+    rsiPeriod,
+    stochasticPeriod,
+    kPeriod,
+    dPeriod,
+  }) as Array<{ stochRSI?: number; k?: number; d?: number }>;
+
+  return raw
+    .filter(
+      (p) =>
+        typeof p.k === 'number' &&
+        Number.isFinite(p.k) &&
+        typeof p.d === 'number' &&
+        Number.isFinite(p.d)
+    )
+    .map((p) => ({
+      stochRSI: typeof p.stochRSI === 'number' && Number.isFinite(p.stochRSI) ? p.stochRSI : p.k!,
+      k: p.k!,
+      d: p.d!,
+    }));
 }
 
 /**

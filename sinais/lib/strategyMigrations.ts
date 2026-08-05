@@ -604,6 +604,79 @@ export const SCANNER3_RSI_FLIP_1H_PARAMS = {
   exchange: 'bybit',
 } as const;
 
+export const SCANNER2_STOCH_RSI_5M_DISPLAY = 'Scanner 2 Stoch RSI Top 4 (5m)';
+
+export const SCANNER2_STOCH_RSI_5M_DESCRIPTION =
+  'Top 4 do Scanner 2 (subidas 24h). Stoch RSI 5m (RSI 50 / Stoch 50 / SmoothK 40 / SmoothD 11): %K cruza %D para cima → LONG (SL -5%); %K cruza %D para baixo → fecha a posição. Sem SHORT nem TP.';
+
+export const SCANNER2_STOCH_RSI_5M_PARAMS = {
+  topN: 4,
+  chartTimeframe: '5m',
+  rsiPeriod: 50,
+  stochPeriod: 50,
+  smoothK: 40,
+  smoothD: 11,
+  stopLossPct: 0.05,
+  autoExecuteMinStrength: 80,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: false,
+  sellEnabled: false,
+  exchange: 'bybit',
+} as const;
+
+/** Garante registo/descrição da estratégia Scanner 2 Stoch RSI Top 4 5m. */
+export async function syncScanner2StochRsi5mConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'SCANNER2_STOCH_RSI_5M' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...SCANNER2_STOCH_RSI_5M_PARAMS,
+    ...p,
+    topN: SCANNER2_STOCH_RSI_5M_PARAMS.topN,
+    chartTimeframe: SCANNER2_STOCH_RSI_5M_PARAMS.chartTimeframe,
+    rsiPeriod: SCANNER2_STOCH_RSI_5M_PARAMS.rsiPeriod,
+    stochPeriod: SCANNER2_STOCH_RSI_5M_PARAMS.stochPeriod,
+    smoothK: SCANNER2_STOCH_RSI_5M_PARAMS.smoothK,
+    smoothD: SCANNER2_STOCH_RSI_5M_PARAMS.smoothD,
+    stopLossPct: SCANNER2_STOCH_RSI_5M_PARAMS.stopLossPct,
+    allowSell: false,
+    sellEnabled: false,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== SCANNER2_STOCH_RSI_5M_DISPLAY ||
+    row.description !== SCANNER2_STOCH_RSI_5M_DESCRIPTION;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'SCANNER2_STOCH_RSI_5M' },
+      data: {
+        displayName: SCANNER2_STOCH_RSI_5M_DISPLAY,
+        description: SCANNER2_STOCH_RSI_5M_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 /** Garante registo/descrição da estratégia Rompimento de Acumulação 15m. */
 export async function syncAccumulationBreakout15mConfig(
   prisma: PrismaClient

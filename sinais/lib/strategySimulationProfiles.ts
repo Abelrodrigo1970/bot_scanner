@@ -75,6 +75,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     summary: 'SHORT rank #2 Scanner 2. Pump 50–90%. SL +25%. Fecho 24h. Bloqueio 10–14h PT.',
   },
   {
+    strategyName: 'SCANNER2_STOCH_RSI_5M',
+    displayNames: ['Scanner 2 Stoch RSI Top 4 (5m)'],
+    buy: side(5, 0, 0, 0, 0, 0),
+    sell: null,
+    summary:
+      'Top 4 Scanner 2. Stoch RSI 5m (50/50/40/11). LONG se K×D up; fecha se K×D down. SL -5%. Sem TP.',
+  },
+  {
     strategyName: 'SCANNER3_RSI_FLIP_1H',
     displayNames: ['Scanner 3 RSI Flip 15m', 'Scanner 3 RSI Flip 1h'],
     buy: side(5, 0, 0, 0, 0, 72),

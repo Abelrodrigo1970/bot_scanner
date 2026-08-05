@@ -106,9 +106,28 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
 
-    description: 'Scanner 2: top 30 subidas 24h; rotação ranks 1–8 após cada scan.',
+    description: 'Scanner 2: top 30 subidas 24h; rotação ranks 1–4 após cada scan.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
+
+  },
+
+  {
+
+    strategyName: 'SCANNER2_STOCH_RSI_5M',
+
+    displayLabel: 'Scanner 2 Stoch RSI Top 4 (5m)',
+
+    signalTimeframes: ['5m'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
+
+    description:
+      'Top 4 Scanner 2. Stoch RSI 5m (50/50/40/11): K×D up → LONG SL 5%; K×D down → fecha.',
+
+    refresh: '/api/cron/run-5m (cada 5 min)',
 
   },
 

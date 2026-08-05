@@ -342,6 +342,7 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
   }
 
   // ── 3) Fecho por tempo (LONG e SHORT com horários distintos) ────────────
+  const strategyId = strategy.id;
   async function closeTimed(
     direction: 'BUY' | 'SELL',
     hours: number
@@ -350,7 +351,7 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
     const cutoff = new Date(Date.now() - hours * 3600000);
     const stale = await prisma.signal.findMany({
       where: {
-        strategyId: strategy.id,
+        strategyId,
         direction,
         status: 'IN_PROGRESS',
         generatedAt: { lt: cutoff },
