@@ -191,6 +191,7 @@ async function closeStrategyPositionsByDirection(
 
   for (const sig of openSignals) {
 
+    if (sig.direction !== 'BUY' && sig.direction !== 'SELL') continue;
     if (!allowedDirections.has(sig.direction)) continue;
 
     if (sig.status === 'NEW') {
