@@ -1001,7 +1001,9 @@ export default function EstatisticasPage() {
                 )}
               </p>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                As estatísticas abaixo usam 2 take profits + fechamento final do restante. Para horas acima de 24h, o resultado final usa projeção linear baseada no resultado de 24h (simulação).
+                As estatísticas abaixo usam 2 take profits + fechamento final do restante. O P&amp;L
+                final baseia-se nos dados de 24h (high/low/result24h) — fechos &gt; 24h{' '}
+                <strong>não</strong> são projectados em linear (evita inflacionar resultados).
               </p>
             </div>
           )}

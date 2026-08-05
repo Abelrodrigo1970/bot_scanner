@@ -178,7 +178,10 @@ export function simulateSignalNetResultPercent(
     signal.result24h == null || !signal.entryPrice
       ? 0
       : (signal.result24h / signal.entryPrice) * 100;
-  const hoursMultiplier = Math.max(0.25, finalHours / 24);
+  // Nunca projectar acima de 24h: só temos high/low/result24h. Horas > 24 usam 1× (antes
+  // multiplicava 72/24=3 e inflacionava estratégias como RSI Flip). Horas < 24 (rotação)
+  // continuam a escalar para baixo.
+  const hoursMultiplier = Math.min(1, Math.max(0.25, finalHours / 24));
   const finalResultPercent = base24hPercent * hoursMultiplier;
 
   if (isRotationTimedProfile(profileSide)) {

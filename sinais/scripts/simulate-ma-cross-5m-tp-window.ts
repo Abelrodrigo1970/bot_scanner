@@ -10,7 +10,7 @@
  *
  * Janela por defeito: 27 e 28 de Abril de 2026 (UTC, [from, to) em dias).
  * Mesma lógica conservadora que em app/estatisticas (SL primeiro; depois TP2/TP1;
- * restante com projeção linear a partir de result24h às 24h).
+ * restante com result24h às 24h (sem projectar horas > 24).
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -111,7 +111,7 @@ function simulateTrade(
 
   const base24hPercent =
     signal.result24h === null ? 0 : (signal.result24h / signal.entryPrice) * 100;
-  const hoursMultiplier = Math.max(0.25, finalHours / 24);
+  const hoursMultiplier = Math.min(1, Math.max(0.25, finalHours / 24));
   const finalResultPercent = base24hPercent * hoursMultiplier;
 
   let grossPercentResult = 0;
