@@ -158,7 +158,9 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const scanner3FlipSync = await syncScanner3RsiFlip1hConfig(prisma);
   if (scanner3FlipSync.updated) {
-    console.log('✅ SCANNER3_RSI_FLIP_1H: scan 1h ranks 6–14 + trades 15m / flip RSI 15m<70, SL 5%');
+    console.log(
+      '✅ SCANNER3_RSI_FLIP_1H: ranks 6–14 | LONG SL 5%/72h | SHORT SL 5%/24h | flip RSI 15m<70'
+    );
   }
 
   const flipHistoryReset = await resetScanner3RsiFlipHistoryOnce(prisma);

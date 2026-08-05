@@ -1,7 +1,7 @@
 /**
  * Scanner 3 — RSI Flip (scan 1h, trades 15m)
- * - Entra no universo 1h (RSI>75, novo vs scan anterior, ranks 6–14) → LONG 15m, SL -5%
- * - RSI 15m cai abaixo de 70 → inverte para SHORT 15m, SL +5%
+ * - Entra no universo 1h (RSI>75, novo vs scan anterior, ranks 6–14) → LONG 15m, SL -5%, segurança 72h
+ * - RSI 15m cai abaixo de 70 → inverte para SHORT 15m, SL +5%, fecho 24h
  * - Volta a entrar no scanner (ranks 6–14) → inverte de novo para LONG
  */
 
@@ -32,8 +32,10 @@ export type Scanner3RsiFlip1hParams = {
   chartTimeframe?: string;
   rsiPeriod?: number;
   stopLossPct?: number;
-  /** Segurança: expira sinais IN_PROGRESS após N horas (0 = sem fecho por tempo). */
+  /** Segurança LONG: expira IN_PROGRESS após N horas (0 = sem fecho por tempo). */
   closeAfterHours?: number;
+  /** Fecho por tempo dos SHORT (0 = sem fecho por tempo). */
+  shortCloseAfterHours?: number;
   autoExecuteMinStrength?: number;
   allowBuy?: boolean;
   allowSell?: boolean;
@@ -160,6 +162,10 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
   const flipShortRsiBelow = Number(params.flipShortRsiBelow ?? 70);
   const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.05));
   const closeAfterHours = Math.max(0, Math.floor(Number(params.closeAfterHours ?? 72)));
+  const shortCloseAfterHours = Math.max(
+    0,
+    Math.floor(Number(params.shortCloseAfterHours ?? 24))
+  );
   const minScannerRank = Math.max(1, Math.floor(Number(params.minScannerRank ?? 6)));
   const maxScannerRank = Math.max(
     minScannerRank,
@@ -299,7 +305,7 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       const stopLoss = entryPrice * (1 + stopLossPct);
 
       console.log(
-        `${logPrefix} 🔴 SHORT ${symbol} @ ${entryPrice} (${chartTimeframe} RSI ${rsi.toFixed(1)} < ${flipShortRsiBelow}, SL +${(stopLossPct * 100).toFixed(0)}%)`
+        `${logPrefix} 🔴 SHORT ${symbol} @ ${entryPrice} (${chartTimeframe} RSI ${rsi.toFixed(1)} < ${flipShortRsiBelow}, SL +${(stopLossPct * 100).toFixed(0)}%, fecho ${shortCloseAfterHours}h)`
       );
 
       await prisma.signal.create({
@@ -323,9 +329,9 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
             scanRunId: pair.current.id,
             scannedAt: pair.current.scannedAt.toISOString(),
             stopLossPct,
-            closeAfterHours: closeAfterHours || null,
+            closeAfterHours: shortCloseAfterHours || null,
             chartTimeframe,
-            executionProfile: `SHORT ${chartTimeframe} quando RSI < ${flipShortRsiBelow} | SL +${(stopLossPct * 100).toFixed(0)}% | volta a LONG ao reentrar Scanner 3 ranks ${minScannerRank}–${maxScannerRank}`,
+            executionProfile: `SHORT ${chartTimeframe} quando RSI < ${flipShortRsiBelow} | SL +${(stopLossPct * 100).toFixed(0)}% | fecho ${shortCloseAfterHours}h | volta a LONG ao reentrar Scanner 3 ranks ${minScannerRank}–${maxScannerRank}`,
           }),
         },
       });
@@ -335,18 +341,33 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
     }
   }
 
-  // ── 3) Fecho por tempo (opcional) ────────────────────────────────────────
-  if (closeAfterHours > 0) {
-    const cutoff = new Date(Date.now() - closeAfterHours * 3600000);
+  // ── 3) Fecho por tempo (LONG e SHORT com horários distintos) ────────────
+  async function closeTimed(
+    direction: 'BUY' | 'SELL',
+    hours: number
+  ): Promise<void> {
+    if (!(hours > 0)) return;
+    const cutoff = new Date(Date.now() - hours * 3600000);
     const stale = await prisma.signal.findMany({
       where: {
         strategyId: strategy.id,
+        direction,
         status: 'IN_PROGRESS',
         generatedAt: { lt: cutoff },
       },
-      select: { id: true, symbol: true },
+      select: { id: true, symbol: true, generatedAt: true, extraInfo: true },
     });
     for (const sig of stale) {
+      let closeHours = hours;
+      try {
+        const extra = sig.extraInfo ? (JSON.parse(sig.extraInfo) as Record<string, unknown>) : {};
+        if (extra.closeAfterHours != null) closeHours = Number(extra.closeAfterHours);
+      } catch {
+        /* keep default */
+      }
+      if (!(closeHours > 0)) continue;
+      if (Date.now() - sig.generatedAt.getTime() < closeHours * 3600000) continue;
+
       const pos = await inspectActivePositionForSymbol(sig.symbol, exchange);
       if (pos.inspectable && pos.hasPosition) {
         await closeActivePositionForSymbol(sig.symbol, exchange, { timedClose: true });
@@ -354,6 +375,9 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       await prisma.signal.update({ where: { id: sig.id }, data: { status: 'EXPIRED' } });
     }
   }
+
+  await closeTimed('BUY', closeAfterHours);
+  await closeTimed('SELL', shortCloseAfterHours);
 
   const minStrength = Number(params.autoExecuteMinStrength ?? 80);
   const executed = await autoExecuteNewSignalsForStrategy({

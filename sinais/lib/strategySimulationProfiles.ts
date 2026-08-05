@@ -78,9 +78,9 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     strategyName: 'SCANNER3_RSI_FLIP_1H',
     displayNames: ['Scanner 3 RSI Flip 15m', 'Scanner 3 RSI Flip 1h'],
     buy: side(5, 0, 0, 0, 0, 72),
-    sell: side(5, 0, 0, 0, 0, 72),
+    sell: side(5, 0, 0, 0, 0, 24),
     summary:
-      'Scan 1h RSI>75 ranks 6–14. LONG 15m na entrada. SHORT 15m se RSI 15m < 70. SL ±5%. Sem TP; fecho flip/SL/72h.',
+      'Scan 1h RSI>75 ranks 6–14. LONG 15m na entrada (SL -5%, 72h). SHORT 15m se RSI 15m < 70 (SL +5%, fecho 24h). Sem TP.',
   },
   {
     strategyName: 'SCANNER3_RSI_BREAKOUT_15M',

@@ -584,7 +584,7 @@ export const SCANNER3_RSI_BREAKOUT_15M_PARAMS = {
 export const SCANNER3_RSI_FLIP_1H_DISPLAY = 'Scanner 3 RSI Flip 15m';
 
 export const SCANNER3_RSI_FLIP_1H_DESCRIPTION =
-  'Universo Scanner 3 (RSI>75 em 1h), ranks 6–14. LONG em 15m quando o símbolo entra no scanner nesse intervalo (SL -5%). Quando o RSI 15m fecha abaixo de 70, inverte para SHORT 15m (SL +5%). Ao reentrar (ranks 6–14), volta a LONG. Sem TP — saída por SL, flip ou fecho de segurança 72h.';
+  'Universo Scanner 3 (RSI>75 em 1h), ranks 6–14. LONG em 15m quando o símbolo entra no scanner nesse intervalo (SL -5%, segurança 72h). Quando o RSI 15m fecha abaixo de 70, inverte para SHORT 15m (SL +5%, fecho 24h). Ao reentrar (ranks 6–14), volta a LONG. Sem TP.';
 
 export const SCANNER3_RSI_FLIP_1H_PARAMS = {
   entryRsiMin: 75,
@@ -595,6 +595,7 @@ export const SCANNER3_RSI_FLIP_1H_PARAMS = {
   rsiPeriod: 14,
   stopLossPct: 0.05,
   closeAfterHours: 72,
+  shortCloseAfterHours: 24,
   autoExecuteMinStrength: 80,
   allowBuy: true,
   allowSell: true,
@@ -724,6 +725,8 @@ export async function syncScanner3RsiFlip1hConfig(
     maxScannerRank: SCANNER3_RSI_FLIP_1H_PARAMS.maxScannerRank,
     chartTimeframe: SCANNER3_RSI_FLIP_1H_PARAMS.chartTimeframe,
     rsiPeriod: SCANNER3_RSI_FLIP_1H_PARAMS.rsiPeriod,
+    closeAfterHours: SCANNER3_RSI_FLIP_1H_PARAMS.closeAfterHours,
+    shortCloseAfterHours: SCANNER3_RSI_FLIP_1H_PARAMS.shortCloseAfterHours,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
