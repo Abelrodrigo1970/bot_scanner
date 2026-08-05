@@ -88,7 +88,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 0, 0, 0, 0, 72),
     sell: side(5, 0, 0, 0, 0, 24),
     summary:
-      'Scan 1h RSI>75 ranks 6–14. LONG 15m na entrada (SL -5%, 72h). SHORT 15m se RSI 15m < 70 (SL +5%, fecho 24h). Sem TP.',
+      'Scan 1h RSI>75 ranks 6–14. LONG 15m se RSI 15m≥70 (SL -5%, 72h). SHORT quando RSI 15m cruza <70 (SL +5%, 24h). Sem TP.',
   },
   {
     strategyName: 'SCANNER3_RSI_BREAKOUT_15M',

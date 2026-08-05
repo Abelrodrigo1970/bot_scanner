@@ -147,12 +147,14 @@ export async function clearStrategySignals(
 
 /** One-shot: apaga histórico Flip + last-run ao migrar para ranks 6–14 (só uma vez). */
 const SCANNER3_RSI_FLIP_RANKS_6_14_RESET_KEY = 'SCANNER3_RSI_FLIP_RANKS_6_14_HISTORY_RESET';
+/** One-shot: limpa sinais após corrigir flip instantâneo (RSI já < 70). */
+const SCANNER3_RSI_FLIP_CROSS_FIX_RESET_KEY = 'SCANNER3_RSI_FLIP_CROSS_FIX_HISTORY_RESET';
 
 export async function resetScanner3RsiFlipHistoryOnce(
   prisma: PrismaClient
 ): Promise<{ ran: boolean; deleted: number }> {
   const already = await prisma.appSetting.findUnique({
-    where: { key: SCANNER3_RSI_FLIP_RANKS_6_14_RESET_KEY },
+    where: { key: SCANNER3_RSI_FLIP_CROSS_FIX_RESET_KEY },
     select: { key: true },
   });
   if (already) return { ran: false, deleted: 0 };
@@ -162,9 +164,15 @@ export async function resetScanner3RsiFlipHistoryOnce(
     where: { key: 'SCANNER3_RSI_FLIP_1H_LAST_RUN_ID' },
   });
   await prisma.appSetting.upsert({
+    where: { key: SCANNER3_RSI_FLIP_CROSS_FIX_RESET_KEY },
+    create: { key: SCANNER3_RSI_FLIP_CROSS_FIX_RESET_KEY, value: new Date().toISOString() },
+    update: { value: new Date().toISOString() },
+  });
+  // Marca também o reset antigo para não re-correr se alguém reverter a key.
+  await prisma.appSetting.upsert({
     where: { key: SCANNER3_RSI_FLIP_RANKS_6_14_RESET_KEY },
     create: { key: SCANNER3_RSI_FLIP_RANKS_6_14_RESET_KEY, value: new Date().toISOString() },
-    update: { value: new Date().toISOString() },
+    update: {},
   });
 
   return { ran: true, deleted: result.deleted };
@@ -584,7 +592,7 @@ export const SCANNER3_RSI_BREAKOUT_15M_PARAMS = {
 export const SCANNER3_RSI_FLIP_1H_DISPLAY = 'Scanner 3 RSI Flip 15m';
 
 export const SCANNER3_RSI_FLIP_1H_DESCRIPTION =
-  'Universo Scanner 3 (RSI>75 em 1h), ranks 6–14. LONG em 15m quando o símbolo entra no scanner nesse intervalo (SL -5%, segurança 72h). Quando o RSI 15m fecha abaixo de 70, inverte para SHORT 15m (SL +5%, fecho 24h). Ao reentrar (ranks 6–14), volta a LONG. Sem TP.';
+  'Universo Scanner 3 (RSI>75 em 1h), ranks 6–14. LONG em 15m só se RSI 15m ≥ 70 (SL -5%, segurança 72h). SHORT quando o RSI 15m cruza abaixo de 70 (SL +5%, fecho 24h). Ao reentrar (ranks 6–14), volta a LONG. Sem TP.';
 
 export const SCANNER3_RSI_FLIP_1H_PARAMS = {
   entryRsiMin: 75,
@@ -800,6 +808,7 @@ export async function syncScanner3RsiFlip1hConfig(
     rsiPeriod: SCANNER3_RSI_FLIP_1H_PARAMS.rsiPeriod,
     closeAfterHours: SCANNER3_RSI_FLIP_1H_PARAMS.closeAfterHours,
     shortCloseAfterHours: SCANNER3_RSI_FLIP_1H_PARAMS.shortCloseAfterHours,
+    exchange: SCANNER3_RSI_FLIP_1H_PARAMS.exchange,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =

@@ -1,13 +1,13 @@
 /**
  * Scanner 3 — RSI Flip (scan 1h, trades 15m)
- * - Entra no universo 1h (RSI>75, novo vs scan anterior, ranks 6–14) → LONG 15m, SL -5%, segurança 72h
- * - RSI 15m cai abaixo de 70 → inverte para SHORT 15m, SL +5%, fecho 24h
+ * - Entra no universo 1h (RSI>75, novo, ranks 6–14) e RSI 15m ≥ 70 → LONG 15m, SL -5%, segurança 72h
+ * - RSI 15m cruza abaixo de 70 → inverte para SHORT 15m, SL +5%, fecho 24h
  * - Volta a entrar no scanner (ranks 6–14) → inverte de novo para LONG
  */
 
 import { prisma } from './db';
 import { fetchCandles } from './marketData';
-import { calculateRSI, getCloses } from './indicators';
+import { calculateRSISeries, getCloses } from './indicators';
 import { UNIVERSE_CODE_SCANNER_3_RSI75_1H } from './symbolUniverseDefaults';
 import {
   buildScanItemsWithPreviousDelta,
@@ -83,11 +83,26 @@ async function fetchClosedRsi(
   timeframe: string,
   period = 14
 ): Promise<number | null> {
+  const pair = await fetchClosedRsiPair(symbol, timeframe, period);
+  return pair?.now ?? null;
+}
+
+/** RSI da última vela fechada e da anterior (para detectar cruzamento). */
+async function fetchClosedRsiPair(
+  symbol: string,
+  timeframe: string,
+  period = 14
+): Promise<{ prev: number; now: number } | null> {
   try {
     const candles = await fetchCandles(symbol, timeframe, period + 80);
-    if (candles.length < period + 2) return null;
+    if (candles.length < period + 3) return null;
     const closed = candles.slice(0, -1);
-    return calculateRSI(getCloses(closed), period);
+    const series = calculateRSISeries(getCloses(closed), period);
+    if (series.length < 2) return null;
+    const prev = series[series.length - 2];
+    const now = series[series.length - 1];
+    if (!Number.isFinite(prev) || !Number.isFinite(now)) return null;
+    return { prev, now };
   } catch {
     return null;
   }
@@ -206,6 +221,15 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       if (!row.isNewInUniverse) continue;
       if (row.rank < minScannerRank || row.rank > maxScannerRank) continue;
 
+      // Só entra LONG se o RSI 15m ainda está ≥ limiar (senão flip imediato).
+      const rsiTrade = await fetchClosedRsi(row.symbol, chartTimeframe, rsiPeriod);
+      if (rsiTrade == null || rsiTrade < flipShortRsiBelow) {
+        console.log(
+          `${logPrefix} ⏭️ Skip LONG ${row.symbol} rank #${row.rank}: RSI ${chartTimeframe} ${rsiTrade?.toFixed(1) ?? 'n/a'} < ${flipShortRsiBelow}`
+        );
+        continue;
+      }
+
       const entryPrice = await fetchClosedCandleClose(row.symbol, chartTimeframe);
       if (entryPrice == null) continue;
 
@@ -227,7 +251,7 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       const rsi = row.pctFromMa; // scan 1h: pctFromMa = RSI
 
       console.log(
-        `${logPrefix} 🟢 LONG ${row.symbol} @ ${entryPrice} (${chartTimeframe}, rank #${row.rank} Scanner 3 1h RSI ${rsi.toFixed(1)}, SL -${(stopLossPct * 100).toFixed(0)}%)`
+        `${logPrefix} 🟢 LONG ${row.symbol} @ ${entryPrice} (${chartTimeframe}, rank #${row.rank} Scanner 3 1h RSI ${rsi.toFixed(1)}, trade RSI ${rsiTrade.toFixed(1)}, SL -${(stopLossPct * 100).toFixed(0)}%)`
       );
 
       await prisma.signal.create({
@@ -247,6 +271,7 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
           extraInfo: JSON.stringify({
             setup: 'scanner3_rsi_flip_long_entry',
             rsi: Number(rsi.toFixed(2)),
+            rsiTrade: Number(rsiTrade.toFixed(2)),
             scannerRank: row.rank,
             minScannerRank,
             maxScannerRank,
@@ -256,7 +281,7 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
             closeAfterHours: closeAfterHours || null,
             flipShortRsiBelow,
             chartTimeframe,
-            executionProfile: `LONG ${chartTimeframe} ao entrar Scanner 3 ranks ${minScannerRank}–${maxScannerRank} (RSI 1h>75) | SL -${(stopLossPct * 100).toFixed(0)}% | inverte SHORT se RSI ${chartTimeframe} < ${flipShortRsiBelow}`,
+            executionProfile: `LONG ${chartTimeframe} ao entrar Scanner 3 ranks ${minScannerRank}–${maxScannerRank} (RSI 1h>75, RSI ${chartTimeframe}≥${flipShortRsiBelow}) | SL -${(stopLossPct * 100).toFixed(0)}% | inverte SHORT se RSI ${chartTimeframe} cruza abaixo de ${flipShortRsiBelow}`,
           }),
         },
       });
@@ -268,7 +293,7 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
     console.log(`${logPrefix} Sem scan anterior — sem LONGs de entrada neste ciclo`);
   }
 
-  // ── 2) SHORT: inverte LONGs quando RSI trade < flipShortRsiBelow ─────────
+  // ── 2) SHORT: só quando RSI trade cruza abaixo de flipShortRsiBelow ──────
   if (allowSell) {
     const openLongs = await prisma.signal.findMany({
       where: {
@@ -280,6 +305,8 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
     });
 
     const candidates = new Set(openLongs.map((s) => s.symbol));
+    // Não inverter LONGs criados neste mesmo ciclo (evita flip em 1–2s).
+    for (const s of longSymbols) candidates.delete(s);
 
     for (const symbol of candidates) {
       const openShort = await prisma.signal.findFirst({
@@ -293,8 +320,15 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       });
       if (openShort) continue;
 
-      const rsi = await fetchClosedRsi(symbol, chartTimeframe, rsiPeriod);
-      if (rsi == null || rsi >= flipShortRsiBelow) continue;
+      const rsiPair = await fetchClosedRsiPair(symbol, chartTimeframe, rsiPeriod);
+      // Cruzamento: estava ≥ limiar e fechou abaixo.
+      if (
+        rsiPair == null ||
+        !(rsiPair.prev >= flipShortRsiBelow && rsiPair.now < flipShortRsiBelow)
+      ) {
+        continue;
+      }
+      const rsi = rsiPair.now;
 
       const entryPrice = await fetchClosedCandleClose(symbol, chartTimeframe);
       if (entryPrice == null) continue;
@@ -305,7 +339,7 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       const stopLoss = entryPrice * (1 + stopLossPct);
 
       console.log(
-        `${logPrefix} 🔴 SHORT ${symbol} @ ${entryPrice} (${chartTimeframe} RSI ${rsi.toFixed(1)} < ${flipShortRsiBelow}, SL +${(stopLossPct * 100).toFixed(0)}%, fecho ${shortCloseAfterHours}h)`
+        `${logPrefix} 🔴 SHORT ${symbol} @ ${entryPrice} (${chartTimeframe} RSI ${rsiPair.prev.toFixed(1)}→${rsi.toFixed(1)} cruzou < ${flipShortRsiBelow}, SL +${(stopLossPct * 100).toFixed(0)}%, fecho ${shortCloseAfterHours}h)`
       );
 
       await prisma.signal.create({
@@ -325,13 +359,15 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
           extraInfo: JSON.stringify({
             setup: 'scanner3_rsi_flip_short',
             rsi: Number(rsi.toFixed(2)),
+            rsiPrev: Number(rsiPair.prev.toFixed(2)),
             flipShortRsiBelow,
             scanRunId: pair.current.id,
             scannedAt: pair.current.scannedAt.toISOString(),
             stopLossPct,
             closeAfterHours: shortCloseAfterHours || null,
             chartTimeframe,
-            executionProfile: `SHORT ${chartTimeframe} quando RSI < ${flipShortRsiBelow} | SL +${(stopLossPct * 100).toFixed(0)}% | fecho ${shortCloseAfterHours}h | volta a LONG ao reentrar Scanner 3 ranks ${minScannerRank}–${maxScannerRank}`,
+            crossover: `RSI ${chartTimeframe} cruzou abaixo de ${flipShortRsiBelow}`,
+            executionProfile: `SHORT ${chartTimeframe} quando RSI cruza < ${flipShortRsiBelow} | SL +${(stopLossPct * 100).toFixed(0)}% | fecho ${shortCloseAfterHours}h | volta a LONG ao reentrar Scanner 3 ranks ${minScannerRank}–${maxScannerRank}`,
           }),
         },
       });
