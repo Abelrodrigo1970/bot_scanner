@@ -153,13 +153,14 @@ async function setLastProcessedRunId(key: string, runId: string): Promise<void> 
 
 
 
-async function closeAllStrategyPositions(
+async function closeStrategyPositionsByDirection(
 
   strategyId: string,
 
   exchange: 'binance' | 'bybit',
 
-  logPrefix: string
+  logPrefix: string,
+  directions: Array<'BUY' | 'SELL'>
 
 ): Promise<number> {
 
@@ -173,7 +174,7 @@ async function closeAllStrategyPositions(
 
     },
 
-    select: { id: true, symbol: true, status: true },
+    select: { id: true, symbol: true, status: true, direction: true },
 
     orderBy: { generatedAt: 'asc' },
 
@@ -184,10 +185,13 @@ async function closeAllStrategyPositions(
   let closed = 0;
 
   const seenSymbols = new Set<string>();
+  const allowedDirections = new Set(directions);
 
 
 
   for (const sig of openSignals) {
+
+    if (!allowedDirections.has(sig.direction)) continue;
 
     if (sig.status === 'NEW') {
 
@@ -253,7 +257,62 @@ async function closeAllStrategyPositions(
 
 }
 
+async function closeTimedOutStrategyPositions(
 
+  strategyId: string,
+
+  exchange: 'binance' | 'bybit',
+
+  logPrefix: string,
+
+  direction: 'BUY' | 'SELL',
+
+  defaultCloseHours: number
+
+): Promise<number> {
+
+  const openSignals = await prisma.signal.findMany({
+
+    where: { strategyId, direction, status: 'IN_PROGRESS' },
+
+    select: { id: true, symbol: true, generatedAt: true, extraInfo: true },
+
+    orderBy: { generatedAt: 'asc' },
+
+  });
+
+  const now = Date.now();
+  let closed = 0;
+
+  for (const sig of openSignals) {
+
+    let closeHours = defaultCloseHours;
+    try {
+      const extra = sig.extraInfo ? (JSON.parse(sig.extraInfo) as Record<string, unknown>) : {};
+      if (extra.closeAfterHours != null) closeHours = Number(extra.closeAfterHours);
+    } catch {
+      /* keep default */
+    }
+
+    if (!(closeHours > 0)) continue;
+    if (now - sig.generatedAt.getTime() < closeHours * 3600000) continue;
+
+    const pos = await inspectActivePositionForSymbol(sig.symbol, exchange);
+    if (pos.inspectable && pos.hasPosition) {
+      const result = await closeActivePositionForSymbol(sig.symbol, exchange, { timedClose: true });
+      if (result.closed) {
+        closed++;
+        console.log(`${logPrefix} ⏱️ Fechado ${sig.symbol} após ${closeHours}h: ${result.message}`);
+      } else {
+        console.warn(`${logPrefix} ⚠️ Falha fecho ${closeHours}h ${sig.symbol}: ${result.message}`);
+      }
+    }
+
+    await prisma.signal.update({ where: { id: sig.id }, data: { status: 'EXPIRED' } });
+  }
+
+  return closed;
+}
 
 function strengthForRank(rank: number): number {
 
@@ -462,7 +521,23 @@ export async function runScannerRotationPipeline(options: {
 
 
 
-  const closed = await closeAllStrategyPositions(strategy.id, exchange, logPrefix);
+  const timedClosedSells =
+    options.strategyName === SCANNER1_TOP5_STRATEGY_NAME && shortOnExit
+      ? await closeTimedOutStrategyPositions(
+          strategy.id,
+          exchange,
+          logPrefix,
+          'SELL',
+          shortCloseAfterHours
+        )
+      : 0;
+
+  const closed = await closeStrategyPositionsByDirection(
+    strategy.id,
+    exchange,
+    logPrefix,
+    options.strategyName === SCANNER1_TOP5_STRATEGY_NAME ? ['BUY'] : ['BUY', 'SELL']
+  );
 
   const allowBuy = strategyAllowsAutoExecuteDirection('BUY', params as Record<string, unknown>);
   const allowSell = strategyAllowsAutoExecuteDirection('SELL', params as Record<string, unknown>);
@@ -663,7 +738,9 @@ export async function runScannerRotationPipeline(options: {
 
   console.log(
 
-    `${logPrefix} Concluído: ${closed} fechados, ${signalsCreated} sinais (${longSignals} LONG, ${shortSignals} SHORT), ${executed} executados`
+    `${logPrefix} Concluído: ${closed} fechados na rotação${
+      timedClosedSells ? `, ${timedClosedSells} SELL por tempo` : ''
+    }, ${signalsCreated} sinais (${longSignals} LONG, ${shortSignals} SHORT), ${executed} executados`
 
   );
 

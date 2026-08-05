@@ -385,7 +385,7 @@ export const SCANNER1_TOP8_PARAMS = {
 export const SCANNER1_TOP5_DISPLAY = 'Scanner 2 Top 4 (rotação 4h)';
 
 export const SCANNER1_TOP5_DESCRIPTION =
-  'Portefólio rotativo: a cada scan do Scanner 2 (top 30 subidas 24h, 4 h), fecha tudo, recompra ranks 1–4 (LONG, SL -3%) e abre SHORT nas que saíram do top 4 (SL +25%, fecho 4h).';
+  'Portefólio rotativo: a cada scan do Scanner 2 (top 30 subidas 24h, 4 h), fecha os LONGs, recompra ranks 1–4 (LONG, SL -3%) e abre SHORT nas que saíram do top 4 (SL +25%, fecho 24h).';
 
 export const SCANNER1_TOP5_PARAMS = {
   topN: 4,
@@ -397,7 +397,7 @@ export const SCANNER1_TOP5_PARAMS = {
   rotationMode: 'full',
   shortOnExit: true,
   shortStopLossPct: 0.25,
-  shortCloseAfterHours: 4,
+  shortCloseAfterHours: 24,
   allowBuy: true,
   allowSell: true,
   buyEnabled: true,

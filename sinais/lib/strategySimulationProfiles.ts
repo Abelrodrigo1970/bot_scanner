@@ -63,9 +63,9 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   {
     strategyName: 'SCANNER1_TOP5',
     displayNames: ['Scanner 2 Top 4 (rotação 4h)'],
-    buy: side(3, 0, 0, 0, 0, 4),
-    sell: side(25, 0, 0, 0, 0, 4),
-    summary: 'LONG top 4 (SL 3%) + SHORT saídas (SL 25%). Rotação 4h.',
+    buy: side(3, 0, 0, 0, 0, 24),
+    sell: side(25, 0, 0, 0, 0, 24),
+    summary: 'LONG top 4 (SL 3%) + SHORT saídas (SL 25%). Fecho 24h.',
   },
   {
     strategyName: 'SCANNER2_SHORT_LEADER_24H',
