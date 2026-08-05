@@ -142,7 +142,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 3 RSI > 75 (1h); trades 15m; flip SHORT se RSI 15m < 70',
+    universe: 'Scanner 3 RSI > 75 (1h) ranks 6–14; trades 15m; flip SHORT se RSI 15m < 70',
 
   },
 

@@ -161,7 +161,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     dataKey: 'UNIVERSE_RSI_ABOVE_75_1H',
 
     description:
-      'Scan 1h (RSI>75). LONG 15m ao entrar; SHORT 15m se RSI 15m < 70; SL ±5%.',
+      'Scan 1h (RSI>75) ranks 6–14. LONG 15m ao entrar; SHORT 15m se RSI 15m < 70; SL ±5%.',
 
     refresh: '/api/cron/run-scanner3-rsi-1h (1h) + /api/cron/run-15m (flip 15m)',
 

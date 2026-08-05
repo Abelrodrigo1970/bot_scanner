@@ -1,8 +1,8 @@
 /**
  * Scanner 3 — RSI Flip (scan 1h, trades 15m)
- * - Entra no universo 1h (RSI>75, novo vs scan anterior) → LONG 15m, SL -5%
+ * - Entra no universo 1h (RSI>75, novo vs scan anterior, ranks 6–14) → LONG 15m, SL -5%
  * - RSI 15m cai abaixo de 70 → inverte para SHORT 15m, SL +5%
- * - Volta a entrar no scanner → inverte de novo para LONG
+ * - Volta a entrar no scanner (ranks 6–14) → inverte de novo para LONG
  */
 
 import { prisma } from './db';
@@ -22,6 +22,10 @@ const LAST_RUN_SETTING_KEY = 'SCANNER3_RSI_FLIP_1H_LAST_RUN_ID';
 export type Scanner3RsiFlip1hParams = {
   /** RSI mínimo para estar no Scanner 3 (alinhado com o scan 1h). */
   entryRsiMin?: number;
+  /** Rank mínimo no Scanner 3 (|RSI| desc) para LONG de entrada. */
+  minScannerRank?: number;
+  /** Rank máximo no Scanner 3 (|RSI| desc) para LONG de entrada. */
+  maxScannerRank?: number;
   /** Abaixo deste RSI (velas de trade) inverte para SHORT. */
   flipShortRsiBelow?: number;
   /** Timeframe das velas para entrada, flip e sinais (15m). */
@@ -156,6 +160,11 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
   const flipShortRsiBelow = Number(params.flipShortRsiBelow ?? 70);
   const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.05));
   const closeAfterHours = Math.max(0, Math.floor(Number(params.closeAfterHours ?? 72)));
+  const minScannerRank = Math.max(1, Math.floor(Number(params.minScannerRank ?? 6)));
+  const maxScannerRank = Math.max(
+    minScannerRank,
+    Math.floor(Number(params.maxScannerRank ?? 14))
+  );
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const allowBuy = params.buyEnabled !== false && params.allowBuy !== false;
   const allowSell = params.sellEnabled !== false && params.allowSell !== false;
@@ -185,10 +194,11 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
   const longSymbols: string[] = [];
   const shortSymbols: string[] = [];
 
-  // ── 1) LONG: novos no scanner 1h (precisa de scan anterior) ──────────────
+  // ── 1) LONG: novos no scanner 1h ranks min–max (precisa de scan anterior) ─
   if (mode === 'full' && allowBuy && pair.previous) {
     for (const row of items) {
       if (!row.isNewInUniverse) continue;
+      if (row.rank < minScannerRank || row.rank > maxScannerRank) continue;
 
       const entryPrice = await fetchClosedCandleClose(row.symbol, chartTimeframe);
       if (entryPrice == null) continue;
@@ -211,7 +221,7 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
       const rsi = row.pctFromMa; // scan 1h: pctFromMa = RSI
 
       console.log(
-        `${logPrefix} 🟢 LONG ${row.symbol} @ ${entryPrice} (${chartTimeframe}, entrou Scanner 3 1h RSI ${rsi.toFixed(1)}, SL -${(stopLossPct * 100).toFixed(0)}%)`
+        `${logPrefix} 🟢 LONG ${row.symbol} @ ${entryPrice} (${chartTimeframe}, rank #${row.rank} Scanner 3 1h RSI ${rsi.toFixed(1)}, SL -${(stopLossPct * 100).toFixed(0)}%)`
       );
 
       await prisma.signal.create({
@@ -231,13 +241,16 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
           extraInfo: JSON.stringify({
             setup: 'scanner3_rsi_flip_long_entry',
             rsi: Number(rsi.toFixed(2)),
+            scannerRank: row.rank,
+            minScannerRank,
+            maxScannerRank,
             scanRunId: pair.current.id,
             scannedAt: pair.current.scannedAt.toISOString(),
             stopLossPct,
             closeAfterHours: closeAfterHours || null,
             flipShortRsiBelow,
             chartTimeframe,
-            executionProfile: `LONG ${chartTimeframe} ao entrar Scanner 3 (RSI 1h>75) | SL -${(stopLossPct * 100).toFixed(0)}% | inverte SHORT se RSI ${chartTimeframe} < ${flipShortRsiBelow}`,
+            executionProfile: `LONG ${chartTimeframe} ao entrar Scanner 3 ranks ${minScannerRank}–${maxScannerRank} (RSI 1h>75) | SL -${(stopLossPct * 100).toFixed(0)}% | inverte SHORT se RSI ${chartTimeframe} < ${flipShortRsiBelow}`,
           }),
         },
       });
@@ -312,7 +325,7 @@ export async function runScanner3RsiFlip1hPipeline(options?: {
             stopLossPct,
             closeAfterHours: closeAfterHours || null,
             chartTimeframe,
-            executionProfile: `SHORT ${chartTimeframe} quando RSI < ${flipShortRsiBelow} | SL +${(stopLossPct * 100).toFixed(0)}% | volta a LONG ao reentrar Scanner 3 1h`,
+            executionProfile: `SHORT ${chartTimeframe} quando RSI < ${flipShortRsiBelow} | SL +${(stopLossPct * 100).toFixed(0)}% | volta a LONG ao reentrar Scanner 3 ranks ${minScannerRank}–${maxScannerRank}`,
           }),
         },
       });

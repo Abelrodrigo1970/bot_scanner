@@ -27,6 +27,7 @@ import {
   syncEma80Sma7Breakdown15mConfig,
   syncScanner3RsiBreakout15mConfig,
   syncScanner3RsiFlip1hConfig,
+  resetScanner3RsiFlipHistoryOnce,
   migrateScannerS6ShortToScanner2ShortLeader24h,
   syncScanner2ShortLeader24hConfig,
   SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
@@ -157,7 +158,14 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const scanner3FlipSync = await syncScanner3RsiFlip1hConfig(prisma);
   if (scanner3FlipSync.updated) {
-    console.log('✅ SCANNER3_RSI_FLIP_1H: scan 1h + trades 15m / flip RSI 15m<70, SL 5%');
+    console.log('✅ SCANNER3_RSI_FLIP_1H: scan 1h ranks 6–14 + trades 15m / flip RSI 15m<70, SL 5%');
+  }
+
+  const flipHistoryReset = await resetScanner3RsiFlipHistoryOnce(prisma);
+  if (flipHistoryReset.ran) {
+    console.log(
+      `✅ SCANNER3_RSI_FLIP_1H: histórico limpo (${flipHistoryReset.deleted} sinais) — ranks 6–14 desde zero`
+    );
   }
 
   const reactivated = await prisma.strategy.updateMany({
