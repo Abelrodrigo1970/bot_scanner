@@ -385,18 +385,18 @@ export const SCANNER1_TOP8_PARAMS = {
 export const SCANNER1_TOP5_DISPLAY = 'Scanner 2 Top 4 (rotação 4h)';
 
 export const SCANNER1_TOP5_DESCRIPTION =
-  'Portefólio rotativo: a cada scan do Scanner 2 (top 30 subidas 24h, 4 h), fecha os LONGs, recompra ranks 1–4 (LONG, SL -3%) e abre SHORT nas que saíram do top 4 (SL +25%, fecho 24h).';
+  'Portefólio rotativo: a cada scan do Scanner 2 (top 30 subidas 24h, 4 h), fecha os LONGs, recompra ranks 1–4 (LONG, SL -1%, sem TP) e abre SHORT nas que saíram do top 4 (SL +1%, sem TP, fecho 24h).';
 
 export const SCANNER1_TOP5_PARAMS = {
   topN: 4,
   scanTopN: 4,
   excludeRanks: [] as number[],
   universeCode: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
-  stopLossPct: 0.03,
+  stopLossPct: 0.01,
   closeAfterHours: 4,
   rotationMode: 'full',
   shortOnExit: true,
-  shortStopLossPct: 0.25,
+  shortStopLossPct: 0.01,
   shortCloseAfterHours: 24,
   allowBuy: true,
   allowSell: true,

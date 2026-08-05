@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
 
 /**
- * Rotação Scanner 2 Top 4 — fecha tudo e recompra ranks 1–4 do Scanner 2 após cada scan, SL -3%.
+ * Rotação Scanner 2 Top 4 — fecha LONGs e recompra ranks 1–4 (SL ±1%, sem TP); SHORT saídas hold 24h.
  * Agendar 10–15 min após run-universe-scans ou invocar manualmente (?force=1 para repetir o mesmo scan).
  */
 async function runInBackground(force: boolean): Promise<void> {

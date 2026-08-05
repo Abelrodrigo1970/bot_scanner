@@ -455,17 +455,17 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Rotação <strong>total</strong> a cada scan do <strong>Scanner 2</strong> (top 30 subidas 24h, 4 h): fecha
-              tudo, recompra ranks <strong>1–4</strong> (LONG, SL -3%) e abre <strong>SHORT</strong> nas moedas que
-              saíram do top 4 (SL +25%, fecho 4h). Corre após{' '}
+              Rotação a cada scan do <strong>Scanner 2</strong> (top 30 subidas 24h): fecha os LONGs, recompra ranks{' '}
+              <strong>1–4</strong> (LONG, SL -1%, sem TP) e abre <strong>SHORT</strong> nas moedas que saíram do top 4
+              (SL +1%, sem TP, fecho 24h). Corre após{' '}
               <code className="text-[10px]">run-universe-scans</code>.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Posições (top N)', p.topN ?? 4, (v) => upd({ topN: v }))}
               {numField('Scan top N (fonte)', p.scanTopN ?? 4, (v) => upd({ scanTopN: v }))}
-              {numField('SL LONG (%) abaixo entrada', (p.stopLossPct ?? 0.03) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
-              {numField('SL SHORT saída (%) acima', (p.shortStopLossPct ?? 0.25) * 100, (v) => upd({ shortStopLossPct: v / 100 }), 0.5)}
-              {numField('Horas fecho SHORT saída', p.shortCloseAfterHours ?? 4, (v) => upd({ shortCloseAfterHours: v }))}
+              {numField('SL LONG (%) abaixo entrada', (p.stopLossPct ?? 0.01) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.1)}
+              {numField('SL SHORT saída (%) acima', (p.shortStopLossPct ?? 0.01) * 100, (v) => upd({ shortStopLossPct: v / 100 }), 0.1)}
+              {numField('Horas fecho SHORT saída', p.shortCloseAfterHours ?? 24, (v) => upd({ shortCloseAfterHours: v }))}
               {numField('Horas até rotação (ref.)', p.closeAfterHours ?? 4, (v) => upd({ closeAfterHours: v }))}
               {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
             </div>

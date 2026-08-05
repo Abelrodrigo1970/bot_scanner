@@ -433,7 +433,9 @@ export async function runScannerRotationPipeline(options: {
 
   const scanFetchN = resolveScanFetchN(params);
 
-  const stopLossPct = Number(params.stopLossPct ?? 0.03);
+  const stopLossPct = Number(
+    params.stopLossPct ?? (options.strategyName === SCANNER1_TOP5_STRATEGY_NAME ? 0.01 : 0.03)
+  );
 
   const closeAfterHours = Number(params.closeAfterHours ?? 4);
 
@@ -444,7 +446,9 @@ export async function runScannerRotationPipeline(options: {
     options.strategyName === SCANNER1_TOP5_STRATEGY_NAME
       ? params.shortOnExit !== false
       : params.shortOnExit === true;
-  const shortStopLossPct = Number(params.shortStopLossPct ?? 0.25);
+  const shortStopLossPct = Number(
+    params.shortStopLossPct ?? (options.strategyName === SCANNER1_TOP5_STRATEGY_NAME ? 0.01 : 0.25)
+  );
   const shortCloseAfterHours = Number(params.shortCloseAfterHours ?? closeAfterHours);
 
   let scanRunId: string;
