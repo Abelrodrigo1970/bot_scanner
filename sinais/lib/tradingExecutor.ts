@@ -39,6 +39,7 @@ import {
   getBybitTickSize,
   listOpenLinearOrderSymbols,
 } from './bybitFuturesClient';
+import { fetchCurrentPriceSafe } from './marketData';
 
 export interface ExecuteResult {
   success: boolean;
@@ -375,7 +376,24 @@ async function executeSignalBybit(
     const step = Number.isFinite(stepSize) && stepSize > 0 ? stepSize : 0.001;
     const tick = Number.isFinite(tickSize) && tickSize > 0 ? tickSize : 0.01;
     const qtyStr    = roundQuantity(qty, step);
-    const slPriceStr = roundPriceStopLoss(executionSignal.stopLoss, tick, executionSignal.direction);
+    let stopLossPrice = executionSignal.stopLoss;
+    const livePrice = await fetchCurrentPriceSafe(executionSignal.symbol);
+    if (livePrice != null && livePrice > 0) {
+      const minGap = Math.max(livePrice * 0.002, tick * 10);
+      if (executionSignal.direction === 'BUY' && stopLossPrice >= livePrice) {
+        stopLossPrice = Math.max(tick, livePrice - minGap);
+        console.warn(
+          `[Bybit] Ajustado SL BUY ${executionSignal.symbol}: ${executionSignal.stopLoss} -> ${stopLossPrice} (preço actual ${livePrice})`
+        );
+      }
+      if (executionSignal.direction === 'SELL' && stopLossPrice <= livePrice) {
+        stopLossPrice = livePrice + minGap;
+        console.warn(
+          `[Bybit] Ajustado SL SELL ${executionSignal.symbol}: ${executionSignal.stopLoss} -> ${stopLossPrice} (preço actual ${livePrice})`
+        );
+      }
+    }
+    const slPriceStr = roundPriceStopLoss(stopLossPrice, tick, executionSignal.direction);
 
     if (signal.direction !== executionSignal.direction) {
       console.log(`[Bybit] Perfil VS15m: ${signal.symbol} ${signal.direction} -> ${executionSignal.direction}`);
