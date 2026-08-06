@@ -702,7 +702,9 @@ export default function EstrategiasPage() {
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Quando ativo, os sinais com força suficiente são executados automaticamente no cron.
-                A exchange é configurada via variável <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">EXCHANGE</code> no Railway.
+                A exchange de cada estratégia define-se nos botões Binance/Bybit abaixo; a variável{' '}
+                <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">EXCHANGE</code> no Railway
+                só é o fallback quando a estratégia não tem exchange definida.
               </p>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">

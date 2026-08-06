@@ -658,6 +658,7 @@ export async function syncScanner2StochRsi5mConfig(
     p = {};
   }
 
+  // Preserva exchange / allowBuy / allowSell escolhidos no menu de estratégias.
   const next = {
     ...SCANNER2_STOCH_RSI_5M_PARAMS,
     ...p,
@@ -671,11 +672,6 @@ export async function syncScanner2StochRsi5mConfig(
     shortStopLossPct: SCANNER2_STOCH_RSI_5M_PARAMS.shortStopLossPct,
     shortMaPeriod: SCANNER2_STOCH_RSI_5M_PARAMS.shortMaPeriod,
     shortBelowMaPct: SCANNER2_STOCH_RSI_5M_PARAMS.shortBelowMaPct,
-    exchange: SCANNER2_STOCH_RSI_5M_PARAMS.exchange,
-    allowBuy: SCANNER2_STOCH_RSI_5M_PARAMS.allowBuy,
-    buyEnabled: SCANNER2_STOCH_RSI_5M_PARAMS.buyEnabled,
-    allowSell: true,
-    sellEnabled: true,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
@@ -808,6 +804,7 @@ export async function syncScanner3RsiFlip1hConfig(
     p = {};
   }
 
+  // Preserva exchange / allowBuy / allowSell escolhidos no menu de estratégias.
   const next = {
     ...SCANNER3_RSI_FLIP_1H_PARAMS,
     ...p,
@@ -820,7 +817,6 @@ export async function syncScanner3RsiFlip1hConfig(
     rsiPeriod: SCANNER3_RSI_FLIP_1H_PARAMS.rsiPeriod,
     closeAfterHours: SCANNER3_RSI_FLIP_1H_PARAMS.closeAfterHours,
     shortCloseAfterHours: SCANNER3_RSI_FLIP_1H_PARAMS.shortCloseAfterHours,
-    exchange: SCANNER3_RSI_FLIP_1H_PARAMS.exchange,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
@@ -1164,6 +1160,7 @@ export async function syncScanner2ShortLeader24hConfig(
     p = {};
   }
 
+  // Preserva exchange / allowBuy / allowSell escolhidos no menu de estratégias.
   const next = {
     ...SCANNER2_SHORT_LEADER_24H_PARAMS,
     ...p,
@@ -1174,11 +1171,6 @@ export async function syncScanner2ShortLeader24hConfig(
     blockedEntryHoursPt: SCANNER2_SHORT_LEADER_24H_PARAMS.blockedEntryHoursPt,
     stopLossPct: SCANNER2_SHORT_LEADER_24H_PARAMS.stopLossPct,
     closeAfterHours: SCANNER2_SHORT_LEADER_24H_PARAMS.closeAfterHours,
-    exchange: SCANNER2_SHORT_LEADER_24H_PARAMS.exchange,
-    allowBuy: SCANNER2_SHORT_LEADER_24H_PARAMS.allowBuy,
-    allowSell: SCANNER2_SHORT_LEADER_24H_PARAMS.allowSell,
-    buyEnabled: SCANNER2_SHORT_LEADER_24H_PARAMS.buyEnabled,
-    sellEnabled: SCANNER2_SHORT_LEADER_24H_PARAMS.sellEnabled,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
@@ -1561,19 +1553,18 @@ export async function syncAfastamentoMedio30mBuyPrevMax(
   const needsStrength =
     p.maxStrength == null ||
     Number(p.maxStrength) !== AFASTAMENTO_STRENGTH_FILTER_PARAMS.maxStrength;
-  const needsExchange = p.exchange !== 'bybit';
 
-  if (!needsBuy && !needsSell && !needsMeta && !needsExit && !needsStrength && !needsExchange) {
+  if (!needsBuy && !needsSell && !needsMeta && !needsExit && !needsStrength) {
     return { updated: false };
   }
 
+  // Preserva exchange escolhido no menu de estratégias.
   const next: Record<string, unknown> = {
     ...p,
     ...(needsBuy ? AFASTAMENTO_MEDIO_30M_BUY_PARAMS : {}),
     ...(needsSell ? AFASTAMENTO_MEDIO_30M_SELL_PARAMS : {}),
     ...(needsExit || needsMeta ? AFASTAMENTO_MEDIO_30M_EXIT_PARAMS : {}),
     ...(needsStrength || needsMeta ? AFASTAMENTO_STRENGTH_FILTER_PARAMS : {}),
-    ...(needsExchange ? { exchange: 'bybit' } : {}),
   };
   if (needsExit) {
     delete next.takeProfitPct;
