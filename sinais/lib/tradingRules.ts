@@ -33,8 +33,6 @@ const ALLOWED_STRATEGIES = [
   'PIVOT_BOSS_BEAR_15M',
   'Scanner 2 Short Leader 24h',
   'SCANNER2_SHORT_LEADER_24H',
-  'Scanner 2 Top 4 (rotação 4h)',
-  'SCANNER1_TOP5',
   'Scanner 2 Stoch RSI Top 4 (5m)',
   'SCANNER2_STOCH_RSI_5M',
   'Scanner 3 RSI Flip 15m',

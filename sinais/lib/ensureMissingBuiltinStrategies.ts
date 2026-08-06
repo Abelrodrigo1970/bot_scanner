@@ -53,7 +53,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'SCANNER1_TOP5',
     displayName: SCANNER1_TOP5_DISPLAY,
     description: SCANNER1_TOP5_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(SCANNER1_TOP5_PARAMS),
   },
   {
@@ -186,12 +186,12 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
     );
   }
 
-  const reactivated = await prisma.strategy.updateMany({
-    where: { name: 'SCANNER1_TOP5', isActive: false },
-    data: { isActive: true },
+  const deactivatedTop4 = await prisma.strategy.updateMany({
+    where: { name: 'SCANNER1_TOP5', isActive: true },
+    data: { isActive: false },
   });
-  if (reactivated.count > 0) {
-    console.log('✅ Rotação Scanner 2 Top 4 reactivada');
+  if (deactivatedTop4.count > 0) {
+    console.log('✅ SCANNER1_TOP5 (Scanner 2 Top 4 rotação) desactivada — sem ordens Bybit');
   }
 
   const reactivatedS3 = await prisma.strategy.updateMany({

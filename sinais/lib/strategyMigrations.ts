@@ -431,10 +431,10 @@ export const SCANNER1_TOP5_PARAMS = {
   shortOnExit: true,
   shortStopLossPct: 0.01,
   shortCloseAfterHours: 24,
-  allowBuy: true,
-  allowSell: true,
-  buyEnabled: true,
-  sellEnabled: true,
+  allowBuy: false,
+  allowSell: false,
+  buyEnabled: false,
+  sellEnabled: false,
   autoExecuteMinStrength: 80,
   exchange: 'bybit',
 } as const;
@@ -487,7 +487,7 @@ export async function syncScanner1Top8Config(
   return { updated: false };
 }
 
-/** Garante registo/descrição da estratégia Scanner 1 Top 8 (rotação ranks 1–8). */
+/** Garante registo/descrição da estratégia Scanner 2 Top 4 (mantém inactiva). */
 export async function syncScanner1Top5Config(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -497,7 +497,7 @@ export async function syncScanner1Top5Config(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
+  const shouldDeactivate = row.isActive;
 
   let p: Record<string, unknown> = {};
   try {
@@ -519,25 +519,24 @@ export async function syncScanner1Top5Config(
     shortStopLossPct: SCANNER1_TOP5_PARAMS.shortStopLossPct,
     shortCloseAfterHours: SCANNER1_TOP5_PARAMS.shortCloseAfterHours,
     rotationMode: 'full' as const,
-    exchange: SCANNER1_TOP5_PARAMS.exchange,
-    allowBuy: SCANNER1_TOP5_PARAMS.allowBuy,
-    allowSell: SCANNER1_TOP5_PARAMS.allowSell,
-    buyEnabled: SCANNER1_TOP5_PARAMS.buyEnabled,
-    sellEnabled: SCANNER1_TOP5_PARAMS.sellEnabled,
+    allowBuy: false,
+    allowSell: false,
+    buyEnabled: false,
+    sellEnabled: false,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== SCANNER1_TOP5_DISPLAY ||
     row.description !== SCANNER1_TOP5_DESCRIPTION;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta || shouldDeactivate) {
     await prisma.strategy.update({
       where: { name: 'SCANNER1_TOP5' },
       data: {
         displayName: SCANNER1_TOP5_DISPLAY,
         description: SCANNER1_TOP5_DESCRIPTION,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
+        isActive: false,
       },
     });
     return { updated: true };
