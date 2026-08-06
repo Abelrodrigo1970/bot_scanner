@@ -519,7 +519,11 @@ export async function syncScanner1Top5Config(
     shortStopLossPct: SCANNER1_TOP5_PARAMS.shortStopLossPct,
     shortCloseAfterHours: SCANNER1_TOP5_PARAMS.shortCloseAfterHours,
     rotationMode: 'full' as const,
-    // Preserva exchange / allowBuy / allowSell / buyEnabled / sellEnabled do utilizador
+    exchange: SCANNER1_TOP5_PARAMS.exchange,
+    allowBuy: SCANNER1_TOP5_PARAMS.allowBuy,
+    allowSell: SCANNER1_TOP5_PARAMS.allowSell,
+    buyEnabled: SCANNER1_TOP5_PARAMS.buyEnabled,
+    sellEnabled: SCANNER1_TOP5_PARAMS.sellEnabled,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
@@ -662,6 +666,9 @@ export async function syncScanner2StochRsi5mConfig(
     smoothK: SCANNER2_STOCH_RSI_5M_PARAMS.smoothK,
     smoothD: SCANNER2_STOCH_RSI_5M_PARAMS.smoothD,
     stopLossPct: SCANNER2_STOCH_RSI_5M_PARAMS.stopLossPct,
+    exchange: SCANNER2_STOCH_RSI_5M_PARAMS.exchange,
+    allowBuy: SCANNER2_STOCH_RSI_5M_PARAMS.allowBuy,
+    buyEnabled: SCANNER2_STOCH_RSI_5M_PARAMS.buyEnabled,
     allowSell: false,
     sellEnabled: false,
   };
@@ -1162,7 +1169,11 @@ export async function syncScanner2ShortLeader24hConfig(
     blockedEntryHoursPt: SCANNER2_SHORT_LEADER_24H_PARAMS.blockedEntryHoursPt,
     stopLossPct: SCANNER2_SHORT_LEADER_24H_PARAMS.stopLossPct,
     closeAfterHours: SCANNER2_SHORT_LEADER_24H_PARAMS.closeAfterHours,
-    // Preserva exchange / allowBuy / allowSell do utilizador
+    exchange: SCANNER2_SHORT_LEADER_24H_PARAMS.exchange,
+    allowBuy: SCANNER2_SHORT_LEADER_24H_PARAMS.allowBuy,
+    allowSell: SCANNER2_SHORT_LEADER_24H_PARAMS.allowSell,
+    buyEnabled: SCANNER2_SHORT_LEADER_24H_PARAMS.buyEnabled,
+    sellEnabled: SCANNER2_SHORT_LEADER_24H_PARAMS.sellEnabled,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
