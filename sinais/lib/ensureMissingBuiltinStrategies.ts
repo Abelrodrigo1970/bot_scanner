@@ -176,7 +176,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const stoch5mSync = await syncScanner2StochRsi5mConfig(prisma);
   if (stoch5mSync.updated) {
-    console.log('✅ SCANNER2_STOCH_RSI_5M: Top 4 Scanner 2 | Stoch RSI 5m K×D | SL 5%');
+    console.log('✅ SCANNER2_STOCH_RSI_5M: Top 4 | Stoch RSI 5m | LONG SL5% | SHORT pós-LONG se ≤MA21−1% SL7%');
   }
 
   const flipHistoryReset = await resetScanner3RsiFlipHistoryOnce(prisma);

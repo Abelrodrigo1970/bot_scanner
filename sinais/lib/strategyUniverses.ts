@@ -125,7 +125,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
 
     description:
-      'Top 4 Scanner 2. Stoch RSI 5m (50/50/40/11): K×D up → LONG SL 5%; K×D down → fecha.',
+      'Top 4 Scanner 2. Stoch RSI 5m (50/50/40/11): K×D up → LONG SL 5%; K×D down → fecha LONG; SHORT se preço ≤ MA21−1% (SL 7%).',
 
     refresh: '/api/cron/run-5m (cada 5 min)',
 

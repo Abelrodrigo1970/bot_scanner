@@ -618,7 +618,7 @@ export const SCANNER3_RSI_FLIP_1H_PARAMS = {
 export const SCANNER2_STOCH_RSI_5M_DISPLAY = 'Scanner 2 Stoch RSI Top 4 (5m)';
 
 export const SCANNER2_STOCH_RSI_5M_DESCRIPTION =
-  'Top 4 do Scanner 2 (subidas 24h). Stoch RSI 5m (RSI 50 / Stoch 50 / SmoothK 40 / SmoothD 11): %K cruza %D para cima → LONG (SL -5%); %K cruza %D para baixo → fecha a posição. Sem SHORT nem TP.';
+  'Top 4 do Scanner 2 (subidas 24h). Stoch RSI 5m (50/50/40/11): %K cruza %D para cima → LONG (SL -5%). %K cruza %D para baixo → fecha LONG; se o preço estiver ≥1% abaixo da MA21 (5m) → SHORT (SL +7%). Sem TP.';
 
 export const SCANNER2_STOCH_RSI_5M_PARAMS = {
   topN: 4,
@@ -628,11 +628,14 @@ export const SCANNER2_STOCH_RSI_5M_PARAMS = {
   smoothK: 40,
   smoothD: 11,
   stopLossPct: 0.05,
+  shortStopLossPct: 0.07,
+  shortMaPeriod: 21,
+  shortBelowMaPct: 0.01,
   autoExecuteMinStrength: 80,
   allowBuy: true,
   buyEnabled: true,
-  allowSell: false,
-  sellEnabled: false,
+  allowSell: true,
+  sellEnabled: true,
   exchange: 'bybit',
 } as const;
 
@@ -665,11 +668,14 @@ export async function syncScanner2StochRsi5mConfig(
     smoothK: SCANNER2_STOCH_RSI_5M_PARAMS.smoothK,
     smoothD: SCANNER2_STOCH_RSI_5M_PARAMS.smoothD,
     stopLossPct: SCANNER2_STOCH_RSI_5M_PARAMS.stopLossPct,
+    shortStopLossPct: SCANNER2_STOCH_RSI_5M_PARAMS.shortStopLossPct,
+    shortMaPeriod: SCANNER2_STOCH_RSI_5M_PARAMS.shortMaPeriod,
+    shortBelowMaPct: SCANNER2_STOCH_RSI_5M_PARAMS.shortBelowMaPct,
     exchange: SCANNER2_STOCH_RSI_5M_PARAMS.exchange,
     allowBuy: SCANNER2_STOCH_RSI_5M_PARAMS.allowBuy,
     buyEnabled: SCANNER2_STOCH_RSI_5M_PARAMS.buyEnabled,
-    allowSell: false,
-    sellEnabled: false,
+    allowSell: true,
+    sellEnabled: true,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =

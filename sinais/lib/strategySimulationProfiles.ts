@@ -78,9 +78,9 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     strategyName: 'SCANNER2_STOCH_RSI_5M',
     displayNames: ['Scanner 2 Stoch RSI Top 4 (5m)'],
     buy: side(5, 0, 0, 0, 0, 0),
-    sell: null,
+    sell: side(7, 0, 0, 0, 0, 0),
     summary:
-      'Top 4 Scanner 2. Stoch RSI 5m (50/50/40/11). LONG se K×D up; fecha se K×D down. SL -5%. Sem TP.',
+      'Top 4 Scanner 2. Stoch RSI 5m (50/50/40/11). LONG se K×D up (SL -5%). Após fecho LONG, SHORT se preço ≤ MA21−1% (SL +7%). Sem TP.',
   },
   {
     strategyName: 'SCANNER3_RSI_FLIP_1H',

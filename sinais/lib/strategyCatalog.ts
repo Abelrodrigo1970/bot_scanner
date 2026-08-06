@@ -96,7 +96,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '5m',
 
-    universe: 'Scanner 2 Top 4; Stoch RSI (50/50/40/11) K×D up LONG / down fecha; SL 5%',
+    universe: 'Scanner 2 Top 4; Stoch RSI K×D LONG SL5%; SHORT após LONG se preço ≤ MA21−1% SL7%',
 
   },
 

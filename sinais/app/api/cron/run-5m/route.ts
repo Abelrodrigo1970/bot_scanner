@@ -35,15 +35,17 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(
-      `[Run-5m] Stoch RSI -> LONG ${result.longCreated}, fechados ${result.closed}, exec ${result.executed}`
+      `[Run-5m] Stoch RSI -> LONG ${result.longCreated}, SHORT ${result.shortCreated}, fechados ${result.closed}, exec ${result.executed}`
     );
 
     return NextResponse.json({
       success: true,
       longCreated: result.longCreated,
+      shortCreated: result.shortCreated,
       closed: result.closed,
       executed: result.executed,
       longSymbols: result.longSymbols,
+      shortSymbols: result.shortSymbols,
       closedSymbols: result.closedSymbols,
       executedAt: now.toISOString(),
     });
