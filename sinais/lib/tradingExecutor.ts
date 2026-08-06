@@ -762,7 +762,7 @@ export async function getExecutorStatus(): Promise<{
 
   return {
     exchange: envExchange,
-    hasCredentials: envExchange === 'bybit' ? hasBybit : hasBinance,
+    hasCredentials: hasBinance || hasBybit,
     tradingEnabled,
     isTestnet: envExchange === 'bybit' ? bybitTestnet : binanceTestnet,
     ready,

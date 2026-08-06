@@ -27,6 +27,9 @@ export async function GET() {
       isTestnet: status.isTestnet,
       canExecute: status.ready,
       reason: status.reason,
+      exchange: status.exchange,
+      readyBinance: status.readyBinance,
+      readyBybit: status.readyBybit,
     });
   } catch (error) {
     console.error('Erro execute-trade GET:', error);

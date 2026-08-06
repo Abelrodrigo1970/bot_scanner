@@ -17,7 +17,8 @@ export function resolveStrategyExchange(stratParams: Record<string, unknown>): '
 }
 
 /**
- * Auto-executa sinais NEW recentes para uma estratégia (inspecção, reversal close, allowBuy/allowSell).
+ * Auto-executa sinais NEW para uma estratégia (inspecção, allowBuy/allowSell).
+ * Inclui sinais deste ciclo e NEW recentes (até 2h) que falharam antes — senão ficam presos.
  */
 export async function autoExecuteNewSignalsForStrategy(opts: {
   strategy: StrategyRow;
@@ -29,23 +30,45 @@ export async function autoExecuteNewSignalsForStrategy(opts: {
   const stratParams = JSON.parse(strategy.params || '{}') as Record<string, unknown>;
   const exchange = resolveStrategyExchange(stratParams);
 
+  const retrySince = new Date(Math.min(startedAt.getTime(), Date.now() - 2 * 3600_000));
+
   const newSignals = await prisma.signal.findMany({
     where: {
       strategyId: strategy.id,
       status: 'NEW',
-      generatedAt: { gte: startedAt },
+      generatedAt: { gte: retrySince },
       strength: { gte: minStrength },
     },
     orderBy: { generatedAt: 'asc' },
   });
 
+  // NEW demasiado antigos: não executar (preço já andou) — marcar expirados.
+  const staleCutoff = new Date(Date.now() - 2 * 3600_000);
+  const stale = await prisma.signal.updateMany({
+    where: {
+      strategyId: strategy.id,
+      status: 'NEW',
+      generatedAt: { lt: staleCutoff },
+    },
+    data: { status: 'EXPIRED' },
+  });
+  if (stale.count > 0) {
+    console.log(`${logPrefix} 🧹 ${stale.count} sinal(is) NEW >2h expirados (sem re-execução)`);
+  }
+
   let executed = 0;
+  let inspectBlockedLogged = false;
 
   for (const sig of newSignals) {
     try {
       const positionState = await inspectActivePositionForSymbol(sig.symbol, exchange);
       if (!positionState.inspectable) {
-        console.warn(`${logPrefix} ⚠️ Não foi possível inspecionar ${sig.symbol}: ${positionState.message}`);
+        if (!inspectBlockedLogged) {
+          console.warn(
+            `${logPrefix} ⚠️ Auto-exec bloqueado (${exchange}): ${positionState.message}`
+          );
+          inspectBlockedLogged = true;
+        }
         continue;
       }
 
@@ -84,6 +107,10 @@ export async function autoExecuteNewSignalsForStrategy(opts: {
         );
         continue;
       }
+
+      console.log(
+        `${logPrefix} → Auto-exec ${sig.direction} ${sig.symbol} via ${exchange} (força ${sig.strength})`
+      );
 
       const execResult = await executeSignalReal({
         id: sig.id,
