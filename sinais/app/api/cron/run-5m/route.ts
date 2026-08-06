@@ -1,27 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runScanner2StochRsi5mPipeline } from '@/lib/scanner2StochRsi5mStrategy';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
+
 /**
  * Cron 5m: Scanner 2 Stoch RSI Top 4
  * Stoch RSI (50/50/40/11) — K×D up LONG / K×D down fecha.
+ * Corre em foreground (await) para o auto-exec Bybit terminar antes da resposta.
  */
-
-async function run5mInBackground(): Promise<void> {
-  console.log('[Run-5m BG] Iniciando Scanner 2 Stoch RSI Top 4...');
-  try {
-    const result = await runScanner2StochRsi5mPipeline();
-    if (result.status === 'skipped') {
-      console.log(`[Run-5m BG] Stoch RSI skipped: ${result.reason}`);
-    } else {
-      console.log(
-        `[Run-5m BG] Stoch RSI -> LONG ${result.longCreated}, fechados ${result.closed}, exec ${result.executed}`
-      );
-    }
-  } catch (error) {
-    console.error('[Run-5m BG] Falhou:', error);
-  }
-  console.log('[Run-5m BG] Finalizado.');
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,13 +20,31 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date();
-    run5mInBackground().catch((error) => {
-      console.error('[Run-5m BG] Erro fatal:', error);
-    });
+    console.log('[Run-5m] Iniciando Scanner 2 Stoch RSI Top 4...');
+
+    const result = await runScanner2StochRsi5mPipeline();
+
+    if (result.status === 'skipped') {
+      console.log(`[Run-5m] Stoch RSI skipped: ${result.reason}`);
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: result.reason,
+        executedAt: now.toISOString(),
+      });
+    }
+
+    console.log(
+      `[Run-5m] Stoch RSI -> LONG ${result.longCreated}, fechados ${result.closed}, exec ${result.executed}`
+    );
 
     return NextResponse.json({
       success: true,
-      message: 'Scanner 2 Stoch RSI Top 4 (5m) iniciado em background',
+      longCreated: result.longCreated,
+      closed: result.closed,
+      executed: result.executed,
+      longSymbols: result.longSymbols,
+      closedSymbols: result.closedSymbols,
       executedAt: now.toISOString(),
     });
   } catch (error) {
