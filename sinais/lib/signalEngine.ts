@@ -1190,9 +1190,9 @@ export async function runAccumulationBreakout15mStrategy(
   const lookback = Math.max(2, Math.floor(Number(params.breakoutLookback ?? 10)));
   const requireBullishClose = params.requireBullishClose !== false;
   const volumeMultiplier = Math.max(0, Number(params.volumeMultiplier ?? 1));
-  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.07));
-  const rewardRisk1 = Math.max(0.2, Number(params.rewardRisk1 ?? 1.5));
-  const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 50))));
+  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.03));
+  const rewardRisk1 = Math.max(0.2, Number(params.rewardRisk1 ?? 2));
+  const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 100))));
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
 
   try {
@@ -1235,9 +1235,10 @@ export async function runAccumulationBreakout15mStrategy(
     const target1 = entryPrice + risk * rewardRisk1;
 
     const breakoutMarginPct = ((entryPrice - rangeHigh) / rangeHigh) * 100;
-    const maxStrength = Math.max(60, Math.floor(Number(params.maxStrength ?? 75)));
+    const minStrength = Math.max(60, Math.floor(Number(params.minStrength ?? 65)));
+    const maxStrength = Math.max(minStrength, Math.floor(Number(params.maxStrength ?? 75)));
     const rawStrength = Math.max(60, Math.round(60 + Math.min(25, breakoutMarginPct * 8)));
-    if (rawStrength > maxStrength) return null;
+    if (rawStrength < minStrength || rawStrength > maxStrength) return null;
     const strength = rawStrength;
 
     return {
@@ -1254,12 +1255,13 @@ export async function runAccumulationBreakout15mStrategy(
         rangeHigh,
         rangeLow,
         breakoutMarginPct: Number(breakoutMarginPct.toFixed(3)),
+        minStrength,
         maxStrength,
         stopLossPct,
         rewardRisk1,
         tp1Position,
         closeAfterHours,
-        executionProfile: `BUY | Rompimento acumulação 15m (fecho > máx. ${lookback} velas) | SL -${(stopLossPct * 100).toFixed(0)}% fixo | TP1 R×${rewardRisk1} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+        executionProfile: `BUY | Rompimento acumulação 15m (fecho > máx. ${lookback} velas) | ranks Scanner 1 filtrados | força ${minStrength}–${maxStrength} | SL -${(stopLossPct * 100).toFixed(0)}% fixo | TP1 R×${rewardRisk1} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
       }),
     };
   } catch (error) {
@@ -2135,10 +2137,11 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         }
       } else if (strategy.name === 'ACCUMULATION_BREAKOUT_15M') {
         const minRank = Math.max(1, Math.floor(Number(params.minScannerRank ?? 11)));
-        const maxRank = Math.max(minRank, Math.floor(Number(params.maxScannerRank ?? 40)));
-        const maxStrength = Math.max(60, Math.floor(Number(params.maxStrength ?? 75)));
+        const maxRank = Math.max(minRank, Math.floor(Number(params.maxScannerRank ?? 20)));
+        const minStrength = Math.max(60, Math.floor(Number(params.minStrength ?? 65)));
+        const maxStrength = Math.max(minStrength, Math.floor(Number(params.maxStrength ?? 75)));
         console.log(
-          `🔍 ${strategy.name}: Scanner 1 ranks ${minRank}–${maxRank} (|pct vs SMA200|); força máx. ${maxStrength}; sinais em 15m...`
+          `🔍 ${strategy.name}: Scanner 1 ranks ${minRank}–${maxRank} (|pct vs SMA200|); força ${minStrength}–${maxStrength}; SL -${(Number(params.stopLossPct ?? 0.03) * 100).toFixed(0)}%; sinais em 15m...`
         );
         symbolsToAnalyze = await resolveUniverseScanSymbolsRankRange(
           UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,

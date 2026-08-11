@@ -547,19 +547,20 @@ export async function syncScanner1Top5Config(
 export const ACCUMULATION_BREAKOUT_15M_DISPLAY = 'Rompimento de Acumulação 15m';
 
 export const ACCUMULATION_BREAKOUT_15M_DESCRIPTION =
-  'Velas 15m, só COMPRA. Rompimento: fecho > máximo das últimas 10 velas. Universo: Scanner 1 ranks 11–40 (|pct vs SMA200|), exclui top 10. Força máx. 75. SL -7% fixo; TP1 risco × 1,5 (50% pos.); restante às 24h.';
+  'Velas 15m, só COMPRA. Rompimento: fecho > máximo das últimas 10 velas. Universo: Scanner 1 ranks 11–20 (|pct vs SMA200|). Força 65–75. SL -3% fixo; TP1 risco × 2 (+6%, 100% pos.); restante às 24h.';
 
 export const ACCUMULATION_BREAKOUT_15M_PARAMS = {
   breakoutLookback: 10,
   requireBullishClose: true,
   volumeMultiplier: 1,
-  stopLossPct: 0.07,
-  rewardRisk1: 1.5,
-  tp1Position: 50,
+  stopLossPct: 0.03,
+  rewardRisk1: 2,
+  tp1Position: 100,
   closeAfterHours: 24,
-  universeTopN: 40,
+  universeTopN: 20,
   minScannerRank: 11,
-  maxScannerRank: 40,
+  maxScannerRank: 20,
+  minStrength: 65,
   maxStrength: 75,
   allowBuy: true,
   allowSell: false,
@@ -712,12 +713,17 @@ export async function syncAccumulationBreakout15mConfig(
     p = {};
   }
 
-  // Preserva ajustes do utilizador; garante filtros de rank/força actualizados.
+  // Preserva outros ajustes; força params do estudo (rank 11–20, força ≥65, SL3%/TP6%@100%).
   const next = {
     ...ACCUMULATION_BREAKOUT_15M_PARAMS,
     ...p,
+    stopLossPct: ACCUMULATION_BREAKOUT_15M_PARAMS.stopLossPct,
+    rewardRisk1: ACCUMULATION_BREAKOUT_15M_PARAMS.rewardRisk1,
+    tp1Position: ACCUMULATION_BREAKOUT_15M_PARAMS.tp1Position,
+    universeTopN: ACCUMULATION_BREAKOUT_15M_PARAMS.universeTopN,
     minScannerRank: ACCUMULATION_BREAKOUT_15M_PARAMS.minScannerRank,
     maxScannerRank: ACCUMULATION_BREAKOUT_15M_PARAMS.maxScannerRank,
+    minStrength: ACCUMULATION_BREAKOUT_15M_PARAMS.minStrength,
     maxStrength: ACCUMULATION_BREAKOUT_15M_PARAMS.maxStrength,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);

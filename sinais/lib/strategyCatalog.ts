@@ -120,7 +120,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 ranks 11–40 (acima SMA200, 1h); força máx. 75',
+    universe: 'Scanner 1 ranks 11–20 (acima SMA200, 1h); força 65–75; SL −3% / TP R×2 @100%',
 
   },
 
