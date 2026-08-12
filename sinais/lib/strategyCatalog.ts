@@ -14,6 +14,10 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'SCANNER2_STOCH_RSI_5M',
 
+  'STCH15LONG',
+
+  'SCANNER2_RSI80_TOP3_LONG_4H',
+
   'PIVOT_BOSS_BEAR_15M',
 
   'ACCUMULATION_BREAKOUT_15M',
@@ -97,6 +101,30 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '5m',
 
     universe: 'Scanner 2 Top 4; Stoch RSI K×D LONG SL5%; SHORT após LONG se preço ≤ MA21−1% SL7%',
+
+  },
+
+  STCH15LONG: {
+
+    cron: '5m',
+
+    cronLabel: 'Cron 5m',
+
+    timeframe: '15m',
+
+    universe: 'Scanner 2 Top 2; Stochastic 15m (20/15/11) K×D up LONG SL−5%; exit K×D down',
+
+  },
+
+  SCANNER2_RSI80_TOP3_LONG_4H: {
+
+    cron: '1h',
+
+    cronLabel: 'Pós-scan 4h',
+
+    timeframe: '4h',
+
+    universe: 'Scanner 2 Top 3; RSI(14) 4h cruza >80 → LONG SL −10%; fecho 24h',
 
   },
 

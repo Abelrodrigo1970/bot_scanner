@@ -22,6 +22,12 @@ import {
   SCANNER2_STOCH_RSI_5M_DESCRIPTION,
   SCANNER2_STOCH_RSI_5M_DISPLAY,
   SCANNER2_STOCH_RSI_5M_PARAMS,
+  SCANNER2_RSI80_TOP3_LONG_4H_DESCRIPTION,
+  SCANNER2_RSI80_TOP3_LONG_4H_DISPLAY,
+  SCANNER2_RSI80_TOP3_LONG_4H_PARAMS,
+  STCH15LONG_DESCRIPTION,
+  STCH15LONG_DISPLAY,
+  STCH15LONG_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncPivotBossBear15mUniverse,
@@ -31,6 +37,8 @@ import {
   syncScanner3RsiBreakout15mConfig,
   syncScanner3RsiFlip1hConfig,
   syncScanner2StochRsi5mConfig,
+  syncScanner2Rsi80Top3Long4hConfig,
+  syncStch15LongConfig,
   resetScanner3RsiFlipHistoryOnce,
   migrateScannerS6ShortToScanner2ShortLeader24h,
   syncScanner2ShortLeader24hConfig,
@@ -97,6 +105,20 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: SCANNER2_STOCH_RSI_5M_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(SCANNER2_STOCH_RSI_5M_PARAMS),
+  },
+  {
+    name: 'SCANNER2_RSI80_TOP3_LONG_4H',
+    displayName: SCANNER2_RSI80_TOP3_LONG_4H_DISPLAY,
+    description: SCANNER2_RSI80_TOP3_LONG_4H_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(SCANNER2_RSI80_TOP3_LONG_4H_PARAMS),
+  },
+  {
+    name: 'STCH15LONG',
+    displayName: STCH15LONG_DISPLAY,
+    description: STCH15LONG_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(STCH15LONG_PARAMS),
   },
 ] as const;
 
@@ -177,6 +199,16 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const stoch5mSync = await syncScanner2StochRsi5mConfig(prisma);
   if (stoch5mSync.updated) {
     console.log('✅ SCANNER2_STOCH_RSI_5M: Top 4 | Stoch RSI 5m | LONG SL5% | SHORT pós-LONG se ≤MA21−1% SL7%');
+  }
+
+  const rsi80Top3Sync = await syncScanner2Rsi80Top3Long4hConfig(prisma);
+  if (rsi80Top3Sync.updated) {
+    console.log('✅ SCANNER2_RSI80_TOP3_LONG_4H: Top 3 | RSI 4h >80 LONG | SL −10% | fecho 24h');
+  }
+
+  const stch15Sync = await syncStch15LongConfig(prisma);
+  if (stch15Sync.updated) {
+    console.log('✅ STCH15LONG (stch15long): Top 2 | Stoch 15m 20/15/11 LONG | SL −5% | exit K×D down');
   }
 
   const flipHistoryReset = await resetScanner3RsiFlipHistoryOnce(prisma);

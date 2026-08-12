@@ -79,6 +79,70 @@ export function calculateStochasticRsiSeries(
     }));
 }
 
+export type StochPoint = { k: number; d: number };
+
+/**
+ * Stochastic clássico (TradingView): %K Length / %K Smoothing / %D Smoothing.
+ * Retorna série %K/%D alinhada às velas após warm-up (índices com null omitidos no fim da série).
+ */
+export function calculateStochasticSeries(
+  highs: number[],
+  lows: number[],
+  closes: number[],
+  opts?: {
+    kLength?: number;
+    kSmoothing?: number;
+    dSmoothing?: number;
+  }
+): Array<StochPoint | null> {
+  const kLen = Math.max(2, Math.floor(opts?.kLength ?? 14));
+  const kSmooth = Math.max(1, Math.floor(opts?.kSmoothing ?? 1));
+  const dSmooth = Math.max(1, Math.floor(opts?.dSmoothing ?? 3));
+  const n = Math.min(highs.length, lows.length, closes.length);
+  if (n < kLen + kSmooth + dSmooth) return [];
+
+  const rawK: Array<number | null> = new Array(n).fill(null);
+  for (let i = kLen - 1; i < n; i++) {
+    let hh = -Infinity;
+    let ll = Infinity;
+    for (let j = i - kLen + 1; j <= i; j++) {
+      if (highs[j] > hh) hh = highs[j];
+      if (lows[j] < ll) ll = lows[j];
+    }
+    const range = hh - ll;
+    rawK[i] = range <= 0 ? 50 : ((closes[i] - ll) / range) * 100;
+  }
+
+  const k: Array<number | null> = new Array(n).fill(null);
+  for (let i = kLen - 1 + kSmooth - 1; i < n; i++) {
+    let sum = 0;
+    let ok = true;
+    for (let j = i - kSmooth + 1; j <= i; j++) {
+      if (rawK[j] == null) {
+        ok = false;
+        break;
+      }
+      sum += rawK[j]!;
+    }
+    if (ok) k[i] = sum / kSmooth;
+  }
+
+  const out: Array<StochPoint | null> = new Array(n).fill(null);
+  for (let i = kLen - 1 + kSmooth - 1 + dSmooth - 1; i < n; i++) {
+    let sum = 0;
+    let ok = true;
+    for (let j = i - dSmooth + 1; j <= i; j++) {
+      if (k[j] == null) {
+        ok = false;
+        break;
+      }
+      sum += k[j]!;
+    }
+    if (ok && k[i] != null) out[i] = { k: k[i]!, d: sum / dSmooth };
+  }
+  return out;
+}
+
 /**
  * Calcula Média Móvel Simples (SMA)
  */

@@ -83,6 +83,22 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Top 4 Scanner 2. Stoch RSI 5m (50/50/40/11). LONG se K×D up (SL -5%). Após fecho LONG, SHORT se preço ≤ MA21−1% (SL +7%). Sem TP.',
   },
   {
+    strategyName: 'STCH15LONG',
+    displayNames: ['stch15long'],
+    buy: side(5, 0, 0, 0, 0, 0),
+    sell: null,
+    summary:
+      'Top 2 Scanner 2. Stochastic 15m (20/15/11). LONG se K×D up (SL −5%). Fecha no K×D down. Só LONG. Sem TP.',
+  },
+  {
+    strategyName: 'SCANNER2_RSI80_TOP3_LONG_4H',
+    displayNames: ['Scanner 2 RSI>80 Top 3 LONG (4h)'],
+    buy: side(10, 0, 0, 0, 0, 24),
+    sell: null,
+    summary:
+      'Top 3 Scanner 2. LONG se RSI(14) 4h cruza >80. SL −10%. Sem TP. Fecho 24h. Exclui rank #4.',
+  },
+  {
     strategyName: 'SCANNER3_RSI_FLIP_1H',
     displayNames: ['Scanner 3 RSI Flip 15m', 'Scanner 3 RSI Flip 1h'],
     buy: side(5, 0, 0, 0, 0, 72),

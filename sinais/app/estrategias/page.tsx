@@ -615,6 +615,48 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'SCANNER2_RSI80_TOP3_LONG_4H':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              <strong>LONG</strong> nos ranks <strong>1–{p.topN ?? 3}</strong> do Scanner 2 (exclui #4). Quando o{' '}
+              <strong>RSI({p.rsiPeriod ?? 14})</strong> em velas <strong>{p.chartTimeframe ?? '4h'}</strong> cruza acima de{' '}
+              <strong>{p.rsiLevel ?? 80}</strong>. SL −{((p.stopLossPct ?? 0.1) * 100).toFixed(0)}%. Sem TP. Fecho{' '}
+              <strong>{p.closeAfterHours ?? 24}h</strong>. Corre após{' '}
+              <code className="text-[10px]">run-universe-scans</code>.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Top N (máx. 3)', p.topN ?? 3, (v) => upd({ topN: Math.min(3, Math.max(1, v)) }))}
+              {numField('Nível RSI (cruzar acima)', p.rsiLevel ?? 80, (v) => upd({ rsiLevel: v }))}
+              {numField('Período RSI', p.rsiPeriod ?? 14, (v) => upd({ rsiPeriod: v }))}
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.1) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Horas até fecho', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
+              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
+            </div>
+          </div>
+        );
+
+      case 'STCH15LONG':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              <strong>stch15long</strong> — <strong>LONG</strong> nos ranks <strong>1–{p.topN ?? 2}</strong> do
+              Scanner 2. Stochastic clássico em <strong>{p.chartTimeframe ?? '15m'}</strong> (wait for close): %K{' '}
+              {p.kLength ?? 20} / Ksmooth {p.kSmoothing ?? 15} / %D {p.dSmoothing ?? 11}. K×D up → LONG (SL −
+              {((p.stopLossPct ?? 0.05) * 100).toFixed(0)}%). K×D down → fecha. Só LONG. Corre no{' '}
+              <code className="text-[10px]">run-5m</code>.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Top N (máx. 2)', p.topN ?? 2, (v) => upd({ topN: Math.min(2, Math.max(1, v)) }))}
+              {numField('%K Length', p.kLength ?? 20, (v) => upd({ kLength: v }))}
+              {numField('%K Smoothing', p.kSmoothing ?? 15, (v) => upd({ kSmoothing: v }))}
+              {numField('%D Smoothing', p.dSmoothing ?? 11, (v) => upd({ dSmoothing: v }))}
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
+            </div>
+          </div>
+        );
+
       default:
         return <p className="text-sm text-gray-500 dark:text-gray-400">Sem parâmetros configuráveis</p>;
     }
@@ -750,7 +792,9 @@ export default function EstrategiasPage() {
               const buyOnly =
                 strategy.name === 'EMA_SCALPING' ||
                 strategy.name === 'ACCUMULATION_BREAKOUT_15M' ||
-                strategy.name === 'SCANNER1_TOP5';
+                strategy.name === 'SCANNER1_TOP5' ||
+                strategy.name === 'SCANNER2_RSI80_TOP3_LONG_4H' ||
+                strategy.name === 'STCH15LONG';
 
               return (
               <div

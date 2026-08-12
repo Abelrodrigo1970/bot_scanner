@@ -133,6 +133,44 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
+    strategyName: 'STCH15LONG',
+
+    displayLabel: 'stch15long',
+
+    signalTimeframes: ['15m'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
+
+    description:
+      'Top 2 Scanner 2. Stochastic 15m (20/15/11): K×D up → LONG SL −5%; K×D down → fecha LONG. Só LONG. Cron 5m.',
+
+    refresh: '/api/cron/run-5m (cada 5 min)',
+
+  },
+
+  {
+
+    strategyName: 'SCANNER2_RSI80_TOP3_LONG_4H',
+
+    displayLabel: 'Scanner 2 RSI>80 Top 3 LONG (4h)',
+
+    signalTimeframes: ['4h'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
+
+    description:
+      'Top 3 Scanner 2 (exclui #4). LONG se RSI(14) 4h cruza >80. SL −10%. Fecho 24h. Sem TP.',
+
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+
+  },
+
+  {
+
     strategyName: 'EMA80_SMA7_BREAKDOWN_15M',
 
     displayLabel: 'Quebra EMA80 (SMA7>EMA80) 15m',

@@ -6,12 +6,14 @@
 
 | Endpoint | Estratégias | Frequência |
 |----------|-------------|------------|
-| `/api/cron/run-5m` | **Scanner 2 Stoch RSI Top 4** (K×D up LONG / down fecha) | `*/5 * * * *` (24h) |
+| `/api/cron/run-5m` | **Stoch RSI Top 4** + **stch15long** (Stoch 15m Top 2 LONG) | `*/5 * * * *` (24h) |
 | `/api/cron/run-15m` | MA Cross + Pivot Boss + Rompimentos + **Quebra EMA80** + **Scanner 3 RSI Flip** (flip 15m) | `*/15 * * * *` (24h) |
-| `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** + Scanner 6 (SMA80 4h) + rotação Top 4 + **SHORT rank #2** | `0 */4 * * *` (24h) |
+| `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** + Scanner 6 (SMA80 4h) + rotação Top 4 + **SHORT rank #2** + **RSI>80 Top 3 LONG** | `0 */4 * * *` (24h) |
 | `/api/cron/run-scanner3-rsi-1h` | **Scanner 3 RSI > 75 (1h)** + **RSI Flip** (LONG 15m entrada / flip RSI 15m&lt;70) | `0 * * * *` (24h) |
 | `/api/cron/run-scanner1-top5` | Scanner 2 Top 4 (rotação manual/backup) | opcional, 10–15 min após scan |
 | `/api/cron/run-scanner2-short-leader-24h` | Scanner 2 Short ranks #1–#2 (backup manual) | opcional, 10–15 min após scan |
+| `/api/cron/run-scanner2-rsi80-top3-long` | Scanner 2 RSI>80 Top 3 LONG 4h (backup manual) | opcional, 10–15 min após scan |
+| `/api/cron/run-stch15long` | stch15long Top 2 Stoch 15m LONG (backup manual) | opcional |
 
 **Obsoleto** (remover do cron-job.org): `run-1h`, `run-30m`, `run-afastamento-30m`, `run-rsi-15m`, `run-scans-ma`, `run-signals`, `run-scanner-s6-short-leader-12h`, `run-scanner1-top8`.
 
@@ -21,12 +23,12 @@
 
 4 jobs com header `Authorization: Bearer SEU_CRON_SECRET`:
 
-1. **Stoch RSI 5m** — `run-5m` — `*/5 * * * *`
+1. **Stoch RSI 5m + stch15long** — `run-5m` — `*/5 * * * *`
 2. **Sinais 15m** — `run-15m` — `*/15 * * * *`
 3. **Scanners 1+2 + rotações** — `run-universe-scans` — `0 */4 * * *` (ou `0 */2 * * *` se configuraste 2 h)
 4. **Scanner 3 RSI 1h** — `run-scanner3-rsi-1h` — `0 * * * *`
 
-Opcional backup: **Scanner 2 Top 4** — `run-scanner1-top5` — `20 */4 * * *` | **Scanner 2 Short** — `run-scanner2-short-leader-24h` — `25 */4 * * *`
+Opcional backup: **Scanner 2 Top 4** — `run-scanner1-top5` — `20 */4 * * *` | **Scanner 2 Short** — `run-scanner2-short-leader-24h` — `25 */4 * * *` | **RSI>80 Top 3 LONG** — `run-scanner2-rsi80-top3-long` — `30 */4 * * *`
 
 ## Segurança
 

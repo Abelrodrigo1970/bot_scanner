@@ -640,6 +640,145 @@ export const SCANNER2_STOCH_RSI_5M_PARAMS = {
   exchange: 'bybit',
 } as const;
 
+export const SCANNER2_RSI80_TOP3_LONG_4H_DISPLAY = 'Scanner 2 RSI>80 Top 3 LONG (4h)';
+
+export const SCANNER2_RSI80_TOP3_LONG_4H_DESCRIPTION =
+  'Top 3 do Scanner 2 (subidas 24h; exclui rank #4). LONG quando RSI(14) em 4h cruza acima de 80. SL −10%. Sem TP. Fecho automático 24h.';
+
+export const SCANNER2_RSI80_TOP3_LONG_4H_PARAMS = {
+  topN: 3,
+  chartTimeframe: '4h',
+  rsiPeriod: 14,
+  rsiLevel: 80,
+  stopLossPct: 0.1,
+  closeAfterHours: 24,
+  autoExecuteMinStrength: 80,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: false,
+  sellEnabled: false,
+  exchange: 'bybit',
+} as const;
+
+export const STCH15LONG_DISPLAY = 'stch15long';
+
+export const STCH15LONG_DESCRIPTION =
+  'Top 2 do Scanner 2 (subidas 24h). Stochastic clássico 15m (K 20 / Ksmooth 15 / D 11, wait for close): %K cruza %D para cima → LONG (SL −5%). %K cruza %D para baixo → fecha LONG. Só LONG. Cron 5m.';
+
+export const STCH15LONG_PARAMS = {
+  topN: 2,
+  chartTimeframe: '15m',
+  kLength: 20,
+  kSmoothing: 15,
+  dSmoothing: 11,
+  stopLossPct: 0.05,
+  autoExecuteMinStrength: 80,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: false,
+  sellEnabled: false,
+  exchange: 'bybit',
+} as const;
+
+/** Garante registo/descrição da estratégia stch15long. */
+export async function syncStch15LongConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'STCH15LONG' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...STCH15LONG_PARAMS,
+    ...p,
+    topN: STCH15LONG_PARAMS.topN,
+    chartTimeframe: STCH15LONG_PARAMS.chartTimeframe,
+    kLength: STCH15LONG_PARAMS.kLength,
+    kSmoothing: STCH15LONG_PARAMS.kSmoothing,
+    dSmoothing: STCH15LONG_PARAMS.dSmoothing,
+    stopLossPct: STCH15LONG_PARAMS.stopLossPct,
+    allowSell: false,
+    sellEnabled: false,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== STCH15LONG_DISPLAY || row.description !== STCH15LONG_DESCRIPTION;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'STCH15LONG' },
+      data: {
+        displayName: STCH15LONG_DISPLAY,
+        description: STCH15LONG_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
+/** Garante registo/descrição da estratégia Scanner 2 RSI>80 Top 3 LONG 4h. */
+export async function syncScanner2Rsi80Top3Long4hConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'SCANNER2_RSI80_TOP3_LONG_4H' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...SCANNER2_RSI80_TOP3_LONG_4H_PARAMS,
+    ...p,
+    topN: SCANNER2_RSI80_TOP3_LONG_4H_PARAMS.topN,
+    chartTimeframe: SCANNER2_RSI80_TOP3_LONG_4H_PARAMS.chartTimeframe,
+    rsiPeriod: SCANNER2_RSI80_TOP3_LONG_4H_PARAMS.rsiPeriod,
+    rsiLevel: SCANNER2_RSI80_TOP3_LONG_4H_PARAMS.rsiLevel,
+    stopLossPct: SCANNER2_RSI80_TOP3_LONG_4H_PARAMS.stopLossPct,
+    closeAfterHours: SCANNER2_RSI80_TOP3_LONG_4H_PARAMS.closeAfterHours,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== SCANNER2_RSI80_TOP3_LONG_4H_DISPLAY ||
+    row.description !== SCANNER2_RSI80_TOP3_LONG_4H_DESCRIPTION;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'SCANNER2_RSI80_TOP3_LONG_4H' },
+      data: {
+        displayName: SCANNER2_RSI80_TOP3_LONG_4H_DISPLAY,
+        description: SCANNER2_RSI80_TOP3_LONG_4H_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 /** Garante registo/descrição da estratégia Scanner 2 Stoch RSI Top 4 5m. */
 export async function syncScanner2StochRsi5mConfig(
   prisma: PrismaClient
@@ -1078,7 +1217,7 @@ export async function migrateScanner2StrategiesToBybit(
   if (done?.value === '1') return { migrated: [] };
 
   const migrated: string[] = [];
-  for (const name of ['SCANNER1_TOP5', 'SCANNER2_SHORT_LEADER_24H'] as const) {
+  for (const name of ['SCANNER1_TOP5', 'SCANNER2_SHORT_LEADER_24H', 'SCANNER2_RSI80_TOP3_LONG_4H'] as const) {
     const row = await prisma.strategy.findUnique({
       where: { name },
       select: { params: true },

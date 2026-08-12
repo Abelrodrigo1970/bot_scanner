@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runScanner2StochRsi5mPipeline } from '@/lib/scanner2StochRsi5mStrategy';
+import { runStch15LongPipeline } from '@/lib/stch15LongStrategy';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 /**
- * Cron 5m: Scanner 2 Stoch RSI Top 4
- * Stoch RSI (50/50/40/11) — K×D up LONG / K×D down fecha.
+ * Cron 5m:
+ * - Scanner 2 Stoch RSI Top 4 (5m)
+ * - stch15long — Stochastic Top 2 LONG (15m, wait for close)
  * Corre em foreground (await) para o auto-exec Bybit terminar antes da resposta.
  */
 
@@ -20,33 +22,51 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date();
-    console.log('[Run-5m] Iniciando Scanner 2 Stoch RSI Top 4...');
+    console.log('[Run-5m] Iniciando Stoch RSI 5m + stch15long...');
 
-    const result = await runScanner2StochRsi5mPipeline();
+    const stochRsi = await runScanner2StochRsi5mPipeline();
+    const stch15 = await runStch15LongPipeline();
 
-    if (result.status === 'skipped') {
-      console.log(`[Run-5m] Stoch RSI skipped: ${result.reason}`);
-      return NextResponse.json({
-        success: true,
-        skipped: true,
-        reason: result.reason,
-        executedAt: now.toISOString(),
-      });
+    if (stochRsi.status === 'skipped') {
+      console.log(`[Run-5m] Stoch RSI skipped: ${stochRsi.reason}`);
+    } else {
+      console.log(
+        `[Run-5m] Stoch RSI -> LONG ${stochRsi.longCreated}, SHORT ${stochRsi.shortCreated}, fechados ${stochRsi.closed}, exec ${stochRsi.executed}`
+      );
     }
 
-    console.log(
-      `[Run-5m] Stoch RSI -> LONG ${result.longCreated}, SHORT ${result.shortCreated}, fechados ${result.closed}, exec ${result.executed}`
-    );
+    if (stch15.status === 'skipped') {
+      console.log(`[Run-5m] stch15long skipped: ${stch15.reason}`);
+    } else {
+      console.log(
+        `[Run-5m] stch15long -> LONG ${stch15.longCreated}, fechados ${stch15.closed}, exec ${stch15.executed}`
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      longCreated: result.longCreated,
-      shortCreated: result.shortCreated,
-      closed: result.closed,
-      executed: result.executed,
-      longSymbols: result.longSymbols,
-      shortSymbols: result.shortSymbols,
-      closedSymbols: result.closedSymbols,
+      stochRsi5m:
+        stochRsi.status === 'skipped'
+          ? { skipped: true, reason: stochRsi.reason }
+          : {
+              longCreated: stochRsi.longCreated,
+              shortCreated: stochRsi.shortCreated,
+              closed: stochRsi.closed,
+              executed: stochRsi.executed,
+              longSymbols: stochRsi.longSymbols,
+              shortSymbols: stochRsi.shortSymbols,
+              closedSymbols: stochRsi.closedSymbols,
+            },
+      stch15long:
+        stch15.status === 'skipped'
+          ? { skipped: true, reason: stch15.reason }
+          : {
+              longCreated: stch15.longCreated,
+              closed: stch15.closed,
+              executed: stch15.executed,
+              longSymbols: stch15.longSymbols,
+              closedSymbols: stch15.closedSymbols,
+            },
       executedAt: now.toISOString(),
     });
   } catch (error) {
