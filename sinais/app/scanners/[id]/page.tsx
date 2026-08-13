@@ -34,7 +34,9 @@ export default function UniverseScannerPage() {
   const meta = code ? BUILTIN_UNIVERSE_META[code] : null;
   const scanDef = code ? getBuiltinScanDefinition(code) : null;
   const isPriceRankScanner = scanDef?.ruleType === 'TOP_PRICE_CHANGE_24H';
-  const isRsiRankScanner = scanDef?.ruleType === 'RSI_ABOVE';
+  const isRsiAboveScanner = scanDef?.ruleType === 'RSI_ABOVE';
+  const isRsiBelowScanner = scanDef?.ruleType === 'RSI_BELOW';
+  const isRsiRankScanner = isRsiAboveScanner || isRsiBelowScanner;
   const isVolumeRankScanner = scanDef?.ruleType === 'TOP_VOLUME_24H';
   const isTickerRankScanner = isPriceRankScanner || isRsiRankScanner || isVolumeRankScanner;
   /** Scanner 1 e Scanner 2: colunas de valor anterior + delta (como afastamento / % 24h). */
@@ -189,8 +191,12 @@ export default function UniverseScannerPage() {
             {isRsiRankScanner ? (
               <>
                 <li>
-                  Perpétuos USDT com <strong>RSI({rsiPeriodLabel}) &gt; {rsiThresholdLabel}</strong> em velas de{' '}
-                  <strong>{timeframeLabel}</strong> (maior RSI primeiro)
+                  Perpétuos USDT com{' '}
+                  <strong>
+                    RSI({rsiPeriodLabel}) {isRsiBelowScanner ? '<' : '>'} {rsiThresholdLabel}
+                  </strong>{' '}
+                  em velas de <strong>{timeframeLabel}</strong>{' '}
+                  ({isRsiBelowScanner ? 'menor RSI primeiro' : 'maior RSI primeiro'})
                 </li>
                 <li>Top 400 por volume 24h (mín. 500k USDT) — Binance Futures, RSI da última vela fechada</li>
               </>
@@ -217,7 +223,7 @@ export default function UniverseScannerPage() {
             </li>
             <li>
               Actualização automática:{' '}
-              {isRsiRankScanner ? (
+              {isRsiAboveScanner ? (
                 <>
                   cron <code className="text-[10px]">/api/cron/run-scanner3-rsi-1h</code> de{' '}
                   <strong>hora em hora</strong>

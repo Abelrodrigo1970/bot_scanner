@@ -263,6 +263,10 @@ export const DATA_SOURCE_MENU_ITEMS = [
     href: '/scanners/6',
     label: 'Scanner 6 — Acima SMA80 4h (SHORT rank #1)',
   },
+  {
+    href: '/scanners/rsi_vendido',
+    label: 'rsi_vendido — RSI < 32 (4h)',
+  },
 ] as const;
 
 

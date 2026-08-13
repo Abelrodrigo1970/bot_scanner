@@ -8,7 +8,7 @@
 |----------|-------------|------------|
 | `/api/cron/run-5m` | **Stoch RSI Top 4** + **stch15long** (Stoch 15m Top 2 LONG) | `*/5 * * * *` (24h) |
 | `/api/cron/run-15m` | MA Cross + Pivot Boss + Rompimentos + **Quebra EMA80** + **Scanner 3 RSI Flip** (flip 15m) | `*/15 * * * *` (24h) |
-| `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** + Scanner 6 (SMA80 4h) + rotação Top 4 + **SHORT rank #2** + **RSI>80 Top 3 LONG** | `0 */4 * * *` (24h) |
+| `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** + Scanner 6 (SMA80 4h) + **rsi_vendido** (RSI 4h &lt; 32) + rotação Top 4 + **SHORT rank #2** + **RSI>80 Top 3 LONG** | `0 */4 * * *` (24h) |
 | `/api/cron/run-scanner3-rsi-1h` | **Scanner 3 RSI > 75 (1h)** + **RSI Flip** (LONG 15m entrada / flip RSI 15m&lt;70) | `0 * * * *` (24h) |
 | `/api/cron/run-scanner1-top5` | Scanner 2 Top 4 (rotação manual/backup) | opcional, 10–15 min após scan |
 | `/api/cron/run-scanner2-short-leader-24h` | Scanner 2 Short ranks #1–#2 (backup manual) | opcional, 10–15 min após scan |

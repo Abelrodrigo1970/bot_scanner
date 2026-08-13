@@ -8,6 +8,7 @@ import { runScanner2Rsi80Top3LongPipeline } from '@/lib/scanner2Rsi80Top3LongStr
 
 /**
  * Scanner 1 + Scanner 2 (top 30 subidas 24h) + Scanner 6 (SMA80 4h)
+ * + rsi_vendido (RSI 4h < 32)
  * + rotação Scanner 2 Top 4 + SHORT Scanner 2 rank #2 + LONG RSI>80 Top 3.
  * Agendar de 4 em 4 horas.
  */

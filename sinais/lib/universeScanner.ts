@@ -18,9 +18,9 @@ export interface UniverseScanDefinition {
   candidateLimit: number;
   /** Máximo de linhas gravadas (ex.: top 30 volume 24h). */
   resultLimit?: number;
-  /** Scanners RSI: período do RSI (ruleType RSI_ABOVE). */
+  /** Scanners RSI: período do RSI (ruleType RSI_ABOVE / RSI_BELOW). */
   rsiPeriod?: number;
-  /** Scanners RSI: limiar mínimo de RSI a incluir (ex.: 75). */
+  /** Scanners RSI: limiar (mínimo em RSI_ABOVE, máximo em RSI_BELOW). */
   rsiThreshold?: number;
 }
 
@@ -54,10 +54,13 @@ async function scanTopPriceChange24hUniverse(def: UniverseScanDefinition): Promi
   }));
 }
 
-/** RSI_ABOVE: perpétuos USDT com RSI (timeframe def) acima do limiar, ordenados por RSI desc. */
-async function scanRsiAboveUniverse(def: UniverseScanDefinition): Promise<UniverseScanRow[]> {
+/** RSI_ABOVE / RSI_BELOW: perpétuos USDT vs limiar de RSI na última vela fechada. */
+async function scanRsiThresholdUniverse(
+  def: UniverseScanDefinition,
+  mode: 'above' | 'below'
+): Promise<UniverseScanRow[]> {
   const rsiPeriod = Math.max(2, Math.floor(def.rsiPeriod ?? 14));
-  const threshold = Number(def.rsiThreshold ?? 75);
+  const threshold = Number(def.rsiThreshold ?? (mode === 'below' ? 32 : 75));
   const symbols = await fetchTopSymbolsByVolume(
     Math.min(Math.max(def.candidateLimit, 50), 600),
     def.minQuoteVolume
@@ -77,7 +80,8 @@ async function scanRsiAboveUniverse(def: UniverseScanDefinition): Promise<Univer
           const rsi = calculateRSI(closes, rsiPeriod);
           const close = closes[closes.length - 1];
           if (rsi === null || close === undefined) return null;
-          if (rsi < threshold) return null;
+          if (mode === 'above' && rsi < threshold) return null;
+          if (mode === 'below' && rsi >= threshold) return null;
           return { symbol, close, ma: rsi, pctFromMa: rsi };
         } catch {
           return null;
@@ -90,7 +94,7 @@ async function scanRsiAboveUniverse(def: UniverseScanDefinition): Promise<Univer
     await delay(BATCH_DELAY_MS);
   }
 
-  results.sort((a, b) => b.ma - a.ma);
+  results.sort((a, b) => (mode === 'below' ? a.ma - b.ma : b.ma - a.ma));
   const limit = Math.floor(def.resultLimit ?? 0);
   return limit > 0 ? results.slice(0, limit) : results;
 }
@@ -102,7 +106,10 @@ export async function scanSymbolUniverse(
     return scanTopPriceChange24hUniverse(def);
   }
   if (def.ruleType === 'RSI_ABOVE') {
-    return scanRsiAboveUniverse(def);
+    return scanRsiThresholdUniverse(def, 'above');
+  }
+  if (def.ruleType === 'RSI_BELOW') {
+    return scanRsiThresholdUniverse(def, 'below');
   }
 
   const symbols = await fetchTopSymbolsByVolume(

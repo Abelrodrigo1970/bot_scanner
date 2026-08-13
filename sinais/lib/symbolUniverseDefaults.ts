@@ -24,14 +24,20 @@ export const UNIVERSE_CODE_SCANNER_3_RSI75_15M = UNIVERSE_CODE_SCANNER_3_RSI75_1
 
 export const UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H = 'UNIVERSE_ABOVE_MA80_4H' as const;
 
+/** rsi_vendido — RSI(14) 4h abaixo de 32. */
+export const UNIVERSE_CODE_RSI_VENDIDO = 'UNIVERSE_RSI_BELOW_32_4H' as const;
+
 export const SCANNER_3_RSI_PERIOD = 14;
 export const SCANNER_3_RSI_THRESHOLD = 75;
+
+export const RSI_VENDIDO_PERIOD = 14;
+export const RSI_VENDIDO_THRESHOLD = 32;
 
 export const SCANNER_2_MIN_DISTANCE_PCT = -5;
 export const SCANNER_2_MAX_DISTANCE_PCT = 15;
 export const SCANNER_2_EMA80_BAND_LABEL = '-5% a +15% da EMA80 (1h)';
 
-/** Scanners 1 e 2 — actualizados em run-universe-scans (4 h). */
+/** Scanners 1, 2, 6 e rsi_vendido — actualizados em run-universe-scans (4 h). */
 export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = {
   UNIVERSE_ABOVE_MA200_1H: {
     ruleType: 'ABOVE_MA',
@@ -60,6 +66,17 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
     timeframe: '4h',
     minQuoteVolume: 500000,
     candidateLimit: 400,
+  },
+  UNIVERSE_RSI_BELOW_32_4H: {
+    ruleType: 'RSI_BELOW',
+    maPeriod: 0,
+    minDistancePct: null,
+    maxDistancePct: null,
+    timeframe: '4h',
+    minQuoteVolume: 500000,
+    candidateLimit: 400,
+    rsiPeriod: RSI_VENDIDO_PERIOD,
+    rsiThreshold: RSI_VENDIDO_THRESHOLD,
   },
 };
 
@@ -107,12 +124,18 @@ export function getBuiltinScanDefinition(code: string): UniverseScanDefinition |
 /** Scanners com ranking fixo (ordem de inserção), não |pctFromMa|. */
 export function isTickerRankUniverseScan(code: string): boolean {
   const rt = BUILTIN_UNIVERSE_SCAN[code]?.ruleType;
-  return rt === 'TOP_PRICE_CHANGE_24H' || rt === 'TOP_VOLUME_24H' || rt === 'RSI_ABOVE';
+  return (
+    rt === 'TOP_PRICE_CHANGE_24H' ||
+    rt === 'TOP_VOLUME_24H' ||
+    rt === 'RSI_ABOVE' ||
+    rt === 'RSI_BELOW'
+  );
 }
 
 /** Scanners ordenados por RSI (coluna RSI na UI). */
 export function isRsiRankUniverseScan(code: string): boolean {
-  return BUILTIN_UNIVERSE_SCAN[code]?.ruleType === 'RSI_ABOVE';
+  const rt = BUILTIN_UNIVERSE_SCAN[code]?.ruleType;
+  return rt === 'RSI_ABOVE' || rt === 'RSI_BELOW';
 }
 
 /** @deprecated Use isTickerRankUniverseScan */
@@ -152,6 +175,12 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Rotação long no bot_cripto.',
     strategyNames: 'SCANNER_MA80_4H_TOP6 (bot_cripto)',
   },
+  UNIVERSE_RSI_BELOW_32_4H: {
+    displayName: 'rsi_vendido — RSI < 32 (4h)',
+    description:
+      'Perpétuos USDT (top volume) com RSI(14) abaixo de 32 em velas de 4h, ordenados pelo RSI mais baixo primeiro. Mín. 500k USDT volume 24h. Actualização no cron de 4h (run-universe-scans).',
+    strategyNames: '— (lista / universo; sem estratégia de sinais)',
+  },
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
@@ -163,6 +192,7 @@ export const SCANNER_UI_ROUTES = [
   { scannerId: '2', code: UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H },
   { scannerId: '3', code: UNIVERSE_CODE_SCANNER_3_RSI75_1H },
   { scannerId: '6', code: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H },
+  { scannerId: 'rsi_vendido', code: UNIVERSE_CODE_RSI_VENDIDO },
 ] as const;
 
 export function getScannerByUiId(scannerId: string) {
