@@ -171,6 +171,25 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
+    strategyName: 'RSI_VENDIDO_4H',
+
+    displayLabel: 'rsi_vendido LONG (4h)',
+
+    signalTimeframes: ['4h'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_RSI_BELOW_32_4H',
+
+    description:
+      'rsi_vendido. LONG se RSI(14) 4h cruza <25. SL −5%. Sai quando RSI cruza >32 (ou 24h). Só LONG.',
+
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+
+  },
+
+  {
+
     strategyName: 'EMA80_SMA7_BREAKDOWN_15M',
 
     displayLabel: 'Quebra EMA80 (SMA7>EMA80) 15m',

@@ -18,6 +18,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'SCANNER2_RSI80_TOP3_LONG_4H',
 
+  'RSI_VENDIDO_4H',
+
   'PIVOT_BOSS_BEAR_15M',
 
   'ACCUMULATION_BREAKOUT_15M',
@@ -125,6 +127,18 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '4h',
 
     universe: 'Scanner 2 Top 3; RSI(14) 4h cruza >80 → LONG SL −10%; fecho 24h',
+
+  },
+
+  RSI_VENDIDO_4H: {
+
+    cron: '1h',
+
+    cronLabel: 'Pós-scan 4h',
+
+    timeframe: '4h',
+
+    universe: 'rsi_vendido; RSI(14) 4h cruza <25 → LONG SL −5%; sai se RSI >32',
 
   },
 

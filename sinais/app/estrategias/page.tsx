@@ -657,6 +657,30 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'RSI_VENDIDO_4H':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              <strong>rsi_vendido</strong> — <strong>LONG</strong> nos ranks <strong>1–{p.topN ?? 80}</strong> do
+              scanner. Quando o <strong>RSI({p.rsiPeriod ?? 14})</strong> em{' '}
+              <strong>{p.chartTimeframe ?? '4h'}</strong> cruza abaixo de{' '}
+              <strong>{p.rsiEntryLevel ?? 25}</strong>. SL −
+              {((p.stopLossPct ?? 0.05) * 100).toFixed(0)}%. Sai quando o RSI cruza acima de{' '}
+              {p.rsiExitLevel ?? 32} (ou {p.closeAfterHours ?? 24}h). Só LONG. Corre após{' '}
+              <code className="text-[10px]">run-universe-scans</code>.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Top N (máx. 80)', p.topN ?? 80, (v) => upd({ topN: Math.min(80, Math.max(1, v)) }))}
+              {numField('RSI entrada (cruzar abaixo)', p.rsiEntryLevel ?? 25, (v) => upd({ rsiEntryLevel: v }))}
+              {numField('RSI saída (cruzar acima)', p.rsiExitLevel ?? 32, (v) => upd({ rsiExitLevel: v }))}
+              {numField('Período RSI', p.rsiPeriod ?? 14, (v) => upd({ rsiPeriod: v }))}
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Horas até fecho', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
+              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 80, (v) => upd({ autoExecuteMinStrength: v }))}
+            </div>
+          </div>
+        );
+
       default:
         return <p className="text-sm text-gray-500 dark:text-gray-400">Sem parâmetros configuráveis</p>;
     }
@@ -794,7 +818,8 @@ export default function EstrategiasPage() {
                 strategy.name === 'ACCUMULATION_BREAKOUT_15M' ||
                 strategy.name === 'SCANNER1_TOP5' ||
                 strategy.name === 'SCANNER2_RSI80_TOP3_LONG_4H' ||
-                strategy.name === 'STCH15LONG';
+                strategy.name === 'STCH15LONG' ||
+                strategy.name === 'RSI_VENDIDO_4H';
 
               return (
               <div

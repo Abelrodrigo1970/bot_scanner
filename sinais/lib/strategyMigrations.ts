@@ -680,6 +680,78 @@ export const STCH15LONG_PARAMS = {
   exchange: 'bybit',
 } as const;
 
+export const RSI_VENDIDO_4H_DISPLAY = 'rsi_vendido LONG (4h)';
+
+export const RSI_VENDIDO_4H_DESCRIPTION =
+  'Universo rsi_vendido (RSI(14) 4h < 32). LONG quando o RSI 4h cruza abaixo de 25. SL −5%. Sai quando o RSI cruza acima de 32 (ou 24h). Só LONG. Sem TP.';
+
+export const RSI_VENDIDO_4H_PARAMS = {
+  topN: 80,
+  chartTimeframe: '4h',
+  rsiPeriod: 14,
+  rsiEntryLevel: 25,
+  rsiExitLevel: 32,
+  stopLossPct: 0.05,
+  closeAfterHours: 24,
+  autoExecuteMinStrength: 80,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: false,
+  sellEnabled: false,
+  exchange: 'bybit',
+} as const;
+
+/** Garante registo/descrição da estratégia rsi_vendido LONG 4h. */
+export async function syncRsiVendido4hConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'RSI_VENDIDO_4H' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...RSI_VENDIDO_4H_PARAMS,
+    ...p,
+    topN: RSI_VENDIDO_4H_PARAMS.topN,
+    chartTimeframe: RSI_VENDIDO_4H_PARAMS.chartTimeframe,
+    rsiPeriod: RSI_VENDIDO_4H_PARAMS.rsiPeriod,
+    rsiEntryLevel: RSI_VENDIDO_4H_PARAMS.rsiEntryLevel,
+    rsiExitLevel: RSI_VENDIDO_4H_PARAMS.rsiExitLevel,
+    stopLossPct: RSI_VENDIDO_4H_PARAMS.stopLossPct,
+    closeAfterHours: RSI_VENDIDO_4H_PARAMS.closeAfterHours,
+    allowSell: false,
+    sellEnabled: false,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== RSI_VENDIDO_4H_DISPLAY || row.description !== RSI_VENDIDO_4H_DESCRIPTION;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'RSI_VENDIDO_4H' },
+      data: {
+        displayName: RSI_VENDIDO_4H_DISPLAY,
+        description: RSI_VENDIDO_4H_DESCRIPTION,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 /** Garante registo/descrição da estratégia stch15long. */
 export async function syncStch15LongConfig(
   prisma: PrismaClient

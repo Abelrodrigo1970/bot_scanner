@@ -5,11 +5,13 @@ import { persistUniverseScan } from '@/lib/universeScanPersistence';
 import { runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
 import { runScanner2ShortLeader24hPipeline } from '@/lib/scanner2ShortLeader24hStrategy';
 import { runScanner2Rsi80Top3LongPipeline } from '@/lib/scanner2Rsi80Top3LongStrategy';
+import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 
 /**
  * Scanner 1 + Scanner 2 (top 30 subidas 24h) + Scanner 6 (SMA80 4h)
  * + rsi_vendido (RSI 4h < 32)
- * + rotação Scanner 2 Top 4 + SHORT Scanner 2 rank #2 + LONG RSI>80 Top 3.
+ * + rotação Scanner 2 Top 4 + SHORT Scanner 2 rank #2 + LONG RSI>80 Top 3
+ * + rsi_vendido LONG bounce.
  * Agendar de 4 em 4 horas.
  */
 let universeScansJobPromise: Promise<void> | null = null;
@@ -67,6 +69,15 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
     console.log('[Universe-Scans] Scanner 2 RSI>80 Top 3 LONG:', rsi80);
   } catch (err) {
     console.error('[Universe-Scans] Scanner 2 RSI>80 Top 3 LONG falhou:', err);
+  }
+
+  try {
+    const rsiVendido = await runRsiVendidoPipeline({
+      logPrefix: '[Universe-Scans → rsi_vendido LONG]',
+    });
+    console.log('[Universe-Scans] rsi_vendido LONG:', rsiVendido);
+  } catch (err) {
+    console.error('[Universe-Scans] rsi_vendido LONG falhou:', err);
   }
 
   return results;

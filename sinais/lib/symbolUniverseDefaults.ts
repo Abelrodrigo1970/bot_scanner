@@ -179,12 +179,14 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'rsi_vendido — RSI < 32 (4h)',
     description:
       'Perpétuos USDT (top volume) com RSI(14) abaixo de 32 em velas de 4h, ordenados pelo RSI mais baixo primeiro. Mín. 500k USDT volume 24h. Actualização no cron de 4h (run-universe-scans).',
-    strategyNames: '— (lista / universo; sem estratégia de sinais)',
+    strategyNames: 'rsi_vendido LONG (4h)',
   },
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
   '2': 'Scanner 2 Short Leader 24h: SHORT rank #2 — pump 50–90%, hold 24h, SL +25%, bloqueio 10–14h PT.',
+  rsi_vendido:
+    'rsi_vendido LONG (4h): entra quando RSI 4h cruza abaixo de 25; sai quando cruza acima de 32 (SL −5%, máx. 24h).',
 };
 
 export const SCANNER_UI_ROUTES = [

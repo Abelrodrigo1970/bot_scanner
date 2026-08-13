@@ -99,6 +99,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Top 3 Scanner 2. LONG se RSI(14) 4h cruza >80. SL −10%. Sem TP. Fecho 24h. Exclui rank #4.',
   },
   {
+    strategyName: 'RSI_VENDIDO_4H',
+    displayNames: ['rsi_vendido LONG (4h)'],
+    buy: side(5, 0, 0, 0, 0, 24),
+    sell: null,
+    summary:
+      'rsi_vendido. LONG se RSI(14) 4h cruza <25. SL −5%. Sai quando RSI cruza >32. Fecho 24h. Só LONG.',
+  },
+  {
     strategyName: 'SCANNER3_RSI_FLIP_1H',
     displayNames: ['Scanner 3 RSI Flip 15m', 'Scanner 3 RSI Flip 1h'],
     buy: side(5, 0, 0, 0, 0, 72),

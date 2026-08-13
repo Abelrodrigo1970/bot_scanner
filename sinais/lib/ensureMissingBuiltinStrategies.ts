@@ -28,6 +28,9 @@ import {
   STCH15LONG_DESCRIPTION,
   STCH15LONG_DISPLAY,
   STCH15LONG_PARAMS,
+  RSI_VENDIDO_4H_DESCRIPTION,
+  RSI_VENDIDO_4H_DISPLAY,
+  RSI_VENDIDO_4H_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncPivotBossBear15mUniverse,
@@ -39,6 +42,7 @@ import {
   syncScanner2StochRsi5mConfig,
   syncScanner2Rsi80Top3Long4hConfig,
   syncStch15LongConfig,
+  syncRsiVendido4hConfig,
   resetScanner3RsiFlipHistoryOnce,
   migrateScannerS6ShortToScanner2ShortLeader24h,
   syncScanner2ShortLeader24hConfig,
@@ -119,6 +123,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: STCH15LONG_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(STCH15LONG_PARAMS),
+  },
+  {
+    name: 'RSI_VENDIDO_4H',
+    displayName: RSI_VENDIDO_4H_DISPLAY,
+    description: RSI_VENDIDO_4H_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(RSI_VENDIDO_4H_PARAMS),
   },
 ] as const;
 
@@ -209,6 +220,11 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const stch15Sync = await syncStch15LongConfig(prisma);
   if (stch15Sync.updated) {
     console.log('✅ STCH15LONG (stch15long): Top 2 | Stoch 15m 20/15/11 LONG | SL −5% | exit K×D down');
+  }
+
+  const rsiVendidoSync = await syncRsiVendido4hConfig(prisma);
+  if (rsiVendidoSync.updated) {
+    console.log('✅ RSI_VENDIDO_4H: rsi_vendido | RSI 4h cruza <25 LONG | sai >32 | SL −5% | 24h');
   }
 
   const flipHistoryReset = await resetScanner3RsiFlipHistoryOnce(prisma);
