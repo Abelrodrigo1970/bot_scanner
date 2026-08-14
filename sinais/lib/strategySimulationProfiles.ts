@@ -58,21 +58,21 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: null,
     sell: side(7, 9, 50),
     summary:
-      'Só VENDA. Stack 12/30/80/200 bearish. SL +7% fixo. TP1 -9% (50%) | restante às 24h.',
+      'DESCONTINUADA. Só VENDA. Stack 12/30/80/200 bearish. SL +7% fixo. TP1 -9% (50%) | restante às 24h.',
   },
   {
     strategyName: 'SCANNER1_TOP5',
     displayNames: ['Scanner 2 Top 4 (rotação 4h)'],
     buy: side(1, 0, 0, 0, 0, 24),
     sell: side(1, 0, 0, 0, 0, 24),
-    summary: 'LONG top 4 (SL 1%) + SHORT saídas (SL 1%). Sem TP. Fecho SHORT 24h.',
+    summary: 'DESCONTINUADA. LONG top 4 (SL 1%) + SHORT saídas (SL 1%). Sem TP. Fecho SHORT 24h.',
   },
   {
     strategyName: 'SCANNER2_SHORT_LEADER_24H',
     displayNames: ['Scanner 2 Short Leader 24h'],
     buy: null,
     sell: side(25, 0, 0, 0, 0, 24),
-    summary: 'SHORT rank #2 Scanner 2. Pump 50–90%. SL +25%. Fecho 24h. Bloqueio 10–14h PT.',
+    summary: 'DESCONTINUADA. SHORT rank #2 Scanner 2. Pump 50–90%. SL +25%. Fecho 24h.',
   },
   {
     strategyName: 'SCANNER2_STOCH_RSI_5M',
@@ -80,7 +80,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 0, 0, 0, 0, 0),
     sell: side(7, 0, 0, 0, 0, 0),
     summary:
-      'Top 4 Scanner 2. Stoch RSI 5m (50/50/40/11). LONG se K×D up (SL -5%). Após fecho LONG, SHORT se preço ≤ MA21−1% (SL +7%). Sem TP.',
+      'DESCONTINUADA. Top 4 Scanner 2. Stoch RSI 5m. LONG K×D up SL −5%; SHORT pós-LONG se ≤MA21−1% SL +7%.',
   },
   {
     strategyName: 'STCH15LONG',
@@ -112,14 +112,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 0, 0, 0, 0, 72),
     sell: side(5, 0, 0, 0, 0, 24),
     summary:
-      'Scan 1h RSI>75 ranks 6–14. LONG 15m se RSI 15m≥70 (SL -5%, 72h). SHORT quando RSI 15m cruza <70 (SL +5%, 24h). Sem TP.',
+      'DESCONTINUADA. Scan 1h RSI>75 ranks 6–14. LONG 15m se RSI≥70; SHORT se RSI cruza <70.',
   },
   {
     strategyName: 'SCANNER3_RSI_BREAKOUT_15M',
     displayNames: ['Scanner 3 RSI Rompimento 1h', 'Scanner 3 RSI Rompimento 15m'],
     buy: side(7, 10.5, 50),
     sell: null,
-    summary: 'Só COMPRA. Velas 1h. SL -7%. TP1 R×1,5 (~10,5%, 50% pos.). Restante às 24h.',
+    summary: 'DESCONTINUADA. Só COMPRA. Velas 1h. SL -7%. TP1 R×1,5 (~10,5%, 50% pos.).',
   },
 ];
 

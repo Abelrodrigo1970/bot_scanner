@@ -1,6 +1,9 @@
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
 
-import { DEPRECATED_TOP_ROTATION_NAMES } from './ensureMissingBuiltinStrategies';
+import {
+  DEPRECATED_TOP_ROTATION_NAMES,
+  DISCONTINUED_STRATEGY_NAMES,
+} from './ensureMissingBuiltinStrategies';
 
 
 
@@ -10,27 +13,11 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'MA_CROSS_5M',
 
-  'SCANNER1_TOP5',
-
-  'SCANNER2_STOCH_RSI_5M',
-
   'STCH15LONG',
 
   'SCANNER2_RSI80_TOP3_LONG_4H',
 
   'RSI_VENDIDO_4H',
-
-  'PIVOT_BOSS_BEAR_15M',
-
-  'ACCUMULATION_BREAKOUT_15M',
-
-  'EMA80_SMA7_BREAKDOWN_15M',
-
-  'SCANNER2_SHORT_LEADER_24H',
-
-  'SCANNER3_RSI_FLIP_1H',
-
-  'SCANNER3_RSI_BREAKOUT_15M',
 
 ] as const;
 
@@ -91,18 +78,6 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '4h',
 
     universe: 'Scanner 2 — ranks 1–4 (top subidas 24h)',
-
-  },
-
-  SCANNER2_STOCH_RSI_5M: {
-
-    cron: '5m',
-
-    cronLabel: 'Cron 5m',
-
-    timeframe: '5m',
-
-    universe: 'Scanner 2 Top 4; Stoch RSI K×D LONG SL5%; SHORT após LONG se preço ≤ MA21−1% SL7%',
 
   },
 
@@ -276,6 +251,12 @@ for (const n of DEPRECATED_TOP_ROTATION_NAMES) {
 
 }
 
+for (const n of DISCONTINUED_STRATEGY_NAMES) {
+
+  removedSet.add(n);
+
+}
+
 
 
 export function isDeprecatedStrategyName(name: string): boolean {
@@ -314,7 +295,7 @@ export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; descrip
 
     title: 'Cron 15m',
 
-    description: 'MA Cross 12×30 (15m) + Pivot Boss Bear 15m',
+    description: 'MA Cross 12×30 (15m)',
 
   },
 
@@ -324,7 +305,7 @@ export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; descrip
 
     title: 'Rotação 4h',
 
-    description: 'Scanner 2 Top 4 (LONG + SHORT saídas) + Scanner 2 Short rank #2 (após run-universe-scans)',
+    description: 'Scanner 2 RSI>80 Top 3 LONG + rsi_vendido LONG (após run-universe-scans)',
 
   },
 
@@ -332,9 +313,9 @@ export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; descrip
 
     key: '1h+15m',
 
-    title: 'Scanner 3 (1h + 15m)',
+    title: 'Cron 5m',
 
-    description: 'Scan RSI>75 1h + Flip (LONG entrada / SHORT RSI 15m < 70)',
+    description: 'stch15long (Stoch 15m Top 2 LONG)',
 
   },
 

@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db';
 import { UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 } from '@/lib/symbolUniverseDefaults';
 import { resolveUniverseScanSymbolsTopN } from '@/lib/universeScanPersistence';
 import {
-  runAllStrategies,
   runMaCross15mStrategy,
   strategyAllowsAutoExecuteDirection,
   type StrategyParams,
@@ -12,10 +11,6 @@ import {
   isMaCross15mHourBlocked,
   MA_CROSS_15M_MIN_TURNOVER_1H_USD,
 } from '@/lib/maCross15mGuard';
-import {
-  isPivotBossBear15mHourBlocked,
-  isPivotBossBear15mWeekendBlocked,
-} from '@/lib/pivotBossGuard';
 import { update24hResults } from '@/lib/update24hResults';
 import {
   cleanupBybitOrphanOpenOrders,
@@ -23,7 +18,6 @@ import {
   inspectActivePositionForSymbol,
 } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
-import { runScanner3RsiFlip1hPipeline } from '@/lib/scanner3RsiFlip1hStrategy';
 
 const TIMEFRAME_15M = '15m' as const;
 const MA_CROSS_5M_MIN_STRENGTH = 70;
@@ -219,114 +213,13 @@ export async function runMaCross15mPipeline(now: Date = new Date()): Promise<Cro
 
 export interface Cron15mAllResult {
   maCross: Cron15mResult;
-  pivotBoss: Cron15mResult;
-  breakout: Cron15mResult;
-  ema80Sma7Breakdown: Cron15mResult;
-  scanner3RsiFlip: Awaited<ReturnType<typeof runScanner3RsiFlip1hPipeline>>;
-}
-
-async function runPivotBoss15mPipeline(now: Date): Promise<Cron15mResult> {
-  const pivotStrategy = await prisma.strategy.findFirst({ where: { name: 'PIVOT_BOSS_BEAR_15M' } });
-  if (!pivotStrategy) {
-    console.warn('[Pivot Boss 15m] Estratégia PIVOT_BOSS_BEAR_15M não encontrada (correr o seed).');
-    return { status: 'not-found' };
-  }
-  if (!pivotStrategy.isActive) {
-    console.log('[Pivot Boss 15m] Estratégia inactiva — saltada.');
-    return { status: 'inactive' };
-  }
-  if (isPivotBossBear15mWeekendBlocked(now)) {
-    console.log('[Pivot Boss 15m] Fim-de-semana (PT) — saltada.');
-    return { status: 'skipped-weekend' };
-  }
-  if (isPivotBossBear15mHourBlocked(now)) {
-    const h = now.toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hour12: false });
-    console.log(`[Pivot Boss 15m] Horário ${h}h PT bloqueado — saltada.`);
-    return { status: 'skipped-hour' };
-  }
-
-  try {
-    const signalsCreated = await runAllStrategies({ only: ['PIVOT_BOSS_BEAR_15M'] });
-    return { status: 'done', signalsCreated };
-  } catch (error) {
-    console.error('[Pivot Boss 15m] Falhou:', error);
-    return { status: 'not-found' };
-  }
-}
-
-async function runBreakout15mPipeline(): Promise<Cron15mResult> {
-  const strategy = await prisma.strategy.findFirst({
-    where: { name: 'ACCUMULATION_BREAKOUT_15M' },
-  });
-  if (!strategy) {
-    console.warn('[Rompimento 15m] Estratégia ACCUMULATION_BREAKOUT_15M não encontrada (correr o seed).');
-    return { status: 'not-found' };
-  }
-  if (!strategy.isActive) {
-    console.log('[Rompimento 15m] Estratégia inactiva — saltada.');
-    return { status: 'inactive' };
-  }
-
-  try {
-    const signalsCreated = await runAllStrategies({ only: ['ACCUMULATION_BREAKOUT_15M'] });
-    return { status: 'done', signalsCreated };
-  } catch (error) {
-    console.error('[Rompimento 15m] Falhou:', error);
-    return { status: 'not-found' };
-  }
-}
-
-async function runEma80Sma7Breakdown15mPipeline(): Promise<Cron15mResult> {
-  const strategy = await prisma.strategy.findFirst({
-    where: { name: 'EMA80_SMA7_BREAKDOWN_15M' },
-  });
-  if (!strategy) {
-    console.warn(
-      '[Quebra EMA80 15m] Estratégia EMA80_SMA7_BREAKDOWN_15M não encontrada (correr o seed).'
-    );
-    return { status: 'not-found' };
-  }
-  if (!strategy.isActive) {
-    console.log('[Quebra EMA80 15m] Estratégia inactiva — saltada.');
-    return { status: 'inactive' };
-  }
-
-  try {
-    const signalsCreated = await runAllStrategies({ only: ['EMA80_SMA7_BREAKDOWN_15M'] });
-    return { status: 'done', signalsCreated };
-  } catch (error) {
-    console.error('[Quebra EMA80 15m] Falhou:', error);
-    return { status: 'not-found' };
-  }
 }
 
 /**
- * Scanner 3 RSI Flip — só verifica flips (RSI 15m < 70) em LONGs abertos.
- * Entradas LONG continuam no cron horário após scan 1h.
- */
-export async function runScanner3RsiFlip15mFlipsPipeline(): Promise<
-  Awaited<ReturnType<typeof runScanner3RsiFlip1hPipeline>>
-> {
-  try {
-    return await runScanner3RsiFlip1hPipeline({
-      mode: 'flips_only',
-      logPrefix: '[Cron 15m → Scanner3 RSI Flip]',
-    });
-  } catch (error) {
-    console.error('[Scanner3 RSI Flip 15m] Falhou:', error);
-    return { status: 'skipped', reason: 'Erro no pipeline flip 15m' };
-  }
-}
-
-/**
- * Cron único 15m: estratégias 15m (MA Cross, Pivot Boss, Rompimentos, Quebra EMA80, Scanner3 Flip).
+ * Cron único 15m: só MA Cross (Pivot / Rompimento / Quebra / Flip descontinuados).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
-  const scanner3RsiFlip = await runScanner3RsiFlip15mFlipsPipeline();
-  const ema80Sma7Breakdown = await runEma80Sma7Breakdown15mPipeline();
   const maCross = await runMaCross15mPipeline(now);
-  const pivotBoss = await runPivotBoss15mPipeline(now);
-  const breakout = await runBreakout15mPipeline();
-  return { maCross, pivotBoss, breakout, ema80Sma7Breakdown, scanner3RsiFlip };
+  return { maCross };
 }
 

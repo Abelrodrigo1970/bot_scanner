@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runScanner3Rsi1hPipeline } from '@/lib/scanner3Rsi1hPipeline';
 
 /**
- * Scanner 3 RSI 1h — actualiza universo RSI>75 (1h) + RSI Flip 15m
- * (LONG 15m na entrada / flip SHORT se RSI 15m < 70).
- * Agendar: 0 * * * * (início de cada hora, Europe/Lisbon).
+ * Scanner 3 RSI 1h — actualiza universo RSI>75 (1h).
+ * Flip descontinuado (Ago 2026); pipeline ainda corre mas salta se inactivo.
+ * Agendar: opcional / obsoleto.
  */
 let jobPromise: Promise<void> | null = null;
 

@@ -29,20 +29,12 @@ const ALLOWED_STRATEGIES = [
   'MA Cross 12×30 (15m)',
   'MA12/MA30',
   'MA_CROSS_5M',
-  'Pivot Boss Bear',
-  'PIVOT_BOSS_BEAR_15M',
-  'Scanner 2 Short Leader 24h',
-  'SCANNER2_SHORT_LEADER_24H',
-  'Scanner 2 Stoch RSI Top 4 (5m)',
-  'SCANNER2_STOCH_RSI_5M',
   'stch15long',
   'STCH15LONG',
   'Scanner 2 RSI>80 Top 3 LONG (4h)',
   'SCANNER2_RSI80_TOP3_LONG_4H',
   'rsi_vendido LONG (4h)',
   'RSI_VENDIDO_4H',
-  'Scanner 3 RSI Flip 15m',
-  'SCANNER3_RSI_FLIP_1H',
 ];
 
 /** Força mínima para executar */

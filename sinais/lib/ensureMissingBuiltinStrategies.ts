@@ -43,7 +43,6 @@ import {
   syncScanner2Rsi80Top3Long4hConfig,
   syncStch15LongConfig,
   syncRsiVendido4hConfig,
-  resetScanner3RsiFlipHistoryOnce,
   migrateScannerS6ShortToScanner2ShortLeader24h,
   syncScanner2ShortLeader24hConfig,
   SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
@@ -58,7 +57,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'PIVOT_BOSS_BEAR_15M',
     displayName: PIVOT_BOSS_BEAR_15M_DISPLAY,
     description: PIVOT_BOSS_BEAR_15M_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(PIVOT_BOSS_BEAR_15M_PARAMS),
   },
   {
@@ -72,21 +71,21 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'ACCUMULATION_BREAKOUT_15M',
     displayName: ACCUMULATION_BREAKOUT_15M_DISPLAY,
     description: ACCUMULATION_BREAKOUT_15M_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(ACCUMULATION_BREAKOUT_15M_PARAMS),
   },
   {
     name: 'EMA80_SMA7_BREAKDOWN_15M',
     displayName: EMA80_SMA7_BREAKDOWN_15M_DISPLAY,
     description: EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(EMA80_SMA7_BREAKDOWN_15M_PARAMS),
   },
   {
     name: 'SCANNER2_SHORT_LEADER_24H',
     displayName: SCANNER2_SHORT_LEADER_24H_DISPLAY,
     description: SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(SCANNER2_SHORT_LEADER_24H_PARAMS),
   },
   {
@@ -100,14 +99,14 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'SCANNER3_RSI_FLIP_1H',
     displayName: SCANNER3_RSI_FLIP_1H_DISPLAY,
     description: SCANNER3_RSI_FLIP_1H_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(SCANNER3_RSI_FLIP_1H_PARAMS),
   },
   {
     name: 'SCANNER2_STOCH_RSI_5M',
     displayName: SCANNER2_STOCH_RSI_5M_DISPLAY,
     description: SCANNER2_STOCH_RSI_5M_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(SCANNER2_STOCH_RSI_5M_PARAMS),
   },
   {
@@ -131,6 +130,18 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     isActive: true,
     params: JSON.stringify(RSI_VENDIDO_4H_PARAMS),
   },
+] as const;
+
+/** Estratégias descontinuadas (Ago 2026) — manter registo/histórico, sem trading. */
+export const DISCONTINUED_STRATEGY_NAMES = [
+  'PIVOT_BOSS_BEAR_15M',
+  'ACCUMULATION_BREAKOUT_15M',
+  'EMA80_SMA7_BREAKDOWN_15M',
+  'SCANNER2_SHORT_LEADER_24H',
+  'SCANNER3_RSI_FLIP_1H',
+  'SCANNER2_STOCH_RSI_5M',
+  'SCANNER1_TOP5',
+  'SCANNER3_RSI_BREAKOUT_15M',
 ] as const;
 
 /** Rotações Top descontinuadas neste projeto. */
@@ -162,7 +173,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const pivotBossSync = await syncPivotBossBear15mUniverse(prisma);
   if (pivotBossSync.updated) {
-    console.log('✅ PIVOT_BOSS_BEAR_15M: Scanner 1 + SL 7% actualizados');
+    console.log('⏸️ PIVOT_BOSS_BEAR_15M sync (descontinuada)');
   }
 
   const top5Sync = await syncScanner1Top5Config(prisma);
@@ -172,12 +183,12 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const breakoutSync = await syncAccumulationBreakout15mConfig(prisma);
   if (breakoutSync.updated) {
-    console.log('✅ ACCUMULATION_BREAKOUT_15M: rompimento de acumulação actualizado');
+    console.log('⏸️ ACCUMULATION_BREAKOUT_15M desactivada');
   }
 
   const ema80BreakdownSync = await syncEma80Sma7Breakdown15mConfig(prisma);
   if (ema80BreakdownSync.updated) {
-    console.log('✅ EMA80_SMA7_BREAKDOWN_15M: Quebra EMA80 actualizada');
+    console.log('⏸️ EMA80_SMA7_BREAKDOWN_15M desactivada');
   }
 
   const migratedShort = await migrateScannerS6ShortToScanner2ShortLeader24h(prisma);
@@ -192,7 +203,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const s2ShortSync = await syncScanner2ShortLeader24hConfig(prisma);
   if (s2ShortSync.updated) {
-    console.log('✅ SCANNER2_SHORT_LEADER_24H: SHORT rank #2, pump 50–90%, SL +25%, bloqueio 10–14h PT');
+    console.log('⏸️ SCANNER2_SHORT_LEADER_24H desactivada');
   }
 
   const scanner3Sync = await syncScanner3RsiBreakout15mConfig(prisma);
@@ -202,14 +213,36 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const scanner3FlipSync = await syncScanner3RsiFlip1hConfig(prisma);
   if (scanner3FlipSync.updated) {
-    console.log(
-      '✅ SCANNER3_RSI_FLIP_1H: ranks 6–14 | LONG se RSI15m≥70 | SHORT no cruzamento <70 | Bybit'
-    );
+    console.log('⏸️ SCANNER3_RSI_FLIP_1H desactivada');
   }
 
   const stoch5mSync = await syncScanner2StochRsi5mConfig(prisma);
   if (stoch5mSync.updated) {
-    console.log('✅ SCANNER2_STOCH_RSI_5M: Top 4 | Stoch RSI 5m | LONG SL5% | SHORT pós-LONG se ≤MA21−1% SL7%');
+    console.log('⏸️ SCANNER2_STOCH_RSI_5M desactivada (Stoch RSI Top 4 5m descontinuada)');
+  }
+
+  const discontinued = await prisma.strategy.updateMany({
+    where: {
+      name: { in: [...DISCONTINUED_STRATEGY_NAMES] },
+      isActive: true,
+    },
+    data: { isActive: false },
+  });
+  if (discontinued.count > 0) {
+    console.log(`⏸️ ${discontinued.count} estratégias descontinuadas forçadas inactivas`);
+  }
+
+  const expiredDiscontinued = await prisma.signal.updateMany({
+    where: {
+      strategy: { name: { in: [...DISCONTINUED_STRATEGY_NAMES] } },
+      status: { in: ['NEW', 'IN_PROGRESS'] },
+    },
+    data: { status: 'EXPIRED' },
+  });
+  if (expiredDiscontinued.count > 0) {
+    console.log(
+      `⏸️ ${expiredDiscontinued.count} sinais NEW/IN_PROGRESS de estratégias descontinuadas → EXPIRED (fechar Bybit manualmente se necessário)`
+    );
   }
 
   const rsi80Top3Sync = await syncScanner2Rsi80Top3Long4hConfig(prisma);
@@ -226,32 +259,4 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   if (rsiVendidoSync.updated) {
     console.log('✅ RSI_VENDIDO_4H: rsi_vendido | RSI 4h cruza <25 LONG | sai >32 | SL −5% | 24h');
   }
-
-  const flipHistoryReset = await resetScanner3RsiFlipHistoryOnce(prisma);
-  if (flipHistoryReset.ran) {
-    console.log(
-      `✅ SCANNER3_RSI_FLIP_1H: histórico limpo (${flipHistoryReset.deleted} sinais) — ranks 6–14 desde zero`
-    );
-  }
-
-  const deactivatedTop4 = await prisma.strategy.updateMany({
-    where: { name: 'SCANNER1_TOP5', isActive: true },
-    data: { isActive: false },
-  });
-  if (deactivatedTop4.count > 0) {
-    console.log('✅ SCANNER1_TOP5 (Scanner 2 Top 4 rotação) desactivada — sem ordens Bybit');
-  }
-
-  const reactivatedS3 = await prisma.strategy.updateMany({
-    where: { name: 'SCANNER3_RSI_FLIP_1H', isActive: false },
-    data: { isActive: true },
-  });
-  if (reactivatedS3.count > 0) {
-    console.log('✅ SCANNER3_RSI_FLIP_1H reactivada');
-  }
-
-  await prisma.strategy.updateMany({
-    where: { name: 'SCANNER3_RSI_BREAKOUT_15M', isActive: true },
-    data: { isActive: false },
-  });
 }

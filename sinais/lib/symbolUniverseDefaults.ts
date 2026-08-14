@@ -148,20 +148,20 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA200_1H: {
     displayName: 'Scanner 1 — Acima SMA200 (1h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. MA Cross: top 20; Pivot Boss: top 30; Rompimento: ranks 11–20; Top 6: rotação.',
-    strategyNames: 'MA Cross 12×30 (15m), Pivot Boss Bear 15m, Rompimento 15m, Quebra EMA80 15m',
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. MA Cross: top 20.',
+    strategyNames: 'MA Cross 12×30 (15m)',
   },
   UNIVERSE_TOP30_PRICE_CHANGE_24H: {
     displayName: 'Scanner 2 — Top 30 subidas 24h',
     description:
       'Top 30 perpétuos USDT com maior subida de preço nas últimas 24h (apenas variação positiva). Mín. 500k USDT volume 24h.',
-    strategyNames: 'Scanner 2 Top 4 (rotação 4h), Scanner 2 Short Leader 24h, Scanner 2 Stoch RSI Top 4 (5m), Scanner 2 RSI>80 Top 3 LONG (4h)',
+    strategyNames: 'Scanner 2 RSI>80 Top 3 LONG (4h), stch15long',
   },
   UNIVERSE_RSI_ABOVE_75_1H: {
     displayName: 'Scanner 3 — RSI > 75 (1h)',
     description:
-      'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 1h, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h. Actualização a cada hora (cron run-scanner3-rsi-1h).',
-    strategyNames: 'Scanner 3 RSI Flip 15m',
+      'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 1h, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h. Descontinuado (Flip off).',
+    strategyNames: '— (descontinuado)',
   },
   UNIVERSE_RSI_ABOVE_75_15M: {
     displayName: 'Scanner 3 — RSI > 75 (15m, legado)',
@@ -184,7 +184,7 @@ export const BUILTIN_UNIVERSE_META: Record<
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
-  '2': 'Scanner 2 Short Leader 24h: SHORT rank #2 — pump 50–90%, hold 24h, SL +25%, bloqueio 10–14h PT.',
+  '2': 'Scanner 2 activo: RSI>80 Top 3 LONG + stch15long. Short Leader e Top 4 rotação descontinuados.',
   rsi_vendido:
     'rsi_vendido LONG (4h): entra quando RSI 4h cruza abaixo de 25; sai quando cruza acima de 32 (SL −5%, máx. 24h).',
 };

@@ -851,7 +851,7 @@ export async function syncScanner2Rsi80Top3Long4hConfig(
   return { updated: false };
 }
 
-/** Garante registo/descrição da estratégia Scanner 2 Stoch RSI Top 4 5m. */
+/** Mantém meta da Stoch RSI Top 4 5m e força inactiva (descontinuada). */
 export async function syncScanner2StochRsi5mConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -861,7 +861,7 @@ export async function syncScanner2StochRsi5mConfig(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
+  const shouldDeactivate = row.isActive;
 
   let p: Record<string, unknown> = {};
   try {
@@ -870,7 +870,6 @@ export async function syncScanner2StochRsi5mConfig(
     p = {};
   }
 
-  // Preserva exchange / allowBuy / allowSell escolhidos no menu de estratégias.
   const next = {
     ...SCANNER2_STOCH_RSI_5M_PARAMS,
     ...p,
@@ -890,14 +889,14 @@ export async function syncScanner2StochRsi5mConfig(
     row.displayName !== SCANNER2_STOCH_RSI_5M_DISPLAY ||
     row.description !== SCANNER2_STOCH_RSI_5M_DESCRIPTION;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta || shouldDeactivate) {
     await prisma.strategy.update({
       where: { name: 'SCANNER2_STOCH_RSI_5M' },
       data: {
         displayName: SCANNER2_STOCH_RSI_5M_DISPLAY,
         description: SCANNER2_STOCH_RSI_5M_DESCRIPTION,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
+        isActive: false,
       },
     });
     return { updated: true };
@@ -915,7 +914,7 @@ export async function syncAccumulationBreakout15mConfig(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
+  const shouldDeactivate = row.isActive;
 
   let p: Record<string, unknown> = {};
   try {
@@ -942,14 +941,14 @@ export async function syncAccumulationBreakout15mConfig(
     row.displayName !== ACCUMULATION_BREAKOUT_15M_DISPLAY ||
     row.description !== ACCUMULATION_BREAKOUT_15M_DESCRIPTION;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta || shouldDeactivate) {
     await prisma.strategy.update({
       where: { name: 'ACCUMULATION_BREAKOUT_15M' },
       data: {
         displayName: ACCUMULATION_BREAKOUT_15M_DISPLAY,
         description: ACCUMULATION_BREAKOUT_15M_DESCRIPTION,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
+        isActive: false,
       },
     });
     return { updated: true };
@@ -1012,7 +1011,7 @@ export async function syncScanner3RsiFlip1hConfig(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
+  const shouldDeactivate = row.isActive;
 
   let p: Record<string, unknown> = {};
   try {
@@ -1040,14 +1039,14 @@ export async function syncScanner3RsiFlip1hConfig(
     row.displayName !== SCANNER3_RSI_FLIP_1H_DISPLAY ||
     row.description !== SCANNER3_RSI_FLIP_1H_DESCRIPTION;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta || shouldDeactivate) {
     await prisma.strategy.update({
       where: { name: 'SCANNER3_RSI_FLIP_1H' },
       data: {
         displayName: SCANNER3_RSI_FLIP_1H_DISPLAY,
         description: SCANNER3_RSI_FLIP_1H_DESCRIPTION,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
+        isActive: false,
       },
     });
     return { updated: true };
@@ -1086,7 +1085,7 @@ export async function syncEma80Sma7Breakdown15mConfig(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
+  const shouldDeactivate = row.isActive;
 
   let p: Record<string, unknown> = {};
   try {
@@ -1107,14 +1106,14 @@ export async function syncEma80Sma7Breakdown15mConfig(
     row.displayName !== EMA80_SMA7_BREAKDOWN_15M_DISPLAY ||
     row.description !== EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta || shouldDeactivate) {
     await prisma.strategy.update({
       where: { name: 'EMA80_SMA7_BREAKDOWN_15M' },
       data: {
         displayName: EMA80_SMA7_BREAKDOWN_15M_DISPLAY,
         description: EMA80_SMA7_BREAKDOWN_15M_DESCRIPTION,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
+        isActive: false,
       },
     });
     return { updated: true };
@@ -1367,8 +1366,7 @@ export async function syncScanner2ShortLeader24hConfig(
   });
   if (!row) return { updated: false };
 
-  const bootstrapActive =
-    !row.isActive && row.createdAt.getTime() === row.updatedAt.getTime();
+  const shouldDeactivate = row.isActive;
 
   let p: Record<string, unknown> = {};
   try {
@@ -1394,14 +1392,14 @@ export async function syncScanner2ShortLeader24hConfig(
     row.displayName !== SCANNER2_SHORT_LEADER_24H_DISPLAY ||
     row.description !== SCANNER2_SHORT_LEADER_24H_DESCRIPTION;
 
-  if (needParams || needMeta || bootstrapActive) {
+  if (needParams || needMeta || shouldDeactivate) {
     await prisma.strategy.update({
       where: { name: 'SCANNER2_SHORT_LEADER_24H' },
       data: {
         displayName: SCANNER2_SHORT_LEADER_24H_DISPLAY,
         description: SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
         params: JSON.stringify(next),
-        ...(bootstrapActive ? { isActive: true } : {}),
+        isActive: false,
       },
     });
     return { updated: true };
