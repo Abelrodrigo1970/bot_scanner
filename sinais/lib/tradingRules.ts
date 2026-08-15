@@ -27,8 +27,13 @@ export interface SignalForTrading {
 const ALLOWED_STRATEGIES = [
   'MA Cross 15m',
   'MA Cross 12×30 (15m)',
+  'MA Cross 12×21 (15m)',
   'MA12/MA30',
+  'MA12/MA21',
   'MA_CROSS_5M',
+  'MA_CROSS_12X21_S2',
+  'engolfo',
+  'ENGOLFO_15M',
   'stch15long',
   'STCH15LONG',
   'Scanner 2 RSI>80 Top 3 LONG (4h)',

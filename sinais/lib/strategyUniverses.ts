@@ -60,6 +60,43 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
+    strategyName: 'MA_CROSS_12X21_S2',
+
+    displayLabel: 'MA Cross 12×21 (15m)',
+
+    signalTimeframes: ['15m'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
+
+    description: 'Scanner 2 top 30: maior subida 24h. MA12/MA21 em 15m.',
+
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+
+  },
+
+  {
+
+    strategyName: 'ENGOLFO_15M',
+
+    displayLabel: 'engolfo',
+
+    signalTimeframes: ['15m'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
+
+    description:
+      'Scanner 2 top 30. SELL 15m: EMA12<EMA21, fecho −1%+ vs vela ant. SL +10%. TP1 −20% (50%). Restante 24h.',
+
+    refresh: '/api/cron/run-15m (cada 15 min)',
+
+  },
+
+  {
+
     strategyName: 'STCH15LONG',
 
     displayLabel: 'stch15long',

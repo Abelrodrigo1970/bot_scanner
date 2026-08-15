@@ -7,7 +7,7 @@
 | Endpoint | Estratégias | Frequência |
 |----------|-------------|------------|
 | `/api/cron/run-5m` | **stch15long** (Stoch 15m Top 2 LONG) | `*/5 * * * *` (24h) |
-| `/api/cron/run-15m` | **MA Cross 12×30** | `*/15 * * * *` (24h) |
+| `/api/cron/run-15m` | **MA Cross 12×30** (S1) + **MA Cross 12×21** (S2) + **engolfo** (S2) | `*/15 * * * *` (24h) |
 | `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** + Scanner 6 + **rsi_vendido** + **RSI>80 Top 3 LONG** + **rsi_vendido LONG** | `0 */4 * * *` (24h) |
 | `/api/cron/run-scanner2-rsi80-top3-long` | Scanner 2 RSI>80 Top 3 LONG 4h (backup manual) | opcional, 10–15 min após scan |
 | `/api/cron/run-stch15long` | stch15long Top 2 Stoch 15m LONG (backup manual) | opcional |
@@ -22,7 +22,7 @@
 3 jobs com header `Authorization: Bearer SEU_CRON_SECRET`:
 
 1. **stch15long** — `run-5m` — `*/5 * * * *`
-2. **MA Cross 15m** — `run-15m` — `*/15 * * * *`
+2. **MA Cross + engolfo 15m** — `run-15m` — `*/15 * * * *`
 3. **Scanners + RSI>80 + rsi_vendido** — `run-universe-scans` — `0 */4 * * *`
 
 Opcional backup: **RSI>80 Top 3 LONG** — `run-scanner2-rsi80-top3-long` — `30 */4 * * *` | **rsi_vendido LONG** — `run-rsi-vendido` — `35 */4 * * *`

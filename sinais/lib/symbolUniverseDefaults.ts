@@ -155,7 +155,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 2 — Top 30 subidas 24h',
     description:
       'Top 30 perpétuos USDT com maior subida de preço nas últimas 24h (apenas variação positiva). Mín. 500k USDT volume 24h.',
-    strategyNames: 'Scanner 2 RSI>80 Top 3 LONG (4h), stch15long',
+    strategyNames: 'Scanner 2 RSI>80 Top 3 LONG (4h), stch15long, MA Cross 12×21 (15m), engolfo',
   },
   UNIVERSE_RSI_ABOVE_75_1H: {
     displayName: 'Scanner 3 — RSI > 75 (1h)',
@@ -184,7 +184,7 @@ export const BUILTIN_UNIVERSE_META: Record<
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
-  '2': 'Scanner 2 activo: RSI>80 Top 3 LONG + stch15long. Short Leader e Top 4 rotação descontinuados.',
+  '2': 'Scanner 2 activo: RSI>80 Top 3 LONG + stch15long + MA Cross 12×21 + engolfo (15m). Short Leader e Top 4 rotação descontinuados.',
   rsi_vendido:
     'rsi_vendido LONG (4h): entra quando RSI 4h cruza abaixo de 25; sai quando cruza acima de 32 (SL −5%, máx. 24h).',
 };

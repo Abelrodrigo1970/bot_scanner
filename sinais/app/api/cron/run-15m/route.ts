@@ -2,17 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { run15mStrategiesPipeline } from '@/lib/cron15mStrategies';
 
 /**
- * Cron 15m: MA Cross 12×30 (Pivot / Rompimento / Quebra EMA80 / Flip descontinuados).
+ * Cron 15m: MA Cross 12×30 (Scanner 1) + MA Cross 12×21 (Scanner 2).
  */
 async function run15mInBackground(now: Date): Promise<void> {
-  console.log('[Run-15m BG] Iniciando MA Cross 15m...');
+  console.log('[Run-15m BG] Iniciando MA Cross + engolfo (15m)...');
 
   try {
     const result = await run15mStrategiesPipeline(now);
     const ma = result.maCross;
+    const ma21 = result.maCross12x21S2;
+    const eng = result.engolfo;
     console.log(
-      `[Run-15m BG] MA Cross -> ${ma.status}` +
+      `[Run-15m BG] MA Cross 12×30 -> ${ma.status}` +
         (typeof ma.signalsCreated === 'number' ? ` (${ma.signalsCreated} sinais)` : '')
+    );
+    console.log(
+      `[Run-15m BG] MA Cross 12×21 S2 -> ${ma21.status}` +
+        (typeof ma21.signalsCreated === 'number' ? ` (${ma21.signalsCreated} sinais)` : '')
+    );
+    console.log(
+      `[Run-15m BG] engolfo -> ${eng.status}` +
+        (typeof eng.signalsCreated === 'number' ? ` (${eng.signalsCreated} sinais)` : '')
     );
   } catch (error) {
     console.error('[Run-15m BG] Falhou:', error);
@@ -38,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'MA Cross 15m iniciado em background',
+      message: 'Cron 15m (MA Cross + engolfo) iniciado em background',
       executedAt: now.toISOString(),
     });
   } catch (error) {

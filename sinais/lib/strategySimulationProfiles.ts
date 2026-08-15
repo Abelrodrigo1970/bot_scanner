@@ -53,6 +53,22 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA30 < 0,5%.',
   },
   {
+    strategyName: 'MA_CROSS_12X21_S2',
+    displayNames: ['MA Cross 12×21 (15m)'],
+    buy: side(15, 44, 60),
+    sell: side(15, 44, 60),
+    summary:
+      'Scanner 2 top 30. SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA21 < 0,5%.',
+  },
+  {
+    strategyName: 'ENGOLFO_15M',
+    displayNames: ['engolfo'],
+    buy: null,
+    sell: side(10, 20, 50, 0, 0, 24),
+    summary:
+      'Scanner 2 top 30. Só VENDA. EMA12<EMA21 + fecho −1%+ vs vela ant. SL +10%. TP1 −20% (50%). Restante às 24h.',
+  },
+  {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
     displayNames: ['Pivot Boss Bear 15m (4 EMA venda)'],
     buy: null,

@@ -13,6 +13,10 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'MA_CROSS_5M',
 
+  'MA_CROSS_12X21_S2',
+
+  'ENGOLFO_15M',
+
   'STCH15LONG',
 
   'SCANNER2_RSI80_TOP3_LONG_4H',
@@ -54,6 +58,30 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '15m',
 
     universe: 'Scanner 1 top 20 (acima SMA200, 1h)',
+
+  },
+
+  MA_CROSS_12X21_S2: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m',
+
+    timeframe: '15m',
+
+    universe: 'Scanner 2 top 30 (subidas 24h); MA12/MA21 15m',
+
+  },
+
+  ENGOLFO_15M: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m',
+
+    timeframe: '15m',
+
+    universe: 'Scanner 2 top 30; EMA12/21 SELL se fecho −1%+ vs vela ant.',
 
   },
 
@@ -295,7 +323,7 @@ export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; descrip
 
     title: 'Cron 15m',
 
-    description: 'MA Cross 12×30 (15m)',
+    description: 'MA Cross 12×30 (S1) + MA Cross 12×21 (S2) + engolfo (S2)',
 
   },
 

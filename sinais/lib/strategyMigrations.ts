@@ -211,6 +211,162 @@ export const MA_CROSS_5M_PARAMS = {
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 12×30 (15m)';
 export const MA_CROSS_5M_DESC =
   'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% e < 1,8% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 top 20 (|afastamento| vs SMA200 1h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
+
+/** MA Cross 12×21 (15m) — mesma lógica de spread que MA12×30; universo Scanner 2. */
+export const MA_CROSS_12X21_S2_PARAMS = {
+  ma30Period: 12,
+  ma200Period: 21,
+  maType: 'EMA' as const,
+  entryDiffPct: 0.9,
+  entryMaxDiffPct: 1.8,
+  exitDiffPct: 0.5,
+  stopPercent: 15,
+  sellBlockAbsCloseDistanceFromMa200Pct: 6,
+  ma80Period: 80,
+  entryMaxAbsPctMa80VsMa200: 0,
+  ma12x30RepeatWhileTrend: true,
+  ma12x30RepeatMinSpreadDeltaPct: 0.06,
+  ma12x30GainTpPct: 44,
+  ma12x30GainTpPositionPct: 60,
+  allowBuy: true,
+  allowSell: true,
+  exchange: 'binance',
+  /** Top N do Scanner 2 (subidas 24h). */
+  universeTopN: 30,
+  minTurnover3hUsd: 3_000_000,
+} as const;
+
+export const MA_CROSS_12X21_S2_DISPLAY = 'MA Cross 12×21 (15m)';
+export const MA_CROSS_12X21_S2_DESC =
+  'MA12/MA21 em 15m: mesma lógica que MA Cross 12×30 (spread |MA12−MA21|/MA21 > 0,9% e < 1,8%; repetir tendência; TP parcial 60% a ±44%; restante fecha se spread < 0,5%; SL 15%). Universo = Scanner 2 top 30 (maior subida 24h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
+
+/** Garante registo activo MA Cross 12×21 Scanner 2. */
+export async function syncMaCross12x21Scanner2Config(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'MA_CROSS_12X21_S2' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...MA_CROSS_12X21_S2_PARAMS,
+    ...p,
+    ma30Period: MA_CROSS_12X21_S2_PARAMS.ma30Period,
+    ma200Period: MA_CROSS_12X21_S2_PARAMS.ma200Period,
+    universeTopN: MA_CROSS_12X21_S2_PARAMS.universeTopN,
+    minTurnover3hUsd: MA_CROSS_12X21_S2_PARAMS.minTurnover3hUsd,
+    entryMaxDiffPct: MA_CROSS_12X21_S2_PARAMS.entryMaxDiffPct,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== MA_CROSS_12X21_S2_DISPLAY ||
+    row.description !== MA_CROSS_12X21_S2_DESC;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'MA_CROSS_12X21_S2' },
+      data: {
+        displayName: MA_CROSS_12X21_S2_DISPLAY,
+        description: MA_CROSS_12X21_S2_DESC,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
+/** engolfo — SELL 15m Scanner 2 (EMA12/21 + queda ≥1% vs vela anterior). */
+export const ENGOLFO_15M_PARAMS = {
+  universeTopN: 30,
+  chartTimeframe: '15m',
+  maFastPeriod: 12,
+  maSlowPeriod: 21,
+  maType: 'EMA' as const,
+  minDropPct: 1,
+  requireBearCandle: true,
+  requireCloseBelowSlowMa: true,
+  stopLossPct: 0.1,
+  tp1Pct: 0.2,
+  tp1Position: 50,
+  closeAfterHours: 24,
+  autoExecuteMinStrength: 70,
+  allowBuy: false,
+  buyEnabled: false,
+  allowSell: true,
+  sellEnabled: true,
+  exchange: 'bybit',
+} as const;
+
+export const ENGOLFO_15M_DISPLAY = 'engolfo';
+export const ENGOLFO_15M_DESC =
+  'Scanner 2 top 30. SELL em 15m quando EMA12 < EMA21, fecho abaixo da EMA21 e a vela fecha ≥1% abaixo do fecho anterior (vela bear). SL +10%. TP1 −20% (50% pos.). Restante às 24h. Só VENDA.';
+
+export async function syncEngolfo15mConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'ENGOLFO_15M' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...ENGOLFO_15M_PARAMS,
+    ...p,
+    maFastPeriod: ENGOLFO_15M_PARAMS.maFastPeriod,
+    maSlowPeriod: ENGOLFO_15M_PARAMS.maSlowPeriod,
+    minDropPct: ENGOLFO_15M_PARAMS.minDropPct,
+    stopLossPct: ENGOLFO_15M_PARAMS.stopLossPct,
+    tp1Pct: ENGOLFO_15M_PARAMS.tp1Pct,
+    tp1Position: ENGOLFO_15M_PARAMS.tp1Position,
+    closeAfterHours: ENGOLFO_15M_PARAMS.closeAfterHours,
+    universeTopN: ENGOLFO_15M_PARAMS.universeTopN,
+    allowBuy: false,
+    buyEnabled: false,
+    allowSell: true,
+    sellEnabled: true,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== ENGOLFO_15M_DISPLAY || row.description !== ENGOLFO_15M_DESC;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'ENGOLFO_15M' },
+      data: {
+        displayName: ENGOLFO_15M_DISPLAY,
+        description: ENGOLFO_15M_DESC,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 /** MA30/MA200 em 15m — mesma lógica de spread que MA12/MA30 (universo = scan Ma30Near6PriceBetween). */
 export const MA_CROSS_15M_STRATEGY_DESCRIPTION =
   'MA30 / MA200 em 15m: mesma lógica que MA12/MA30 (spread |rápida−lenta|/lenta). Entrada quando o spread ultrapassa o limiar na direção; modo repetir tendência com Δ mínimo opcional; TP parcial quando o preço favorece N% vs entrada; restante fecha quando o spread comprime abaixo do limiar de saída. SL 5%. Filtro SELL por distância do preço à MA200. Universo = scan MA30 entre −6% e +1% vs MA200 (1h) — menu Ma30Near6PriceBetween; actualiza esse scan antes de gerar sinais.';

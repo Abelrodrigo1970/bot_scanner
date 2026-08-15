@@ -267,16 +267,28 @@ export default function EstrategiasPage() {
     const upd = (patch: object) => handleUpdateParams(strategy, { ...p, ...patch });
 
     switch (strategy.name) {
-      case 'MA_CROSS_5M': {
-        const maPairLabel = 'MA12 / MA30';
-        const diffLabel = 'MA12 / MA30';
+      case 'MA_CROSS_5M':
+      case 'MA_CROSS_12X21_S2': {
+        const isS2 = strategy.name === 'MA_CROSS_12X21_S2';
+        const maPairLabel = isS2 ? 'MA12 / MA21' : 'MA12 / MA30';
+        const diffLabel = maPairLabel;
+        const defaultSlow = isS2 ? 21 : 30;
+        const defaultTopN = isS2 ? 30 : 20;
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Velas <strong>15m</strong> — <strong>{maPairLabel}</strong>. Mesma lógica de spread: rápida&gt;lenta (ou &lt;) e |rápida−lenta|/lenta &gt; limiar de entrada; fecho quando a diferença comprime abaixo do limiar de saída (compressão).
               <>
                 {' O cron corre a cada 15 min.'} Símbolos ={' '}
-                <strong>Scanner 1 top 20</strong> (maior |afastamento| vs SMA200 em 1h); actualize em Origem de dados → Scanner 1
+                {isS2 ? (
+                  <>
+                    <strong>Scanner 2 top {defaultTopN}</strong> (maior subida 24h); actualize em Origem de dados → Scanner 2
+                  </>
+                ) : (
+                  <>
+                    <strong>Scanner 1 top {defaultTopN}</strong> (maior |afastamento| vs SMA200 em 1h); actualize em Origem de dados → Scanner 1
+                  </>
+                )}{' '}
                 ou aguarde o cron <strong>run-universe-scans</strong> (cada 4 h).
               </>
             </p>
@@ -298,10 +310,15 @@ export default function EstrategiasPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Período MA rápida (ex. 12)', p.ma30Period ?? 12, (v) => upd({ ma30Period: v }))}
-              {numField('Período MA lenta (ex. 30)', p.ma200Period ?? 30, (v) => upd({ ma200Period: v }))}
+              {numField(
+                `Período MA lenta (ex. ${defaultSlow})`,
+                p.ma200Period ?? defaultSlow,
+                (v) => upd({ ma200Period: v })
+              )}
               {numField(`Entrada: dif. mín. ${diffLabel} (%)`, p.entryDiffPct ?? 0.9, (v) => upd({ entryDiffPct: v }), 0.1)}
               {numField(`Entrada: dif. máx. ${diffLabel} (%)`, p.entryMaxDiffPct ?? 1.8, (v) => upd({ entryMaxDiffPct: v }), 0.1)}
               {numField(`Saída/fecho: dif. ${diffLabel} (%)`, p.exitDiffPct ?? 0.5, (v) => upd({ exitDiffPct: v }), 0.1)}
+              {numField('Top N do universo', p.universeTopN ?? defaultTopN, (v) => upd({ universeTopN: v }))}
               {numField('SL (%)', p.stopPercent ?? 15, (v) => upd({ stopPercent: v }), 0.5)}
               {numField(
                 'TP parcial: valorização vs entrada (%)',
@@ -318,13 +335,13 @@ export default function EstrategiasPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
               {numField(
-                `BUY: máx. |preço − MA lenta| / MA lenta (${'MA30'}) (%)`,
+                `BUY: máx. |preço − MA lenta| / MA lenta (MA${defaultSlow}) (%)`,
                 p.buyBlockAbsCloseDistanceFromMa200Pct ?? 0,
                 (v) => upd({ buyBlockAbsCloseDistanceFromMa200Pct: v }),
                 0.5
               )}
               {numField(
-                `SELL: máx. |preço − MA lenta| / MA lenta (${'MA30'}) (%)`,
+                `SELL: máx. |preço − MA lenta| / MA lenta (MA${defaultSlow}) (%)`,
                 p.sellBlockAbsCloseDistanceFromMa200Pct ?? 6,
                 (v) => upd({ sellBlockAbsCloseDistanceFromMa200Pct: v }),
                 0.5
@@ -332,13 +349,13 @@ export default function EstrategiasPage() {
             </div>
             <div className="max-w-md">
               {numField(
-                'Entrada: máx. |MA30 − MA200| / MA200 (%)',
+                `Entrada: máx. |MA${defaultSlow} − MA200| / MA200 (%)`,
                 p.entryMaxAbsPctMa30VsMa200 ?? 0,
                 (v) => upd({ entryMaxAbsPctMa30VsMa200: v }),
                 0.5
               )}
               <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                MA200 = período 200 nas mesmas velas que o par MA12/MA30. Só emite BUY/SELL se esta distância for ≤ ao limiar; 0 desactiva.
+                MA200 = período 200 nas mesmas velas que o par {maPairLabel}. Só emite BUY/SELL se esta distância for ≤ ao limiar; 0 desactiva.
               </p>
             </div>
             <div className="max-w-md">
@@ -375,10 +392,10 @@ export default function EstrategiasPage() {
               Mesma unidade que «Entrada: dif.». Aumentar (ex.: 0,08–0,15) reduz falsos repetidos em tendência forte com spread já largo.
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500">
-              Entrada: spread |MA12−MA30|/MA30 entre o mínimo e o máximo (ex. &gt;0,9% e &lt;1,8%). 0 no máximo desactiva o tecto.
+              Entrada: spread |{maPairLabel.replace(' / ', '−')}|/{`MA${defaultSlow}`} entre o mínimo e o máximo (ex. &gt;0,9% e &lt;1,8%). 0 no máximo desactiva o tecto.
               BUY / SELL (modo spread): se |preço − MA lenta|/MA lenta (%) for maior que o limite desse lado, não gera sinal.
               0 desactiva o filtro desse lado (ex.: BUY a 0 = sem filtro de distância à MA na compra).
-              {' O campo «MA30 − MA200» limita o afastamento entre a MA lenta (30) e uma MA200 no mesmo timeframe.'}
+              {` O campo «MA${defaultSlow} − MA200» limita o afastamento entre a MA lenta (${defaultSlow}) e uma MA200 no mesmo timeframe.`}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500">
               O take profit parcial é quando o preço atinge a % indicada; o restante fecha por compressão do spread (cron 15m). O cron não abre segundo trade no mesmo sentido se já houver posição real nesse par.
@@ -386,6 +403,42 @@ export default function EstrategiasPage() {
           </div>
         );
       }
+
+      case 'ENGOLFO_15M':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Timeframe <strong>15m</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 2 top N</strong>{' '}
+              (subidas 24h). Entrada quando <strong>EMA12 &lt; EMA21</strong>, fecho abaixo da EMA21, vela bear e o
+              fecho cai <strong>≥1%</strong> vs o fecho da vela anterior.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Top N Scanner 2', p.universeTopN ?? 30, (v) => upd({ universeTopN: v }))}
+              {numField('MA rápida', p.maFastPeriod ?? 12, (v) => upd({ maFastPeriod: v }))}
+              {numField('MA lenta', p.maSlowPeriod ?? 21, (v) => upd({ maSlowPeriod: v }))}
+              {numField('Queda mín. vs vela ant. (%)', p.minDropPct ?? 1, (v) => upd({ minDropPct: v }), 0.1)}
+              {numField('SL (%) acima entrada', (p.stopLossPct ?? 0.1) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('TP1 (%) abaixo entrada', (p.tp1Pct ?? 0.2) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
+              {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
+              {numField('Fecho restante (horas)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
+            </div>
+            <div className="max-w-md">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                value={p.maType === 'SMA' ? 'SMA' : 'EMA'}
+                onChange={(e) => upd({ maType: e.target.value === 'SMA' ? 'SMA' : 'EMA' })}
+              >
+                <option value="EMA">EMA</option>
+                <option value="SMA">SMA</option>
+              </select>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Restante da posição ({Math.max(0, 100 - Number(p.tp1Position ?? 50))}%) fecha automaticamente após{' '}
+              {p.closeAfterHours ?? 24}h (cron 15m). Exchange: Bybit por defeito.
+            </p>
+          </div>
+        );
 
       case 'RSI_OVERBOUGHT_DROP_1H':
         return (

@@ -31,8 +31,16 @@ import {
   RSI_VENDIDO_4H_DESCRIPTION,
   RSI_VENDIDO_4H_DISPLAY,
   RSI_VENDIDO_4H_PARAMS,
+  MA_CROSS_12X21_S2_DESC,
+  MA_CROSS_12X21_S2_DISPLAY,
+  MA_CROSS_12X21_S2_PARAMS,
+  ENGOLFO_15M_DESC,
+  ENGOLFO_15M_DISPLAY,
+  ENGOLFO_15M_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
+  syncMaCross12x21Scanner2Config,
+  syncEngolfo15mConfig,
   syncPivotBossBear15mUniverse,
   syncScanner1Top5Config,
   syncAccumulationBreakout15mConfig,
@@ -130,6 +138,20 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     isActive: true,
     params: JSON.stringify(RSI_VENDIDO_4H_PARAMS),
   },
+  {
+    name: 'MA_CROSS_12X21_S2',
+    displayName: MA_CROSS_12X21_S2_DISPLAY,
+    description: MA_CROSS_12X21_S2_DESC,
+    isActive: true,
+    params: JSON.stringify(MA_CROSS_12X21_S2_PARAMS),
+  },
+  {
+    name: 'ENGOLFO_15M',
+    displayName: ENGOLFO_15M_DISPLAY,
+    description: ENGOLFO_15M_DESC,
+    isActive: true,
+    params: JSON.stringify(ENGOLFO_15M_PARAMS),
+  },
 ] as const;
 
 /** Estratégias descontinuadas (Ago 2026) — manter registo/histórico, sem trading. */
@@ -169,6 +191,16 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const maCrossSync = await syncMaCrossScanner1UniverseDescriptions(prisma);
   if (maCrossSync.updated.length > 0) {
     console.log(`✅ MA_CROSS_5M: display/descrição Scanner 1 (${maCrossSync.updated.join(', ')})`);
+  }
+
+  const maCross12x21Sync = await syncMaCross12x21Scanner2Config(prisma);
+  if (maCross12x21Sync.updated) {
+    console.log('✅ MA_CROSS_12X21_S2: MA12×21 15m | Scanner 2 top 30');
+  }
+
+  const engolfoSync = await syncEngolfo15mConfig(prisma);
+  if (engolfoSync.updated) {
+    console.log('✅ ENGOLFO_15M: engolfo | EMA12/21 SELL 15m | Scanner 2 | SL +10% | TP1 −20% 50% | 24h');
   }
 
   const pivotBossSync = await syncPivotBossBear15mUniverse(prisma);

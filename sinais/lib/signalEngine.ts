@@ -21,6 +21,7 @@ import {
 import {
   UNIVERSE_CODE_AFASTAMENTO_SCANNER_MA80,
   UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
+  UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H,
   UNIVERSE_CODE_SCANNER_3_MA80_PCT4,
   UNIVERSE_CODE_SCANNER_3_RSI75_1H,
   UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D,
@@ -2031,7 +2032,10 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
     for (const strategy of strategies) {
       const params = JSON.parse(strategy.params || '{}');
 
-      if (strategy.name === 'MA_CROSS_5M' && isMaCross15mHourBlocked()) {
+      if (
+        (strategy.name === 'MA_CROSS_5M' || strategy.name === 'MA_CROSS_12X21_S2') &&
+        isMaCross15mHourBlocked()
+      ) {
         console.log('⏭️ MA Cross 15m: ignorado — horário PT bloqueado');
         continue;
       }
@@ -2047,7 +2051,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
       }
 
       const timeframesToUse: Timeframe[] =
-        strategy.name === 'MA_CROSS_5M' ? ['15m'] :
+        strategy.name === 'MA_CROSS_5M' || strategy.name === 'MA_CROSS_12X21_S2' ? ['15m'] :
         strategy.name === 'MA_VOLATILE' ? ['1h'] :
         strategy.name === 'EMA_SCALPING' || strategy.name === 'EMA_SCALPING_SELL' ? ['15m'] :
         strategy.name === 'PIVOT_BOSS_BEAR_15M' ? ['15m'] :
@@ -2132,6 +2136,20 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         if (symbolsToAnalyze.length === 0) {
           console.warn(
             `⚠️ Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
+          );
+          continue;
+        }
+      } else if (strategy.name === 'MA_CROSS_12X21_S2') {
+        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 30)));
+        console.log(`🔍 ${strategy.name}: Scanner 2 top ${topN} (subidas 24h)...`);
+        symbolsToAnalyze = await resolveUniverseScanSymbolsTopN(
+          UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H,
+          topN
+        );
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2 top ${topN})`);
+        if (symbolsToAnalyze.length === 0) {
+          console.warn(
+            `⚠️ Scanner 2 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 2. Ignorando ${strategy.name}.`
           );
           continue;
         }
@@ -2254,6 +2272,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
             switch (strategy.name) {
               case 'MA_CROSS_5M':
+              case 'MA_CROSS_12X21_S2':
                 signalResult = await runMaCross15mStrategy(symbol, timeframe, params);
                 break;
               case 'EMA_SCALPING':
@@ -2313,7 +2332,8 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
             }
 
             if (signalResult) {
-              const isMaCross12x30 = strategy.name === 'MA_CROSS_5M';
+              const isMaCross12x30 =
+                strategy.name === 'MA_CROSS_5M' || strategy.name === 'MA_CROSS_12X21_S2';
               const isPivotBoss =
                 strategy.name === 'PIVOT_BOSS_BEAR_15M' ||
                 strategy.name === 'PIVOT_BOSS_BEAR_1H';
