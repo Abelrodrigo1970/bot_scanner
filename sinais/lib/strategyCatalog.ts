@@ -95,7 +95,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 top 20; fecho > máx. 20 velas; LONG SL −7%; TP1 +45% 50%',
+    universe: 'Scanner 1 top 20; fecho > máx. 20 velas; filtro ≤30% acima EMA70; LONG SL −7%',
 
   },
 

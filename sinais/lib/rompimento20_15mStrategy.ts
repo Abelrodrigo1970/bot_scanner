@@ -1,11 +1,13 @@
 /**
  * Rompimento 20 (15m) — LONG no Scanner 1
  * Fecho da última vela fechada acima do máximo das 20 velas anteriores.
+ * Filtro: sem sinal se preço > 30% acima da EMA70.
  * SL −7% | TP1 +45% (50% pos.) | restante às 24h.
  */
 
 import { prisma } from './db';
 import { fetchCandles, type Candle } from './marketData';
+import { calculateLastEMA, calculateSMA, getCloses } from './indicators';
 import { UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 } from './symbolUniverseDefaults';
 import { resolveUniverseScanSymbolsTopN } from './universeScanPersistence';
 import { autoExecuteNewSignalsForStrategy, resolveStrategyExchange } from './autoExecuteNewSignals';
@@ -20,6 +22,11 @@ export type Rompimento20_15mParams = {
   breakoutLookback?: number;
   /** Exige vela bull (fecho > abertura). */
   requireBullishClose?: boolean;
+  /** Período da média de filtro (distância ao preço). */
+  filterMaPeriod?: number;
+  filterMaType?: 'EMA' | 'SMA';
+  /** Sem sinal se (fecho − MA)/MA × 100 > este % (acima da média). */
+  maxDistAboveFilterMaPct?: number;
   stopLossPct?: number;
   tp1Pct?: number;
   tp1Position?: number;
@@ -112,19 +119,33 @@ export function detectRompimento20_15mBuy(
 } | null {
   const lookback = Math.max(5, Math.floor(Number(params.breakoutLookback ?? 20)));
   const requireBullishClose = params.requireBullishClose === true;
+  const filterMaPeriod = Math.max(2, Math.floor(Number(params.filterMaPeriod ?? 70)));
+  const filterMaType: 'EMA' | 'SMA' = params.filterMaType === 'SMA' ? 'SMA' : 'EMA';
+  const maxDistAboveFilterMaPct = Math.max(0, Number(params.maxDistAboveFilterMaPct ?? 30));
   const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.07));
   const tp1Pct = Math.max(0.01, Number(params.tp1Pct ?? 0.45));
   const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 50))));
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
 
-  if (candles.length < lookback + 5) return null;
+  const minBars = Math.max(lookback + 5, filterMaPeriod + 5);
+  if (candles.length < minBars) return null;
 
   const closed = candles.slice(0, -1);
-  if (closed.length < lookback + 1) return null;
+  if (closed.length < Math.max(lookback + 1, filterMaPeriod + 1)) return null;
 
   const curr = closed[closed.length - 1]!;
   if (!(curr.close > 0)) return null;
   if (requireBullishClose && !(curr.close > curr.open)) return null;
+
+  const closes = getCloses(closed);
+  const filterMa =
+    filterMaType === 'SMA'
+      ? calculateSMA(closes, filterMaPeriod)
+      : calculateLastEMA(closes, filterMaPeriod);
+  if (filterMa == null || !(filterMa > 0)) return null;
+
+  const distAboveMaPct = ((curr.close - filterMa) / filterMa) * 100;
+  if (distAboveMaPct > maxDistAboveFilterMaPct) return null;
 
   const rangeCandles = closed.slice(closed.length - 1 - lookback, closed.length - 1);
   if (rangeCandles.length < lookback) return null;
@@ -145,6 +166,7 @@ export function detectRompimento20_15mBuy(
 
   const slLabel = `${(stopLossPct * 100).toFixed(0)}%`;
   const tpLabel = `${(tp1Pct * 100).toFixed(0)}%`;
+  const maLabel = `${filterMaType}${filterMaPeriod}`;
 
   return {
     entryPrice,
@@ -160,12 +182,17 @@ export function detectRompimento20_15mBuy(
       rangeHigh: Number(rangeHigh.toFixed(8)),
       breakoutPct: +breakoutPct.toFixed(3),
       requireBullishClose,
+      filterMaPeriod,
+      filterMaType,
+      filterMa: Number(filterMa.toFixed(8)),
+      distAboveMaPct: +distAboveMaPct.toFixed(3),
+      maxDistAboveFilterMaPct,
       stopLossPct,
       tp1Pct,
       tp1Position,
       closeAfterHours,
       barCloseTs: curr.timestamp,
-      executionProfile: `BUY | rompimento 15m (fecho > máx. ${lookback} velas) | SL −${slLabel} | TP1 +${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+      executionProfile: `BUY | rompimento 15m (fecho > máx. ${lookback} velas, dist ${maLabel} ≤${maxDistAboveFilterMaPct}%) | SL −${slLabel} | TP1 +${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
     }),
   };
 }
@@ -199,6 +226,7 @@ export async function runRompimento20_15mPipeline(options?: {
   const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 20)));
   const chartTimeframe = String(params.chartTimeframe ?? '15m');
   const lookback = Math.max(5, Math.floor(Number(params.breakoutLookback ?? 20)));
+  const filterMaPeriod = Math.max(2, Math.floor(Number(params.filterMaPeriod ?? 70)));
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const minStrength = Math.max(60, Math.floor(Number(params.autoExecuteMinStrength ?? 70)));
@@ -221,7 +249,7 @@ export async function runRompimento20_15mPipeline(options?: {
   const startedAt = new Date();
   let signalsCreated = 0;
   const hitSymbols: string[] = [];
-  const candleLimit = Math.min(500, Math.max(lookback + 40, 80));
+  const candleLimit = Math.min(500, Math.max(lookback + 40, filterMaPeriod + 40, 120));
 
   console.log(`${logPrefix} Scanner 1 top ${topN}: ${symbols.length} símbolos…`);
 

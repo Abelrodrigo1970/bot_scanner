@@ -446,15 +446,34 @@ export default function EstrategiasPage() {
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Timeframe <strong>15m</strong>; só <strong>COMPRA</strong>. Universo = <strong>Scanner 1 top N</strong>{' '}
               (acima SMA200 1h). Entrada quando o <strong>fecho</strong> da última vela fechada fica{' '}
-              <strong>acima do máximo</strong> das N velas anteriores (rompimento).
+              <strong>acima do máximo</strong> das N velas anteriores (rompimento). Sem sinal se o preço estiver{' '}
+              <strong>acima do limiar</strong> vs a média de filtro (EMA70 por defeito).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Top N Scanner 1', p.universeTopN ?? 20, (v) => upd({ universeTopN: v }))}
               {numField('Lookback (velas)', p.breakoutLookback ?? 20, (v) => upd({ breakoutLookback: v }))}
+              {numField('MA filtro (período)', p.filterMaPeriod ?? 70, (v) => upd({ filterMaPeriod: v }))}
+              {numField(
+                'Máx. acima da MA filtro (%)',
+                p.maxDistAboveFilterMaPct ?? 30,
+                (v) => upd({ maxDistAboveFilterMaPct: v }),
+                0.5
+              )}
               {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.07) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
               {numField('TP1 (%) acima entrada', (p.tp1Pct ?? 0.45) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
               {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
               {numField('Fecho restante (horas)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
+            </div>
+            <div className="max-w-md">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo MA filtro</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                value={p.filterMaType === 'SMA' ? 'SMA' : 'EMA'}
+                onChange={(e) => upd({ filterMaType: e.target.value === 'SMA' ? 'SMA' : 'EMA' })}
+              >
+                <option value="EMA">EMA</option>
+                <option value="SMA">SMA</option>
+              </select>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Restante da posição ({Math.max(0, 100 - Number(p.tp1Position ?? 50))}%) fecha automaticamente após{' '}
