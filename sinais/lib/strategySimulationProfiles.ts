@@ -66,7 +66,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: null,
     sell: side(10, 20, 50, 0, 0, 24),
     summary:
-      'Scanner 2 top 30. Só VENDA. EMA12<EMA21 + fecho −1%+ vs vela ant. SL +10%. TP1 −20% (50%). Restante às 24h.',
+      'Scanner 2 top 3. Só VENDA. (EMA12<EMA21 OU |EMA12−EMA21|<2%) + fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante às 24h.',
   },
   {
     strategyName: 'PIVOT_BOSS_BEAR_15M',

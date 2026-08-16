@@ -288,9 +288,9 @@ export async function syncMaCross12x21Scanner2Config(
   return { updated: false };
 }
 
-/** engolfo — SELL 15m Scanner 2 (EMA12/21 + queda ≥1% vs vela anterior). */
+/** engolfo — SELL 15m Scanner 2 top 3 (EMA12/21 ou spread &lt;2% + queda ≥1%). */
 export const ENGOLFO_15M_PARAMS = {
-  universeTopN: 30,
+  universeTopN: 3,
   chartTimeframe: '15m',
   maFastPeriod: 12,
   maSlowPeriod: 21,
@@ -298,7 +298,9 @@ export const ENGOLFO_15M_PARAMS = {
   minDropPct: 1,
   requireBearCandle: true,
   requireCloseBelowSlowMa: true,
-  stopLossPct: 0.1,
+  /** Também SELL se |EMA12−EMA21|/EMA21 &lt; 2% (além do stack 12&lt;21). */
+  maxMaDiffPct: 2,
+  stopLossPct: 0.08,
   tp1Pct: 0.2,
   tp1Position: 50,
   closeAfterHours: 24,
@@ -312,7 +314,7 @@ export const ENGOLFO_15M_PARAMS = {
 
 export const ENGOLFO_15M_DISPLAY = 'engolfo';
 export const ENGOLFO_15M_DESC =
-  'Scanner 2 top 30. SELL em 15m quando EMA12 < EMA21, fecho abaixo da EMA21 e a vela fecha ≥1% abaixo do fecho anterior (vela bear). SL +10%. TP1 −20% (50% pos.). Restante às 24h. Só VENDA.';
+  'Scanner 2 top 3. SELL em 15m: (EMA12 < EMA21 OU |EMA12−EMA21|/EMA21 < 2%), fecho abaixo da EMA21 e vela ≥1% abaixo do fecho anterior (bear). SL +8%. TP1 −20% (50% pos.). Restante às 24h. Só VENDA.';
 
 export async function syncEngolfo15mConfig(
   prisma: PrismaClient
@@ -338,6 +340,7 @@ export async function syncEngolfo15mConfig(
     maFastPeriod: ENGOLFO_15M_PARAMS.maFastPeriod,
     maSlowPeriod: ENGOLFO_15M_PARAMS.maSlowPeriod,
     minDropPct: ENGOLFO_15M_PARAMS.minDropPct,
+    maxMaDiffPct: ENGOLFO_15M_PARAMS.maxMaDiffPct,
     stopLossPct: ENGOLFO_15M_PARAMS.stopLossPct,
     tp1Pct: ENGOLFO_15M_PARAMS.tp1Pct,
     tp1Position: ENGOLFO_15M_PARAMS.tp1Position,

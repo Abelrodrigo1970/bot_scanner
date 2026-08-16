@@ -1,7 +1,7 @@
 /**
- * engolfo — SELL 15m no Scanner 2
- * EMA12 < EMA21 + fecho da vela 15m ≥1% abaixo do fecho anterior.
- * SL +10% | TP1 −20% (50% pos.) | restante às 24h.
+ * engolfo — SELL 15m no Scanner 2 top 3
+ * Entrada: (EMA12 < EMA21) OU (|EMA12−EMA21|/EMA21 < 2%) + fecho ≥1% abaixo do anterior.
+ * SL +8% | TP1 −20% (50% pos.) | restante às 24h.
  */
 
 import { prisma } from './db';
@@ -26,6 +26,10 @@ export type Engolfo15mParams = {
   requireBearCandle?: boolean;
   /** Exige preço abaixo da MA lenta. */
   requireCloseBelowSlowMa?: boolean;
+  /**
+   * Também permite SELL se |MA rápida − MA lenta| / MA lenta < este % (mesmo sem stack 12&lt;21).
+   */
+  maxMaDiffPct?: number;
   stopLossPct?: number;
   tp1Pct?: number;
   tp1Position?: number;
@@ -127,7 +131,8 @@ export function detectEngolfo15mSell(
   const minDropPct = Math.max(0.1, Number(params.minDropPct ?? 1));
   const requireBearCandle = params.requireBearCandle !== false;
   const requireCloseBelowSlowMa = params.requireCloseBelowSlowMa !== false;
-  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.1));
+  const maxMaDiffPct = Math.max(0.1, Number(params.maxMaDiffPct ?? 2));
+  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.08));
   const tp1Pct = Math.max(0.01, Number(params.tp1Pct ?? 0.2));
   const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 50))));
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
@@ -153,8 +158,11 @@ export function detectEngolfo15mSell(
   const maSlow = maAt(closes, maSlowPeriod, maType);
   if (maFast == null || maSlow == null || !(maSlow > 0)) return null;
 
-  // Stack bearish: MA rápida abaixo da lenta
-  if (!(maFast < maSlow)) return null;
+  const maDiffPct = (Math.abs(maFast - maSlow) / maSlow) * 100;
+  const stackBear = maFast < maSlow;
+  const tightMaSpread = maDiffPct < maxMaDiffPct;
+  // Stack bearish clássico OU médias próximas (&lt; maxMaDiffPct)
+  if (!(stackBear || tightMaSpread)) return null;
   if (requireCloseBelowSlowMa && !(curr.close < maSlow)) return null;
 
   const entryPrice = curr.close;
@@ -169,6 +177,9 @@ export function detectEngolfo15mSell(
 
   const slLabel = `${(stopLossPct * 100).toFixed(0)}%`;
   const tpLabel = `${(tp1Pct * 100).toFixed(0)}%`;
+  const maGate = stackBear
+    ? `EMA${maFastPeriod}<EMA${maSlowPeriod}`
+    : `|EMA${maFastPeriod}−EMA${maSlowPeriod}| ${maDiffPct.toFixed(2)}% < ${maxMaDiffPct}%`;
 
   return {
     entryPrice,
@@ -186,6 +197,10 @@ export function detectEngolfo15mSell(
       maType,
       maFast: Number(maFast.toFixed(6)),
       maSlow: Number(maSlow.toFixed(6)),
+      maDiffPct: +maDiffPct.toFixed(3),
+      maxMaDiffPct,
+      stackBear,
+      tightMaSpread,
       dropPct: +dropPct.toFixed(3),
       prevClose: prev.close,
       minDropPct,
@@ -194,13 +209,13 @@ export function detectEngolfo15mSell(
       tp1Position,
       closeAfterHours,
       barCloseTs: curr.timestamp,
-      executionProfile: `SELL | engolfo 15m (EMA${maFastPeriod}<EMA${maSlowPeriod}, fecho −${minDropPct}%+ vs ant.) | SL +${slLabel} | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+      executionProfile: `SELL | engolfo 15m (${maGate}, fecho −${minDropPct}%+ vs ant.) | SL +${slLabel} | TP1 -${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
     }),
   };
 }
 
 /**
- * Cron 15m: Scanner 2 → engolfo SELL + fecho timed 24h.
+ * Cron 15m: Scanner 2 top 3 → engolfo SELL + fecho timed 24h.
  */
 export async function runEngolfo15mPipeline(options?: {
   logPrefix?: string;
@@ -225,7 +240,7 @@ export async function runEngolfo15mPipeline(options?: {
     return { status: 'skipped', reason: 'SELL desactivado nos params' };
   }
 
-  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 30)));
+  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 3)));
   const chartTimeframe = String(params.chartTimeframe ?? '15m');
   const maSlowPeriod = Math.max(2, Math.floor(Number(params.maSlowPeriod ?? 21)));
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
@@ -300,7 +315,7 @@ export async function runEngolfo15mPipeline(options?: {
     }
 
     console.log(
-      `${logPrefix} 🔴 SELL ${symbol} @ ${hit.entryPrice} (drop ${hit.dropPct}% | MA12/21 bear | SL +10% | TP1 −20% 50%)`
+      `${logPrefix} 🔴 SELL ${symbol} @ ${hit.entryPrice} (drop ${hit.dropPct}% | MA gate | SL +8% | TP1 −20% 50%)`
     );
 
     await prisma.signal.create({

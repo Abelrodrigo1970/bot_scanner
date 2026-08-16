@@ -200,7 +200,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const engolfoSync = await syncEngolfo15mConfig(prisma);
   if (engolfoSync.updated) {
-    console.log('✅ ENGOLFO_15M: engolfo | EMA12/21 SELL 15m | Scanner 2 | SL +10% | TP1 −20% 50% | 24h');
+    console.log('✅ ENGOLFO_15M: engolfo | EMA12/21 ou spread<2% | SELL 15m | Scanner 2 top 3 | SL +8% | TP1 −20% 50% | 24h');
   }
 
   const pivotBossSync = await syncPivotBossBear15mUniverse(prisma);

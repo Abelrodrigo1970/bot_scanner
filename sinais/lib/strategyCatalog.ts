@@ -81,7 +81,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 2 top 30; EMA12/21 SELL se fecho −1%+ vs vela ant.',
+    universe: 'Scanner 2 top 3; EMA12<EMA21 ou |EMA|<2%; SELL se fecho −1%+; SL +8%',
 
   },
 

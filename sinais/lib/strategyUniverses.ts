@@ -89,7 +89,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
 
     description:
-      'Scanner 2 top 30. SELL 15m: EMA12<EMA21, fecho −1%+ vs vela ant. SL +10%. TP1 −20% (50%). Restante 24h.',
+      'Scanner 2 top 3. SELL 15m: EMA12<EMA21 OU |EMA12−EMA21|<2%, fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante 24h.',
 
     refresh: '/api/cron/run-15m (cada 15 min)',
 
