@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { run15mStrategiesPipeline } from '@/lib/cron15mStrategies';
 
 /**
- * Cron 15m: MA Cross 12×30 (Scanner 1) + MA Cross 12×21 (Scanner 2).
+ * Cron 15m: MA Cross 12×30 (Scanner 1) + MA Cross 12×21 (Scanner 2) + engolfo + Rompimento 20.
  */
 async function run15mInBackground(now: Date): Promise<void> {
-  console.log('[Run-15m BG] Iniciando MA Cross + engolfo (15m)...');
+  console.log('[Run-15m BG] Iniciando MA Cross + engolfo + rompimento20 (15m)...');
 
   try {
     const result = await run15mStrategiesPipeline(now);
     const ma = result.maCross;
     const ma21 = result.maCross12x21S2;
     const eng = result.engolfo;
+    const romp = result.rompimento20;
     console.log(
       `[Run-15m BG] MA Cross 12×30 -> ${ma.status}` +
         (typeof ma.signalsCreated === 'number' ? ` (${ma.signalsCreated} sinais)` : '')
@@ -23,6 +24,10 @@ async function run15mInBackground(now: Date): Promise<void> {
     console.log(
       `[Run-15m BG] engolfo -> ${eng.status}` +
         (typeof eng.signalsCreated === 'number' ? ` (${eng.signalsCreated} sinais)` : '')
+    );
+    console.log(
+      `[Run-15m BG] rompimento20 -> ${romp.status}` +
+        (typeof romp.signalsCreated === 'number' ? ` (${romp.signalsCreated} sinais)` : '')
     );
   } catch (error) {
     console.error('[Run-15m BG] Falhou:', error);

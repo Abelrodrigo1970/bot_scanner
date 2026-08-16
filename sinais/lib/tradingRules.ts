@@ -34,6 +34,8 @@ const ALLOWED_STRATEGIES = [
   'MA_CROSS_12X21_S2',
   'engolfo',
   'ENGOLFO_15M',
+  'Rompimento 20 (15m)',
+  'ROMPIMENTO_20_15M',
   'stch15long',
   'STCH15LONG',
   'Scanner 2 RSI>80 Top 3 LONG (4h)',

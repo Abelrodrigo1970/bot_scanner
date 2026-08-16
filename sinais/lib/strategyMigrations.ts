@@ -367,6 +367,81 @@ export async function syncEngolfo15mConfig(
     });
     return { updated: true };
   }
+
+  return { updated: false };
+}
+
+/** Rompimento 20 — LONG 15m Scanner 1 (fecho > máx. 20 velas anteriores). */
+export const ROMPIMENTO_20_15M_PARAMS = {
+  universeTopN: 20,
+  chartTimeframe: '15m',
+  breakoutLookback: 20,
+  requireBullishClose: false,
+  stopLossPct: 0.07,
+  tp1Pct: 0.45,
+  tp1Position: 50,
+  closeAfterHours: 24,
+  autoExecuteMinStrength: 70,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: false,
+  sellEnabled: false,
+  exchange: 'bybit',
+} as const;
+
+export const ROMPIMENTO_20_15M_DISPLAY = 'Rompimento 20 (15m)';
+export const ROMPIMENTO_20_15M_DESC =
+  'Scanner 1 top 20. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. SL −7%. TP1 +45% (50% pos.). Restante às 24h. Só COMPRA.';
+
+export async function syncRompimento20_15mConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'ROMPIMENTO_20_15M' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  const shouldActivate = !row.isActive;
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const next = {
+    ...ROMPIMENTO_20_15M_PARAMS,
+    ...p,
+    breakoutLookback: ROMPIMENTO_20_15M_PARAMS.breakoutLookback,
+    stopLossPct: ROMPIMENTO_20_15M_PARAMS.stopLossPct,
+    tp1Pct: ROMPIMENTO_20_15M_PARAMS.tp1Pct,
+    tp1Position: ROMPIMENTO_20_15M_PARAMS.tp1Position,
+    closeAfterHours: ROMPIMENTO_20_15M_PARAMS.closeAfterHours,
+    universeTopN: ROMPIMENTO_20_15M_PARAMS.universeTopN,
+    allowBuy: true,
+    buyEnabled: true,
+    allowSell: false,
+    sellEnabled: false,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== ROMPIMENTO_20_15M_DISPLAY ||
+    row.description !== ROMPIMENTO_20_15M_DESC;
+
+  if (needParams || needMeta || shouldActivate) {
+    await prisma.strategy.update({
+      where: { name: 'ROMPIMENTO_20_15M' },
+      data: {
+        displayName: ROMPIMENTO_20_15M_DISPLAY,
+        description: ROMPIMENTO_20_15M_DESC,
+        params: JSON.stringify(next),
+        ...(shouldActivate ? { isActive: true } : {}),
+      },
+    });
+    return { updated: true };
+  }
   return { updated: false };
 }
 

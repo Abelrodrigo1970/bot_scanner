@@ -37,10 +37,14 @@ import {
   ENGOLFO_15M_DESC,
   ENGOLFO_15M_DISPLAY,
   ENGOLFO_15M_PARAMS,
+  ROMPIMENTO_20_15M_DESC,
+  ROMPIMENTO_20_15M_DISPLAY,
+  ROMPIMENTO_20_15M_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncMaCross12x21Scanner2Config,
   syncEngolfo15mConfig,
+  syncRompimento20_15mConfig,
   syncPivotBossBear15mUniverse,
   syncScanner1Top5Config,
   syncAccumulationBreakout15mConfig,
@@ -152,6 +156,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     isActive: true,
     params: JSON.stringify(ENGOLFO_15M_PARAMS),
   },
+  {
+    name: 'ROMPIMENTO_20_15M',
+    displayName: ROMPIMENTO_20_15M_DISPLAY,
+    description: ROMPIMENTO_20_15M_DESC,
+    isActive: true,
+    params: JSON.stringify(ROMPIMENTO_20_15M_PARAMS),
+  },
 ] as const;
 
 /** Estratégias descontinuadas (Ago 2026) — manter registo/histórico, sem trading. */
@@ -201,6 +212,13 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const engolfoSync = await syncEngolfo15mConfig(prisma);
   if (engolfoSync.updated) {
     console.log('✅ ENGOLFO_15M: engolfo | EMA12/21 ou spread<2% | SELL 15m | Scanner 2 top 3 | SL +8% | TP1 −20% 50% | 24h');
+  }
+
+  const rompimentoSync = await syncRompimento20_15mConfig(prisma);
+  if (rompimentoSync.updated) {
+    console.log(
+      '✅ ROMPIMENTO_20_15M: Rompimento 20 | fecho > HH20 | LONG 15m | Scanner 1 top 20 | SL −7% | TP1 +45% 50% | 24h'
+    );
   }
 
   const pivotBossSync = await syncPivotBossBear15mUniverse(prisma);

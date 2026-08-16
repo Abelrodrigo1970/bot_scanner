@@ -440,6 +440,29 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'ROMPIMENTO_20_15M':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Timeframe <strong>15m</strong>; só <strong>COMPRA</strong>. Universo = <strong>Scanner 1 top N</strong>{' '}
+              (acima SMA200 1h). Entrada quando o <strong>fecho</strong> da última vela fechada fica{' '}
+              <strong>acima do máximo</strong> das N velas anteriores (rompimento).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Top N Scanner 1', p.universeTopN ?? 20, (v) => upd({ universeTopN: v }))}
+              {numField('Lookback (velas)', p.breakoutLookback ?? 20, (v) => upd({ breakoutLookback: v }))}
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.07) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('TP1 (%) acima entrada', (p.tp1Pct ?? 0.45) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
+              {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
+              {numField('Fecho restante (horas)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Restante da posição ({Math.max(0, 100 - Number(p.tp1Position ?? 50))}%) fecha automaticamente após{' '}
+              {p.closeAfterHours ?? 24}h (cron 15m). Exchange: Bybit por defeito.
+            </p>
+          </div>
+        );
+
       case 'RSI_OVERBOUGHT_DROP_1H':
         return (
           <div className="space-y-4">

@@ -69,6 +69,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Scanner 2 top 3. Só VENDA. (EMA12<EMA21 OU |EMA12−EMA21|<2%) + fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante às 24h.',
   },
   {
+    strategyName: 'ROMPIMENTO_20_15M',
+    displayNames: ['Rompimento 20 (15m)'],
+    buy: side(7, 45, 50, 0, 0, 24),
+    sell: null,
+    summary:
+      'Scanner 1 top 20. Só COMPRA. Fecho > máx. 20 velas anteriores. SL −7%. TP1 +45% (50%). Restante às 24h.',
+  },
+  {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
     displayNames: ['Pivot Boss Bear 15m (4 EMA venda)'],
     buy: null,

@@ -22,6 +22,7 @@ import {
 } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 import { runEngolfo15mPipeline } from '@/lib/engolfo15mStrategy';
+import { runRompimento20_15mPipeline } from '@/lib/rompimento20_15mStrategy';
 
 const TIMEFRAME_15M = '15m' as const;
 const MA_CROSS_MIN_STRENGTH = 70;
@@ -272,10 +273,11 @@ export interface Cron15mAllResult {
   maCross: Cron15mResult;
   maCross12x21S2: Cron15mResult;
   engolfo: Cron15mResult;
+  rompimento20: Cron15mResult;
 }
 
 /**
- * Cron único 15m: MA Cross 12×30 (S1) + MA Cross 12×21 (S2) + engolfo (S2).
+ * Cron único 15m: MA Cross 12×30 (S1) + MA Cross 12×21 (S2) + engolfo (S2) + Rompimento 20 (S1).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
   const maCross = await runMaCross15mPipeline(now);
@@ -297,5 +299,21 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     engolfo = { status: 'not-found' };
   }
 
-  return { maCross, maCross12x21S2, engolfo };
+  let rompimento20: Cron15mResult;
+  try {
+    const r = await runRompimento20_15mPipeline({ logPrefix: '[Run-15m → rompimento20]' });
+    if (r.status === 'skipped') {
+      console.log(`[Run-15m → rompimento20] Saltado: ${r.reason}`);
+      if (r.reason.includes('inactiva')) rompimento20 = { status: 'inactive' };
+      else if (r.reason.includes('não encontrada')) rompimento20 = { status: 'not-found' };
+      else rompimento20 = { status: 'done', signalsCreated: 0 };
+    } else {
+      rompimento20 = { status: 'done', signalsCreated: r.signalsCreated };
+    }
+  } catch (err) {
+    console.error('[Run-15m → rompimento20] Falhou:', err);
+    rompimento20 = { status: 'not-found' };
+  }
+
+  return { maCross, maCross12x21S2, engolfo, rompimento20 };
 }

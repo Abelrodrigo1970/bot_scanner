@@ -97,6 +97,25 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
+    strategyName: 'ROMPIMENTO_20_15M',
+
+    displayLabel: 'Rompimento 20 (15m)',
+
+    signalTimeframes: ['15m'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+
+    description:
+      'Scanner 1 top 20. LONG 15m: fecho > máximo das 20 velas anteriores. SL −7%. TP1 +45% (50%). Restante 24h.',
+
+    refresh: '/api/cron/run-15m (cada 15 min)',
+
+  },
+
+  {
+
     strategyName: 'STCH15LONG',
 
     displayLabel: 'stch15long',
