@@ -86,6 +86,10 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
     rsiPeriod: RSI_VENDIDO_PERIOD,
     rsiThreshold: RSI_VENDIDO_THRESHOLD,
   },
+};
+
+/** Lateral EMA21/70 — só às 00h e 12h (Europe/Lisbon) via cron dedicado. */
+export const BUILTIN_UNIVERSE_SCAN_LATERAL_12H: Record<string, UniverseScanDefinition> = {
   UNIVERSE_LATERAL_VOLATILE_4H: {
     ruleType: 'LATERAL_VOLATILE',
     maPeriod: LATERAL_MA_SLOW,
@@ -138,6 +142,7 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
   ...BUILTIN_UNIVERSE_SCAN_4H,
   ...BUILTIN_UNIVERSE_SCAN_1H,
   ...BUILTIN_UNIVERSE_SCAN_15M,
+  ...BUILTIN_UNIVERSE_SCAN_LATERAL_12H,
 };
 
 export function getBuiltinScanDefinition(code: string): UniverseScanDefinition | null {
@@ -208,7 +213,7 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_LATERAL_VOLATILE_4H: {
     displayName: 'Lateral EMA21/70 (4h)',
     description:
-      'Perpétuos USDT em 4h onde |EMA21 − EMA70| / EMA70 < 10% em todas as velas dos últimos 15 dias (90×4h). Ordenados pelo spread actual (mais apertado primeiro). Mín. 5M USDT volume 24h.',
+      'Perpétuos USDT em 4h onde |EMA21 − EMA70| / EMA70 < 10% em todas as velas dos últimos 15 dias (90×4h). Ordenados pelo spread actual (mais apertado primeiro). Mín. 5M USDT volume 24h. Cron automático às 00h e 12h (Lisboa).',
     strategyNames: '— (screener; sem estratégia ligada)',
   },
 };

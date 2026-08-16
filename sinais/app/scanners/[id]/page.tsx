@@ -245,6 +245,11 @@ export default function UniverseScannerPage() {
                   cron <code className="text-[10px]">/api/cron/run-scanner3-rsi-1h</code> de{' '}
                   <strong>hora em hora</strong>
                 </>
+              ) : isLateralVolatileScanner ? (
+                <>
+                  cron <code className="text-[10px]">/api/cron/run-lateral-volatile</code> às{' '}
+                  <strong>00h e 12h</strong> (Lisboa)
+                </>
               ) : (
                 <>
                   cron <code className="text-[10px]">/api/cron/run-universe-scans</code> de{' '}
