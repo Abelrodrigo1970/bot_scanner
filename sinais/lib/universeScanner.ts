@@ -2,7 +2,7 @@
  * Scanners de universo: filtra perpétuos USDT por regra vs média móvel (SMA ou EMA).
  */
 
-import { fetchCandles, fetchTopSymbolsByVolume, fetchTopPriceChange24hTickers } from './marketData';
+import { fetchCandles, fetchTopSymbolsByVolume, fetchTopPriceChange24hTickers, type Candle } from './marketData';
 import {
   calculateADX,
   calculateATR,
@@ -122,6 +122,10 @@ async function scanRsiThresholdUniverse(
 /**
  * LATERAL_VOLATILE: ADX baixo + ATR% alto + Donchian apertado.
  * Persistência: ma = ADX, pctFromMa = ATR%.
+ *
+ * Nota: no Railway o fetchCandles usa Bybit — com muitos símbolos o rate-limit
+ * silenciava falhas e o scan ficava incompleto. Aqui: batches pequenos, delay,
+ * retries e 200 velas (como o script CLI).
  */
 async function scanLateralVolatileUniverse(def: UniverseScanDefinition): Promise<UniverseScanRow[]> {
   const adxPeriod = Math.max(2, Math.floor(def.adxPeriod ?? 14));
@@ -130,43 +134,69 @@ async function scanLateralVolatileUniverse(def: UniverseScanDefinition): Promise
   const atrPctMin = Number(def.atrPctMin ?? 1.5);
   const donchianLength = Math.max(2, Math.floor(def.donchianLength ?? 50));
   const donchianPctMax = Number(def.donchianPctMax ?? 12);
-  const needBars = Math.max(adxPeriod * 3, atrPeriod + 40, donchianLength + 5, 120);
+  const klineLimit = 200;
+  const minClosed = Math.max(donchianLength, adxPeriod * 2 + 5, 80);
 
   const symbols = await fetchTopSymbolsByVolume(
     Math.min(Math.max(def.candidateLimit, 50), 600),
     def.minQuoteVolume
   );
   const results: UniverseScanRow[] = [];
+  let failed = 0;
+  const LV_BATCH = 3;
+  const LV_DELAY_MS = 280;
 
-  for (let i = 0; i < symbols.length; i += BATCH) {
-    const chunk = symbols.slice(i, i + BATCH);
+  async function fetchWithRetry(symbol: string): Promise<Candle[] | null> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const candles = await fetchCandles(symbol, def.timeframe, klineLimit);
+        if (candles.length >= minClosed + 1) return candles;
+        if (attempt < 2) await delay(200 * (attempt + 1));
+      } catch {
+        if (attempt < 2) await delay(350 * (attempt + 1));
+      }
+    }
+    return null;
+  }
+
+  for (let i = 0; i < symbols.length; i += LV_BATCH) {
+    const chunk = symbols.slice(i, i + LV_BATCH);
     const rows = await Promise.all(
       chunk.map(async (symbol): Promise<UniverseScanRow | null> => {
-        try {
-          const candles = await fetchCandles(symbol, def.timeframe, needBars);
-          if (candles.length < needBars - 10) return null;
-          const closed = candles.slice(0, -1);
-          if (closed.length < Math.max(donchianLength, adxPeriod * 2 + 5)) return null;
-
-          const adx = calculateADX(closed, adxPeriod);
-          const atr = calculateATR(closed, atrPeriod);
-          const close = closed[closed.length - 1]?.close;
-          const donchPct = calculateDonchianRangePct(closed, donchianLength);
-          if (adx == null || atr == null || !(close > 0) || donchPct == null) return null;
-
-          const atrPct = (atr / close) * 100;
-          if (!(adx < adxMax && atrPct >= atrPctMin && donchPct <= donchianPctMax)) return null;
-
-          return { symbol, close, ma: adx, pctFromMa: atrPct };
-        } catch {
+        const candles = await fetchWithRetry(symbol);
+        if (!candles) {
+          failed++;
           return null;
         }
+        // Última vela fechada (exclui formação) — alinhado aos outros scanners
+        const closed = candles.slice(0, -1);
+        if (closed.length < minClosed) {
+          failed++;
+          return null;
+        }
+
+        const adx = calculateADX(closed, adxPeriod);
+        const atr = calculateATR(closed, atrPeriod);
+        const close = closed[closed.length - 1]?.close;
+        const donchPct = calculateDonchianRangePct(closed, donchianLength);
+        if (adx == null || atr == null || !(close > 0) || donchPct == null) return null;
+
+        const atrPct = (atr / close) * 100;
+        if (!(adx < adxMax && atrPct >= atrPctMin && donchPct <= donchianPctMax)) return null;
+
+        return { symbol, close, ma: adx, pctFromMa: atrPct };
       })
     );
     for (const r of rows) {
       if (r) results.push(r);
     }
-    await delay(BATCH_DELAY_MS);
+    await delay(LV_DELAY_MS);
+  }
+
+  if (failed > 0) {
+    console.warn(
+      `[LATERAL_VOLATILE] ${failed}/${symbols.length} símbolos sem klines (rate-limit/geo); matches=${results.length}`
+    );
   }
 
   results.sort((a, b) => b.pctFromMa - a.pctFromMa);
