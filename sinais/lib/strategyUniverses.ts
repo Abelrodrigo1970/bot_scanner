@@ -177,6 +177,10 @@ export const DATA_SOURCE_MENU_ITEMS = [
     href: '/scanners/rsi_vendido',
     label: 'rsi_vendido — RSI < 32 (4h)',
   },
+  {
+    href: '/scanners/lateral_volatile',
+    label: 'Lateral + volátil — ADX baixo · ATR% alto (4h)',
+  },
 ] as const;
 
 

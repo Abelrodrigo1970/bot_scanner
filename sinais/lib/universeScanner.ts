@@ -3,7 +3,15 @@
  */
 
 import { fetchCandles, fetchTopSymbolsByVolume, fetchTopPriceChange24hTickers } from './marketData';
-import { calculateLastEMA, calculateSMA, calculateRSI, getCloses } from './indicators';
+import {
+  calculateADX,
+  calculateATR,
+  calculateDonchianRangePct,
+  calculateLastEMA,
+  calculateSMA,
+  calculateRSI,
+  getCloses,
+} from './indicators';
 
 export interface UniverseScanDefinition {
   ruleType: string;
@@ -22,6 +30,18 @@ export interface UniverseScanDefinition {
   rsiPeriod?: number;
   /** Scanners RSI: limiar (mínimo em RSI_ABOVE, máximo em RSI_BELOW). */
   rsiThreshold?: number;
+  /** Lateral+volátil: período ADX. */
+  adxPeriod?: number;
+  /** Lateral+volátil: ADX máximo (sem tendência forte). */
+  adxMax?: number;
+  /** Lateral+volátil: período ATR. */
+  atrPeriod?: number;
+  /** Lateral+volátil: ATR% mínimo. */
+  atrPctMin?: number;
+  /** Lateral+volátil: comprimento Donchian. */
+  donchianLength?: number;
+  /** Lateral+volátil: amplitude Donchian máxima (%). */
+  donchianPctMax?: number;
 }
 
 function maAtClose(closes: number[], def: UniverseScanDefinition): number | null {
@@ -99,6 +119,61 @@ async function scanRsiThresholdUniverse(
   return limit > 0 ? results.slice(0, limit) : results;
 }
 
+/**
+ * LATERAL_VOLATILE: ADX baixo + ATR% alto + Donchian apertado.
+ * Persistência: ma = ADX, pctFromMa = ATR%.
+ */
+async function scanLateralVolatileUniverse(def: UniverseScanDefinition): Promise<UniverseScanRow[]> {
+  const adxPeriod = Math.max(2, Math.floor(def.adxPeriod ?? 14));
+  const adxMax = Number(def.adxMax ?? 20);
+  const atrPeriod = Math.max(2, Math.floor(def.atrPeriod ?? 14));
+  const atrPctMin = Number(def.atrPctMin ?? 1.5);
+  const donchianLength = Math.max(2, Math.floor(def.donchianLength ?? 50));
+  const donchianPctMax = Number(def.donchianPctMax ?? 12);
+  const needBars = Math.max(adxPeriod * 3, atrPeriod + 40, donchianLength + 5, 120);
+
+  const symbols = await fetchTopSymbolsByVolume(
+    Math.min(Math.max(def.candidateLimit, 50), 600),
+    def.minQuoteVolume
+  );
+  const results: UniverseScanRow[] = [];
+
+  for (let i = 0; i < symbols.length; i += BATCH) {
+    const chunk = symbols.slice(i, i + BATCH);
+    const rows = await Promise.all(
+      chunk.map(async (symbol): Promise<UniverseScanRow | null> => {
+        try {
+          const candles = await fetchCandles(symbol, def.timeframe, needBars);
+          if (candles.length < needBars - 10) return null;
+          const closed = candles.slice(0, -1);
+          if (closed.length < Math.max(donchianLength, adxPeriod * 2 + 5)) return null;
+
+          const adx = calculateADX(closed, adxPeriod);
+          const atr = calculateATR(closed, atrPeriod);
+          const close = closed[closed.length - 1]?.close;
+          const donchPct = calculateDonchianRangePct(closed, donchianLength);
+          if (adx == null || atr == null || !(close > 0) || donchPct == null) return null;
+
+          const atrPct = (atr / close) * 100;
+          if (!(adx < adxMax && atrPct >= atrPctMin && donchPct <= donchianPctMax)) return null;
+
+          return { symbol, close, ma: adx, pctFromMa: atrPct };
+        } catch {
+          return null;
+        }
+      })
+    );
+    for (const r of rows) {
+      if (r) results.push(r);
+    }
+    await delay(BATCH_DELAY_MS);
+  }
+
+  results.sort((a, b) => b.pctFromMa - a.pctFromMa);
+  const limit = Math.floor(def.resultLimit ?? 0);
+  return limit > 0 ? results.slice(0, limit) : results;
+}
+
 export async function scanSymbolUniverse(
   def: UniverseScanDefinition
 ): Promise<UniverseScanRow[]> {
@@ -110,6 +185,9 @@ export async function scanSymbolUniverse(
   }
   if (def.ruleType === 'RSI_BELOW') {
     return scanRsiThresholdUniverse(def, 'below');
+  }
+  if (def.ruleType === 'LATERAL_VOLATILE') {
+    return scanLateralVolatileUniverse(def);
   }
 
   const symbols = await fetchTopSymbolsByVolume(

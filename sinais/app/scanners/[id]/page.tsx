@@ -37,21 +37,28 @@ export default function UniverseScannerPage() {
   const isRsiAboveScanner = scanDef?.ruleType === 'RSI_ABOVE';
   const isRsiBelowScanner = scanDef?.ruleType === 'RSI_BELOW';
   const isRsiRankScanner = isRsiAboveScanner || isRsiBelowScanner;
+  const isLateralVolatileScanner = scanDef?.ruleType === 'LATERAL_VOLATILE';
   const isVolumeRankScanner = scanDef?.ruleType === 'TOP_VOLUME_24H';
-  const isTickerRankScanner = isPriceRankScanner || isRsiRankScanner || isVolumeRankScanner;
+  const isTickerRankScanner =
+    isPriceRankScanner || isRsiRankScanner || isVolumeRankScanner || isLateralVolatileScanner;
   /** Scanner 1 e Scanner 2: colunas de valor anterior + delta (como afastamento / % 24h). */
-  const showPrevValueCols = !isTickerRankScanner || isPriceRankScanner;
+  const showPrevValueCols = (!isTickerRankScanner || isPriceRankScanner) && !isLateralVolatileScanner;
   const prevMetricLabel = isPriceRankScanner ? '% anterior' : 'Afast. anterior';
   const nowMetricLabel = isPriceRankScanner
     ? '% 24h'
     : isRsiRankScanner
       ? 'Δ RSI'
-      : isVolumeRankScanner
-        ? '% 24h'
-        : 'Afast. agora';
+      : isLateralVolatileScanner
+        ? 'ATR%'
+        : isVolumeRankScanner
+          ? '% 24h'
+          : 'Afast. agora';
   const deltaMetricLabel = isPriceRankScanner ? 'Δ %' : 'Δ afast.';
   const rsiThresholdLabel = scanDef?.rsiThreshold ?? 75;
   const rsiPeriodLabel = scanDef?.rsiPeriod ?? 14;
+  const adxMaxLabel = scanDef?.adxMax ?? 20;
+  const atrPctMinLabel = scanDef?.atrPctMin ?? 1.5;
+  const donchianPctMaxLabel = scanDef?.donchianPctMax ?? 12;
   const maLabel =
     scanDef?.maType === 'EMA'
       ? `EMA${scanDef.maPeriod}`
@@ -200,6 +207,14 @@ export default function UniverseScannerPage() {
                 </li>
                 <li>Top 400 por volume 24h (mín. 500k USDT) — Binance Futures, RSI da última vela fechada</li>
               </>
+            ) : isLateralVolatileScanner ? (
+              <>
+                <li>
+                  Mercado <strong>lateral + volátil</strong> em <strong>{timeframeLabel}</strong>: ADX &lt;{' '}
+                  {adxMaxLabel}, ATR% ≥ {atrPctMinLabel}, Donchian ≤ {donchianPctMaxLabel}% (ordenado por ATR%)
+                </li>
+                <li>Top volume 24h (mín. 5M USDT) — Binance Futures, última vela fechada</li>
+              </>
             ) : isPriceRankScanner ? (
               <>
                 <li>
@@ -287,7 +302,13 @@ export default function UniverseScannerPage() {
                       Fecho
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      {isRsiRankScanner ? `RSI ${timeframeLabel}` : isTickerRankScanner ? 'Vol. 24h' : maLabel}
+                      {isRsiRankScanner
+                        ? `RSI ${timeframeLabel}`
+                        : isLateralVolatileScanner
+                          ? 'ADX'
+                          : isTickerRankScanner
+                            ? 'Vol. 24h'
+                            : maLabel}
                     </th>
                     {!showPrevValueCols ? null : (
                       <th
@@ -340,7 +361,7 @@ export default function UniverseScannerPage() {
                         ${formatPrice(item.close)}
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900 dark:text-white">
-                        {isRsiRankScanner
+                        {isRsiRankScanner || isLateralVolatileScanner
                           ? item.ma.toFixed(1)
                           : isTickerRankScanner
                             ? formatVolume(item.ma)
@@ -382,6 +403,10 @@ export default function UniverseScannerPage() {
                               {item.pctFromMaDelta.toFixed(1)} pts
                             </span>
                           )
+                        ) : isLateralVolatileScanner ? (
+                          <span className="text-violet-700 dark:text-violet-300">
+                            {item.pctFromMa.toFixed(2)}%
+                          </span>
                         ) : (
                           <span
                             className={

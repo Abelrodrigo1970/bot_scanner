@@ -3,7 +3,7 @@
  * Usa a biblioteca technicalindicators
  */
 
-import { RSI, SMA, MACD, EMA, ATR, BollingerBands, StochasticRSI } from 'technicalindicators';
+import { RSI, SMA, MACD, EMA, ATR, ADX, BollingerBands, StochasticRSI } from 'technicalindicators';
 import type { Candle } from './marketData';
 
 /**
@@ -281,6 +281,46 @@ export function calculateATR(candles: Candle[], period: number = 13): number | n
   });
 
   return atrValues.length > 0 ? atrValues[atrValues.length - 1] : null;
+}
+
+/**
+ * Calcula ADX (Average Directional Index) da última vela disponível.
+ */
+export function calculateADX(candles: Candle[], period: number = 14): number | null {
+  if (candles.length < period * 2 + 1) {
+    return null;
+  }
+
+  const high = candles.map((c) => c.high);
+  const low = candles.map((c) => c.low);
+  const close = candles.map((c) => c.close);
+
+  const adxValues = ADX.calculate({
+    high,
+    low,
+    close,
+    period,
+  }) as Array<{ adx?: number }>;
+
+  if (!adxValues.length) return null;
+  const last = adxValues[adxValues.length - 1]?.adx;
+  return typeof last === 'number' && Number.isFinite(last) ? last : null;
+}
+
+/**
+ * Amplitude Donchian em %: (high−low)/low × 100 nas últimas `period` velas.
+ */
+export function calculateDonchianRangePct(candles: Candle[], period: number = 50): number | null {
+  if (candles.length < period || period < 2) return null;
+  const window = candles.slice(-period);
+  let hi = -Infinity;
+  let lo = Infinity;
+  for (const c of window) {
+    if (c.high > hi) hi = c.high;
+    if (c.low < lo) lo = c.low;
+  }
+  if (!(lo > 0) || !Number.isFinite(hi) || !Number.isFinite(lo)) return null;
+  return ((hi - lo) / lo) * 100;
 }
 
 /**
