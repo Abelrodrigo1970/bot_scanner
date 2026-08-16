@@ -1,10 +1,8 @@
 /**
- * Screener: Criptos em mercado LATERAL mas com VOLATILIDADE alta
+ * Screener: mercado LATERAL (4h) — |EMA21 − EMA70| < 10% nos últimos 15 dias
  * ------------------------------------------------------------------
- * Critério:
- *   1. ADX baixo         -> não há tendência direcional forte
- *   2. ATR% alto          -> mas o preço se move bastante (bom p/ range/grid)
- *   3. Donchian% apertado -> preço "preso" numa faixa nas últimas N barras
+ * Critério: em todas as velas 4h dos últimos 15 dias (90 barras),
+ *   |EMA21 − EMA70| / EMA70 < 10%
  *
  * Fonte: Binance Futures USDT-M (API pública)
  * Uso: node scripts/screener-lateral-volatile.mjs
@@ -14,21 +12,20 @@ import { createRequire } from 'module';
 import fs from 'fs';
 
 const require = createRequire(import.meta.url);
-const { ADX, ATR } = require('technicalindicators');
+const { EMA } = require('technicalindicators');
 
 const CONFIG = {
   interval: '4h',
   klineLimit: 200,
-  adxLength: 14,
-  adxMax: 20,
-  atrLength: 14,
-  atrPctMin: 1.5,
-  donchianLength: 50,
-  donchianPctMax: 12,
+  maFast: 21,
+  maSlow: 70,
+  maSpreadMaxPct: 10,
+  lookbackDays: 15,
   minVolumeUsdt: 5_000_000,
   concurrency: 5,
 };
 
+const LOOKBACK_BARS = CONFIG.lookbackDays * 6; // 4h → 6/dia
 const BASE_URL = 'https://fapi.binance.com';
 
 async function getAllSymbols() {
@@ -71,29 +68,34 @@ async function getKlines(symbol, interval, limit) {
 }
 
 function analyzeSymbol(candles) {
-  const high = candles.map((c) => c.high);
-  const low = candles.map((c) => c.low);
-  const close = candles.map((c) => c.close);
+  const closed = candles.slice(0, -1);
+  const closes = closed.map((c) => c.close);
+  if (closes.length < CONFIG.maSlow + LOOKBACK_BARS) return null;
 
-  const adxResult = ADX.calculate({ high, low, close, period: CONFIG.adxLength });
-  const lastAdx = adxResult.at(-1)?.adx ?? null;
+  const emaFast = EMA.calculate({ values: closes, period: CONFIG.maFast });
+  const emaSlow = EMA.calculate({ values: closes, period: CONFIG.maSlow });
+  if (emaFast.length < LOOKBACK_BARS || emaSlow.length < LOOKBACK_BARS) return null;
 
-  const atrResult = ATR.calculate({ high, low, close, period: CONFIG.atrLength });
-  const lastAtr = atrResult.at(-1) ?? null;
-  const lastClose = close.at(-1);
-  const atrPct = lastAtr && lastClose ? (lastAtr / lastClose) * 100 : null;
+  let maxSpread = 0;
+  for (let k = 0; k < LOOKBACK_BARS; k++) {
+    const fast = emaFast[emaFast.length - 1 - k];
+    const slow = emaSlow[emaSlow.length - 1 - k];
+    if (!(slow > 0)) return null;
+    const spread = (Math.abs(fast - slow) / slow) * 100;
+    if (spread >= CONFIG.maSpreadMaxPct) return null;
+    if (spread > maxSpread) maxSpread = spread;
+  }
 
-  const window = candles.slice(-CONFIG.donchianLength);
-  const donchHigh = Math.max(...window.map((c) => c.high));
-  const donchLow = Math.min(...window.map((c) => c.low));
-  const donchPct = donchLow > 0 ? ((donchHigh - donchLow) / donchLow) * 100 : null;
-
-  return { adx: lastAdx, atrPct, donchPct, lastClose };
-}
-
-function passesFilter({ adx, atrPct, donchPct }) {
-  if (adx == null || atrPct == null || donchPct == null) return false;
-  return adx < CONFIG.adxMax && atrPct >= CONFIG.atrPctMin && donchPct <= CONFIG.donchianPctMax;
+  const lastFast = emaFast[emaFast.length - 1];
+  const lastSlow = emaSlow[emaSlow.length - 1];
+  const lastSpread = (Math.abs(lastFast - lastSlow) / lastSlow) * 100;
+  return {
+    lastClose: closes[closes.length - 1],
+    ema21: lastFast,
+    ema70: lastSlow,
+    spreadPct: lastSpread,
+    maxSpreadPct: maxSpread,
+  };
 }
 
 async function runInBatches(items, worker, batchSize) {
@@ -111,9 +113,9 @@ async function runInBatches(items, worker, batchSize) {
 
 async function main() {
   console.log('═'.repeat(72));
-  console.log('Screener LATERAL + VOLÁTIL (ADX baixo · ATR% alto · Donchian apertado)');
+  console.log('Screener LATERAL — |EMA21−EMA70| < 10% (4h, últimos 15 dias)');
   console.log(
-    `TF=${CONFIG.interval} | ADX<${CONFIG.adxMax} | ATR%≥${CONFIG.atrPctMin} | Donchian≤${CONFIG.donchianPctMax}% | vol≥${(CONFIG.minVolumeUsdt / 1e6).toFixed(0)}M`
+    `TF=${CONFIG.interval} | |EMA${CONFIG.maFast}−EMA${CONFIG.maSlow}| < ${CONFIG.maSpreadMaxPct}% × ${CONFIG.lookbackDays}d | vol≥${(CONFIG.minVolumeUsdt / 1e6).toFixed(0)}M`
   );
   console.log('═'.repeat(72));
 
@@ -127,11 +129,8 @@ async function main() {
     symbols,
     async (symbol) => {
       const candles = await getKlines(symbol, CONFIG.interval, CONFIG.klineLimit);
-      if (candles.length < Math.max(CONFIG.donchianLength, CONFIG.adxLength + 5)) {
-        return null;
-      }
       const metrics = analyzeSymbol(candles);
-      if (!passesFilter(metrics)) return null;
+      if (!metrics) return null;
       return {
         symbol,
         ...metrics,
@@ -149,16 +148,17 @@ async function main() {
   const matches = results
     .filter((r) => r.status === 'fulfilled' && r.value)
     .map((r) => r.value)
-    .sort((a, b) => b.atrPct - a.atrPct);
+    .sort((a, b) => a.spreadPct - b.spreadPct);
 
-  console.log(`\n=== ${matches.length} símbolos LATERAIS + VOLÁTEIS (${CONFIG.interval}) ===\n`);
+  console.log(`\n=== ${matches.length} símbolos LATERAIS (${CONFIG.interval}) ===\n`);
   if (matches.length) {
     console.table(
       matches.map((m) => ({
         Symbol: m.symbol,
-        ADX: Number(m.adx.toFixed(1)),
-        'ATR%': Number(m.atrPct.toFixed(2)),
-        'Range%': Number(m.donchPct.toFixed(2)),
+        'Spread%': Number(m.spreadPct.toFixed(2)),
+        'Max15d%': Number(m.maxSpreadPct.toFixed(2)),
+        EMA21: Number(m.ema21.toFixed(6)),
+        EMA70: Number(m.ema70.toFixed(6)),
         Close: m.lastClose,
         Vol24hM: Number(((m.quoteVolume24h || 0) / 1e6).toFixed(1)),
       }))
@@ -167,13 +167,14 @@ async function main() {
 
   const out = {
     scannedAt: new Date().toISOString(),
-    config: CONFIG,
+    config: { ...CONFIG, lookbackBars: LOOKBACK_BARS },
     candidates: symbols.length,
     matches: matches.map((m) => ({
       symbol: m.symbol,
-      adx: +m.adx.toFixed(3),
-      atrPct: +m.atrPct.toFixed(3),
-      donchPct: +m.donchPct.toFixed(3),
+      spreadPct: +m.spreadPct.toFixed(3),
+      maxSpreadPct: +m.maxSpreadPct.toFixed(3),
+      ema21: m.ema21,
+      ema70: m.ema70,
       lastClose: m.lastClose,
       quoteVolume24h: m.quoteVolume24h,
     })),

@@ -27,7 +27,7 @@ export const UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H = 'UNIVERSE_ABOVE_MA80_4H' as
 /** rsi_vendido — RSI(14) 4h abaixo de 32. */
 export const UNIVERSE_CODE_RSI_VENDIDO = 'UNIVERSE_RSI_BELOW_32_4H' as const;
 
-/** Lateral + volátil — ADX baixo, ATR% alto, Donchian apertado (4h). */
+/** Lateral — |EMA21−EMA70| < 10% em 4h nos últimos 15 dias. */
 export const UNIVERSE_CODE_LATERAL_VOLATILE = 'UNIVERSE_LATERAL_VOLATILE_4H' as const;
 
 export const SCANNER_3_RSI_PERIOD = 14;
@@ -36,12 +36,10 @@ export const SCANNER_3_RSI_THRESHOLD = 75;
 export const RSI_VENDIDO_PERIOD = 14;
 export const RSI_VENDIDO_THRESHOLD = 32;
 
-export const LATERAL_VOLATILE_ADX_PERIOD = 14;
-export const LATERAL_VOLATILE_ADX_MAX = 20;
-export const LATERAL_VOLATILE_ATR_PERIOD = 14;
-export const LATERAL_VOLATILE_ATR_PCT_MIN = 1.5;
-export const LATERAL_VOLATILE_DONCHIAN_LENGTH = 50;
-export const LATERAL_VOLATILE_DONCHIAN_PCT_MAX = 12;
+export const LATERAL_MA_FAST = 21;
+export const LATERAL_MA_SLOW = 70;
+export const LATERAL_MA_SPREAD_MAX_PCT = 10;
+export const LATERAL_LOOKBACK_DAYS = 15;
 
 export const SCANNER_2_MIN_DISTANCE_PCT = -5;
 export const SCANNER_2_MAX_DISTANCE_PCT = 15;
@@ -90,19 +88,18 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
   },
   UNIVERSE_LATERAL_VOLATILE_4H: {
     ruleType: 'LATERAL_VOLATILE',
-    maPeriod: 0,
+    maPeriod: LATERAL_MA_SLOW,
+    maType: 'EMA',
     minDistancePct: null,
-    maxDistancePct: null,
+    maxDistancePct: LATERAL_MA_SPREAD_MAX_PCT,
     timeframe: '4h',
     minQuoteVolume: 5_000_000,
     candidateLimit: 400,
     resultLimit: 80,
-    adxPeriod: LATERAL_VOLATILE_ADX_PERIOD,
-    adxMax: LATERAL_VOLATILE_ADX_MAX,
-    atrPeriod: LATERAL_VOLATILE_ATR_PERIOD,
-    atrPctMin: LATERAL_VOLATILE_ATR_PCT_MIN,
-    donchianLength: LATERAL_VOLATILE_DONCHIAN_LENGTH,
-    donchianPctMax: LATERAL_VOLATILE_DONCHIAN_PCT_MAX,
+    maFastPeriod: LATERAL_MA_FAST,
+    maSlowPeriod: LATERAL_MA_SLOW,
+    maSpreadMaxPct: LATERAL_MA_SPREAD_MAX_PCT,
+    lookbackDays: LATERAL_LOOKBACK_DAYS,
   },
 };
 
@@ -209,9 +206,9 @@ export const BUILTIN_UNIVERSE_META: Record<
     strategyNames: 'rsi_vendido LONG (4h)',
   },
   UNIVERSE_LATERAL_VOLATILE_4H: {
-    displayName: 'Lateral + volátil (4h)',
+    displayName: 'Lateral EMA21/70 (4h)',
     description:
-      'Perpétuos USDT laterais com volatilidade: ADX(14) < 20, ATR% ≥ 1,5% e amplitude Donchian(50) ≤ 12% em velas 4h. Ordenados por ATR% (maior primeiro). Mín. 5M USDT volume 24h. Bom para range/grid.',
+      'Perpétuos USDT em 4h onde |EMA21 − EMA70| / EMA70 < 10% em todas as velas dos últimos 15 dias (90×4h). Ordenados pelo spread actual (mais apertado primeiro). Mín. 5M USDT volume 24h.',
     strategyNames: '— (screener; sem estratégia ligada)',
   },
 };

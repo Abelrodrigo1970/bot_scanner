@@ -4,9 +4,7 @@
 
 import { fetchCandles, fetchTopSymbolsByVolume, fetchTopPriceChange24hTickers, type Candle } from './marketData';
 import {
-  calculateADX,
-  calculateATR,
-  calculateDonchianRangePct,
+  calculateEMA,
   calculateLastEMA,
   calculateSMA,
   calculateRSI,
@@ -30,18 +28,14 @@ export interface UniverseScanDefinition {
   rsiPeriod?: number;
   /** Scanners RSI: limiar (mínimo em RSI_ABOVE, máximo em RSI_BELOW). */
   rsiThreshold?: number;
-  /** Lateral+volátil: período ADX. */
-  adxPeriod?: number;
-  /** Lateral+volátil: ADX máximo (sem tendência forte). */
-  adxMax?: number;
-  /** Lateral+volátil: período ATR. */
-  atrPeriod?: number;
-  /** Lateral+volátil: ATR% mínimo. */
-  atrPctMin?: number;
-  /** Lateral+volátil: comprimento Donchian. */
-  donchianLength?: number;
-  /** Lateral+volátil: amplitude Donchian máxima (%). */
-  donchianPctMax?: number;
+  /** Lateral: MA rápida (ex. 21). */
+  maFastPeriod?: number;
+  /** Lateral: MA lenta (ex. 70). */
+  maSlowPeriod?: number;
+  /** Lateral: |MA rápida−MA lenta|/MA lenta máx. (%). */
+  maSpreadMaxPct?: number;
+  /** Lateral: janela em dias (4h → bars = days*6). */
+  lookbackDays?: number;
 }
 
 function maAtClose(closes: number[], def: UniverseScanDefinition): number | null {
@@ -120,22 +114,19 @@ async function scanRsiThresholdUniverse(
 }
 
 /**
- * LATERAL_VOLATILE: ADX baixo + ATR% alto + Donchian apertado.
- * Persistência: ma = ADX, pctFromMa = ATR%.
- *
- * Nota: no Railway o fetchCandles usa Bybit — com muitos símbolos o rate-limit
- * silenciava falhas e o scan ficava incompleto. Aqui: batches pequenos, delay,
- * retries e 200 velas (como o script CLI).
+ * LATERAL_VOLATILE (4h): |EMA21 − EMA70| / EMA70 < max% em todas as velas
+ * dos últimos `lookbackDays` dias.
+ * Persistência: ma = EMA21 actual, pctFromMa = spread % actual (menor = mais lateral).
  */
 async function scanLateralVolatileUniverse(def: UniverseScanDefinition): Promise<UniverseScanRow[]> {
-  const adxPeriod = Math.max(2, Math.floor(def.adxPeriod ?? 14));
-  const adxMax = Number(def.adxMax ?? 20);
-  const atrPeriod = Math.max(2, Math.floor(def.atrPeriod ?? 14));
-  const atrPctMin = Number(def.atrPctMin ?? 1.5);
-  const donchianLength = Math.max(2, Math.floor(def.donchianLength ?? 50));
-  const donchianPctMax = Number(def.donchianPctMax ?? 12);
-  const klineLimit = 200;
-  const minClosed = Math.max(donchianLength, adxPeriod * 2 + 5, 80);
+  const maFastPeriod = Math.max(2, Math.floor(def.maFastPeriod ?? 21));
+  const maSlowPeriod = Math.max(maFastPeriod + 1, Math.floor(def.maSlowPeriod ?? 70));
+  const maSpreadMaxPct = Number(def.maSpreadMaxPct ?? 10);
+  const lookbackDays = Math.max(1, Math.floor(def.lookbackDays ?? 15));
+  // 4h → 6 velas/dia
+  const lookbackBars = lookbackDays * 6;
+  const klineLimit = Math.min(500, Math.max(maSlowPeriod + lookbackBars + 20, 200));
+  const minClosed = maSlowPeriod + lookbackBars;
 
   const symbols = await fetchTopSymbolsByVolume(
     Math.min(Math.max(def.candidateLimit, 50), 600),
@@ -168,23 +159,32 @@ async function scanLateralVolatileUniverse(def: UniverseScanDefinition): Promise
           failed++;
           return null;
         }
-        // Última vela fechada (exclui formação) — alinhado aos outros scanners
         const closed = candles.slice(0, -1);
         if (closed.length < minClosed) {
           failed++;
           return null;
         }
 
-        const adx = calculateADX(closed, adxPeriod);
-        const atr = calculateATR(closed, atrPeriod);
-        const close = closed[closed.length - 1]?.close;
-        const donchPct = calculateDonchianRangePct(closed, donchianLength);
-        if (adx == null || atr == null || !(close > 0) || donchPct == null) return null;
+        const closes = getCloses(closed);
+        const emaFast = calculateEMA(closes, maFastPeriod);
+        const emaSlow = calculateEMA(closes, maSlowPeriod);
+        if (!emaFast?.length || !emaSlow?.length) return null;
+        if (emaFast.length < lookbackBars || emaSlow.length < lookbackBars) return null;
 
-        const atrPct = (atr / close) * 100;
-        if (!(adx < adxMax && atrPct >= atrPctMin && donchPct <= donchianPctMax)) return null;
+        for (let k = 0; k < lookbackBars; k++) {
+          const fast = emaFast[emaFast.length - 1 - k]!;
+          const slow = emaSlow[emaSlow.length - 1 - k]!;
+          if (!(slow > 0)) return null;
+          const spread = (Math.abs(fast - slow) / slow) * 100;
+          if (spread >= maSpreadMaxPct) return null;
+        }
 
-        return { symbol, close, ma: adx, pctFromMa: atrPct };
+        const close = closes[closes.length - 1]!;
+        const lastFast = emaFast[emaFast.length - 1]!;
+        const lastSlow = emaSlow[emaSlow.length - 1]!;
+        const lastSpread = (Math.abs(lastFast - lastSlow) / lastSlow) * 100;
+
+        return { symbol, close, ma: lastFast, pctFromMa: lastSpread };
       })
     );
     for (const r of rows) {
@@ -199,7 +199,8 @@ async function scanLateralVolatileUniverse(def: UniverseScanDefinition): Promise
     );
   }
 
-  results.sort((a, b) => b.pctFromMa - a.pctFromMa);
+  // Mais lateral primeiro (menor spread actual)
+  results.sort((a, b) => a.pctFromMa - b.pctFromMa);
   const limit = Math.floor(def.resultLimit ?? 0);
   return limit > 0 ? results.slice(0, limit) : results;
 }

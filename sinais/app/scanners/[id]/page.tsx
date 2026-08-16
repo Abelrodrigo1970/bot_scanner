@@ -49,16 +49,17 @@ export default function UniverseScannerPage() {
     : isRsiRankScanner
       ? 'Δ RSI'
       : isLateralVolatileScanner
-        ? 'ATR%'
+        ? '|EMA21−70|%'
         : isVolumeRankScanner
           ? '% 24h'
           : 'Afast. agora';
   const deltaMetricLabel = isPriceRankScanner ? 'Δ %' : 'Δ afast.';
   const rsiThresholdLabel = scanDef?.rsiThreshold ?? 75;
   const rsiPeriodLabel = scanDef?.rsiPeriod ?? 14;
-  const adxMaxLabel = scanDef?.adxMax ?? 20;
-  const atrPctMinLabel = scanDef?.atrPctMin ?? 1.5;
-  const donchianPctMaxLabel = scanDef?.donchianPctMax ?? 12;
+  const maFastLabel = scanDef?.maFastPeriod ?? 21;
+  const maSlowLabel = scanDef?.maSlowPeriod ?? 70;
+  const maSpreadMaxLabel = scanDef?.maSpreadMaxPct ?? scanDef?.maxDistancePct ?? 10;
+  const lookbackDaysLabel = scanDef?.lookbackDays ?? 15;
   const maLabel =
     scanDef?.maType === 'EMA'
       ? `EMA${scanDef.maPeriod}`
@@ -210,10 +211,11 @@ export default function UniverseScannerPage() {
             ) : isLateralVolatileScanner ? (
               <>
                 <li>
-                  Mercado <strong>lateral + volátil</strong> em <strong>{timeframeLabel}</strong>: ADX &lt;{' '}
-                  {adxMaxLabel}, ATR% ≥ {atrPctMinLabel}, Donchian ≤ {donchianPctMaxLabel}% (ordenado por ATR%)
+                  Mercado <strong>lateral</strong> em <strong>{timeframeLabel}</strong>: |EMA
+                  {maFastLabel} − EMA{maSlowLabel}| / EMA{maSlowLabel} &lt; {maSpreadMaxLabel}% em{' '}
+                  <strong>todas</strong> as velas dos últimos <strong>{lookbackDaysLabel} dias</strong>
                 </li>
-                <li>Top volume 24h (mín. 5M USDT) — Binance Futures, última vela fechada</li>
+                <li>Top volume 24h (mín. 5M USDT) — Binance/Bybit Futures, ordenado pelo spread actual</li>
               </>
             ) : isPriceRankScanner ? (
               <>
@@ -305,7 +307,7 @@ export default function UniverseScannerPage() {
                       {isRsiRankScanner
                         ? `RSI ${timeframeLabel}`
                         : isLateralVolatileScanner
-                          ? 'ADX'
+                          ? `EMA${maFastLabel}`
                           : isTickerRankScanner
                             ? 'Vol. 24h'
                             : maLabel}
@@ -361,11 +363,13 @@ export default function UniverseScannerPage() {
                         ${formatPrice(item.close)}
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900 dark:text-white">
-                        {isRsiRankScanner || isLateralVolatileScanner
+                        {isRsiRankScanner
                           ? item.ma.toFixed(1)
-                          : isTickerRankScanner
-                            ? formatVolume(item.ma)
-                            : `$${formatPrice(item.ma)}`}
+                          : isLateralVolatileScanner
+                            ? `$${formatPrice(item.ma)}`
+                            : isTickerRankScanner
+                              ? formatVolume(item.ma)
+                              : `$${formatPrice(item.ma)}`}
                       </td>
                       {!showPrevValueCols ? null : (
                         <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">

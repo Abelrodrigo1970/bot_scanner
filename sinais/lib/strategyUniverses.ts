@@ -179,7 +179,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/lateral_volatile',
-    label: 'Lateral + volátil — ADX baixo · ATR% alto (4h)',
+    label: 'Lateral — |EMA21−EMA70| < 10% (4h, 15 dias)',
   },
 ] as const;
 
