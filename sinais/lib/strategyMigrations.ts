@@ -210,7 +210,7 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 12×30 (15m)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% e < 1,8% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 top 20 (|afastamento| vs SMA200 1h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% e < 1,8% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 top 20 (|afastamento| vs SMA200 4h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
 
 /** MA Cross 12×21 (15m) — mesma lógica de spread que MA12×30; universo Scanner 2. */
 export const MA_CROSS_12X21_S2_PARAMS = {
@@ -371,9 +371,9 @@ export async function syncEngolfo15mConfig(
   return { updated: false };
 }
 
-/** Rompimento 20 — LONG 15m no Scanner Lateral EMA21/70 (fecho > máx. 20 velas anteriores). */
+/** Rompimento 20 — LONG 15m Scanner 1 (fecho > máx. 20 velas anteriores). */
 export const ROMPIMENTO_20_15M_PARAMS = {
-  universeTopN: 80,
+  universeTopN: 20,
   chartTimeframe: '15m',
   breakoutLookback: 20,
   requireBullishClose: false,
@@ -395,7 +395,7 @@ export const ROMPIMENTO_20_15M_PARAMS = {
 
 export const ROMPIMENTO_20_15M_DISPLAY = 'Rompimento 20 (15m)';
 export const ROMPIMENTO_20_15M_DESC =
-  'Scanner Lateral EMA21/70 (4h). LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. SL −7%. TP1 +45% (50% pos.). Restante às 24h. Só COMPRA.';
+  'Scanner 1 top 20. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. SL −7%. TP1 +45% (50% pos.). Restante às 24h. Só COMPRA.';
 
 export async function syncRompimento20_15mConfig(
   prisma: PrismaClient

@@ -1,5 +1,5 @@
 /**
- * Rompimento 20 (15m) — LONG no Scanner Lateral EMA21/70 (4h)
+ * Rompimento 20 (15m) — LONG no Scanner 1
  * Fecho da última vela fechada acima do máximo das 20 velas anteriores.
  * Filtro: sem sinal se preço > 30% acima da EMA70.
  * SL −7% | TP1 +45% (50% pos.) | restante às 24h.
@@ -8,7 +8,7 @@
 import { prisma } from './db';
 import { fetchCandles, type Candle } from './marketData';
 import { calculateLastEMA, calculateSMA, getCloses } from './indicators';
-import { UNIVERSE_CODE_LATERAL_VOLATILE } from './symbolUniverseDefaults';
+import { UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 } from './symbolUniverseDefaults';
 import { resolveUniverseScanSymbolsTopN } from './universeScanPersistence';
 import { autoExecuteNewSignalsForStrategy, resolveStrategyExchange } from './autoExecuteNewSignals';
 import { closeActivePositionForSymbol, inspectActivePositionForSymbol } from './tradingExecutor';
@@ -198,7 +198,7 @@ export function detectRompimento20_15mBuy(
 }
 
 /**
- * Cron 15m: Scanner Lateral → rompimento LONG + fecho timed 24h.
+ * Cron 15m: Scanner 1 → rompimento LONG + fecho timed 24h.
  */
 export async function runRompimento20_15mPipeline(options?: {
   logPrefix?: string;
@@ -223,7 +223,7 @@ export async function runRompimento20_15mPipeline(options?: {
     return { status: 'skipped', reason: 'BUY desactivado nos params' };
   }
 
-  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 80)));
+  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 20)));
   const chartTimeframe = String(params.chartTimeframe ?? '15m');
   const lookback = Math.max(5, Math.floor(Number(params.breakoutLookback ?? 20)));
   const filterMaPeriod = Math.max(2, Math.floor(Number(params.filterMaPeriod ?? 70)));
@@ -231,11 +231,11 @@ export async function runRompimento20_15mPipeline(options?: {
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const minStrength = Math.max(60, Math.floor(Number(params.autoExecuteMinStrength ?? 70)));
 
-  const symbols = await resolveUniverseScanSymbolsTopN(UNIVERSE_CODE_LATERAL_VOLATILE, topN);
+  const symbols = await resolveUniverseScanSymbolsTopN(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200, topN);
   if (symbols.length === 0) {
     return {
       status: 'skipped',
-      reason: 'Scanner Lateral vazio — correr run-lateral-volatile (00h/12h Lisboa)',
+      reason: 'Scanner 1 vazio — correr run-universe-scans',
     };
   }
 
@@ -251,7 +251,7 @@ export async function runRompimento20_15mPipeline(options?: {
   const hitSymbols: string[] = [];
   const candleLimit = Math.min(500, Math.max(lookback + 40, filterMaPeriod + 40, 120));
 
-  console.log(`${logPrefix} Lateral EMA21/70 top ${topN}: ${symbols.length} símbolos…`);
+  console.log(`${logPrefix} Scanner 1 top ${topN}: ${symbols.length} símbolos…`);
 
   for (const symbol of symbols) {
     const existingOpen = await prisma.signal.findFirst({

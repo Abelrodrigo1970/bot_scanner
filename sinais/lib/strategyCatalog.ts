@@ -59,7 +59,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 top 20 (acima SMA200, 1h)',
+    universe: 'Scanner 1 top 20 (acima SMA200, 4h)',
 
   },
 
@@ -95,7 +95,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Lateral EMA21/70 (4h); fecho > máx. 20 velas; filtro ≤30% acima EMA70; LONG SL −7%',
+    universe: 'Scanner 1 top 20; fecho > máx. 20 velas; filtro ≤30% acima EMA70; LONG SL −7%',
 
   },
 
@@ -337,7 +337,7 @@ export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; descrip
 
     title: 'Cron 15m',
 
-    description: 'MA Cross 12×30 (S1) + MA Cross 12×21 (S2) + engolfo (S2) + Rompimento 20 (Lateral)',
+    description: 'MA Cross 12×30 (S1) + MA Cross 12×21 (S2) + engolfo (S2) + Rompimento 20 (S1)',
 
   },
 

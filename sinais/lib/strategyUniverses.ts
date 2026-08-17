@@ -52,7 +52,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     dataKey: 'UNIVERSE_ABOVE_MA200_1H',
 
-    description: 'Scanner 1: fecho acima SMA200 (1h).',
+    description: 'Scanner 1: fecho acima SMA200 (4h).',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 
@@ -105,12 +105,12 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_LATERAL_VOLATILE_4H',
+    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
 
     description:
-      'Scanner Lateral EMA21/70 (4h). LONG 15m: fecho > máximo das 20 velas anteriores. Sem sinal se preço >30% acima EMA70. SL −7%. TP1 +45% (50%). Restante 24h.',
+      'Scanner 1 top 20. LONG 15m: fecho > máximo das 20 velas anteriores. Sem sinal se preço >30% acima EMA70. SL −7%. TP1 +45% (50%). Restante 24h.',
 
-    refresh: '/api/cron/run-15m (cada 15 min)',
+    refresh: '/api/cron/run-universe-scans (cada 4 h)',
 
   },
 
