@@ -217,7 +217,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const rompimentoSync = await syncRompimento20_15mConfig(prisma);
   if (rompimentoSync.updated) {
     console.log(
-      '✅ ROMPIMENTO_20_15M: Rompimento 20 | fecho > HH20 | filtro ≤30% acima EMA70 | LONG 15m | Scanner 1 top 20 | SL −7% | TP1 +45% 50% | 24h'
+      '✅ ROMPIMENTO_20_15M: Rompimento 20 | fecho > HH20 | filtro ≤30% acima EMA70 | LONG 15m | Lateral EMA21/70 | SL −7% | TP1 +45% 50% | 24h'
     );
   }
 

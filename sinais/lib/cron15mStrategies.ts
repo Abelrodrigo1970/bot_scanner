@@ -277,7 +277,7 @@ export interface Cron15mAllResult {
 }
 
 /**
- * Cron único 15m: MA Cross 12×30 (S1) + MA Cross 12×21 (S2) + engolfo (S2) + Rompimento 20 (S1).
+ * Cron único 15m: MA Cross 12×30 (S1) + MA Cross 12×21 (S2) + engolfo (S2) + Rompimento 20 (Lateral).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
   const maCross = await runMaCross15mPipeline(now);

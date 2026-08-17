@@ -178,7 +178,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 1 — Acima SMA200 (1h)',
     description:
       'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. MA Cross: top 20.',
-    strategyNames: 'MA Cross 12×30 (15m), Rompimento 20 (15m)',
+    strategyNames: 'MA Cross 12×30 (15m)',
   },
   UNIVERSE_TOP30_PRICE_CHANGE_24H: {
     displayName: 'Scanner 2 — Top 30 subidas 24h',
@@ -214,7 +214,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Lateral EMA21/70 (4h)',
     description:
       'Perpétuos USDT em 4h onde |EMA21 − EMA70| / EMA70 < 10% em todas as velas dos últimos 15 dias (90×4h). Ordenados pelo spread actual (mais apertado primeiro). Mín. 5M USDT volume 24h. Cron automático às 00h e 12h (Lisboa).',
-    strategyNames: '— (screener; sem estratégia ligada)',
+    strategyNames: 'Rompimento 20 (15m)',
   },
 };
 

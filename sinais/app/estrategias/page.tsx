@@ -444,13 +444,14 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>15m</strong>; só <strong>COMPRA</strong>. Universo = <strong>Scanner 1 top N</strong>{' '}
-              (acima SMA200 1h). Entrada quando o <strong>fecho</strong> da última vela fechada fica{' '}
-              <strong>acima do máximo</strong> das N velas anteriores (rompimento). Sem sinal se o preço estiver{' '}
-              <strong>acima do limiar</strong> vs a média de filtro (EMA70 por defeito).
+              Timeframe <strong>15m</strong>; só <strong>COMPRA</strong>. Universo ={' '}
+              <strong>Scanner Lateral EMA21/70 (4h)</strong> (lista completa, até N pares mais laterais). Entrada
+              quando o <strong>fecho</strong> da última vela fechada fica <strong>acima do máximo</strong> das N velas
+              anteriores (rompimento). Sem sinal se o preço estiver <strong>acima do limiar</strong> vs a média de
+              filtro (EMA70 por defeito).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Top N Scanner 1', p.universeTopN ?? 20, (v) => upd({ universeTopN: v }))}
+              {numField('Top N Lateral', p.universeTopN ?? 80, (v) => upd({ universeTopN: v }))}
               {numField('Lookback (velas)', p.breakoutLookback ?? 20, (v) => upd({ breakoutLookback: v }))}
               {numField('MA filtro (período)', p.filterMaPeriod ?? 70, (v) => upd({ filterMaPeriod: v }))}
               {numField(
