@@ -71,7 +71,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 2 top 30 (subidas 24h); MA12/MA21 15m',
+    universe: 'Scanner 2 top 30 (subidas 24h); MA12/MA21 15m; spread 0,6–1,5%',
 
   },
 

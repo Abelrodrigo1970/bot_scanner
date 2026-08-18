@@ -31,6 +31,7 @@ import { ACTIVE_SCANNER_STRATEGY_NAMES } from './strategyCatalog';
 import {
   checkMaCross15mSignalGate,
   isMaCross15mHourBlocked,
+  maCross15mGateLimitsFromParams,
   MA_CROSS_15M_MIN_TURNOVER_1H_USD,
 } from './maCross15mGuard';
 import {
@@ -2342,6 +2343,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
               let skipReason = '';
 
               if (isMaCross12x30) {
+                const gateLimits = maCross15mGateLimitsFromParams(params);
                 const gate = await checkMaCross15mSignalGate(prisma, {
                   symbol,
                   strategyId: strategy.id,
@@ -2350,6 +2352,8 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                     0,
                     Number(params.minTurnover3hUsd ?? MA_CROSS_15M_MIN_TURNOVER_1H_USD)
                   ),
+                  maxSignalsPerDay: gateLimits.maxSignalsPerDay,
+                  cooldownMs: gateLimits.cooldownMs,
                 });
                 canCreate = gate.allowed;
                 if (!gate.allowed) skipReason = gate.reason;

@@ -217,8 +217,8 @@ export const MA_CROSS_12X21_S2_PARAMS = {
   ma30Period: 12,
   ma200Period: 21,
   maType: 'EMA' as const,
-  entryDiffPct: 0.9,
-  entryMaxDiffPct: 1.8,
+  entryDiffPct: 0.6,
+  entryMaxDiffPct: 1.5,
   exitDiffPct: 0.5,
   stopPercent: 15,
   sellBlockAbsCloseDistanceFromMa200Pct: 6,
@@ -234,11 +234,15 @@ export const MA_CROSS_12X21_S2_PARAMS = {
   /** Top N do Scanner 2 (subidas 24h). */
   universeTopN: 30,
   minTurnover3hUsd: 3_000_000,
+  /** 0 = sem tecto diário. */
+  maxSignalsPerDay: 0,
+  /** 0 = sem cooldown entre sinais. */
+  signalCooldownHours: 0,
 } as const;
 
 export const MA_CROSS_12X21_S2_DISPLAY = 'MA Cross 12×21 (15m)';
 export const MA_CROSS_12X21_S2_DESC =
-  'MA12/MA21 em 15m: mesma lógica que MA Cross 12×30 (spread |MA12−MA21|/MA21 > 0,9% e < 1,8%; repetir tendência; TP parcial 60% a ±44%; restante fecha se spread < 0,5%; SL 15%). Universo = Scanner 2 top 30 (maior subida 24h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
+  'MA12/MA21 em 15m: mesma lógica que MA Cross 12×30 (spread |MA12−MA21|/MA21 > 0,6% e < 1,5%; repetir tendência; TP parcial 60% a ±44%; restante fecha se spread < 0,5%; SL 15%). Universo = Scanner 2 top 30 (maior subida 24h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; sem limite de sinais/dia nem cooldown entre trades.';
 
 /** Garante registo activo MA Cross 12×21 Scanner 2. */
 export async function syncMaCross12x21Scanner2Config(
@@ -266,7 +270,10 @@ export async function syncMaCross12x21Scanner2Config(
     ma200Period: MA_CROSS_12X21_S2_PARAMS.ma200Period,
     universeTopN: MA_CROSS_12X21_S2_PARAMS.universeTopN,
     minTurnover3hUsd: MA_CROSS_12X21_S2_PARAMS.minTurnover3hUsd,
+    entryDiffPct: MA_CROSS_12X21_S2_PARAMS.entryDiffPct,
     entryMaxDiffPct: MA_CROSS_12X21_S2_PARAMS.entryMaxDiffPct,
+    maxSignalsPerDay: MA_CROSS_12X21_S2_PARAMS.maxSignalsPerDay,
+    signalCooldownHours: MA_CROSS_12X21_S2_PARAMS.signalCooldownHours,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =

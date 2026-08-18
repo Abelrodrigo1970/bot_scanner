@@ -12,6 +12,7 @@ import {
 import {
   checkMaCross15mSignalGate,
   isMaCross15mHourBlocked,
+  maCross15mGateLimitsFromParams,
   MA_CROSS_15M_MIN_TURNOVER_1H_USD,
 } from '@/lib/maCross15mGuard';
 import { update24hResults } from '@/lib/update24hResults';
@@ -52,7 +53,7 @@ type MaCrossUniverse = {
 
 /**
  * MA Cross 15m (spread MA rápida×lenta). Universo conforme estratégia.
- * Cooldown 24h entre dias; máx. 2/dia (2.º só se 1.º verde); activo sáb/dom.
+ * Tecto diário e cooldown vêm dos params (12×30: 2/dia + 24h; 12×21: sem tecto).
  */
 async function runMaCross15mWorker(
   strategy: StrategyData,
@@ -92,11 +93,14 @@ async function runMaCross15mWorker(
           continue;
         }
 
+        const gateLimits = maCross15mGateLimitsFromParams(params);
         const gate = await checkMaCross15mSignalGate(prisma, {
           symbol,
           strategyId: strategy.id,
           direction: signalResult.direction,
           minTurnover3hUsd,
+          maxSignalsPerDay: gateLimits.maxSignalsPerDay,
+          cooldownMs: gateLimits.cooldownMs,
         });
 
         if (gate.allowed) {

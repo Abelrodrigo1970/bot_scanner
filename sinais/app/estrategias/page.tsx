@@ -293,9 +293,19 @@ export default function EstrategiasPage() {
               </>
             </p>
             <p className="text-xs text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-md px-3 py-2">
-              <strong>Frequência:</strong> activo sáb/dom; turnover 3×1h ≥ $3M; cooldown 24h entre dias;
-              máx. <strong>2 sinais/símbolo/dia</strong> — o 2.º só após o 1.º <strong>fechado e verde</strong> (mesma direção).
-              Não abre posição nova se já existir trade aberto no mesmo sentido.
+              {isS2 ? (
+                <>
+                  <strong>Frequência:</strong> activo sáb/dom; turnover 3×1h ≥ $3M; spread de entrada{' '}
+                  <strong>0,6–1,5%</strong>; <strong>sem limite de sinais/dia</strong> nem cooldown entre trades.
+                  Não abre posição nova se já existir trade aberto no mesmo sentido.
+                </>
+              ) : (
+                <>
+                  <strong>Frequência:</strong> activo sáb/dom; turnover 3×1h ≥ $3M; cooldown 24h entre dias;
+                  máx. <strong>2 sinais/símbolo/dia</strong> — o 2.º só após o 1.º <strong>fechado e verde</strong> (mesma direção).
+                  Não abre posição nova se já existir trade aberto no mesmo sentido.
+                </>
+              )}
             </p>
             <div className="max-w-md">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de média</label>
@@ -315,8 +325,8 @@ export default function EstrategiasPage() {
                 p.ma200Period ?? defaultSlow,
                 (v) => upd({ ma200Period: v })
               )}
-              {numField(`Entrada: dif. mín. ${diffLabel} (%)`, p.entryDiffPct ?? 0.9, (v) => upd({ entryDiffPct: v }), 0.1)}
-              {numField(`Entrada: dif. máx. ${diffLabel} (%)`, p.entryMaxDiffPct ?? 1.8, (v) => upd({ entryMaxDiffPct: v }), 0.1)}
+              {numField(`Entrada: dif. mín. ${diffLabel} (%)`, p.entryDiffPct ?? (isS2 ? 0.6 : 0.9), (v) => upd({ entryDiffPct: v }), 0.1)}
+              {numField(`Entrada: dif. máx. ${diffLabel} (%)`, p.entryMaxDiffPct ?? (isS2 ? 1.5 : 1.8), (v) => upd({ entryMaxDiffPct: v }), 0.1)}
               {numField(`Saída/fecho: dif. ${diffLabel} (%)`, p.exitDiffPct ?? 0.5, (v) => upd({ exitDiffPct: v }), 0.1)}
               {numField('Top N do universo', p.universeTopN ?? defaultTopN, (v) => upd({ universeTopN: v }))}
               {numField('SL (%)', p.stopPercent ?? 15, (v) => upd({ stopPercent: v }), 0.5)}

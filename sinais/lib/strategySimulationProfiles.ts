@@ -58,7 +58,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(15, 44, 60),
     sell: side(15, 44, 60),
     summary:
-      'Scanner 2 top 30. SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA21 < 0,5%.',
+      'Scanner 2 top 30. Spread 0,6–1,5%. SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA21 < 0,5%. Sem tecto diário.',
   },
   {
     strategyName: 'ENGOLFO_15M',

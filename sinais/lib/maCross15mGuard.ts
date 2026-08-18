@@ -59,6 +59,31 @@ export interface MaCross15mSignalGateInput {
   now?: Date;
   /** Override do mínimo turnover 3×1h (USDT). */
   minTurnover3hUsd?: number;
+  /** Máx. sinais/símbolo/dia PT. 0 = sem tecto diário. Default 2. */
+  maxSignalsPerDay?: number;
+  /** Cooldown desde o último sinal (ms). 0 = sem cooldown. Default 24h. */
+  cooldownMs?: number;
+}
+
+/** Lê tecto diário e cooldown dos params da estratégia. */
+export function maCross15mGateLimitsFromParams(params: Record<string, unknown>): {
+  maxSignalsPerDay: number;
+  cooldownMs: number;
+} {
+  const maxRaw = params.maxSignalsPerDay;
+  const maxSignalsPerDay =
+    maxRaw == null || maxRaw === ''
+      ? 2
+      : Math.max(0, Math.floor(Number(maxRaw)));
+  const hoursRaw = params.signalCooldownHours;
+  const cooldownMs =
+    hoursRaw == null || hoursRaw === ''
+      ? MA_CROSS_5M_SIGNAL_COOLDOWN_MS
+      : Math.max(0, Number(hoursRaw)) * 3600_000;
+  return {
+    maxSignalsPerDay: Number.isFinite(maxSignalsPerDay) ? maxSignalsPerDay : 2,
+    cooldownMs: Number.isFinite(cooldownMs) ? cooldownMs : MA_CROSS_5M_SIGNAL_COOLDOWN_MS,
+  };
 }
 
 export type MaCross15mSignalGateResult =
@@ -113,15 +138,17 @@ async function isSignalProfitable(
  * Regras MA Cross 15m (análise horária 2026):
  * - activo sáb/dom; qualquer hora PT
  * - soma turnover 3 últimas velas 1h ≥ $3M USDT
- * - 1.º sinal do dia: cooldown 24h desde o último sinal do par
+ * - 1.º sinal do dia: cooldown 24h desde o último sinal do par (salvo cooldownMs = 0)
  * - 2.º sinal no mesmo dia: só se 1.º fechado, verde (líquido) e mesma direção
- * - máx. 2 sinais por símbolo por dia civil (PT)
+ * - máx. N sinais por símbolo por dia civil PT (0 = sem tecto)
  */
 export async function checkMaCross15mSignalGate(
   prisma: PrismaClient,
   input: MaCross15mSignalGateInput
 ): Promise<MaCross15mSignalGateResult> {
   const now = input.now ?? new Date();
+  const maxSignalsPerDay = input.maxSignalsPerDay ?? 2;
+  const cooldownMs = input.cooldownMs ?? MA_CROSS_5M_SIGNAL_COOLDOWN_MS;
 
   if (isMaCross15mHourBlocked(now)) {
     return {
@@ -149,73 +176,80 @@ export async function checkMaCross15mSignalGate(
   }
 
   const dayKey = localDayKey(now);
-  const dayLookback = new Date(now.getTime() - 36 * 60 * 60 * 1000);
 
-  const recentDaySignals = await prisma.signal.findMany({
-    where: {
-      symbol: input.symbol,
-      strategyId: input.strategyId,
-      timeframe: MA_CROSS_15M_TIMEFRAME,
-      generatedAt: { gte: dayLookback },
-    },
-    orderBy: { generatedAt: 'asc' },
-    select: {
-      generatedAt: true,
-      direction: true,
-      entryPrice: true,
-      result24h: true,
-      status: true,
-      status24h: true,
-    },
-  });
+  if (maxSignalsPerDay > 0) {
+    const dayLookback = new Date(now.getTime() - 36 * 60 * 60 * 1000);
 
-  const todaySignals: DaySignalRow[] = recentDaySignals.filter(
-    (s) => localDayKey(s.generatedAt) === dayKey
-  );
+    const recentDaySignals = await prisma.signal.findMany({
+      where: {
+        symbol: input.symbol,
+        strategyId: input.strategyId,
+        timeframe: MA_CROSS_15M_TIMEFRAME,
+        generatedAt: { gte: dayLookback },
+      },
+      orderBy: { generatedAt: 'asc' },
+      select: {
+        generatedAt: true,
+        direction: true,
+        entryPrice: true,
+        result24h: true,
+        status: true,
+        status24h: true,
+      },
+    });
 
-  if (todaySignals.length >= 2) {
-    return {
-      allowed: false,
-      reason: `máx. 2 sinais/dia PT (${input.symbol}, dia ${dayKey})`,
-    };
+    const todaySignals: DaySignalRow[] = recentDaySignals.filter(
+      (s) => localDayKey(s.generatedAt) === dayKey
+    );
+
+    if (todaySignals.length >= maxSignalsPerDay) {
+      return {
+        allowed: false,
+        reason: `máx. ${maxSignalsPerDay} sinais/dia PT (${input.symbol}, dia ${dayKey})`,
+      };
+    }
+
+    if (todaySignals.length === 1 && maxSignalsPerDay === 2) {
+      const first = todaySignals[0]!;
+
+      if (!isClosedSignal(first)) {
+        return {
+          allowed: false,
+          reason: `2.º sinal aguarda fecho do 1.º (${input.symbol}, status ${first.status})`,
+        };
+      }
+
+      if (first.direction !== input.direction) {
+        return {
+          allowed: false,
+          reason: `2.º sinal exige mesma direção (${first.direction} → ${input.direction})`,
+        };
+      }
+
+      const firstGreen = await isSignalProfitable(first, input.symbol);
+      if (!firstGreen) {
+        return {
+          allowed: false,
+          reason: `2.º sinal bloqueado — 1.º do dia não está verde (${input.symbol})`,
+        };
+      }
+
+      if (now.getTime() <= first.generatedAt.getTime()) {
+        return {
+          allowed: false,
+          reason: '2.º sinal deve ser posterior ao 1.º do dia',
+        };
+      }
+
+      return { allowed: true };
+    }
   }
 
-  if (todaySignals.length === 1) {
-    const first = todaySignals[0]!;
-
-    if (!isClosedSignal(first)) {
-      return {
-        allowed: false,
-        reason: `2.º sinal aguarda fecho do 1.º (${input.symbol}, status ${first.status})`,
-      };
-    }
-
-    if (first.direction !== input.direction) {
-      return {
-        allowed: false,
-        reason: `2.º sinal exige mesma direção (${first.direction} → ${input.direction})`,
-      };
-    }
-
-    const firstGreen = await isSignalProfitable(first, input.symbol);
-    if (!firstGreen) {
-      return {
-        allowed: false,
-        reason: `2.º sinal bloqueado — 1.º do dia não está verde (${input.symbol})`,
-      };
-    }
-
-    if (now.getTime() <= first.generatedAt.getTime()) {
-      return {
-        allowed: false,
-        reason: '2.º sinal deve ser posterior ao 1.º do dia',
-      };
-    }
-
+  if (cooldownMs <= 0) {
     return { allowed: true };
   }
 
-  const cooldownSince = new Date(now.getTime() - MA_CROSS_5M_SIGNAL_COOLDOWN_MS);
+  const cooldownSince = new Date(now.getTime() - cooldownMs);
   const recentCooldown = await prisma.signal.findFirst({
     where: {
       symbol: input.symbol,
@@ -230,7 +264,7 @@ export async function checkMaCross15mSignalGate(
   if (recentCooldown) {
     return {
       allowed: false,
-      reason: `cooldown 24h (${input.symbol}, último ${recentCooldown.generatedAt.toISOString()})`,
+      reason: `cooldown ${Math.round(cooldownMs / 3600_000)}h (${input.symbol}, último ${recentCooldown.generatedAt.toISOString()})`,
     };
   }
 

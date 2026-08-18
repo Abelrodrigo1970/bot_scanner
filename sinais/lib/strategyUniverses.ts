@@ -70,7 +70,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
 
-    description: 'Scanner 2 top 30: maior subida 24h. MA12/MA21 em 15m.',
+    description: 'Scanner 2 top 30: maior subida 24h. MA12/MA21 em 15m; spread 0,6–1,5%.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 
