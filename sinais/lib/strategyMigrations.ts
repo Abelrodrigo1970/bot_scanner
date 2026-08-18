@@ -381,8 +381,8 @@ export const ROMPIMENTO_20_15M_PARAMS = {
   filterMaType: 'EMA' as const,
   /** Sem sinal se fecho > 30% acima da EMA70. */
   maxDistAboveFilterMaPct: 30,
-  stopLossPct: 0.07,
-  tp1Pct: 0.45,
+  stopLossPct: 0.05,
+  tp1Pct: 0.09,
   tp1Position: 50,
   closeAfterHours: 24,
   autoExecuteMinStrength: 70,
@@ -395,7 +395,7 @@ export const ROMPIMENTO_20_15M_PARAMS = {
 
 export const ROMPIMENTO_20_15M_DISPLAY = 'Rompimento 20 (15m)';
 export const ROMPIMENTO_20_15M_DESC =
-  'Scanner 1 top 20. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. SL −7%. TP1 +45% (50% pos.). Restante às 24h. Só COMPRA.';
+  'Scanner 1 top 20. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. SL −5%. TP1 +9% (50% pos.). Restante às 24h. Só COMPRA.';
 
 export async function syncRompimento20_15mConfig(
   prisma: PrismaClient

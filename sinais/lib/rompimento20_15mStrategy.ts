@@ -2,7 +2,7 @@
  * Rompimento 20 (15m) — LONG no Scanner 1
  * Fecho da última vela fechada acima do máximo das 20 velas anteriores.
  * Filtro: sem sinal se preço > 30% acima da EMA70.
- * SL −7% | TP1 +45% (50% pos.) | restante às 24h.
+ * SL −5% | TP1 +9% (50% pos.) | restante às 24h.
  */
 
 import { prisma } from './db';
@@ -122,8 +122,8 @@ export function detectRompimento20_15mBuy(
   const filterMaPeriod = Math.max(2, Math.floor(Number(params.filterMaPeriod ?? 70)));
   const filterMaType: 'EMA' | 'SMA' = params.filterMaType === 'SMA' ? 'SMA' : 'EMA';
   const maxDistAboveFilterMaPct = Math.max(0, Number(params.maxDistAboveFilterMaPct ?? 30));
-  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.07));
-  const tp1Pct = Math.max(0.01, Number(params.tp1Pct ?? 0.45));
+  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.05));
+  const tp1Pct = Math.max(0.01, Number(params.tp1Pct ?? 0.09));
   const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 50))));
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
 
@@ -294,7 +294,7 @@ export async function runRompimento20_15mPipeline(options?: {
     }
 
     console.log(
-      `${logPrefix} 🟢 BUY ${symbol} @ ${hit.entryPrice} (fecho > HH${lookback} | SL −7% | TP1 +45% 50%)`
+      `${logPrefix} 🟢 BUY ${symbol} @ ${hit.entryPrice} (fecho > HH${lookback} | SL −5% | TP1 +9% 50%)`
     );
 
     await prisma.signal.create({

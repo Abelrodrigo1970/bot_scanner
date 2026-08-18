@@ -459,8 +459,8 @@ export default function EstrategiasPage() {
                 (v) => upd({ maxDistAboveFilterMaPct: v }),
                 0.5
               )}
-              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.07) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
-              {numField('TP1 (%) acima entrada', (p.tp1Pct ?? 0.45) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('TP1 (%) acima entrada', (p.tp1Pct ?? 0.09) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
               {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
               {numField('Fecho restante (horas)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
             </div>
