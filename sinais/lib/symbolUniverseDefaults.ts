@@ -52,7 +52,7 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
     maPeriod: 200,
     minDistancePct: null,
     maxDistancePct: null,
-    timeframe: '4h',
+    timeframe: '1h',
     minQuoteVolume: 500000,
     candidateLimit: 400,
   },
@@ -175,9 +175,9 @@ export const BUILTIN_UNIVERSE_META: Record<
   { displayName: string; description: string; strategyNames: string }
 > = {
   UNIVERSE_ABOVE_MA200_1H: {
-    displayName: 'Scanner 1 — Acima SMA200 (4h)',
+    displayName: 'Scanner 1 — Acima SMA200 (1h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 4h. MA Cross e Rompimento 20: top 20.',
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. MA Cross e Rompimento 20: top 20.',
     strategyNames: 'MA Cross 12×30 (15m), Rompimento 20 (15m)',
   },
   UNIVERSE_TOP30_PRICE_CHANGE_24H: {

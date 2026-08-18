@@ -52,7 +52,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     dataKey: 'UNIVERSE_ABOVE_MA200_1H',
 
-    description: 'Scanner 1: fecho acima SMA200 (4h).',
+    description: 'Scanner 1: fecho acima SMA200 (1h).',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 
