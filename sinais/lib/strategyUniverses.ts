@@ -108,7 +108,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     dataKey: 'UNIVERSE_ABOVE_MA200_1H',
 
     description:
-      'Scanner 1 top 20. LONG 15m: fecho > máximo das 20 velas anteriores. Sem sinal se preço >30% acima EMA70. SL −5%. TP1 +9% (50%). Restante 24h.',
+      'Scanner 1 top 20. LONG 15m: fecho > máximo das 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante 24h.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 

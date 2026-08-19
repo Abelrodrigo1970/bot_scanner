@@ -2,12 +2,13 @@
  * Rompimento 20 (15m) — LONG no Scanner 1
  * Fecho da última vela fechada acima do máximo das 20 velas anteriores.
  * Filtro: sem sinal se preço > 30% acima da EMA70.
+ * Filtro Stochastic clássico (15m): %K < 30 (K 50 / smooth 40 / D 11).
  * SL −5% | TP1 +9% (50% pos.) | restante às 24h.
  */
 
 import { prisma } from './db';
 import { fetchCandles, type Candle } from './marketData';
-import { calculateLastEMA, calculateSMA, getCloses } from './indicators';
+import { calculateLastEMA, calculateSMA, calculateStochasticSeries, getCloses } from './indicators';
 import { UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 } from './symbolUniverseDefaults';
 import { resolveUniverseScanSymbolsTopN } from './universeScanPersistence';
 import { autoExecuteNewSignalsForStrategy, resolveStrategyExchange } from './autoExecuteNewSignals';
@@ -27,6 +28,14 @@ export type Rompimento20_15mParams = {
   filterMaType?: 'EMA' | 'SMA';
   /** Sem sinal se (fecho − MA)/MA × 100 > este % (acima da média). */
   maxDistAboveFilterMaPct?: number;
+  /** Stochastic clássico — %K Length (TradingView). */
+  kLength?: number;
+  /** Stochastic — %K Smoothing. */
+  kSmoothing?: number;
+  /** Stochastic — %D Smoothing. */
+  dSmoothing?: number;
+  /** Sem sinal se %K ≥ este valor (0–100). */
+  maxStochK?: number;
   stopLossPct?: number;
   tp1Pct?: number;
   tp1Position?: number;
@@ -122,12 +131,17 @@ export function detectRompimento20_15mBuy(
   const filterMaPeriod = Math.max(2, Math.floor(Number(params.filterMaPeriod ?? 70)));
   const filterMaType: 'EMA' | 'SMA' = params.filterMaType === 'SMA' ? 'SMA' : 'EMA';
   const maxDistAboveFilterMaPct = Math.max(0, Number(params.maxDistAboveFilterMaPct ?? 30));
+  const kLength = Math.max(2, Math.floor(Number(params.kLength ?? 50)));
+  const kSmoothing = Math.max(1, Math.floor(Number(params.kSmoothing ?? 40)));
+  const dSmoothing = Math.max(1, Math.floor(Number(params.dSmoothing ?? 11)));
+  const maxStochK = Math.max(0, Math.min(100, Number(params.maxStochK ?? 30)));
   const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.05));
   const tp1Pct = Math.max(0.01, Number(params.tp1Pct ?? 0.09));
   const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 50))));
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
 
-  const minBars = Math.max(lookback + 5, filterMaPeriod + 5);
+  const stochWarmup = kLength + kSmoothing + dSmoothing;
+  const minBars = Math.max(lookback + 5, filterMaPeriod + 5, stochWarmup + 2);
   if (candles.length < minBars) return null;
 
   const closed = candles.slice(0, -1);
@@ -152,6 +166,16 @@ export function detectRompimento20_15mBuy(
 
   const rangeHigh = Math.max(...rangeCandles.map((c) => c.high));
   if (!(rangeHigh > 0) || !(curr.close > rangeHigh)) return null;
+
+  const highs = closed.map((c) => c.high);
+  const lows = closed.map((c) => c.low);
+  const stochSeries = calculateStochasticSeries(highs, lows, closes, {
+    kLength,
+    kSmoothing,
+    dSmoothing,
+  });
+  const lastStoch = stochSeries[stochSeries.length - 1];
+  if (!lastStoch || !(lastStoch.k < maxStochK)) return null;
 
   const entryPrice = curr.close;
   const stopLoss = entryPrice * (1 - stopLossPct);
@@ -187,12 +211,18 @@ export function detectRompimento20_15mBuy(
       filterMa: Number(filterMa.toFixed(8)),
       distAboveMaPct: +distAboveMaPct.toFixed(3),
       maxDistAboveFilterMaPct,
+      kLength,
+      kSmoothing,
+      dSmoothing,
+      stochK: +lastStoch.k.toFixed(2),
+      stochD: +lastStoch.d.toFixed(2),
+      maxStochK,
       stopLossPct,
       tp1Pct,
       tp1Position,
       closeAfterHours,
       barCloseTs: curr.timestamp,
-      executionProfile: `BUY | rompimento 15m (fecho > máx. ${lookback} velas, dist ${maLabel} ≤${maxDistAboveFilterMaPct}%) | SL −${slLabel} | TP1 +${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
+      executionProfile: `BUY | rompimento 15m (fecho > máx. ${lookback} velas, dist ${maLabel} ≤${maxDistAboveFilterMaPct}%, Stoch K ${kLength}/${kSmoothing}/${dSmoothing} K<${maxStochK}) | SL −${slLabel} | TP1 +${tpLabel} (${tp1Position}% pos.) | restante às ${closeAfterHours}h`,
     }),
   };
 }
@@ -227,6 +257,9 @@ export async function runRompimento20_15mPipeline(options?: {
   const chartTimeframe = String(params.chartTimeframe ?? '15m');
   const lookback = Math.max(5, Math.floor(Number(params.breakoutLookback ?? 20)));
   const filterMaPeriod = Math.max(2, Math.floor(Number(params.filterMaPeriod ?? 70)));
+  const kLength = Math.max(2, Math.floor(Number(params.kLength ?? 50)));
+  const kSmoothing = Math.max(1, Math.floor(Number(params.kSmoothing ?? 40)));
+  const dSmoothing = Math.max(1, Math.floor(Number(params.dSmoothing ?? 11)));
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const minStrength = Math.max(60, Math.floor(Number(params.autoExecuteMinStrength ?? 70)));
@@ -249,7 +282,10 @@ export async function runRompimento20_15mPipeline(options?: {
   const startedAt = new Date();
   let signalsCreated = 0;
   const hitSymbols: string[] = [];
-  const candleLimit = Math.min(500, Math.max(lookback + 40, filterMaPeriod + 40, 120));
+  const candleLimit = Math.min(
+    500,
+    Math.max(lookback + 40, filterMaPeriod + 40, kLength + kSmoothing + dSmoothing + 40, 120)
+  );
 
   console.log(`${logPrefix} Scanner 1 top ${topN}: ${symbols.length} símbolos…`);
 

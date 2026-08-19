@@ -388,6 +388,12 @@ export const ROMPIMENTO_20_15M_PARAMS = {
   filterMaType: 'EMA' as const,
   /** Sem sinal se fecho > 30% acima da EMA70. */
   maxDistAboveFilterMaPct: 30,
+  /** Stochastic clássico 15m (TradingView): %K Length / %K Smoothing / %D Smoothing. */
+  kLength: 50,
+  kSmoothing: 40,
+  dSmoothing: 11,
+  /** Sem sinal se %K ≥ este valor. */
+  maxStochK: 30,
   stopLossPct: 0.05,
   tp1Pct: 0.09,
   tp1Position: 50,
@@ -402,7 +408,7 @@ export const ROMPIMENTO_20_15M_PARAMS = {
 
 export const ROMPIMENTO_20_15M_DISPLAY = 'Rompimento 20 (15m)';
 export const ROMPIMENTO_20_15M_DESC =
-  'Scanner 1 top 20. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. SL −5%. TP1 +9% (50% pos.). Restante às 24h. Só COMPRA.';
+  'Scanner 1 top 20. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. Filtro Stochastic (K 50/40/11): só entra se %K < 30. SL −5%. TP1 +9% (50% pos.). Restante às 24h. Só COMPRA.';
 
 export async function syncRompimento20_15mConfig(
   prisma: PrismaClient
@@ -429,6 +435,10 @@ export async function syncRompimento20_15mConfig(
     filterMaPeriod: ROMPIMENTO_20_15M_PARAMS.filterMaPeriod,
     filterMaType: ROMPIMENTO_20_15M_PARAMS.filterMaType,
     maxDistAboveFilterMaPct: ROMPIMENTO_20_15M_PARAMS.maxDistAboveFilterMaPct,
+    kLength: ROMPIMENTO_20_15M_PARAMS.kLength,
+    kSmoothing: ROMPIMENTO_20_15M_PARAMS.kSmoothing,
+    dSmoothing: ROMPIMENTO_20_15M_PARAMS.dSmoothing,
+    maxStochK: ROMPIMENTO_20_15M_PARAMS.maxStochK,
     stopLossPct: ROMPIMENTO_20_15M_PARAMS.stopLossPct,
     tp1Pct: ROMPIMENTO_20_15M_PARAMS.tp1Pct,
     tp1Position: ROMPIMENTO_20_15M_PARAMS.tp1Position,

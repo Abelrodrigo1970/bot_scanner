@@ -457,7 +457,8 @@ export default function EstrategiasPage() {
               Timeframe <strong>15m</strong>; só <strong>COMPRA</strong>. Universo = <strong>Scanner 1 top N</strong>{' '}
               (acima SMA200 1h). Entrada quando o <strong>fecho</strong> da última vela fechada fica{' '}
               <strong>acima do máximo</strong> das N velas anteriores (rompimento). Sem sinal se o preço estiver{' '}
-              <strong>acima do limiar</strong> vs a média de filtro (EMA70 por defeito).
+              <strong>acima do limiar</strong> vs a média de filtro (EMA70 por defeito). Filtro{' '}
+              <strong>Stochastic</strong>: só entra se <strong>%K &lt; 30</strong> (K 50 / smooth 40 / D 11).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Top N Scanner 1', p.universeTopN ?? 20, (v) => upd({ universeTopN: v }))}
@@ -469,6 +470,10 @@ export default function EstrategiasPage() {
                 (v) => upd({ maxDistAboveFilterMaPct: v }),
                 0.5
               )}
+              {numField('%K Length (Stoch)', p.kLength ?? 50, (v) => upd({ kLength: v }))}
+              {numField('%K Smoothing', p.kSmoothing ?? 40, (v) => upd({ kSmoothing: v }))}
+              {numField('%D Smoothing', p.dSmoothing ?? 11, (v) => upd({ dSmoothing: v }))}
+              {numField('Máx. %K na entrada', p.maxStochK ?? 30, (v) => upd({ maxStochK: v }), 0.5)}
               {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
               {numField('TP1 (%) acima entrada', (p.tp1Pct ?? 0.09) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
               {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
