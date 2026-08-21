@@ -10,6 +10,7 @@ import {
   calculateRSI,
   getCloses,
 } from './indicators';
+import { scanTopYtdMcapUniverse } from './ytdMcapUniverseScan';
 
 export interface UniverseScanDefinition {
   ruleType: string;
@@ -36,6 +37,8 @@ export interface UniverseScanDefinition {
   maSpreadMaxPct?: number;
   /** Lateral: janela em dias (4h → bars = days*6). */
   lookbackDays?: number;
+  /** YTD+mcap: market cap mínimo USD. */
+  minMarketCapUsd?: number;
 }
 
 function maAtClose(closes: number[], def: UniverseScanDefinition): number | null {
@@ -210,6 +213,14 @@ export async function scanSymbolUniverse(
 ): Promise<UniverseScanRow[]> {
   if (def.ruleType === 'TOP_PRICE_CHANGE_24H') {
     return scanTopPriceChange24hUniverse(def);
+  }
+  if (def.ruleType === 'TOP_YTD_MCAP') {
+    return scanTopYtdMcapUniverse({
+      minMarketCapUsd: def.minMarketCapUsd,
+      minQuoteVolume: def.minQuoteVolume,
+      candidateLimit: def.candidateLimit,
+      resultLimit: def.resultLimit,
+    });
   }
   if (def.ruleType === 'RSI_ABOVE') {
     return scanRsiThresholdUniverse(def, 'above');

@@ -7,7 +7,7 @@ import { runScanner2Rsi80Top3LongPipeline } from '@/lib/scanner2Rsi80Top3LongStr
 import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 
 /**
- * Scanner 1 + Scanner 2 + Scanner 6 + rsi_vendido
+ * Scanner 1 + Scanner 2 + Scanner 6 + rsi_vendido + YTD mcap60
  * + rotação Top 4 (inactiva) + RSI>80 Top 3 LONG + rsi_vendido LONG.
  * Short Leader descontinuado.
  */

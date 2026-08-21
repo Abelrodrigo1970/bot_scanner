@@ -30,6 +30,12 @@ export const UNIVERSE_CODE_RSI_VENDIDO = 'UNIVERSE_RSI_BELOW_32_4H' as const;
 /** Lateral — |EMA21−EMA70| < 10% em 4h nos últimos 15 dias. */
 export const UNIVERSE_CODE_LATERAL_VOLATILE = 'UNIVERSE_LATERAL_VOLATILE_4H' as const;
 
+/** Top 50 YTD desde 1 Jan com market cap > $60M (CoinGecko). */
+export const UNIVERSE_CODE_YTD_MCAP60 = 'UNIVERSE_TOP50_YTD_MCAP60M' as const;
+
+export const YTD_MCAP60_MIN_USD = 60_000_000;
+export const YTD_MCAP60_RESULT_LIMIT = 50;
+
 export const SCANNER_3_RSI_PERIOD = 14;
 export const SCANNER_3_RSI_THRESHOLD = 75;
 
@@ -45,7 +51,7 @@ export const SCANNER_2_MIN_DISTANCE_PCT = -5;
 export const SCANNER_2_MAX_DISTANCE_PCT = 15;
 export const SCANNER_2_EMA80_BAND_LABEL = '-5% a +15% da EMA80 (1h)';
 
-/** Scanners 1, 2, 6 e rsi_vendido — actualizados em run-universe-scans (4 h). */
+/** Scanners 1, 2, 6, rsi_vendido e YTD mcap60 — actualizados em run-universe-scans (4 h). */
 export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = {
   UNIVERSE_ABOVE_MA200_1H: {
     ruleType: 'ABOVE_MA',
@@ -85,6 +91,17 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
     candidateLimit: 400,
     rsiPeriod: RSI_VENDIDO_PERIOD,
     rsiThreshold: RSI_VENDIDO_THRESHOLD,
+  },
+  UNIVERSE_TOP50_YTD_MCAP60M: {
+    ruleType: 'TOP_YTD_MCAP',
+    maPeriod: 0,
+    minDistancePct: null,
+    maxDistancePct: null,
+    timeframe: '1d',
+    minQuoteVolume: 1_000_000,
+    candidateLimit: 220,
+    resultLimit: YTD_MCAP60_RESULT_LIMIT,
+    minMarketCapUsd: YTD_MCAP60_MIN_USD,
   },
 };
 
@@ -155,6 +172,7 @@ export function isTickerRankUniverseScan(code: string): boolean {
   return (
     rt === 'TOP_PRICE_CHANGE_24H' ||
     rt === 'TOP_VOLUME_24H' ||
+    rt === 'TOP_YTD_MCAP' ||
     rt === 'RSI_ABOVE' ||
     rt === 'RSI_BELOW' ||
     rt === 'LATERAL_VOLATILE'
@@ -216,12 +234,20 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Perpétuos USDT em 4h onde |EMA21 − EMA70| / EMA70 < 10% em todas as velas dos últimos 15 dias (90×4h). Ordenados pelo spread actual (mais apertado primeiro). Mín. 5M USDT volume 24h. Cron automático às 00h e 12h (Lisboa).',
     strategyNames: '— (screener; sem estratégia ligada)',
   },
+  UNIVERSE_TOP50_YTD_MCAP60M: {
+    displayName: 'YTD — Top 50 (mcap > $60M)',
+    description:
+      'Top 50 perpétuos USDT com melhor valorização desde 1 de janeiro (abertura da 1.ª vela diária), filtrados por market cap CoinGecko > $60M e volume 24h ≥ $1M. Ordenados por % YTD. Actualização no cron de 4h (run-universe-scans).',
+    strategyNames: '— (universo disponível para estratégias)',
+  },
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
   '2': 'Scanner 2 activo: RSI>80 Top 3 LONG + stch15long + MA Cross 12×21 + engolfo top 3 (15m). Short Leader e Top 4 rotação descontinuados.',
   rsi_vendido:
     'rsi_vendido LONG (4h): entra quando RSI 4h cruza abaixo de 25; sai quando cruza acima de 32 (SL −5%, máx. 24h).',
+  ytd_mcap60:
+    'Universo YTD (mcap > $60M) disponível para ligar a estratégias via dataKey UNIVERSE_TOP50_YTD_MCAP60M.',
 };
 
 export const SCANNER_UI_ROUTES = [
@@ -231,6 +257,7 @@ export const SCANNER_UI_ROUTES = [
   { scannerId: '6', code: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H },
   { scannerId: 'rsi_vendido', code: UNIVERSE_CODE_RSI_VENDIDO },
   { scannerId: 'lateral_volatile', code: UNIVERSE_CODE_LATERAL_VOLATILE },
+  { scannerId: 'ytd_mcap60', code: UNIVERSE_CODE_YTD_MCAP60 },
 ] as const;
 
 export function getScannerByUiId(scannerId: string) {

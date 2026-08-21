@@ -1,6 +1,7 @@
 import { prisma } from './db';
 import { scanSymbolUniverse } from './universeScanner';
-import { BUILTIN_UNIVERSE_SCAN_4H, BUILTIN_UNIVERSE_SCAN_1H, getBuiltinScanDefinition, isTickerRankUniverseScan } from './symbolUniverseDefaults';
+import { BUILTIN_UNIVERSE_SCAN_4H, BUILTIN_UNIVERSE_SCAN_1H, getBuiltinScanDefinition, isTickerRankUniverseScan, UNIVERSE_CODE_YTD_MCAP60 } from './symbolUniverseDefaults';
+import { YTD_MCAP60_SEED_ROWS } from './ytdMcapUniverseScan';
 
 /** Scanners activos (exclui legado 15m só para histórico). */
 const ACTIVE_BUILTIN_UNIVERSE_SCAN = {
@@ -164,10 +165,14 @@ export async function ensureAllBuiltinUniverseScans(
 
     console.log(`[ensureUniverseScans] ${code}: sem dados — a executar scan...`);
     try {
-      const rows = await scanSymbolUniverse(def);
+      // YTD+mcap é lento (CoinGecko + klines diárias): seed estático no arranque; cron 4h actualiza.
+      const rows =
+        code === UNIVERSE_CODE_YTD_MCAP60
+          ? YTD_MCAP60_SEED_ROWS
+          : await scanSymbolUniverse(def);
       const persist = await persistUniverseScan({
         universeCode: code,
-        source,
+        source: code === UNIVERSE_CODE_YTD_MCAP60 ? `${source}/ytd-mcap60-seed` : source,
         rows,
       });
       results.push({

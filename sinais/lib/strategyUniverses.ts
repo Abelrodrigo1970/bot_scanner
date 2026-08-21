@@ -200,6 +200,10 @@ export const DATA_SOURCE_MENU_ITEMS = [
     href: '/scanners/lateral_volatile',
     label: 'Lateral — |EMA21−EMA70| < 10% (4h, 15 dias)',
   },
+  {
+    href: '/scanners/ytd_mcap60',
+    label: 'YTD — Top 50 (mcap > $60M)',
+  },
 ] as const;
 
 
