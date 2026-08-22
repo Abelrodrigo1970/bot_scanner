@@ -123,13 +123,16 @@ async function runMaCross15mWorker(
           });
           signalsCreated++;
 
-          const autoMinStrength = getAutoExecuteMinStrength();
+          const autoMinStrength = Math.max(
+            MA_CROSS_MIN_STRENGTH,
+            Number(params.autoExecuteMinStrength ?? getAutoExecuteMinStrength())
+          );
           if (
             signalResult.strength >= autoMinStrength &&
             strategyAllowsAutoExecuteDirection(signalResult.direction, params)
           ) {
             console.log(
-              `[${logTag} BG] Auto-exec: ${symbol} força ${signalResult.strength} (>= ${autoMinStrength})`
+              `[${logTag} BG] Auto-exec (${ex}): ${symbol} força ${signalResult.strength} (>= ${autoMinStrength})`
             );
             try {
               const positionState = await inspectActivePositionForSymbol(created.symbol, ex);

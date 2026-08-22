@@ -201,7 +201,8 @@ export const MA_CROSS_5M_PARAMS = {
   ma12x30GainTpPositionPct: 60,
   allowBuy: true,
   allowSell: true,
-  exchange: 'binance',
+  exchange: 'bybit',
+  autoExecuteMinStrength: 70,
   /** Top N do Scanner 1 (|pctFromMa| desc). */
   universeTopN: 20,
   /** Soma mínima turnover 3 velas 1h fechadas (USDT). */
@@ -230,7 +231,8 @@ export const MA_CROSS_12X21_S2_PARAMS = {
   ma12x30GainTpPositionPct: 60,
   allowBuy: true,
   allowSell: true,
-  exchange: 'binance',
+  exchange: 'bybit',
+  autoExecuteMinStrength: 70,
   /** Top N do Scanner 2 (subidas 24h). */
   universeTopN: 30,
   minTurnover3hUsd: 3_000_000,
@@ -274,6 +276,8 @@ export async function syncMaCross12x21Scanner2Config(
     entryMaxDiffPct: MA_CROSS_12X21_S2_PARAMS.entryMaxDiffPct,
     maxSignalsPerDay: MA_CROSS_12X21_S2_PARAMS.maxSignalsPerDay,
     signalCooldownHours: MA_CROSS_12X21_S2_PARAMS.signalCooldownHours,
+    exchange: MA_CROSS_12X21_S2_PARAMS.exchange,
+    autoExecuteMinStrength: MA_CROSS_12X21_S2_PARAMS.autoExecuteMinStrength,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
@@ -2353,15 +2357,20 @@ export async function syncMaCrossScanner1UniverseDescriptions(
         p = {};
       }
       const next = {
+        ...MA_CROSS_5M_PARAMS,
         ...p,
         universeTopN: MA_CROSS_5M_PARAMS.universeTopN,
         minTurnover3hUsd: MA_CROSS_5M_PARAMS.minTurnover3hUsd,
         entryMaxDiffPct: MA_CROSS_5M_PARAMS.entryMaxDiffPct,
+        exchange: MA_CROSS_5M_PARAMS.exchange,
+        autoExecuteMinStrength: MA_CROSS_5M_PARAMS.autoExecuteMinStrength,
       };
       needsParamsUpdate =
         Number(p.universeTopN) !== MA_CROSS_5M_PARAMS.universeTopN ||
         Number(p.minTurnover3hUsd) !== MA_CROSS_5M_PARAMS.minTurnover3hUsd ||
-        Number(p.entryMaxDiffPct ?? 0) !== MA_CROSS_5M_PARAMS.entryMaxDiffPct;
+        Number(p.entryMaxDiffPct ?? 0) !== MA_CROSS_5M_PARAMS.entryMaxDiffPct ||
+        p.exchange !== MA_CROSS_5M_PARAMS.exchange ||
+        Number(p.autoExecuteMinStrength ?? 80) !== MA_CROSS_5M_PARAMS.autoExecuteMinStrength;
       if (needsParamsUpdate) nextParams = JSON.stringify(next);
     }
 
