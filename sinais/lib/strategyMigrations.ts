@@ -246,7 +246,7 @@ export const MA_CROSS_12X21_S2_DISPLAY = 'MA Cross 12×21 (15m)';
 export const MA_CROSS_12X21_S2_DESC =
   'MA12/MA21 em 15m: mesma lógica que MA Cross 12×30 (spread |MA12−MA21|/MA21 > 0,6% e < 1,5%; repetir tendência; TP parcial 60% a ±44%; restante fecha se spread < 0,5%; SL 15%). Universo = Scanner 2 top 30 (maior subida 24h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; sem limite de sinais/dia nem cooldown entre trades.';
 
-/** Garante registo activo MA Cross 12×21 Scanner 2. */
+/** Garante registo MA Cross 12×21 Scanner 2 (não força isActive nem exchange — escolha do utilizador). */
 export async function syncMaCross12x21Scanner2Config(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -256,14 +256,20 @@ export async function syncMaCross12x21Scanner2Config(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
-
   let p: Record<string, unknown> = {};
   try {
     p = row.params ? JSON.parse(row.params) : {};
   } catch {
     p = {};
   }
+
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit'
+      ? p.exchange
+      : MA_CROSS_12X21_S2_PARAMS.exchange;
+  const userAutoStrength = Number.isFinite(Number(p.autoExecuteMinStrength))
+    ? Number(p.autoExecuteMinStrength)
+    : MA_CROSS_12X21_S2_PARAMS.autoExecuteMinStrength;
 
   const next = {
     ...MA_CROSS_12X21_S2_PARAMS,
@@ -276,22 +282,21 @@ export async function syncMaCross12x21Scanner2Config(
     entryMaxDiffPct: MA_CROSS_12X21_S2_PARAMS.entryMaxDiffPct,
     maxSignalsPerDay: MA_CROSS_12X21_S2_PARAMS.maxSignalsPerDay,
     signalCooldownHours: MA_CROSS_12X21_S2_PARAMS.signalCooldownHours,
-    exchange: MA_CROSS_12X21_S2_PARAMS.exchange,
-    autoExecuteMinStrength: MA_CROSS_12X21_S2_PARAMS.autoExecuteMinStrength,
+    exchange: userExchange,
+    autoExecuteMinStrength: userAutoStrength,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== MA_CROSS_12X21_S2_DISPLAY ||
     row.description !== MA_CROSS_12X21_S2_DESC;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta) {
     await prisma.strategy.update({
       where: { name: 'MA_CROSS_12X21_S2' },
       data: {
         displayName: MA_CROSS_12X21_S2_DISPLAY,
         description: MA_CROSS_12X21_S2_DESC,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
       },
     });
     return { updated: true };
@@ -336,14 +341,15 @@ export async function syncEngolfo15mConfig(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
-
   let p: Record<string, unknown> = {};
   try {
     p = row.params ? JSON.parse(row.params) : {};
   } catch {
     p = {};
   }
+
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit' ? p.exchange : ENGOLFO_15M_PARAMS.exchange;
 
   const next = {
     ...ENGOLFO_15M_PARAMS,
@@ -361,19 +367,19 @@ export async function syncEngolfo15mConfig(
     buyEnabled: false,
     allowSell: true,
     sellEnabled: true,
+    exchange: userExchange,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== ENGOLFO_15M_DISPLAY || row.description !== ENGOLFO_15M_DESC;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta) {
     await prisma.strategy.update({
       where: { name: 'ENGOLFO_15M' },
       data: {
         displayName: ENGOLFO_15M_DISPLAY,
         description: ENGOLFO_15M_DESC,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
       },
     });
     return { updated: true };
@@ -423,14 +429,17 @@ export async function syncRompimento20_15mConfig(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
-
   let p: Record<string, unknown> = {};
   try {
     p = row.params ? JSON.parse(row.params) : {};
   } catch {
     p = {};
   }
+
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit'
+      ? p.exchange
+      : ROMPIMENTO_20_15M_PARAMS.exchange;
 
   const next = {
     ...ROMPIMENTO_20_15M_PARAMS,
@@ -452,20 +461,20 @@ export async function syncRompimento20_15mConfig(
     buyEnabled: true,
     allowSell: false,
     sellEnabled: false,
+    exchange: userExchange,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== ROMPIMENTO_20_15M_DISPLAY ||
     row.description !== ROMPIMENTO_20_15M_DESC;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta) {
     await prisma.strategy.update({
       where: { name: 'ROMPIMENTO_20_15M' },
       data: {
         displayName: ROMPIMENTO_20_15M_DISPLAY,
         description: ROMPIMENTO_20_15M_DESC,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
       },
     });
     return { updated: true };
@@ -973,8 +982,6 @@ export async function syncRsiVendido4hConfig(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
-
   let p: Record<string, unknown> = {};
   try {
     p = row.params ? JSON.parse(row.params) : {};
@@ -994,19 +1001,22 @@ export async function syncRsiVendido4hConfig(
     closeAfterHours: RSI_VENDIDO_4H_PARAMS.closeAfterHours,
     allowSell: false,
     sellEnabled: false,
+    exchange:
+      p.exchange === 'binance' || p.exchange === 'bybit'
+        ? p.exchange
+        : RSI_VENDIDO_4H_PARAMS.exchange,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== RSI_VENDIDO_4H_DISPLAY || row.description !== RSI_VENDIDO_4H_DESCRIPTION;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta) {
     await prisma.strategy.update({
       where: { name: 'RSI_VENDIDO_4H' },
       data: {
         displayName: RSI_VENDIDO_4H_DISPLAY,
         description: RSI_VENDIDO_4H_DESCRIPTION,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
       },
     });
     return { updated: true };
@@ -1023,8 +1033,6 @@ export async function syncStch15LongConfig(
     select: { params: true, description: true, displayName: true, isActive: true },
   });
   if (!row) return { updated: false };
-
-  const shouldActivate = !row.isActive;
 
   let p: Record<string, unknown> = {};
   try {
@@ -1044,19 +1052,22 @@ export async function syncStch15LongConfig(
     stopLossPct: STCH15LONG_PARAMS.stopLossPct,
     allowSell: false,
     sellEnabled: false,
+    exchange:
+      p.exchange === 'binance' || p.exchange === 'bybit'
+        ? p.exchange
+        : STCH15LONG_PARAMS.exchange,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== STCH15LONG_DISPLAY || row.description !== STCH15LONG_DESCRIPTION;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta) {
     await prisma.strategy.update({
       where: { name: 'STCH15LONG' },
       data: {
         displayName: STCH15LONG_DISPLAY,
         description: STCH15LONG_DESCRIPTION,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
       },
     });
     return { updated: true };
@@ -1074,8 +1085,6 @@ export async function syncScanner2Rsi80Top3Long4hConfig(
   });
   if (!row) return { updated: false };
 
-  const shouldActivate = !row.isActive;
-
   let p: Record<string, unknown> = {};
   try {
     p = row.params ? JSON.parse(row.params) : {};
@@ -1092,20 +1101,23 @@ export async function syncScanner2Rsi80Top3Long4hConfig(
     rsiLevel: SCANNER2_RSI80_TOP3_LONG_4H_PARAMS.rsiLevel,
     stopLossPct: SCANNER2_RSI80_TOP3_LONG_4H_PARAMS.stopLossPct,
     closeAfterHours: SCANNER2_RSI80_TOP3_LONG_4H_PARAMS.closeAfterHours,
+    exchange:
+      p.exchange === 'binance' || p.exchange === 'bybit'
+        ? p.exchange
+        : SCANNER2_RSI80_TOP3_LONG_4H_PARAMS.exchange,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== SCANNER2_RSI80_TOP3_LONG_4H_DISPLAY ||
     row.description !== SCANNER2_RSI80_TOP3_LONG_4H_DESCRIPTION;
 
-  if (needParams || needMeta || shouldActivate) {
+  if (needParams || needMeta) {
     await prisma.strategy.update({
       where: { name: 'SCANNER2_RSI80_TOP3_LONG_4H' },
       data: {
         displayName: SCANNER2_RSI80_TOP3_LONG_4H_DISPLAY,
         description: SCANNER2_RSI80_TOP3_LONG_4H_DESCRIPTION,
         params: JSON.stringify(next),
-        ...(shouldActivate ? { isActive: true } : {}),
       },
     });
     return { updated: true };
@@ -2362,15 +2374,21 @@ export async function syncMaCrossScanner1UniverseDescriptions(
         universeTopN: MA_CROSS_5M_PARAMS.universeTopN,
         minTurnover3hUsd: MA_CROSS_5M_PARAMS.minTurnover3hUsd,
         entryMaxDiffPct: MA_CROSS_5M_PARAMS.entryMaxDiffPct,
-        exchange: MA_CROSS_5M_PARAMS.exchange,
-        autoExecuteMinStrength: MA_CROSS_5M_PARAMS.autoExecuteMinStrength,
+        // Preservar exchange / força escolhidas na UI
+        exchange:
+          p.exchange === 'binance' || p.exchange === 'bybit'
+            ? p.exchange
+            : MA_CROSS_5M_PARAMS.exchange,
+        autoExecuteMinStrength: Number.isFinite(Number(p.autoExecuteMinStrength))
+          ? Number(p.autoExecuteMinStrength)
+          : MA_CROSS_5M_PARAMS.autoExecuteMinStrength,
       };
       needsParamsUpdate =
         Number(p.universeTopN) !== MA_CROSS_5M_PARAMS.universeTopN ||
         Number(p.minTurnover3hUsd) !== MA_CROSS_5M_PARAMS.minTurnover3hUsd ||
         Number(p.entryMaxDiffPct ?? 0) !== MA_CROSS_5M_PARAMS.entryMaxDiffPct ||
-        p.exchange !== MA_CROSS_5M_PARAMS.exchange ||
-        Number(p.autoExecuteMinStrength ?? 80) !== MA_CROSS_5M_PARAMS.autoExecuteMinStrength;
+        (p.exchange !== 'binance' && p.exchange !== 'bybit') ||
+        !Number.isFinite(Number(p.autoExecuteMinStrength));
       if (needsParamsUpdate) nextParams = JSON.stringify(next);
     }
 

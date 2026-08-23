@@ -120,11 +120,24 @@ export default function EstrategiasPage() {
       });
 
       if (response.ok) {
-        await fetchStrategies();
-        setMessage('Estratégia atualizada com sucesso');
+        setStrategies((prev) =>
+          prev.map((s) =>
+            s.id === strategy.id ? { ...s, isActive: !strategy.isActive } : s
+          )
+        );
+        setMessage(
+          strategy.isActive
+            ? `${strategy.displayName} desactivada`
+            : `${strategy.displayName} activada`
+        );
         setTimeout(() => setMessage(''), 3000);
       } else {
-        setMessage('Erro ao atualizar estratégia');
+        const err = await response.json().catch(() => ({}));
+        setMessage(
+          response.status === 401
+            ? 'Sessão expirada — volte a iniciar sessão para activar/desactivar'
+            : err.error || 'Erro ao atualizar estratégia'
+        );
       }
     } catch (error) {
       setMessage('Erro ao atualizar estratégia');
