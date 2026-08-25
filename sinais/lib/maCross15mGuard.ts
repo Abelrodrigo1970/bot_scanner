@@ -15,6 +15,21 @@ export const MA_CROSS_15M_BLOCKED_HOURS_PT: readonly number[] = Array.from({ len
   (h) => !MA_CROSS_15M_ALLOWED_HOURS_PT.includes(h)
 );
 
+/** MA Cross 12×21: evitar madrugada PT 4h–10h (estudo Ago 2026). */
+export const MA_CROSS_12X21_BLOCKED_HOURS_PT: readonly number[] = [4, 5, 6, 7, 8, 9, 10];
+
+/** Janela operacional MA Cross 12×21 após excluir 4h–10h dentro de 9h–22h → 11h–22h PT. */
+export const MA_CROSS_12X21_ALLOWED_HOUR_MIN_PT = 11;
+export const MA_CROSS_12X21_ALLOWED_HOUR_MAX_PT = 22;
+
+export function isMaCross12x21HourBlocked(now: Date = new Date()): boolean {
+  const h = hourInLisbon(now);
+  if (h < MA_CROSS_12X21_ALLOWED_HOUR_MIN_PT || h > MA_CROSS_12X21_ALLOWED_HOUR_MAX_PT) {
+    return true;
+  }
+  return MA_CROSS_12X21_BLOCKED_HOURS_PT.includes(h);
+}
+
 /** Soma mínima do turnover das 3 últimas velas 1h fechadas (USDT). */
 export const MA_CROSS_15M_MIN_TURNOVER_1H_USD = 3_000_000;
 
@@ -63,6 +78,10 @@ export interface MaCross15mSignalGateInput {
   maxSignalsPerDay?: number;
   /** Cooldown desde o último sinal (ms). 0 = sem cooldown. Default 24h. */
   cooldownMs?: number;
+  /** Horas PT bloqueadas (ex. MA Cross 12×21: 4–10h). */
+  blockedHoursPt?: readonly number[];
+  allowedHourMinPt?: number;
+  allowedHourMaxPt?: number;
 }
 
 /** Lê tecto diário e cooldown dos params da estratégia. */
@@ -154,6 +173,24 @@ export async function checkMaCross15mSignalGate(
     return {
       allowed: false,
       reason: `horário bloqueado (${hourInLisbon(now)}h PT; permitido ${MA_CROSS_15M_ALLOWED_HOURS_PT.join(', ')}h)`,
+    };
+  }
+
+  const h = hourInLisbon(now);
+  if (input.blockedHoursPt?.includes(h)) {
+    return {
+      allowed: false,
+      reason: `horário bloqueado (${h}h PT; evitar ${input.blockedHoursPt.join(', ')}h)`,
+    };
+  }
+  if (
+    input.allowedHourMinPt != null &&
+    input.allowedHourMaxPt != null &&
+    (h < input.allowedHourMinPt || h > input.allowedHourMaxPt)
+  ) {
+    return {
+      allowed: false,
+      reason: `horário bloqueado (${h}h PT; permitido ${input.allowedHourMinPt}–${input.allowedHourMaxPt}h)`,
     };
   }
 

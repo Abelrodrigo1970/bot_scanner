@@ -11,9 +11,13 @@ import {
 } from '@/lib/signalEngine';
 import {
   checkMaCross15mSignalGate,
+  isMaCross12x21HourBlocked,
   isMaCross15mHourBlocked,
   maCross15mGateLimitsFromParams,
   MA_CROSS_15M_MIN_TURNOVER_1H_USD,
+  MA_CROSS_12X21_BLOCKED_HOURS_PT,
+  MA_CROSS_12X21_ALLOWED_HOUR_MIN_PT,
+  MA_CROSS_12X21_ALLOWED_HOUR_MAX_PT,
 } from '@/lib/maCross15mGuard';
 import { update24hResults } from '@/lib/update24hResults';
 import {
@@ -101,6 +105,19 @@ async function runMaCross15mWorker(
           minTurnover3hUsd,
           maxSignalsPerDay: gateLimits.maxSignalsPerDay,
           cooldownMs: gateLimits.cooldownMs,
+          ...(params.maCross12x21EntryFilters === true
+            ? {
+                blockedHoursPt:
+                  (params.blockedHoursPt as number[] | undefined) ??
+                  [...MA_CROSS_12X21_BLOCKED_HOURS_PT],
+                allowedHourMinPt: Number(
+                  params.allowedHourMinPt ?? MA_CROSS_12X21_ALLOWED_HOUR_MIN_PT
+                ),
+                allowedHourMaxPt: Number(
+                  params.allowedHourMaxPt ?? MA_CROSS_12X21_ALLOWED_HOUR_MAX_PT
+                ),
+              }
+            : {}),
         });
 
         if (gate.allowed) {
@@ -233,6 +250,15 @@ async function runNamedMaCrossPipeline(
       hour12: false,
     });
     console.log(`[${logTag}] Horário ${h}h PT bloqueado — saltada.`);
+    return { status: 'skipped-hour' };
+  }
+  if (strategyName === 'MA_CROSS_12X21_S2' && isMaCross12x21HourBlocked(now)) {
+    const h = now.toLocaleString('en-GB', {
+      timeZone: 'Europe/Lisbon',
+      hour: '2-digit',
+      hour12: false,
+    });
+    console.log(`[${logTag}] Horário ${h}h PT bloqueado (12×21: 11–22h, evita 4–10h) — saltada.`);
     return { status: 'skipped-hour' };
   }
 

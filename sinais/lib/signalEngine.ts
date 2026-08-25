@@ -1534,6 +1534,70 @@ export async function runRsi15mStrategy(
   }
 }
 
+/** Filtros de entrada MA Cross 12×21 (estudo Ago 2026): distância MA21 + momentum 1h. */
+function passesMaCross12x21EntryFilters(
+  params: StrategyParams,
+  distCloseSlowAbsPct: number,
+  direction: 'BUY' | 'SELL',
+  closedCloses: number[]
+): { ok: true; momentum1hPct?: number } | { ok: false; reason: string } {
+  if (params.maCross12x21EntryFilters !== true) {
+    return { ok: true };
+  }
+
+  const minDist = Number(params.minDistCloseMaSlowPct ?? 2);
+  const maxDist = Number(params.maxDistCloseMaSlowPct ?? 4);
+  const maxHard = Number(params.maxDistCloseMaSlowHardPct ?? 6);
+
+  if (distCloseSlowAbsPct < minDist) {
+    return {
+      ok: false,
+      reason: `distância ao MA21 ${distCloseSlowAbsPct.toFixed(2)}% < mín. ${minDist}%`,
+    };
+  }
+  if (distCloseSlowAbsPct > maxDist) {
+    return {
+      ok: false,
+      reason: `distância ao MA21 ${distCloseSlowAbsPct.toFixed(2)}% > máx. ${maxDist}%`,
+    };
+  }
+  if (maxHard > 0 && distCloseSlowAbsPct > maxHard) {
+    return {
+      ok: false,
+      reason: `distância ao MA21 ${distCloseSlowAbsPct.toFixed(2)}% > tecto ${maxHard}%`,
+    };
+  }
+
+  if (params.requireMomentum1h === false) {
+    return { ok: true };
+  }
+
+  const bars = Math.max(1, Math.floor(Number(params.momentumLookbackBars15m ?? 4)));
+  const minMom = Number(params.minMomentum1hPct ?? 0);
+  const idx = closedCloses.length - 1;
+  const ref = idx - bars;
+  if (ref < 0) {
+    return { ok: false, reason: 'histórico insuficiente para momentum 1h' };
+  }
+  const momentum1hPct =
+    ((closedCloses[idx]! - closedCloses[ref]!) / closedCloses[ref]!) * 100;
+
+  if (direction === 'BUY' && momentum1hPct <= minMom) {
+    return {
+      ok: false,
+      reason: `momentum 1h ${momentum1hPct.toFixed(2)}% ≤ ${minMom}% (BUY)`,
+    };
+  }
+  if (direction === 'SELL' && momentum1hPct >= -minMom) {
+    return {
+      ok: false,
+      reason: `momentum 1h ${momentum1hPct.toFixed(2)}% ≥ -${minMom}% (SELL)`,
+    };
+  }
+
+  return { ok: true, momentum1hPct };
+}
+
 /**
  * MA rápida × MA lenta em velas fechadas (`ma200Period` = período da média lenta; `maType` EMA ou SMA).
  * Em **15m** e **1h** usa **modo spread** (`|rápida−lenta|/lenta`, limiares entrada/saída, repetir tendência, TP parcial + compressão) — mesma filosofia MA12×MA30 e MA30×MA200.
@@ -1730,6 +1794,16 @@ async function runMaCrossM30M200OnTimeframe(
               distCloseSlowAbsPct <= buyBlockAbsCloseDistanceFromMa200Pct)
         : (prevMa30 <= prevMaSlow && ma30 > confirmUp)
     ) {
+      const entryFilter = passesMaCross12x21EntryFilters(
+        params,
+        distCloseSlowAbsPct,
+        'BUY',
+        closedCloses
+      );
+      if (!entryFilter.ok) {
+        return null;
+      }
+
       const stopLoss = currentPrice * (1 - stopPercent / 100);
       const target1 = isMa12x30Mode
         ? currentPrice * (1 + ma12x30GainTpPct / 100)
@@ -1757,6 +1831,9 @@ async function runMaCrossM30M200OnTimeframe(
           ma200: maSlow.toFixed(4),
           diffPct: currentDiffPct.toFixed(3),
           distCloseMaSlowAbsPct: distCloseSlowAbsPct.toFixed(2),
+          ...(entryFilter.momentum1hPct != null
+            ? { momentum1hPct: entryFilter.momentum1hPct.toFixed(2) }
+            : {}),
           entryDiffPct,
           entryMaxDiffPct: entryMaxDiffPct > 0 ? entryMaxDiffPct : 'off',
           exitDiffPct,
@@ -1819,6 +1896,16 @@ async function runMaCrossM30M200OnTimeframe(
         return null;
       }
 
+      const entryFilter = passesMaCross12x21EntryFilters(
+        params,
+        distCloseSlowAbsPct,
+        'SELL',
+        closedCloses
+      );
+      if (!entryFilter.ok) {
+        return null;
+      }
+
       const stopLoss = currentPrice * (1 + stopPercent / 100);
       const target1 = isMa12x30Mode
         ? currentPrice * (1 - ma12x30GainTpPct / 100)
@@ -1849,6 +1936,9 @@ async function runMaCrossM30M200OnTimeframe(
           entryMaxDiffPct: entryMaxDiffPct > 0 ? entryMaxDiffPct : 'off',
           exitDiffPct,
           distCloseMa200AbsPct: distCloseSlowAbsPct.toFixed(2),
+          ...(entryFilter.momentum1hPct != null
+            ? { momentum1hPct: entryFilter.momentum1hPct.toFixed(2) }
+            : {}),
           sellBlockAbsCloseDistanceFromMa200Pct:
             sellBlockAbsCloseDistanceFromMa200Pct || 'off',
           confirmationPct,

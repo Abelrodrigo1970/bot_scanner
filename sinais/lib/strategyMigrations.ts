@@ -240,11 +240,22 @@ export const MA_CROSS_12X21_S2_PARAMS = {
   maxSignalsPerDay: 0,
   /** 0 = sem cooldown entre sinais. */
   signalCooldownHours: 0,
+  /** Filtros estudo Ago 2026: distância MA21 2–4%, momentum 1h, horas 11–22h PT. */
+  maCross12x21EntryFilters: true,
+  minDistCloseMaSlowPct: 2,
+  maxDistCloseMaSlowPct: 4,
+  maxDistCloseMaSlowHardPct: 6,
+  requireMomentum1h: true,
+  minMomentum1hPct: 0,
+  momentumLookbackBars15m: 4,
+  blockedHoursPt: [4, 5, 6, 7, 8, 9, 10],
+  allowedHourMinPt: 11,
+  allowedHourMaxPt: 22,
 } as const;
 
 export const MA_CROSS_12X21_S2_DISPLAY = 'MA Cross 12×21 (15m)';
 export const MA_CROSS_12X21_S2_DESC =
-  'MA12/MA21 em 15m: mesma lógica que MA Cross 12×30 (spread |MA12−MA21|/MA21 > 0,6% e < 1,5%; repetir tendência; TP parcial 60% a ±44%; restante fecha se spread < 0,5%; SL 15%). Universo = Scanner 2 top 30 (maior subida 24h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; sem limite de sinais/dia nem cooldown entre trades.';
+  'MA12/MA21 em 15m: spread 0,6–1,5%; repetir tendência; TP parcial 60% a ±44%; SL 15%. Universo Scanner 2 top 30. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Turnover 3×1h ≥ $3M.';
 
 /** Garante registo MA Cross 12×21 Scanner 2 (não força isActive nem exchange — escolha do utilizador). */
 export async function syncMaCross12x21Scanner2Config(
@@ -282,6 +293,16 @@ export async function syncMaCross12x21Scanner2Config(
     entryMaxDiffPct: MA_CROSS_12X21_S2_PARAMS.entryMaxDiffPct,
     maxSignalsPerDay: MA_CROSS_12X21_S2_PARAMS.maxSignalsPerDay,
     signalCooldownHours: MA_CROSS_12X21_S2_PARAMS.signalCooldownHours,
+    maCross12x21EntryFilters: MA_CROSS_12X21_S2_PARAMS.maCross12x21EntryFilters,
+    minDistCloseMaSlowPct: MA_CROSS_12X21_S2_PARAMS.minDistCloseMaSlowPct,
+    maxDistCloseMaSlowPct: MA_CROSS_12X21_S2_PARAMS.maxDistCloseMaSlowPct,
+    maxDistCloseMaSlowHardPct: MA_CROSS_12X21_S2_PARAMS.maxDistCloseMaSlowHardPct,
+    requireMomentum1h: MA_CROSS_12X21_S2_PARAMS.requireMomentum1h,
+    minMomentum1hPct: MA_CROSS_12X21_S2_PARAMS.minMomentum1hPct,
+    momentumLookbackBars15m: MA_CROSS_12X21_S2_PARAMS.momentumLookbackBars15m,
+    blockedHoursPt: MA_CROSS_12X21_S2_PARAMS.blockedHoursPt,
+    allowedHourMinPt: MA_CROSS_12X21_S2_PARAMS.allowedHourMinPt,
+    allowedHourMaxPt: MA_CROSS_12X21_S2_PARAMS.allowedHourMaxPt,
     exchange: userExchange,
     autoExecuteMinStrength: userAutoStrength,
   };
