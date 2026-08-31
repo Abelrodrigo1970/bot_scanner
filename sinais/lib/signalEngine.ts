@@ -25,6 +25,7 @@ import {
   UNIVERSE_CODE_SCANNER_3_MA80_PCT4,
   UNIVERSE_CODE_SCANNER_3_RSI75_1H,
   UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D,
+  UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
 } from './symbolUniverseDefaults';
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
 import { ACTIVE_SCANNER_STRATEGY_NAMES } from './strategyCatalog';
@@ -2231,16 +2232,16 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'MA_CROSS_12X21_S2') {
-        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 30)));
-        console.log(`🔍 ${strategy.name}: Scanner 2 top ${topN} (subidas 24h)...`);
+        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 80)));
+        console.log(`🔍 ${strategy.name}: Scanner 7 top ${topN} (RSI 1d ≥ 69)...`);
         symbolsToAnalyze = await resolveUniverseScanSymbolsTopN(
-          UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H,
+          UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
           topN
         );
-        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 2 top ${topN})`);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 7 top ${topN})`);
         if (symbolsToAnalyze.length === 0) {
           console.warn(
-            `⚠️ Scanner 2 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 2. Ignorando ${strategy.name}.`
+            `⚠️ Scanner 7 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 7. Ignorando ${strategy.name}.`
           );
           continue;
         }

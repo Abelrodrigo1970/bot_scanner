@@ -206,7 +206,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const maCross12x21Sync = await syncMaCross12x21Scanner2Config(prisma);
   if (maCross12x21Sync.updated) {
-    console.log('✅ MA_CROSS_12X21_S2: MA12×21 15m | Scanner 2 top 30 | spread 0,6–1,5% | sem tecto diário');
+    console.log('✅ MA_CROSS_12X21_S2: MA12×21 15m | Scanner 7 RSI 1d ≥ 69 | só COMPRA | spread 0,6–1,5%');
   }
 
   const engolfoSync = await syncEngolfo15mConfig(prisma);

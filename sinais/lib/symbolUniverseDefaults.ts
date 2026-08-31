@@ -219,7 +219,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 2 — Top 30 subidas 24h',
     description:
       'Top 30 perpétuos USDT com maior subida de preço nas últimas 24h (apenas variação positiva). Mín. 500k USDT volume 24h.',
-    strategyNames: 'Scanner 2 RSI>80 Top 3 LONG (4h), stch15long, MA Cross 12×21 (15m), engolfo (top 3)',
+    strategyNames: 'Scanner 2 RSI>80 Top 3 LONG (4h), stch15long, engolfo (top 3)',
   },
   UNIVERSE_RSI_ABOVE_75_1H: {
     displayName: 'Scanner 3 — RSI > 75 (1h)',
@@ -242,7 +242,7 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_RSI_ABOVE_69_1D: {
     displayName: `Scanner 7 — RSI > ${SCANNER_7_RSI_THRESHOLD} (1d)`,
     description: `Perpétuos USDT (top volume) com RSI(${SCANNER_7_RSI_PERIOD}) acima de ${SCANNER_7_RSI_THRESHOLD} em velas diárias, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h.`,
-    strategyNames: '— (dados para análise)',
+    strategyNames: 'MA Cross 12×21 (15m, só COMPRA)',
   },
   UNIVERSE_RSI_BELOW_32_4H: {
     displayName: 'rsi_vendido — RSI < 32 (4h)',
@@ -265,7 +265,8 @@ export const BUILTIN_UNIVERSE_META: Record<
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
-  '2': 'Scanner 2 activo: RSI>80 Top 3 LONG + stch15long + MA Cross 12×21 + engolfo top 3 (15m). Short Leader e Top 4 rotação descontinuados.',
+  '2': 'Scanner 2 activo: RSI>80 Top 3 LONG + stch15long + engolfo top 3 (15m). Short Leader e Top 4 rotação descontinuados.',
+  '7': 'MA Cross 12×21 (15m): só COMPRA no universo Scanner 7 (RSI 1d ≥ 69).',
   rsi_vendido:
     'rsi_vendido LONG (4h): entra quando RSI 4h cruza abaixo de 25; sai quando cruza acima de 32 (SL −5%, máx. 24h).',
   ytd_mcap60:

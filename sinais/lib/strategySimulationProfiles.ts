@@ -56,9 +56,9 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     strategyName: 'MA_CROSS_12X21_S2',
     displayNames: ['MA Cross 12×21 (15m)'],
     buy: side(15, 44, 60),
-    sell: side(15, 44, 60),
+    sell: null,
     summary:
-      'Scanner 2 top 30. Spread 0,6–1,5%. SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA21 < 0,5%. Sem tecto diário.',
+      'Scanner 7 (RSI 1d ≥ 69). Só COMPRA. Spread 0,6–1,5%. SL 15%. TP1 +44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA21 < 0,5%. Sem tecto diário.',
   },
   {
     strategyName: 'ENGOLFO_15M',

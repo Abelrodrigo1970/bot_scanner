@@ -213,7 +213,7 @@ export const MA_CROSS_5M_DISPLAY = 'MA Cross 12×30 (15m)';
 export const MA_CROSS_5M_DESC =
   'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% e < 1,8% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 top 20 (|afastamento| vs SMA200 1h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
 
-/** MA Cross 12×21 (15m) — mesma lógica de spread que MA12×30; universo Scanner 2. */
+/** MA Cross 12×21 (15m) — mesma lógica de spread que MA12×30; universo Scanner 7 (RSI 1d ≥ 69), só COMPRA. */
 export const MA_CROSS_12X21_S2_PARAMS = {
   ma30Period: 12,
   ma200Period: 21,
@@ -230,11 +230,13 @@ export const MA_CROSS_12X21_S2_PARAMS = {
   ma12x30GainTpPct: 44,
   ma12x30GainTpPositionPct: 60,
   allowBuy: true,
-  allowSell: true,
+  allowSell: false,
+  sellEnabled: false,
   exchange: 'bybit',
   autoExecuteMinStrength: 70,
-  /** Top N do Scanner 2 (subidas 24h). */
-  universeTopN: 30,
+  /** Universo Scanner 7 (RSI 1d ≥ 69), ordenado por RSI desc. */
+  universeCode: 'UNIVERSE_RSI_ABOVE_69_1D',
+  universeTopN: 80,
   minTurnover3hUsd: 3_000_000,
   /** 0 = sem tecto diário. */
   maxSignalsPerDay: 0,
@@ -255,7 +257,7 @@ export const MA_CROSS_12X21_S2_PARAMS = {
 
 export const MA_CROSS_12X21_S2_DISPLAY = 'MA Cross 12×21 (15m)';
 export const MA_CROSS_12X21_S2_DESC =
-  'MA12/MA21 em 15m: spread 0,6–1,5%; repetir tendência; TP parcial 60% a ±44%; SL 15%. Universo Scanner 2 top 30. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Turnover 3×1h ≥ $3M.';
+  'MA12/MA21 em 15m: só COMPRA. Spread 0,6–1,5%; repetir tendência; TP parcial 60% a +44%; SL 15%. Universo Scanner 7 (RSI 14 · 1d ≥ 69), top 80 por RSI. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Turnover 3×1h ≥ $3M.';
 
 /** Garante registo MA Cross 12×21 Scanner 2 (não força isActive nem exchange — escolha do utilizador). */
 export async function syncMaCross12x21Scanner2Config(
@@ -287,7 +289,11 @@ export async function syncMaCross12x21Scanner2Config(
     ...p,
     ma30Period: MA_CROSS_12X21_S2_PARAMS.ma30Period,
     ma200Period: MA_CROSS_12X21_S2_PARAMS.ma200Period,
+    universeCode: MA_CROSS_12X21_S2_PARAMS.universeCode,
     universeTopN: MA_CROSS_12X21_S2_PARAMS.universeTopN,
+    allowBuy: MA_CROSS_12X21_S2_PARAMS.allowBuy,
+    allowSell: MA_CROSS_12X21_S2_PARAMS.allowSell,
+    sellEnabled: MA_CROSS_12X21_S2_PARAMS.sellEnabled,
     minTurnover3hUsd: MA_CROSS_12X21_S2_PARAMS.minTurnover3hUsd,
     entryDiffPct: MA_CROSS_12X21_S2_PARAMS.entryDiffPct,
     entryMaxDiffPct: MA_CROSS_12X21_S2_PARAMS.entryMaxDiffPct,

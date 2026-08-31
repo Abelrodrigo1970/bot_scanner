@@ -286,7 +286,7 @@ export default function EstrategiasPage() {
         const maPairLabel = isS2 ? 'MA12 / MA21' : 'MA12 / MA30';
         const diffLabel = maPairLabel;
         const defaultSlow = isS2 ? 21 : 30;
-        const defaultTopN = isS2 ? 30 : 20;
+        const defaultTopN = isS2 ? 80 : 20;
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -295,7 +295,7 @@ export default function EstrategiasPage() {
                 {' O cron corre a cada 15 min.'} Símbolos ={' '}
                 {isS2 ? (
                   <>
-                    <strong>Scanner 2 top {defaultTopN}</strong> (maior subida 24h); actualize em Origem de dados → Scanner 2
+                    <strong>Scanner 7</strong> (RSI 14 · 1d ≥ 69), top {defaultTopN} por RSI; só <strong>COMPRA</strong>; actualize em Origem de dados → Scanner 7
                   </>
                 ) : (
                   <>
@@ -308,7 +308,7 @@ export default function EstrategiasPage() {
             <p className="text-xs text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-md px-3 py-2">
               {isS2 ? (
                 <>
-                  <strong>Frequência:</strong> activo sáb/dom; turnover 3×1h ≥ $3M; spread de entrada{' '}
+                  <strong>Frequência:</strong> só COMPRA; activo sáb/dom; turnover 3×1h ≥ $3M; spread de entrada{' '}
                   <strong>0,6–1,5%</strong>; <strong>sem limite de sinais/dia</strong> nem cooldown entre trades.
                   Não abre posição nova se já existir trade aberto no mesmo sentido.
                 </>

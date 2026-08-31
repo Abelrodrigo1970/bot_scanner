@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db';
 import {
   UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
-  UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H,
+  UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
 } from '@/lib/symbolUniverseDefaults';
 import { resolveUniverseScanSymbolsTopN } from '@/lib/universeScanPersistence';
 import {
@@ -286,18 +286,18 @@ export async function runMaCross15mPipeline(now: Date = new Date()): Promise<Cro
   );
 }
 
-/** Pipeline MA Cross 12×21 (Scanner 2). */
+/** Pipeline MA Cross 12×21 (Scanner 7 RSI 1d ≥ 69, só COMPRA). */
 export async function runMaCross12x21Scanner2Pipeline(
   now: Date = new Date()
 ): Promise<Cron15mResult> {
   return runNamedMaCrossPipeline(
     'MA_CROSS_12X21_S2',
     {
-      code: UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H,
-      label: 'Scanner 2',
-      defaultTopN: 30,
+      code: UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
+      label: 'Scanner 7',
+      defaultTopN: 80,
     },
-    'MA Cross 12×21 S2',
+    'MA Cross 12×21 S7',
     now
   );
 }
@@ -310,7 +310,7 @@ export interface Cron15mAllResult {
 }
 
 /**
- * Cron único 15m: MA Cross 12×30 (S1) + MA Cross 12×21 (S2) + engolfo (S2) + Rompimento 20 (S1).
+ * Cron único 15m: MA Cross 12×30 (S1) + MA Cross 12×21 (S7, só BUY) + engolfo (S2) + Rompimento 20 (S1).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
   const maCross = await runMaCross15mPipeline(now);

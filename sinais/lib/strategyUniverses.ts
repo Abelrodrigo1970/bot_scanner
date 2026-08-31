@@ -68,9 +68,9 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
+    dataKey: 'UNIVERSE_RSI_ABOVE_69_1D',
 
-    description: 'Scanner 2 top 30: maior subida 24h. MA12/MA21 em 15m; spread 0,6–1,5%.',
+    description: 'Scanner 7: RSI 14 (1d) ≥ 69. MA12/MA21 em 15m; só COMPRA; spread 0,6–1,5%.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 

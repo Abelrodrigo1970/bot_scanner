@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { run15mStrategiesPipeline } from '@/lib/cron15mStrategies';
 
 /**
- * Cron 15m: MA Cross 12×30 (Scanner 1) + MA Cross 12×21 (Scanner 2) + engolfo + Rompimento 20.
+ * Cron 15m: MA Cross 12×30 (Scanner 1) + MA Cross 12×21 (Scanner 7, só BUY) + engolfo + Rompimento 20.
  */
 async function run15mInBackground(now: Date): Promise<void> {
   console.log('[Run-15m BG] Iniciando MA Cross + engolfo + rompimento20 (15m)...');

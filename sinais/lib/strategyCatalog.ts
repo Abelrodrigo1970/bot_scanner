@@ -71,7 +71,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 2 top 30; MA12/MA21; spread 0,6–1,5%; dist MA21 2–4%; momentum 1h; 11–22h PT',
+    universe: 'Scanner 7 (RSI 1d ≥ 69); só COMPRA; MA12/MA21; spread 0,6–1,5%; dist MA21 2–4%; momentum 1h; 11–22h PT',
 
   },
 
@@ -337,7 +337,7 @@ export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; descrip
 
     title: 'Cron 15m',
 
-    description: 'MA Cross 12×30 (S1) + MA Cross 12×21 (S2) + engolfo (S2) + Rompimento 20 (S1)',
+    description: 'MA Cross 12×30 (S1) + MA Cross 12×21 (S7 BUY) + engolfo (S2) + Rompimento 20 (S1)',
 
   },
 
