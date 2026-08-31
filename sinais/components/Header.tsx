@@ -7,6 +7,7 @@ import { DATA_SOURCE_MENU_ITEMS } from '@/lib/strategyUniverses';
 
 const mainMenuItems = [
   { href: '/', label: 'Dashboard' },
+  { href: '/scanners', label: 'Scanners' },
   { href: '/estrategias', label: 'Estratégias' },
   { href: '/historico', label: 'Histórico' },
   { href: '/relatorio', label: 'Relatório' },

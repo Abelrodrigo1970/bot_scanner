@@ -24,6 +24,9 @@ export const UNIVERSE_CODE_SCANNER_3_RSI75_15M = UNIVERSE_CODE_SCANNER_3_RSI75_1
 
 export const UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H = 'UNIVERSE_ABOVE_MA80_4H' as const;
 
+/** Scanner 7 — RSI(14) > 69 em velas diárias (1d). */
+export const UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D = 'UNIVERSE_RSI_ABOVE_69_1D' as const;
+
 /** rsi_vendido — RSI(14) 4h abaixo de 32. */
 export const UNIVERSE_CODE_RSI_VENDIDO = 'UNIVERSE_RSI_BELOW_32_4H' as const;
 
@@ -38,6 +41,9 @@ export const YTD_MCAP60_RESULT_LIMIT = 50;
 
 export const SCANNER_3_RSI_PERIOD = 14;
 export const SCANNER_3_RSI_THRESHOLD = 75;
+
+export const SCANNER_7_RSI_PERIOD = 14;
+export const SCANNER_7_RSI_THRESHOLD = 69;
 
 export const RSI_VENDIDO_PERIOD = 14;
 export const RSI_VENDIDO_THRESHOLD = 32;
@@ -91,6 +97,17 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
     candidateLimit: 400,
     rsiPeriod: RSI_VENDIDO_PERIOD,
     rsiThreshold: RSI_VENDIDO_THRESHOLD,
+  },
+  UNIVERSE_RSI_ABOVE_69_1D: {
+    ruleType: 'RSI_ABOVE',
+    maPeriod: 0,
+    minDistancePct: null,
+    maxDistancePct: null,
+    timeframe: '1d',
+    minQuoteVolume: 500000,
+    candidateLimit: 400,
+    rsiPeriod: SCANNER_7_RSI_PERIOD,
+    rsiThreshold: SCANNER_7_RSI_THRESHOLD,
   },
   UNIVERSE_TOP50_YTD_MCAP60M: {
     ruleType: 'TOP_YTD_MCAP',
@@ -222,6 +239,11 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Rotação long no bot_cripto.',
     strategyNames: 'SCANNER_MA80_4H_TOP6 (bot_cripto)',
   },
+  UNIVERSE_RSI_ABOVE_69_1D: {
+    displayName: `Scanner 7 — RSI > ${SCANNER_7_RSI_THRESHOLD} (1d)`,
+    description: `Perpétuos USDT (top volume) com RSI(${SCANNER_7_RSI_PERIOD}) acima de ${SCANNER_7_RSI_THRESHOLD} em velas diárias, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h.`,
+    strategyNames: '— (dados para análise)',
+  },
   UNIVERSE_RSI_BELOW_32_4H: {
     displayName: 'rsi_vendido — RSI < 32 (4h)',
     description:
@@ -255,6 +277,7 @@ export const SCANNER_UI_ROUTES = [
   { scannerId: '2', code: UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H },
   { scannerId: '3', code: UNIVERSE_CODE_SCANNER_3_RSI75_1H },
   { scannerId: '6', code: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H },
+  { scannerId: '7', code: UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D },
   { scannerId: 'rsi_vendido', code: UNIVERSE_CODE_RSI_VENDIDO },
   { scannerId: 'lateral_volatile', code: UNIVERSE_CODE_LATERAL_VOLATILE },
   { scannerId: 'ytd_mcap60', code: UNIVERSE_CODE_YTD_MCAP60 },
