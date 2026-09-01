@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { run15mStrategiesPipeline } from '@/lib/cron15mStrategies';
+import { prisma } from '@/lib/db';
+import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrategies';
 
 /**
  * Cron 15m: MA Cross 12×30 (Scanner 1) + MA Cross 12×21 (Scanner 7, só BUY) + engolfo + Liquidity Pools + Rompimento 20.
@@ -52,13 +54,15 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
 
+    await ensureMissingBuiltinStrategies(prisma);
+
     run15mInBackground(now).catch((error) => {
       console.error('[Run-15m BG] Erro fatal:', error);
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Cron 15m (MA Cross + engolfo) iniciado em background',
+      message: 'Cron 15m (Liquidity Pools + MA Cross + engolfo + Rompimento 20) iniciado em background',
       executedAt: now.toISOString(),
     });
   } catch (error) {

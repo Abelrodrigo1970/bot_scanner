@@ -312,9 +312,26 @@ export interface Cron15mAllResult {
 }
 
 /**
- * Cron único 15m: MA Cross 12×30 (S1) + MA Cross 12×21 (S7, só BUY) + engolfo (S2) + Liquidity Pools (S2) + Rompimento 20 (S1).
+ * Cron único 15m: Liquidity Pools (S2, 10 símbolos) primeiro, depois MA Cross + engolfo + Rompimento 20.
+ * LP corre antes do MA Cross 12×21 (80 símbolos) para não ficar bloqueado no pipeline.
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
+  let liquidityPoolsPro: Cron15mResult;
+  try {
+    const r = await runLiquidityPoolsPro15mPipeline({ logPrefix: '[Run-15m → liquidity-pools]' });
+    if (r.status === 'skipped') {
+      console.log(`[Run-15m → liquidity-pools] Saltado: ${r.reason}`);
+      if (r.reason.includes('inactiva')) liquidityPoolsPro = { status: 'inactive' };
+      else if (r.reason.includes('não encontrada')) liquidityPoolsPro = { status: 'not-found' };
+      else liquidityPoolsPro = { status: 'done', signalsCreated: 0 };
+    } else {
+      liquidityPoolsPro = { status: 'done', signalsCreated: r.signalsCreated };
+    }
+  } catch (err) {
+    console.error('[Run-15m → liquidity-pools] Falhou:', err);
+    liquidityPoolsPro = { status: 'not-found' };
+  }
+
   const maCross = await runMaCross15mPipeline(now);
   const maCross12x21S2 = await runMaCross12x21Scanner2Pipeline(now);
 
@@ -332,22 +349,6 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
   } catch (err) {
     console.error('[Run-15m → engolfo] Falhou:', err);
     engolfo = { status: 'not-found' };
-  }
-
-  let liquidityPoolsPro: Cron15mResult;
-  try {
-    const r = await runLiquidityPoolsPro15mPipeline({ logPrefix: '[Run-15m → liquidity-pools]' });
-    if (r.status === 'skipped') {
-      console.log(`[Run-15m → liquidity-pools] Saltado: ${r.reason}`);
-      if (r.reason.includes('inactiva')) liquidityPoolsPro = { status: 'inactive' };
-      else if (r.reason.includes('não encontrada')) liquidityPoolsPro = { status: 'not-found' };
-      else liquidityPoolsPro = { status: 'done', signalsCreated: 0 };
-    } else {
-      liquidityPoolsPro = { status: 'done', signalsCreated: r.signalsCreated };
-    }
-  } catch (err) {
-    console.error('[Run-15m → liquidity-pools] Falhou:', err);
-    liquidityPoolsPro = { status: 'not-found' };
   }
 
   let rompimento20: Cron15mResult;

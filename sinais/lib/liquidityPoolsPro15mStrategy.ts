@@ -8,7 +8,10 @@
 import { prisma } from './db';
 import { dropFormingCandle, fetchCandles } from './marketData';
 import { UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H } from './symbolUniverseDefaults';
-import { resolveUniverseScanSymbolsTopN } from './universeScanPersistence';
+import {
+  ensureAllBuiltinUniverseScans,
+  resolveUniverseScanSymbolsTopN,
+} from './universeScanPersistence';
 import { autoExecuteNewSignalsForStrategy, resolveStrategyExchange } from './autoExecuteNewSignals';
 import { closeActivePositionForSymbol, inspectActivePositionForSymbol } from './tradingExecutor';
 import {
@@ -142,6 +145,8 @@ export async function runLiquidityPoolsPro15mPipeline(options?: {
     return { status: 'skipped', reason: 'BUY e SELL desactivados nos params' };
   }
 
+  await ensureAllBuiltinUniverseScans('liquidity-pools-15m');
+
   const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 10)));
   const chartTimeframe = String(params.chartTimeframe ?? '15m');
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
@@ -154,6 +159,7 @@ export async function runLiquidityPoolsPro15mPipeline(options?: {
     topN
   );
   if (symbols.length === 0) {
+    console.warn(`${logPrefix} Scanner 2 vazio após resolve top ${topN}`);
     return {
       status: 'skipped',
       reason: 'Scanner 2 vazio — correr run-universe-scans',
