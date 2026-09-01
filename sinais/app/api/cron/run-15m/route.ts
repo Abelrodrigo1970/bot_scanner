@@ -7,7 +7,7 @@ import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrate
  * Cron 15m: MA Cross 12×30 (Scanner 1) + MA Cross 12×21 (Scanner 7, só BUY) + engolfo + Liquidity Pools + Rompimento 20.
  */
 async function run15mInBackground(now: Date): Promise<void> {
-  console.log('[Run-15m BG] Iniciando MA Cross + engolfo + liquidity-pools + rompimento20 (15m)...');
+  console.log('[Run-15m BG] Iniciando LP + swing-vwap + MA Cross + engolfo + rompimento20 (15m)...');
 
   try {
     const result = await run15mStrategiesPipeline(now);
@@ -15,6 +15,7 @@ async function run15mInBackground(now: Date): Promise<void> {
     const ma21 = result.maCross12x21S2;
     const eng = result.engolfo;
     const lp = result.liquidityPoolsPro;
+    const sv = result.swingAnchoredVwap;
     const romp = result.rompimento20;
     console.log(
       `[Run-15m BG] MA Cross 12×30 -> ${ma.status}` +
@@ -31,6 +32,10 @@ async function run15mInBackground(now: Date): Promise<void> {
     console.log(
       `[Run-15m BG] liquidity-pools -> ${lp.status}` +
         (typeof lp.signalsCreated === 'number' ? ` (${lp.signalsCreated} sinais)` : '')
+    );
+    console.log(
+      `[Run-15m BG] swing-vwap -> ${sv.status}` +
+        (typeof sv.signalsCreated === 'number' ? ` (${sv.signalsCreated} sinais)` : '')
     );
     console.log(
       `[Run-15m BG] rompimento20 -> ${romp.status}` +
@@ -62,7 +67,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Cron 15m (Liquidity Pools + MA Cross + engolfo + Rompimento 20) iniciado em background',
+      message: 'Cron 15m (LP + Swing VWAP + MA Cross + engolfo + Rompimento 20) iniciado em background',
       executedAt: now.toISOString(),
     });
   } catch (error) {

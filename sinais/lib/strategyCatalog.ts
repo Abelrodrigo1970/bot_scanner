@@ -19,6 +19,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'LIQUIDITY_POOLS_PRO_15M',
 
+  'SWING_ANCHORED_VWAP_15M',
+
   'ROMPIMENTO_20_15M',
 
   'STCH15LONG',
@@ -98,6 +100,18 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '15m',
 
     universe: 'Scanner 2 top 10; sweep liquidez (pivot pools); BUY/SELL; SL 1,5×ATR; TP 1R/2R/3R',
+
+  },
+
+  SWING_ANCHORED_VWAP_15M: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m',
+
+    timeframe: '15m',
+
+    universe: 'Scanner 2 top 15; VWAP ancorado swing; flip trend length 50; BUY/SELL; SL swing/5%; TP VWAP/10%',
 
   },
 

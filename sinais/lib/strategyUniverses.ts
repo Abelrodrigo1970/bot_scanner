@@ -116,6 +116,25 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
+    strategyName: 'SWING_ANCHORED_VWAP_15M',
+
+    displayLabel: 'Swing Anchored VWAP (15m)',
+
+    signalTimeframes: ['15m'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
+
+    description:
+      'Scanner 2 top 15. Flip trend (length 50): BUY novo high, SELL novo low. SL swing ±0,5% ou 5%. TP1 VWAP activo ou 10% (50%). Resto 24h.',
+
+    refresh: '/api/cron/run-15m (cada 15 min)',
+
+  },
+
+  {
+
     strategyName: 'ROMPIMENTO_20_15M',
 
     displayLabel: 'Rompimento 20 (15m)',

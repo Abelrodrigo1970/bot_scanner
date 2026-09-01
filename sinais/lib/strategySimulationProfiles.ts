@@ -77,6 +77,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Scanner 2 top 10. Sweep mitigation BSL/SSL. SL 1,5×ATR (preço no sinal). TP1/2/3 ≈ 1R/2R/3R (33%/33%/resto 24h).',
   },
   {
+    strategyName: 'SWING_ANCHORED_VWAP_15M',
+    displayNames: ['Swing Anchored VWAP (15m)'],
+    buy: side(5, 10, 50, 0, 0, 24),
+    sell: side(5, 10, 50, 0, 0, 24),
+    summary:
+      'Scanner 2 top 15. Flip trend length 50 (BigBeluga). BUY novo 50-bar high; SELL novo 50-bar low. SL swing ±0,5% ou 5%. TP1 VWAP activo ou 10% (50%). Resto 24h.',
+  },
+  {
     strategyName: 'ROMPIMENTO_20_15M',
     displayNames: ['Rompimento 20 (15m)'],
     buy: side(5, 9, 50, 0, 0, 24),

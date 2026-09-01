@@ -449,6 +449,77 @@ export const LIQUIDITY_POOLS_PRO_15M_DISPLAY = 'Liquidity Pools (15m)';
 export const LIQUIDITY_POOLS_PRO_15M_DESC =
   'Scanner 2 top 10. Sweep de liquidez 15m: wick passa pool de pivots iguais (±0,25×ATR) e fecho reverte (mitigation). BSL → BUY; SSL → SELL. SL 1,5×ATR. TP1/2/3 = 1R/2R/3R (33%/33%/resto 24h).';
 
+/** Swing Anchored VWAP (BigBeluga) — trend flip 15m Scanner 2. */
+export const SWING_ANCHORED_VWAP_15M_PARAMS = {
+  universeTopN: 15,
+  chartTimeframe: '15m',
+  lookbackLength: 50,
+  stopLossPct: 0.05,
+  slSwingBufferPct: 0.005,
+  useSwingLevelSl: true,
+  tp1Pct: 0.1,
+  tp1Position: 50,
+  closeAfterHours: 24,
+  autoExecuteMinStrength: 70,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: true,
+  sellEnabled: true,
+  exchange: 'bybit',
+} as const;
+
+export const SWING_ANCHORED_VWAP_15M_DISPLAY = 'Swing Anchored VWAP (15m)';
+export const SWING_ANCHORED_VWAP_15M_DESC =
+  'Scanner 2 top 15. VWAP ancorado em swing high/low (length 50). BUY em novo máximo + trend bullish; SELL em novo mínimo + trend bearish. SL no swing ±0,5% ou 5%. TP1 no VWAP activo ou 10% (50%). Resto 24h.';
+
+export async function syncSwingAnchoredVwap15mConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'SWING_ANCHORED_VWAP_15M' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit'
+      ? p.exchange
+      : SWING_ANCHORED_VWAP_15M_PARAMS.exchange;
+
+  const next = {
+    ...SWING_ANCHORED_VWAP_15M_PARAMS,
+    ...p,
+    lookbackLength: SWING_ANCHORED_VWAP_15M_PARAMS.lookbackLength,
+    universeTopN: SWING_ANCHORED_VWAP_15M_PARAMS.universeTopN,
+    exchange: userExchange,
+  };
+
+  const needParams = row.params !== JSON.stringify(next);
+  const needMeta =
+    row.displayName !== SWING_ANCHORED_VWAP_15M_DISPLAY ||
+    row.description !== SWING_ANCHORED_VWAP_15M_DESC;
+
+  if (needParams || needMeta) {
+    await prisma.strategy.update({
+      where: { name: 'SWING_ANCHORED_VWAP_15M' },
+      data: {
+        displayName: SWING_ANCHORED_VWAP_15M_DISPLAY,
+        description: SWING_ANCHORED_VWAP_15M_DESC,
+        params: JSON.stringify(next),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 export async function syncLiquidityPoolsPro15mConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {

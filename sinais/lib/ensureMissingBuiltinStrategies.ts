@@ -40,6 +40,9 @@ import {
   LIQUIDITY_POOLS_PRO_15M_DESC,
   LIQUIDITY_POOLS_PRO_15M_DISPLAY,
   LIQUIDITY_POOLS_PRO_15M_PARAMS,
+  SWING_ANCHORED_VWAP_15M_DESC,
+  SWING_ANCHORED_VWAP_15M_DISPLAY,
+  SWING_ANCHORED_VWAP_15M_PARAMS,
   ROMPIMENTO_20_15M_DESC,
   ROMPIMENTO_20_15M_DISPLAY,
   ROMPIMENTO_20_15M_PARAMS,
@@ -48,6 +51,7 @@ import {
   syncMaCross12x21Scanner2Config,
   syncEngolfo15mConfig,
   syncLiquidityPoolsPro15mConfig,
+  syncSwingAnchoredVwap15mConfig,
   syncRompimento20_15mConfig,
   syncPivotBossBear15mUniverse,
   syncScanner1Top5Config,
@@ -168,6 +172,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     params: JSON.stringify(LIQUIDITY_POOLS_PRO_15M_PARAMS),
   },
   {
+    name: 'SWING_ANCHORED_VWAP_15M',
+    displayName: SWING_ANCHORED_VWAP_15M_DISPLAY,
+    description: SWING_ANCHORED_VWAP_15M_DESC,
+    isActive: true,
+    params: JSON.stringify(SWING_ANCHORED_VWAP_15M_PARAMS),
+  },
+  {
     name: 'ROMPIMENTO_20_15M',
     displayName: ROMPIMENTO_20_15M_DISPLAY,
     description: ROMPIMENTO_20_15M_DESC,
@@ -228,6 +239,11 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const liquidityPoolsSync = await syncLiquidityPoolsPro15mConfig(prisma);
   if (liquidityPoolsSync.updated) {
     console.log('✅ LIQUIDITY_POOLS_PRO_15M: sweep mitigation 15m | Scanner 2 top 10 | SL 1,5×ATR | TP 1R/2R/3R');
+  }
+
+  const swingVwapSync = await syncSwingAnchoredVwap15mConfig(prisma);
+  if (swingVwapSync.updated) {
+    console.log('✅ SWING_ANCHORED_VWAP_15M: VWAP ancorado length 50 | flip trend | Scanner 2 top 15 | SL swing/5% | TP VWAP/10%');
   }
 
   const rompimentoSync = await syncRompimento20_15mConfig(prisma);
