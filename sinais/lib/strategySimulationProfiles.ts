@@ -74,7 +74,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(3, 3, 33, 6, 33, 24),
     sell: side(3, 3, 33, 6, 33, 24),
     summary:
-      'Scanner 2 top 10. Sweep mitigation BSL/SSL. SL 1,5×ATR (preço no sinal). TP1/2/3 ≈ 1R/2R/3R (33%/33%/resto 24h).',
+      'Scanner 2 top 15. Sweep mitigation BSL/SSL. SL 1,5×ATR (preço no sinal). TP1/2/3 ≈ 1R/2R/3R (33%/33%/resto 24h).',
   },
   {
     strategyName: 'SWING_ANCHORED_VWAP_15M',

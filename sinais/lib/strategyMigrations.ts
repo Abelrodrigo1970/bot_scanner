@@ -417,7 +417,7 @@ export async function syncEngolfo15mConfig(
 
 /** Liquidity Pools Pro — sweep + mitigation 15m Scanner 2. */
 export const LIQUIDITY_POOLS_PRO_15M_PARAMS = {
-  universeTopN: 10,
+  universeTopN: 15,
   chartTimeframe: '15m',
   pivotLeft: 8,
   pivotRight: 2,
@@ -447,7 +447,7 @@ export const LIQUIDITY_POOLS_PRO_15M_PARAMS = {
 
 export const LIQUIDITY_POOLS_PRO_15M_DISPLAY = 'Liquidity Pools (15m)';
 export const LIQUIDITY_POOLS_PRO_15M_DESC =
-  'Scanner 2 top 10. Sweep de liquidez 15m: wick passa pool de pivots iguais (±0,25×ATR) e fecho reverte (mitigation). BSL → BUY; SSL → SELL. SL 1,5×ATR. TP1/2/3 = 1R/2R/3R (33%/33%/resto 24h).';
+  'Scanner 2 top 15. Sweep de liquidez 15m: wick passa pool de pivots iguais (±0,25×ATR) e fecho reverte (mitigation). BSL → BUY; SSL → SELL. SL 1,5×ATR. TP1/2/3 = 1R/2R/3R (33%/33%/resto 24h).';
 
 /** Swing Anchored VWAP (BigBeluga) — trend flip 15m Scanner 2. */
 export const SWING_ANCHORED_VWAP_15M_PARAMS = {

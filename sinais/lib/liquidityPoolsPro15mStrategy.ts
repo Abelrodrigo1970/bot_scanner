@@ -152,7 +152,7 @@ export async function runLiquidityPoolsPro15mPipeline(options?: {
 
   await ensureAllBuiltinUniverseScans('liquidity-pools-15m');
 
-  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 10)));
+  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 15)));
   const chartTimeframe = String(params.chartTimeframe ?? '15m');
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);

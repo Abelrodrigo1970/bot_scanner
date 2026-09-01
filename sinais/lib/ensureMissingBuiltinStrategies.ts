@@ -240,7 +240,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const liquidityPoolsSync = await syncLiquidityPoolsPro15mConfig(prisma);
   if (liquidityPoolsSync.updated) {
-    console.log('✅ LIQUIDITY_POOLS_PRO_15M: sweep mitigation 15m | Scanner 2 top 10 | SL 1,5×ATR | TP 1R/2R/3R');
+    console.log('✅ LIQUIDITY_POOLS_PRO_15M: sweep mitigation 15m | Scanner 2 top 15 | SL 1,5×ATR | TP 1R/2R/3R');
   }
 
   const lpStrategy = await prisma.strategy.findUnique({

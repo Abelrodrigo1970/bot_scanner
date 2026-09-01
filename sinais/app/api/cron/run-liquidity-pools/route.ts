@@ -6,7 +6,7 @@ import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrate
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/** Backup manual: Liquidity Pools Pro 15m (Scanner 2 top 10). */
+/** Backup manual: Liquidity Pools Pro 15m (Scanner 2 top 15). */
 
 export async function GET(request: NextRequest) {
   try {

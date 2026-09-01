@@ -93,7 +93,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 2 top 10; sweep liquidez (pivot pools); BUY/SELL; SL 1,5×ATR; TP 1R/2R/3R',
+    universe: 'Scanner 2 top 15; sweep liquidez (pivot pools); BUY/SELL; SL 1,5×ATR; TP 1R/2R/3R',
 
   },
 

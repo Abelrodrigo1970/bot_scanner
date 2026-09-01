@@ -108,7 +108,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
 
     description:
-      'Scanner 2 top 10. Sweep de liquidez 15m (mitigation). SL 1,5×ATR. TP 1R/2R/3R (33%/33%/resto 24h).',
+      'Scanner 2 top 15. Sweep de liquidez 15m (mitigation). SL 1,5×ATR. TP 1R/2R/3R (33%/33%/resto 24h).',
 
     refresh: '/api/cron/run-15m (cada 15 min)',
 
