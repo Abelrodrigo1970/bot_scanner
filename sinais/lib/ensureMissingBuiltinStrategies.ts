@@ -60,9 +60,6 @@ import {
   syncScanner3RsiBreakout15mConfig,
   syncScanner3RsiFlip1hConfig,
   syncScanner2StochRsi5mConfig,
-  syncScanner2Rsi80Top3Long4hConfig,
-  syncStch15LongConfig,
-  syncRsiVendido4hConfig,
   migrateScannerS6ShortToScanner2ShortLeader24h,
   syncScanner2ShortLeader24hConfig,
   SCANNER2_SHORT_LEADER_24H_DESCRIPTION,
@@ -133,21 +130,21 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'SCANNER2_RSI80_TOP3_LONG_4H',
     displayName: SCANNER2_RSI80_TOP3_LONG_4H_DISPLAY,
     description: SCANNER2_RSI80_TOP3_LONG_4H_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(SCANNER2_RSI80_TOP3_LONG_4H_PARAMS),
   },
   {
     name: 'STCH15LONG',
     displayName: STCH15LONG_DISPLAY,
     description: STCH15LONG_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(STCH15LONG_PARAMS),
   },
   {
     name: 'RSI_VENDIDO_4H',
     displayName: RSI_VENDIDO_4H_DISPLAY,
     description: RSI_VENDIDO_4H_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(RSI_VENDIDO_4H_PARAMS),
   },
   {
@@ -197,6 +194,9 @@ export const DISCONTINUED_STRATEGY_NAMES = [
   'SCANNER2_STOCH_RSI_5M',
   'SCANNER1_TOP5',
   'SCANNER3_RSI_BREAKOUT_15M',
+  'STCH15LONG',
+  'SCANNER2_RSI80_TOP3_LONG_4H',
+  'RSI_VENDIDO_4H',
 ] as const;
 
 /** Rotações Top descontinuadas neste projeto. */
@@ -325,20 +325,5 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
     console.log(
       `⏸️ ${expiredDiscontinued.count} sinais NEW/IN_PROGRESS de estratégias descontinuadas → EXPIRED (fechar Bybit manualmente se necessário)`
     );
-  }
-
-  const rsi80Top3Sync = await syncScanner2Rsi80Top3Long4hConfig(prisma);
-  if (rsi80Top3Sync.updated) {
-    console.log('✅ SCANNER2_RSI80_TOP3_LONG_4H: Top 3 | RSI 4h >80 LONG | SL −10% | fecho 24h');
-  }
-
-  const stch15Sync = await syncStch15LongConfig(prisma);
-  if (stch15Sync.updated) {
-    console.log('✅ STCH15LONG (stch15long): Top 2 | Stoch 15m 20/15/11 LONG | SL −5% | exit K×D down');
-  }
-
-  const rsiVendidoSync = await syncRsiVendido4hConfig(prisma);
-  if (rsiVendidoSync.updated) {
-    console.log('✅ RSI_VENDIDO_4H: rsi_vendido | RSI 4h cruza <25 LONG | sai >32 | SL −5% | 24h');
   }
 }

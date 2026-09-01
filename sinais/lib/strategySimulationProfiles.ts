@@ -128,7 +128,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 0, 0, 0, 0, 0),
     sell: null,
     summary:
-      'Top 2 Scanner 2. Stochastic 15m (20/15/11). LONG se K×D up (SL −5%). Fecha no K×D down. Só LONG. Sem TP.',
+      'DESCONTINUADA (Set 2026). Top 2 Scanner 2. Stoch 15m LONG. SL −5%. Fecha K×D down.',
   },
   {
     strategyName: 'SCANNER2_RSI80_TOP3_LONG_4H',
@@ -136,7 +136,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(10, 0, 0, 0, 0, 24),
     sell: null,
     summary:
-      'Top 3 Scanner 2. LONG se RSI(14) 4h cruza >80. SL −10%. Sem TP. Fecho 24h. Exclui rank #4.',
+      'DESCONTINUADA (Set 2026). Top 3 Scanner 2 RSI 4h >80 LONG. SL −10%. Fecho 24h.',
   },
   {
     strategyName: 'RSI_VENDIDO_4H',
@@ -144,7 +144,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 0, 0, 0, 0, 24),
     sell: null,
     summary:
-      'rsi_vendido. LONG se RSI(14) 4h cruza <25. SL −5%. Sai quando RSI cruza >32. Fecho 24h. Só LONG.',
+      'DESCONTINUADA (Set 2026). rsi_vendido RSI 4h <25 LONG. SL −5%. Sai >32 ou 24h.',
   },
   {
     strategyName: 'SCANNER3_RSI_FLIP_1H',

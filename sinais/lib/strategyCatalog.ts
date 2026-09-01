@@ -23,12 +23,6 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'ROMPIMENTO_20_15M',
 
-  'STCH15LONG',
-
-  'SCANNER2_RSI80_TOP3_LONG_4H',
-
-  'RSI_VENDIDO_4H',
-
 ] as const;
 
 

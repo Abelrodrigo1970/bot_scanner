@@ -3,13 +3,11 @@ import { BUILTIN_UNIVERSE_SCAN_4H } from '@/lib/symbolUniverseDefaults';
 import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
 import { runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
-import { runScanner2Rsi80Top3LongPipeline } from '@/lib/scanner2Rsi80Top3LongStrategy';
-import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 
 /**
- * Scanner 1 + Scanner 2 + Scanner 6 + rsi_vendido + YTD mcap60
- * + rotação Top 4 (inactiva) + RSI>80 Top 3 LONG + rsi_vendido LONG.
- * Short Leader descontinuado.
+ * Scanner 1 + Scanner 2 + Scanner 6 + Scanner 7 (RSI 1d) + YTD mcap60
+ * + rotação Top 4 (inactiva).
+ * RSI>80 Top 3 LONG, rsi_vendido LONG e stch15long descontinuados (Set 2026).
  */
 let universeScansJobPromise: Promise<void> | null = null;
 let universeScansJobStartedAt: string | null = null;
@@ -48,24 +46,6 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
     console.log('[Universe-Scans] Scanner 2 Top 4:', top8);
   } catch (err) {
     console.error('[Universe-Scans] Scanner 2 Top 4 falhou:', err);
-  }
-
-  try {
-    const rsi80 = await runScanner2Rsi80Top3LongPipeline({
-      logPrefix: '[Universe-Scans → S2 RSI80 Top3 LONG]',
-    });
-    console.log('[Universe-Scans] Scanner 2 RSI>80 Top 3 LONG:', rsi80);
-  } catch (err) {
-    console.error('[Universe-Scans] Scanner 2 RSI>80 Top 3 LONG falhou:', err);
-  }
-
-  try {
-    const rsiVendido = await runRsiVendidoPipeline({
-      logPrefix: '[Universe-Scans → rsi_vendido LONG]',
-    });
-    console.log('[Universe-Scans] rsi_vendido LONG:', rsiVendido);
-  } catch (err) {
-    console.error('[Universe-Scans] rsi_vendido LONG falhou:', err);
   }
 
   return results;
@@ -112,9 +92,7 @@ export async function GET(request: NextRequest) {
       {
         accepted: true,
         background: true,
-        message:
-          'Scanners + RSI>80 Top 3 LONG + rsi_vendido LONG iniciados em background.',
-        startedAt,
+        message: 'Scanners de universo iniciados em background (sem RSI>80 / rsi_vendido — descontinuados).',        startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN_4H),
       },
       { status: 202 }
