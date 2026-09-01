@@ -37,6 +37,9 @@ import {
   ENGOLFO_15M_DESC,
   ENGOLFO_15M_DISPLAY,
   ENGOLFO_15M_PARAMS,
+  LIQUIDITY_POOLS_PRO_15M_DESC,
+  LIQUIDITY_POOLS_PRO_15M_DISPLAY,
+  LIQUIDITY_POOLS_PRO_15M_PARAMS,
   ROMPIMENTO_20_15M_DESC,
   ROMPIMENTO_20_15M_DISPLAY,
   ROMPIMENTO_20_15M_PARAMS,
@@ -44,6 +47,7 @@ import {
   syncMaCrossScanner1UniverseDescriptions,
   syncMaCross12x21Scanner2Config,
   syncEngolfo15mConfig,
+  syncLiquidityPoolsPro15mConfig,
   syncRompimento20_15mConfig,
   syncPivotBossBear15mUniverse,
   syncScanner1Top5Config,
@@ -157,6 +161,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     params: JSON.stringify(ENGOLFO_15M_PARAMS),
   },
   {
+    name: 'LIQUIDITY_POOLS_PRO_15M',
+    displayName: LIQUIDITY_POOLS_PRO_15M_DISPLAY,
+    description: LIQUIDITY_POOLS_PRO_15M_DESC,
+    isActive: true,
+    params: JSON.stringify(LIQUIDITY_POOLS_PRO_15M_PARAMS),
+  },
+  {
     name: 'ROMPIMENTO_20_15M',
     displayName: ROMPIMENTO_20_15M_DISPLAY,
     description: ROMPIMENTO_20_15M_DESC,
@@ -212,6 +223,11 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const engolfoSync = await syncEngolfo15mConfig(prisma);
   if (engolfoSync.updated) {
     console.log('✅ ENGOLFO_15M: engolfo | EMA12/21 ou spread<2% | SELL 15m | Scanner 2 top 3 | SL +8% | TP1 −20% 50% | 24h');
+  }
+
+  const liquidityPoolsSync = await syncLiquidityPoolsPro15mConfig(prisma);
+  if (liquidityPoolsSync.updated) {
+    console.log('✅ LIQUIDITY_POOLS_PRO_15M: sweep mitigation 15m | Scanner 2 top 10 | SL 1,5×ATR | TP 1R/2R/3R');
   }
 
   const rompimentoSync = await syncRompimento20_15mConfig(prisma);

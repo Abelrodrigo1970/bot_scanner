@@ -17,6 +17,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'ENGOLFO_15M',
 
+  'LIQUIDITY_POOLS_PRO_15M',
+
   'ROMPIMENTO_20_15M',
 
   'STCH15LONG',
@@ -84,6 +86,18 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '15m',
 
     universe: 'Scanner 2 top 3; EMA12<EMA21 ou |EMA|<2%; SELL se fecho −1%+; SL +8%',
+
+  },
+
+  LIQUIDITY_POOLS_PRO_15M: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m',
+
+    timeframe: '15m',
+
+    universe: 'Scanner 2 top 10; sweep liquidez (pivot pools); BUY/SELL; SL 1,5×ATR; TP 1R/2R/3R',
 
   },
 

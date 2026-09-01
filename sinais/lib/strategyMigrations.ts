@@ -415,6 +415,95 @@ export async function syncEngolfo15mConfig(
   return { updated: false };
 }
 
+/** Liquidity Pools Pro — sweep + mitigation 15m Scanner 2. */
+export const LIQUIDITY_POOLS_PRO_15M_PARAMS = {
+  universeTopN: 10,
+  chartTimeframe: '15m',
+  pivotLeft: 8,
+  pivotRight: 2,
+  atrToleranceMult: 0.25,
+  atrPeriod: 14,
+  atrLenRisk: 14,
+  maxLookback: 200,
+  maxActivePools: 40,
+  halfLifeBars: 150,
+  minStrengthSignal: 25,
+  requireBodyReversal: true,
+  useVolumeWeight: true,
+  slAtrMult: 1.5,
+  tp1RMult: 1.0,
+  tp2RMult: 2.0,
+  tp3RMult: 3.0,
+  tp1Position: 33,
+  tp2Position: 33,
+  closeAfterHours: 24,
+  autoExecuteMinStrength: 70,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: true,
+  sellEnabled: true,
+  exchange: 'bybit',
+} as const;
+
+export const LIQUIDITY_POOLS_PRO_15M_DISPLAY = 'Liquidity Pools (15m)';
+export const LIQUIDITY_POOLS_PRO_15M_DESC =
+  'Scanner 2 top 10. Sweep de liquidez 15m: wick passa pool de pivots iguais (±0,25×ATR) e fecho reverte (mitigation). BSL → BUY; SSL → SELL. SL 1,5×ATR. TP1/2/3 = 1R/2R/3R (33%/33%/resto 24h).';
+
+export async function syncLiquidityPoolsPro15mConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'LIQUIDITY_POOLS_PRO_15M' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit'
+      ? p.exchange
+      : LIQUIDITY_POOLS_PRO_15M_PARAMS.exchange;
+
+  const next = {
+    ...LIQUIDITY_POOLS_PRO_15M_PARAMS,
+    ...p,
+    pivotLeft: LIQUIDITY_POOLS_PRO_15M_PARAMS.pivotLeft,
+    pivotRight: LIQUIDITY_POOLS_PRO_15M_PARAMS.pivotRight,
+    atrToleranceMult: LIQUIDITY_POOLS_PRO_15M_PARAMS.atrToleranceMult,
+    slAtrMult: LIQUIDITY_POOLS_PRO_15M_PARAMS.slAtrMult,
+    tp1RMult: LIQUIDITY_POOLS_PRO_15M_PARAMS.tp1RMult,
+    tp2RMult: LIQUIDITY_POOLS_PRO_15M_PARAMS.tp2RMult,
+    tp3RMult: LIQUIDITY_POOLS_PRO_15M_PARAMS.tp3RMult,
+    universeTopN: LIQUIDITY_POOLS_PRO_15M_PARAMS.universeTopN,
+    exchange: userExchange,
+  };
+
+  const needParams = row.params !== JSON.stringify(next);
+  const needMeta =
+    row.displayName !== LIQUIDITY_POOLS_PRO_15M_DISPLAY ||
+    row.description !== LIQUIDITY_POOLS_PRO_15M_DESC;
+
+  if (needParams || needMeta) {
+    await prisma.strategy.update({
+      where: { name: 'LIQUIDITY_POOLS_PRO_15M' },
+      data: {
+        displayName: LIQUIDITY_POOLS_PRO_15M_DISPLAY,
+        description: LIQUIDITY_POOLS_PRO_15M_DESC,
+        params: JSON.stringify(next),
+      },
+    });
+    return { updated: true };
+  }
+
+  return { updated: false };
+}
+
 /** Rompimento 20 — LONG 15m Scanner 1 (fecho > máx. 20 velas anteriores). */
 export const ROMPIMENTO_20_15M_PARAMS = {
   universeTopN: 20,

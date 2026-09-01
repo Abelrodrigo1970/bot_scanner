@@ -69,6 +69,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Scanner 2 top 3. Só VENDA. (EMA12<EMA21 OU |EMA12−EMA21|<2%) + fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante às 24h.',
   },
   {
+    strategyName: 'LIQUIDITY_POOLS_PRO_15M',
+    displayNames: ['Liquidity Pools (15m)'],
+    buy: side(3, 3, 33, 6, 33, 24),
+    sell: side(3, 3, 33, 6, 33, 24),
+    summary:
+      'Scanner 2 top 10. Sweep mitigation BSL/SSL. SL 1,5×ATR (preço no sinal). TP1/2/3 ≈ 1R/2R/3R (33%/33%/resto 24h).',
+  },
+  {
     strategyName: 'ROMPIMENTO_20_15M',
     displayNames: ['Rompimento 20 (15m)'],
     buy: side(5, 9, 50, 0, 0, 24),

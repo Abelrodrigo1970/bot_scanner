@@ -27,6 +27,7 @@ import {
 } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 import { runEngolfo15mPipeline } from '@/lib/engolfo15mStrategy';
+import { runLiquidityPoolsPro15mPipeline } from '@/lib/liquidityPoolsPro15mStrategy';
 import { runRompimento20_15mPipeline } from '@/lib/rompimento20_15mStrategy';
 
 const TIMEFRAME_15M = '15m' as const;
@@ -306,11 +307,12 @@ export interface Cron15mAllResult {
   maCross: Cron15mResult;
   maCross12x21S2: Cron15mResult;
   engolfo: Cron15mResult;
+  liquidityPoolsPro: Cron15mResult;
   rompimento20: Cron15mResult;
 }
 
 /**
- * Cron único 15m: MA Cross 12×30 (S1) + MA Cross 12×21 (S7, só BUY) + engolfo (S2) + Rompimento 20 (S1).
+ * Cron único 15m: MA Cross 12×30 (S1) + MA Cross 12×21 (S7, só BUY) + engolfo (S2) + Liquidity Pools (S2) + Rompimento 20 (S1).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
   const maCross = await runMaCross15mPipeline(now);
@@ -332,6 +334,22 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     engolfo = { status: 'not-found' };
   }
 
+  let liquidityPoolsPro: Cron15mResult;
+  try {
+    const r = await runLiquidityPoolsPro15mPipeline({ logPrefix: '[Run-15m → liquidity-pools]' });
+    if (r.status === 'skipped') {
+      console.log(`[Run-15m → liquidity-pools] Saltado: ${r.reason}`);
+      if (r.reason.includes('inactiva')) liquidityPoolsPro = { status: 'inactive' };
+      else if (r.reason.includes('não encontrada')) liquidityPoolsPro = { status: 'not-found' };
+      else liquidityPoolsPro = { status: 'done', signalsCreated: 0 };
+    } else {
+      liquidityPoolsPro = { status: 'done', signalsCreated: r.signalsCreated };
+    }
+  } catch (err) {
+    console.error('[Run-15m → liquidity-pools] Falhou:', err);
+    liquidityPoolsPro = { status: 'not-found' };
+  }
+
   let rompimento20: Cron15mResult;
   try {
     const r = await runRompimento20_15mPipeline({ logPrefix: '[Run-15m → rompimento20]' });
@@ -348,5 +366,5 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     rompimento20 = { status: 'not-found' };
   }
 
-  return { maCross, maCross12x21S2, engolfo, rompimento20 };
+  return { maCross, maCross12x21S2, engolfo, liquidityPoolsPro, rompimento20 };
 }

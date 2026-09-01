@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { run15mStrategiesPipeline } from '@/lib/cron15mStrategies';
 
 /**
- * Cron 15m: MA Cross 12×30 (Scanner 1) + MA Cross 12×21 (Scanner 7, só BUY) + engolfo + Rompimento 20.
+ * Cron 15m: MA Cross 12×30 (Scanner 1) + MA Cross 12×21 (Scanner 7, só BUY) + engolfo + Liquidity Pools + Rompimento 20.
  */
 async function run15mInBackground(now: Date): Promise<void> {
-  console.log('[Run-15m BG] Iniciando MA Cross + engolfo + rompimento20 (15m)...');
+  console.log('[Run-15m BG] Iniciando MA Cross + engolfo + liquidity-pools + rompimento20 (15m)...');
 
   try {
     const result = await run15mStrategiesPipeline(now);
     const ma = result.maCross;
     const ma21 = result.maCross12x21S2;
     const eng = result.engolfo;
+    const lp = result.liquidityPoolsPro;
     const romp = result.rompimento20;
     console.log(
       `[Run-15m BG] MA Cross 12×30 -> ${ma.status}` +
@@ -24,6 +25,10 @@ async function run15mInBackground(now: Date): Promise<void> {
     console.log(
       `[Run-15m BG] engolfo -> ${eng.status}` +
         (typeof eng.signalsCreated === 'number' ? ` (${eng.signalsCreated} sinais)` : '')
+    );
+    console.log(
+      `[Run-15m BG] liquidity-pools -> ${lp.status}` +
+        (typeof lp.signalsCreated === 'number' ? ` (${lp.signalsCreated} sinais)` : '')
     );
     console.log(
       `[Run-15m BG] rompimento20 -> ${romp.status}` +
