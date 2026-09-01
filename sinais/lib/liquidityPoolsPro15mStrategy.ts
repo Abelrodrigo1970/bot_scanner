@@ -94,6 +94,11 @@ async function closeTimedOutPositions(
   return closed;
 }
 
+/** Pool score 25–100 → signal strength 60–90 (dashboard default ≥60, auto-exec ≥70). */
+export function mapLiquidityPoolSignalStrength(poolStrength: number): number {
+  return Math.min(90, Math.max(60, Math.round(35 + poolStrength * 0.55)));
+}
+
 function detectorParamsFrom(p: LiquidityPoolsPro15mParams): LiquidityPoolDetectorParams {
   return {
     pivotLeft: p.pivotLeft,
@@ -240,7 +245,7 @@ export async function runLiquidityPoolsPro15mPipeline(options?: {
         target1: hit.target1,
         target2: hit.target2,
         target3: hit.target3,
-        strength: hit.strength,
+        strength: mapLiquidityPoolSignalStrength(hit.strength),
         status: 'NEW',
         extraInfo: hit.extraInfo,
       },

@@ -115,13 +115,13 @@ export default function SignalFilters({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Força Mínima
+            Força mín. (padrão 60)
           </label>
           <input
             type="number"
             min="0"
             max="100"
-            placeholder="0"
+            placeholder="60 — use 0 para ver todos"
             value={filters.minStrength}
             onChange={(e) => onFilterChange({ ...filters, minStrength: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"

@@ -1,5 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 
+import { mapLiquidityPoolSignalStrength } from './liquidityPoolsPro15mStrategy';
+
 import {
   PIVOT_BOSS_BEAR_15M_DESCRIPTION,
   PIVOT_BOSS_BEAR_15M_PARAMS,
@@ -239,6 +241,39 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const liquidityPoolsSync = await syncLiquidityPoolsPro15mConfig(prisma);
   if (liquidityPoolsSync.updated) {
     console.log('✅ LIQUIDITY_POOLS_PRO_15M: sweep mitigation 15m | Scanner 2 top 10 | SL 1,5×ATR | TP 1R/2R/3R');
+  }
+
+  const lpStrategy = await prisma.strategy.findUnique({
+    where: { name: 'LIQUIDITY_POOLS_PRO_15M' },
+    select: { id: true },
+  });
+  if (lpStrategy) {
+    const lpOpen = await prisma.signal.findMany({
+      where: {
+        strategyId: lpStrategy.id,
+        status: { in: ['NEW', 'IN_PROGRESS'] },
+        strength: { lt: 60 },
+      },
+      select: { id: true, strength: true, extraInfo: true },
+    });
+    for (const sig of lpOpen) {
+      let poolStrength = sig.strength;
+      if (sig.extraInfo) {
+        try {
+          const ex = JSON.parse(sig.extraInfo) as { poolStrength?: number };
+          if (typeof ex.poolStrength === 'number') poolStrength = ex.poolStrength;
+        } catch {
+          /* ignore */
+        }
+      }
+      await prisma.signal.update({
+        where: { id: sig.id },
+        data: { strength: mapLiquidityPoolSignalStrength(poolStrength) },
+      });
+    }
+    if (lpOpen.length > 0) {
+      console.log(`✅ LIQUIDITY_POOLS_PRO_15M: ${lpOpen.length} sinal(is) abertos com força <60 actualizados para o dashboard`);
+    }
   }
 
   const swingVwapSync = await syncSwingAnchoredVwap15mConfig(prisma);
