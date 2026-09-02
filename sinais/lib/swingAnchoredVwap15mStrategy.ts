@@ -1,6 +1,6 @@
 /**
- * Swing Anchored VWAP 15m — BigBeluga-style trend flip no Scanner 2.
- * BUY: novo máximo lookback + trend bullish. SELL: novo mínimo + trend bearish.
+ * Swing Anchored VWAP 15m — BigBeluga-style no Scanner 2.
+ * BUY: fecho cruza acima da linha azul (hVwap). SELL: fecho cruza abaixo da linha azul.
  */
 
 import { prisma } from './db';
@@ -161,21 +161,11 @@ export async function runSwingAnchoredVwap15mPipeline(options?: {
   const startedAt = new Date();
   let signalsCreated = 0;
   const hitSymbols: string[] = [];
-  const candleLimit = Math.min(500, lookback + 80);
+  const candleLimit = Math.min(500, lookback + 200);
 
   console.log(`${logPrefix} Scanner 2 top ${topN}: ${symbols.length} símbolos (length ${lookback})…`);
 
   for (const symbol of symbols) {
-    const existingOpen = await prisma.signal.findFirst({
-      where: {
-        strategyId: strategy.id,
-        symbol,
-        status: { in: ['NEW', 'IN_PROGRESS'] },
-      },
-      select: { id: true },
-    });
-    if (existingOpen) continue;
-
     let rawCandles;
     try {
       rawCandles = await fetchCandles(symbol, chartTimeframe as '15m', candleLimit);
@@ -190,6 +180,27 @@ export async function runSwingAnchoredVwap15mPipeline(options?: {
 
     if (hit.direction === 'BUY' && !allowBuy) continue;
     if (hit.direction === 'SELL' && !allowSell) continue;
+
+    const existingOpen = await prisma.signal.findFirst({
+      where: {
+        strategyId: strategy.id,
+        symbol,
+        status: { in: ['NEW', 'IN_PROGRESS'] },
+      },
+      select: { id: true, direction: true, status: true },
+    });
+    if (existingOpen) {
+      // Mesma direcção: manter. Direcção oposta em NEW: expirar e permitir flip.
+      if (existingOpen.direction === hit.direction) continue;
+      if (existingOpen.status === 'IN_PROGRESS') continue;
+      await prisma.signal.update({
+        where: { id: existingOpen.id },
+        data: { status: 'EXPIRED' },
+      });
+      console.log(
+        `${logPrefix} ↩️ Expirado ${existingOpen.direction} ${symbol} (flip → ${hit.direction})`
+      );
+    }
 
     const recentSameBar = await prisma.signal.findFirst({
       where: {

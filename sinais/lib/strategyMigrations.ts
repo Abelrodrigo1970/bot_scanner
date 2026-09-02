@@ -470,7 +470,7 @@ export const SWING_ANCHORED_VWAP_15M_PARAMS = {
 
 export const SWING_ANCHORED_VWAP_15M_DISPLAY = 'Swing Anchored VWAP (15m)';
 export const SWING_ANCHORED_VWAP_15M_DESC =
-  'Scanner 2 top 15. VWAP ancorado em swing high/low (length 50). BUY em novo máximo + trend bullish; SELL em novo mínimo + trend bearish. SL no swing ±0,5% ou 5%. TP1 no VWAP activo ou 10% (50%). Resto 24h.';
+  'Scanner 2 top 15. VWAP ancorado em swing high/low (length 50). BUY quando o fecho cruza acima da linha azul (hVwap); SELL quando cruza abaixo. SL no swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.';
 
 export async function syncSwingAnchoredVwap15mConfig(
   prisma: PrismaClient

@@ -105,7 +105,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 2 top 15; VWAP ancorado swing; flip trend length 50; BUY/SELL; SL swing/5%; TP VWAP/10%',
+    universe: 'Scanner 2 top 15; VWAP ancorado swing; BUY/SELL no cruzamento da linha azul (hVwap); SL swing/5%; TP 10%',
 
   },
 

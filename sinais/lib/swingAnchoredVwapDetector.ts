@@ -1,8 +1,7 @@
 /**
  * Swing Anchored VWAP — lógica inspirada em BigBeluga (Pine v6).
- * length-bar high/low → swing anchor → VWAP em highs/lows desde o pivot.
- * trend=true em novo máximo de length; trend=false em novo mínimo.
- * Sinal: flip de tendência na vela fechada (BUY bullish / SELL bearish).
+ * length-bar high/low → swing anchor → VWAP em highs (linha azul) / lows (linha verde).
+ * Sinal: fecho cruza a linha AZUL (hVwap) — BUY acima / SELL abaixo.
  */
 
 import type { Candle } from './marketData';
@@ -100,7 +99,9 @@ type ReplayState = {
 };
 
 /**
- * Detecta flip de tendência na última vela fechada.
+ * Detecta cruzamento da linha azul (hVwap) na última vela fechada.
+ * BUY: fecho anterior ≤ hVwap e fecho actual > hVwap.
+ * SELL: fecho anterior ≥ hVwap e fecho actual < hVwap.
  */
 export function detectSwingAnchoredVwapSignal(
   candles: Candle[],
@@ -121,7 +122,8 @@ export function detectSwingAnchoredVwapSignal(
     lVwap: candles[0]!.low,
   };
 
-  let prevTrend = false;
+  let prevClose = candles[0]!.close;
+  let prevHVwap = state.hVwap;
 
   for (let i = 0; i < candles.length; i++) {
     const bar = candles[i]!;
@@ -133,37 +135,35 @@ export function detectSwingAnchoredVwapSignal(
       const hPrev = rollingHighest(candles, i - 1, length);
       const lPrev = rollingLowest(candles, i - 1, length);
 
+      prevHVwap = anchoredVwap(candles, state.highIndex, i - 1, true);
+      prevClose = prev.close;
+
       if (prev.high === hPrev && bar.high < h) {
         state.highIndex = i - 1;
         state.highVal = prev.high;
-        state.hVwap = anchoredVwap(candles, state.highIndex, i, true);
-      } else if (state.highIndex >= 0) {
-        state.hVwap = anchoredVwap(candles, state.highIndex, i, true);
       }
-
       if (prev.low === lPrev && bar.low > l) {
         state.lowIndex = i - 1;
         state.lowVal = prev.low;
-        state.lVwap = anchoredVwap(candles, state.lowIndex, i, false);
-      } else if (state.lowIndex >= 0) {
-        state.lVwap = anchoredVwap(candles, state.lowIndex, i, false);
       }
+
+      state.hVwap = anchoredVwap(candles, state.highIndex, i, true);
+      state.lVwap = anchoredVwap(candles, state.lowIndex, i, false);
     }
 
-    prevTrend = state.trend;
     if (bar.high === h) state.trend = true;
     if (bar.low === l) state.trend = false;
 
     const isLast = i === candles.length - 1;
     if (!isLast) continue;
 
-    const flippedBull = state.trend && !prevTrend;
-    const flippedBear = !state.trend && prevTrend;
-    if (!flippedBull && !flippedBear) return null;
+    const crossedAboveBlue = prevClose <= prevHVwap && bar.close > state.hVwap;
+    const crossedBelowBlue = prevClose >= prevHVwap && bar.close < state.hVwap;
+    if (!crossedAboveBlue && !crossedBelowBlue) return null;
 
-    const direction: 'BUY' | 'SELL' = flippedBull ? 'BUY' : 'SELL';
+    const direction: 'BUY' | 'SELL' = crossedAboveBlue ? 'BUY' : 'SELL';
     const entry = bar.close;
-    const activeVwap = state.trend ? state.lVwap : state.hVwap;
+    const activeVwap = state.hVwap;
     const swingLevel = direction === 'BUY' ? state.lowVal : state.highVal;
     const swingIndex = direction === 'BUY' ? state.lowIndex : state.highIndex;
 
@@ -180,7 +180,6 @@ export function detectSwingAnchoredVwapSignal(
       stopLoss = entry * (1 + p.stopLossPct);
     }
 
-    // SL inválido (swing acima da entrada no short, etc.) → fallback %
     if (direction === 'BUY' && stopLoss >= entry) {
       stopLoss = entry * (1 - p.stopLossPct);
     }
@@ -189,33 +188,35 @@ export function detectSwingAnchoredVwapSignal(
     }
 
     let target1: number;
-    if (direction === 'BUY' && activeVwap > entry) {
-      target1 = activeVwap;
-    } else if (direction === 'SELL' && activeVwap < entry) {
-      target1 = activeVwap;
-    } else if (direction === 'BUY') {
-      target1 = entry * (1 + p.tp1Pct);
+    if (direction === 'BUY') {
+      // TP1: linha verde (lVwap) se acima da entrada; senão +tp1Pct
+      target1 = state.lVwap > entry ? state.lVwap : entry * (1 + p.tp1Pct);
+      // Se já está acima da azul, preferir extensão % se lVwap ≤ entry
+      if (state.lVwap <= entry) target1 = entry * (1 + p.tp1Pct);
     } else {
-      target1 = entry * (1 - p.tp1Pct);
+      target1 = state.lVwap < entry ? state.lVwap : entry * (1 - p.tp1Pct);
+      if (state.lVwap >= entry) target1 = entry * (1 - p.tp1Pct);
     }
 
     const breakPct =
       direction === 'BUY'
-        ? ((entry - state.lowVal) / state.lowVal) * 100
-        : ((state.highVal - entry) / state.highVal) * 100;
-    const strength = Math.min(95, Math.max(55, Math.round(60 + Math.min(25, breakPct * 2))));
+        ? ((entry - activeVwap) / activeVwap) * 100
+        : ((activeVwap - entry) / activeVwap) * 100;
+    const strength = Math.min(95, Math.max(60, Math.round(65 + Math.min(25, Math.abs(breakPct) * 8))));
 
     const slLabel = (p.stopLossPct * 100).toFixed(0);
     const tpLabel = (p.tp1Pct * 100).toFixed(0);
     const extraInfo = JSON.stringify({
       setup: 'swing_anchored_vwap_15m',
       lookbackLength: length,
+      trigger: 'blue_hvwap_cross',
       trend: state.trend,
       activeVwap,
       swingLevel,
       swingIndex,
       hVwap: state.hVwap,
       lVwap: state.lVwap,
+      prevHVwap,
       highVal: state.highVal,
       lowVal: state.lowVal,
       breakPct: +breakPct.toFixed(2),
@@ -224,7 +225,7 @@ export function detectSwingAnchoredVwapSignal(
       tp1Position: p.tp1Position,
       closeAfterHours: p.closeAfterHours,
       barCloseTs: bar.timestamp,
-      executionProfile: `${direction} | Swing Anchored VWAP ${length} | novo ${length}bar ${direction === 'BUY' ? 'high' : 'low'} | SL swing/${slLabel}% | TP1 VWAP ou ${tpLabel}% (${p.tp1Position}%) | resto ${p.closeAfterHours}h`,
+      executionProfile: `${direction} | Swing Anchored VWAP ${length} | fecho cruza linha azul (hVwap) | SL swing/${slLabel}% | TP1 ${tpLabel}% (${p.tp1Position}%) | resto ${p.closeAfterHours}h`,
     });
 
     return {

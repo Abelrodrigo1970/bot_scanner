@@ -127,7 +127,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
 
     description:
-      'Scanner 2 top 15. Flip trend (length 50): BUY novo high, SELL novo low. SL swing ±0,5% ou 5%. TP1 VWAP activo ou 10% (50%). Resto 24h.',
+      'Scanner 2 top 15. Cruzamento linha azul hVwap (length 50): BUY acima, SELL abaixo. SL swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.',
 
     refresh: '/api/cron/run-15m (cada 15 min)',
 

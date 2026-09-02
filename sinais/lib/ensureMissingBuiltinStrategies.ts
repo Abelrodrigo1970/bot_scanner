@@ -278,7 +278,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const swingVwapSync = await syncSwingAnchoredVwap15mConfig(prisma);
   if (swingVwapSync.updated) {
-    console.log('✅ SWING_ANCHORED_VWAP_15M: VWAP ancorado length 50 | flip trend | Scanner 2 top 15 | SL swing/5% | TP VWAP/10%');
+    console.log('✅ SWING_ANCHORED_VWAP_15M: VWAP ancorado length 50 | cruzamento linha azul (hVwap) | Scanner 2 top 15 | SL swing/5% | TP 10%');
   }
 
   const rompimentoSync = await syncRompimento20_15mConfig(prisma);
