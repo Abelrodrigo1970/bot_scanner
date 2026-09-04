@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 /**
- * @deprecated stch15long descontinuado (Set 2026). Remover job */5 * * * * do cron-job.org.
+ * @deprecated stch15long descontinuado (Set 2026). Remover job a cada 5 min do cron-job.org.
  */
 export async function GET(request: NextRequest) {
   try {
