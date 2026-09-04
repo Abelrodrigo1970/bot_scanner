@@ -1,8 +1,23 @@
 import type { PrismaClient } from '@prisma/client';
-import { fetchCurrentPriceSafe, fetchLast3Closed1hQuoteVolumeUsdSum } from './marketData';
+import {
+  fetchCandlesSafe,
+  fetchCurrentPriceSafe,
+  fetchLast3Closed1hQuoteVolumeUsdSum,
+} from './marketData';
 
 export const MA_CROSS_15M_TIMEFRAME = '15m' as const;
 export const MA_CROSS_15M_TZ = 'Europe/Lisbon';
+
+/**
+ * Filtro alinhamento BTC (estudo Ago 2026):
+ * BTC diário &gt; +minAbs% → só BUY · BTC &lt; −minAbs% → só SELL · |BTC| ≤ minAbs% → bloquear.
+ */
+export const MA_CROSS_BTC_ALIGN_MIN_ABS_PCT = 0.5;
+export const MA_CROSS_BTC_ALIGN_SYMBOL = 'BTCUSDT';
+const BTC_ALIGN_CACHE_MS = 60_000;
+
+type BtcAlignCache = { ts: number; pct: number | null };
+let btcAlignCache: BtcAlignCache | null = null;
 
 /** Cooldown mínimo entre o 1.º sinal do dia e o último sinal anterior (outro dia). */
 export const MA_CROSS_5M_SIGNAL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -82,6 +97,13 @@ export interface MaCross15mSignalGateInput {
   blockedHoursPt?: readonly number[];
   allowedHourMinPt?: number;
   allowedHourMaxPt?: number;
+  /**
+   * Alinhar direcção com BTC diário (|Δ| &gt; minAbs%).
+   * Default false — activar via params `btcAlignFilter`.
+   */
+  btcAlignFilter?: boolean;
+  /** Limiar absoluto BTC % (default 0,5). */
+  btcAlignMinAbsPct?: number;
 }
 
 /** Lê tecto diário e cooldown dos params da estratégia. */
@@ -103,6 +125,79 @@ export function maCross15mGateLimitsFromParams(params: Record<string, unknown>):
     maxSignalsPerDay: Number.isFinite(maxSignalsPerDay) ? maxSignalsPerDay : 2,
     cooldownMs: Number.isFinite(cooldownMs) ? cooldownMs : MA_CROSS_5M_SIGNAL_COOLDOWN_MS,
   };
+}
+
+/** Lê filtro BTC↑ BUY / BTC↓ SELL dos params. */
+export function maCrossBtcAlignFromParams(params: Record<string, unknown>): {
+  btcAlignFilter: boolean;
+  btcAlignMinAbsPct: number;
+} {
+  const raw = params.btcAlignFilter;
+  const btcAlignFilter =
+    raw === true || raw === 'true' || raw === 1 || raw === '1';
+  const minRaw = Number(params.btcAlignMinAbsPct);
+  const btcAlignMinAbsPct =
+    Number.isFinite(minRaw) && minRaw >= 0 ? minRaw : MA_CROSS_BTC_ALIGN_MIN_ABS_PCT;
+  return { btcAlignFilter, btcAlignMinAbsPct };
+}
+
+/**
+ * Variação BTCUSDT da vela diária em curso vs fecho do dia anterior (%).
+ * Cache ~60s para não repetir o pedido em cada símbolo do cron.
+ */
+export async function fetchBtcDailyChangePct(): Promise<number | null> {
+  const now = Date.now();
+  if (btcAlignCache && now - btcAlignCache.ts < BTC_ALIGN_CACHE_MS) {
+    return btcAlignCache.pct;
+  }
+  const candles = await fetchCandlesSafe(MA_CROSS_BTC_ALIGN_SYMBOL, '1d', 3);
+  if (!candles || candles.length < 2) {
+    btcAlignCache = { ts: now, pct: null };
+    return null;
+  }
+  const sorted = [...candles].sort((a, b) => a.timestamp - b.timestamp);
+  const prev = sorted[sorted.length - 2]!;
+  const today = sorted[sorted.length - 1]!;
+  if (!(prev.close > 0)) {
+    btcAlignCache = { ts: now, pct: null };
+    return null;
+  }
+  const pct = ((today.close - prev.close) / prev.close) * 100;
+  btcAlignCache = { ts: now, pct };
+  return pct;
+}
+
+/**
+ * BTC &gt; +minAbs → só BUY · BTC &lt; −minAbs → só SELL · |BTC| ≤ minAbs → bloquear.
+ */
+export async function checkMaCrossBtcAlignGate(
+  direction: 'BUY' | 'SELL',
+  minAbsPct: number = MA_CROSS_BTC_ALIGN_MIN_ABS_PCT
+): Promise<MaCross15mSignalGateResult> {
+  const btcPct = await fetchBtcDailyChangePct();
+  if (btcPct == null) {
+    return { allowed: false, reason: 'BTC diário indisponível (filtro alinhamento)' };
+  }
+  const abs = Math.abs(minAbsPct);
+  if (Math.abs(btcPct) <= abs) {
+    return {
+      allowed: false,
+      reason: `BTC flat ${btcPct >= 0 ? '+' : ''}${btcPct.toFixed(2)}% (|Δ|≤${abs}%) — sem sinais`,
+    };
+  }
+  if (btcPct > abs && direction !== 'BUY') {
+    return {
+      allowed: false,
+      reason: `BTC +${btcPct.toFixed(2)}% — só BUY (pedido ${direction})`,
+    };
+  }
+  if (btcPct < -abs && direction !== 'SELL') {
+    return {
+      allowed: false,
+      reason: `BTC ${btcPct.toFixed(2)}% — só SELL (pedido ${direction})`,
+    };
+  }
+  return { allowed: true };
 }
 
 export type MaCross15mSignalGateResult =
@@ -156,6 +251,7 @@ async function isSignalProfitable(
 /**
  * Regras MA Cross 15m (análise horária 2026):
  * - activo sáb/dom; qualquer hora PT
+ * - filtro BTC opcional: BTC↑ (>minAbs) só BUY · BTC↓ (&lt;−minAbs) só SELL · flat bloqueia
  * - soma turnover 3 últimas velas 1h ≥ $3M USDT
  * - 1.º sinal do dia: cooldown 24h desde o último sinal do par (salvo cooldownMs = 0)
  * - 2.º sinal no mesmo dia: só se 1.º fechado, verde (líquido) e mesma direção
@@ -192,6 +288,14 @@ export async function checkMaCross15mSignalGate(
       allowed: false,
       reason: `horário bloqueado (${h}h PT; permitido ${input.allowedHourMinPt}–${input.allowedHourMaxPt}h)`,
     };
+  }
+
+  if (input.btcAlignFilter) {
+    const btcGate = await checkMaCrossBtcAlignGate(
+      input.direction,
+      input.btcAlignMinAbsPct ?? MA_CROSS_BTC_ALIGN_MIN_ABS_PCT
+    );
+    if (!btcGate.allowed) return btcGate;
   }
 
   const turnover3hSum = await fetchLast3Closed1hQuoteVolumeUsdSum(input.symbol);

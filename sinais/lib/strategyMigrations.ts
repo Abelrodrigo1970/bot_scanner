@@ -18,6 +18,8 @@ export const REMOVED_DEPRECATED_STRATEGY_NAMES = [
   'RSI_OVERBOUGHT_DROP_1H',
   'RSI_OVERBOUGHT_DROP_LEGACY_1H',
   'PIVOT_BOSS_BEAR_1H',
+  'STCH15LONG',
+  'SCANNER2_RSI80_TOP3_LONG_4H',
 ] as const;
 
 export interface RemoveDeprecatedStrategiesResult {
@@ -207,11 +209,14 @@ export const MA_CROSS_5M_PARAMS = {
   universeTopN: 20,
   /** Soma mínima turnover 3 velas 1h fechadas (USDT). */
   minTurnover3hUsd: 3_000_000,
+  /** BTC↑ (>+0,5%) → só BUY · BTC↓ (&lt;−0,5%) → só SELL · flat bloqueia. */
+  btcAlignFilter: true,
+  btcAlignMinAbsPct: 0.5,
 } as const;
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 12×30 (15m)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% e < 1,8% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 top 20 (|afastamento| vs SMA200 1h). Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% e < 1,8% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 top 20 (|afastamento| vs SMA200 1h). Filtro BTC: diário &gt;+0,5% só BUY · &lt;−0,5% só SELL · |Δ|≤0,5% sem sinais. Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
 
 /** MA Cross 12×21 (15m) — mesma lógica de spread que MA12×30; universo Scanner 7 (RSI 1d ≥ 69), só COMPRA. */
 export const MA_CROSS_12X21_S2_PARAMS = {
@@ -253,11 +258,14 @@ export const MA_CROSS_12X21_S2_PARAMS = {
   blockedHoursPt: [4, 5, 6, 7, 8, 9, 10],
   allowedHourMinPt: 11,
   allowedHourMaxPt: 22,
+  /** BTC↑ (>+0,5%) → só BUY · BTC↓ (&lt;−0,5%) → só SELL · flat bloqueia. */
+  btcAlignFilter: true,
+  btcAlignMinAbsPct: 0.5,
 } as const;
 
 export const MA_CROSS_12X21_S2_DISPLAY = 'MA Cross 12×21 (15m)';
 export const MA_CROSS_12X21_S2_DESC =
-  'MA12/MA21 em 15m: só COMPRA. Spread 0,6–1,5%; repetir tendência; TP parcial 60% a +44%; SL 15%. Universo Scanner 7 (RSI 14 · 1d ≥ 69), top 80 por RSI. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Turnover 3×1h ≥ $3M.';
+  'MA12/MA21 em 15m: só COMPRA. Spread 0,6–1,5%; repetir tendência; TP parcial 60% a +44%; SL 15%. Universo Scanner 7 (RSI 14 · 1d ≥ 69), top 80 por RSI. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Filtro BTC: diário &gt;+0,5% só BUY · &lt;−0,5% ou flat sem sinais (estratégia só BUY). Turnover 3×1h ≥ $3M.';
 
 /** Garante registo MA Cross 12×21 Scanner 2 (não força isActive nem exchange — escolha do utilizador). */
 export async function syncMaCross12x21Scanner2Config(
@@ -309,6 +317,8 @@ export async function syncMaCross12x21Scanner2Config(
     blockedHoursPt: MA_CROSS_12X21_S2_PARAMS.blockedHoursPt,
     allowedHourMinPt: MA_CROSS_12X21_S2_PARAMS.allowedHourMinPt,
     allowedHourMaxPt: MA_CROSS_12X21_S2_PARAMS.allowedHourMaxPt,
+    btcAlignFilter: MA_CROSS_12X21_S2_PARAMS.btcAlignFilter,
+    btcAlignMinAbsPct: MA_CROSS_12X21_S2_PARAMS.btcAlignMinAbsPct,
     exchange: userExchange,
     autoExecuteMinStrength: userAutoStrength,
   };
@@ -1138,20 +1148,26 @@ export const STCH15LONG_PARAMS = {
   exchange: 'bybit',
 } as const;
 
-export const RSI_VENDIDO_4H_DISPLAY = 'rsi_vendido LONG (4h)';
+export const RSI_VENDIDO_4H_DISPLAY = 'rsi_vendido LONG (15m)';
 
 export const RSI_VENDIDO_4H_DESCRIPTION =
-  'Universo rsi_vendido (RSI(14) 4h < 32). LONG quando o RSI 4h cruza abaixo de 25. SL −5%. Sai quando o RSI cruza acima de 32 (ou 24h). Só LONG. Sem TP.';
+  'Universo Scanner 6 (fecho acima SMA80 4h). LONG em 15m quando RSI(14) fecha abaixo de 28. SL −5%. TP1 +10% (30% pos.) | TP2 +48% (30% pos.). Restante: RSI cruza para baixo da SMA(14) do RSI com RSI > 65. Só LONG.';
 
 export const RSI_VENDIDO_4H_PARAMS = {
-  topN: 80,
-  chartTimeframe: '4h',
+  universeTopN: 40,
+  topN: 40,
+  chartTimeframe: '15m',
   rsiPeriod: 14,
-  rsiEntryLevel: 25,
-  rsiExitLevel: 32,
+  rsiEntryLevel: 28,
+  rsiMaPeriod: 14,
+  rsiTrailMinLevel: 65,
   stopLossPct: 0.05,
-  closeAfterHours: 24,
-  autoExecuteMinStrength: 80,
+  tp1Pct: 10,
+  tp1Position: 30,
+  tp2Pct: 48,
+  tp2Position: 30,
+  closeAfterHours: 0,
+  autoExecuteMinStrength: 70,
   allowBuy: true,
   buyEnabled: true,
   allowSell: false,
@@ -1159,7 +1175,7 @@ export const RSI_VENDIDO_4H_PARAMS = {
   exchange: 'bybit',
 } as const;
 
-/** Garante registo/descrição da estratégia rsi_vendido LONG 4h. */
+/** Garante registo/descrição da estratégia rsi_vendido LONG 15m (Scanner 6). */
 export async function syncRsiVendido4hConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -1176,26 +1192,42 @@ export async function syncRsiVendido4hConfig(
     p = {};
   }
 
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit'
+      ? p.exchange
+      : RSI_VENDIDO_4H_PARAMS.exchange;
+  const userAutoStrength = Number.isFinite(Number(p.autoExecuteMinStrength))
+    ? Number(p.autoExecuteMinStrength)
+    : RSI_VENDIDO_4H_PARAMS.autoExecuteMinStrength;
+
   const next = {
     ...RSI_VENDIDO_4H_PARAMS,
     ...p,
+    universeTopN: RSI_VENDIDO_4H_PARAMS.universeTopN,
     topN: RSI_VENDIDO_4H_PARAMS.topN,
     chartTimeframe: RSI_VENDIDO_4H_PARAMS.chartTimeframe,
     rsiPeriod: RSI_VENDIDO_4H_PARAMS.rsiPeriod,
     rsiEntryLevel: RSI_VENDIDO_4H_PARAMS.rsiEntryLevel,
-    rsiExitLevel: RSI_VENDIDO_4H_PARAMS.rsiExitLevel,
+    rsiMaPeriod: RSI_VENDIDO_4H_PARAMS.rsiMaPeriod,
+    rsiTrailMinLevel: RSI_VENDIDO_4H_PARAMS.rsiTrailMinLevel,
     stopLossPct: RSI_VENDIDO_4H_PARAMS.stopLossPct,
+    tp1Pct: RSI_VENDIDO_4H_PARAMS.tp1Pct,
+    tp1Position: RSI_VENDIDO_4H_PARAMS.tp1Position,
+    tp2Pct: RSI_VENDIDO_4H_PARAMS.tp2Pct,
+    tp2Position: RSI_VENDIDO_4H_PARAMS.tp2Position,
     closeAfterHours: RSI_VENDIDO_4H_PARAMS.closeAfterHours,
-    allowSell: false,
-    sellEnabled: false,
-    exchange:
-      p.exchange === 'binance' || p.exchange === 'bybit'
-        ? p.exchange
-        : RSI_VENDIDO_4H_PARAMS.exchange,
+    allowBuy: RSI_VENDIDO_4H_PARAMS.allowBuy,
+    buyEnabled: RSI_VENDIDO_4H_PARAMS.buyEnabled,
+    allowSell: RSI_VENDIDO_4H_PARAMS.allowSell,
+    sellEnabled: RSI_VENDIDO_4H_PARAMS.sellEnabled,
+    exchange: userExchange,
+    autoExecuteMinStrength: userAutoStrength,
   };
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
-    row.displayName !== RSI_VENDIDO_4H_DISPLAY || row.description !== RSI_VENDIDO_4H_DESCRIPTION;
+    row.displayName !== RSI_VENDIDO_4H_DISPLAY ||
+    row.description !== RSI_VENDIDO_4H_DESCRIPTION ||
+    row.isActive !== true;
 
   if (needParams || needMeta) {
     await prisma.strategy.update({
@@ -1204,6 +1236,7 @@ export async function syncRsiVendido4hConfig(
         displayName: RSI_VENDIDO_4H_DISPLAY,
         description: RSI_VENDIDO_4H_DESCRIPTION,
         params: JSON.stringify(next),
+        isActive: true,
       },
     });
     return { updated: true };
@@ -2561,6 +2594,8 @@ export async function syncMaCrossScanner1UniverseDescriptions(
         universeTopN: MA_CROSS_5M_PARAMS.universeTopN,
         minTurnover3hUsd: MA_CROSS_5M_PARAMS.minTurnover3hUsd,
         entryMaxDiffPct: MA_CROSS_5M_PARAMS.entryMaxDiffPct,
+        btcAlignFilter: MA_CROSS_5M_PARAMS.btcAlignFilter,
+        btcAlignMinAbsPct: MA_CROSS_5M_PARAMS.btcAlignMinAbsPct,
         // Preservar exchange / força escolhidas na UI
         exchange:
           p.exchange === 'binance' || p.exchange === 'bybit'
@@ -2574,6 +2609,8 @@ export async function syncMaCrossScanner1UniverseDescriptions(
         Number(p.universeTopN) !== MA_CROSS_5M_PARAMS.universeTopN ||
         Number(p.minTurnover3hUsd) !== MA_CROSS_5M_PARAMS.minTurnover3hUsd ||
         Number(p.entryMaxDiffPct ?? 0) !== MA_CROSS_5M_PARAMS.entryMaxDiffPct ||
+        p.btcAlignFilter !== MA_CROSS_5M_PARAMS.btcAlignFilter ||
+        Number(p.btcAlignMinAbsPct ?? -1) !== MA_CROSS_5M_PARAMS.btcAlignMinAbsPct ||
         (p.exchange !== 'binance' && p.exchange !== 'bybit') ||
         !Number.isFinite(Number(p.autoExecuteMinStrength));
       if (needsParamsUpdate) nextParams = JSON.stringify(next);

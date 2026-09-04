@@ -55,6 +55,7 @@ import {
   syncLiquidityPoolsPro15mConfig,
   syncSwingAnchoredVwap15mConfig,
   syncRompimento20_15mConfig,
+  syncRsiVendido4hConfig,
   syncPivotBossBear15mUniverse,
   syncScanner1Top5Config,
   syncAccumulationBreakout15mConfig,
@@ -146,7 +147,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'RSI_VENDIDO_4H',
     displayName: RSI_VENDIDO_4H_DISPLAY,
     description: RSI_VENDIDO_4H_DESCRIPTION,
-    isActive: false,
+    isActive: true,
     params: JSON.stringify(RSI_VENDIDO_4H_PARAMS),
   },
   {
@@ -198,7 +199,6 @@ export const DISCONTINUED_STRATEGY_NAMES = [
   'SCANNER3_RSI_BREAKOUT_15M',
   'STCH15LONG',
   'SCANNER2_RSI80_TOP3_LONG_4H',
-  'RSI_VENDIDO_4H',
 ] as const;
 
 /** Rotações Top descontinuadas neste projeto. */
@@ -285,6 +285,13 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   if (rompimentoSync.updated) {
     console.log(
       '✅ ROMPIMENTO_20_15M: Rompimento 20 | fecho > HH20 | filtro ≤30% acima EMA70 | Stoch K<30 (50/40/11) | LONG 15m | Scanner 1 top 20 (1h) | SL −5% | TP1 +9% 50% | 24h'
+    );
+  }
+
+  const rsiVendidoSync = await syncRsiVendido4hConfig(prisma);
+  if (rsiVendidoSync.updated) {
+    console.log(
+      '✅ RSI_VENDIDO_4H: rsi_vendido 15m | Scanner 6 | RSI<28 | SL −5% | TP1 +10% 30% | TP2 +48% 30% | resto RSI×MA>65'
     );
   }
 

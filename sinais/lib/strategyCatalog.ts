@@ -23,6 +23,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'ROMPIMENTO_20_15M',
 
+  'RSI_VENDIDO_4H',
+
 ] as const;
 
 
@@ -121,6 +123,19 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
   },
 
+  RSI_VENDIDO_4H: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m',
+
+    timeframe: '15m',
+
+    universe:
+      'Scanner 6 (SMA80 4h); RSI(14) 15m < 28 → LONG SL −5% | TP1 +10% 30% | TP2 +48% 30% | resto RSI×SMA14 down com RSI>65',
+
+  },
+
   SCANNER1_TOP8: {
 
     cron: '1h',
@@ -166,18 +181,6 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '4h',
 
     universe: 'Scanner 2 Top 3; RSI(14) 4h cruza >80 → LONG SL −10%; fecho 24h',
-
-  },
-
-  RSI_VENDIDO_4H: {
-
-    cron: '1h',
-
-    cronLabel: 'Pós-scan 4h',
-
-    timeframe: '4h',
-
-    universe: 'rsi_vendido; RSI(14) 4h cruza <25 → LONG SL −5%; sai se RSI >32',
 
   },
 
@@ -359,7 +362,8 @@ export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; descrip
 
     title: 'Cron 15m',
 
-    description: 'MA Cross 12×30 (S1) + MA Cross 12×21 (S7 BUY) + engolfo (S2) + Rompimento 20 (S1)',
+    description:
+      'MA Cross 12×30 (S1) + MA Cross 12×21 (S7 BUY) + engolfo (S2) + LP + Swing VWAP + Rompimento 20 + rsi_vendido (S6)',
 
   },
 
@@ -369,7 +373,7 @@ export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; descrip
 
     title: 'Rotação 4h',
 
-    description: 'Scanner 2 RSI>80 Top 3 LONG + rsi_vendido LONG (após run-universe-scans)',
+    description: 'Scanners de universo (após run-universe-scans)',
 
   },
 

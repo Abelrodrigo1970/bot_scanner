@@ -4,10 +4,12 @@ import { prisma } from '@/lib/db';
 import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrategies';
 
 /**
- * Cron 15m: MA Cross 12×30 (Scanner 1) + MA Cross 12×21 (Scanner 7, só BUY) + engolfo + Liquidity Pools + Rompimento 20.
+ * Cron 15m: MA Cross + engolfo + Liquidity Pools + Swing VWAP + Rompimento 20 + rsi_vendido (S6).
  */
 async function run15mInBackground(now: Date): Promise<void> {
-  console.log('[Run-15m BG] Iniciando LP + swing-vwap + MA Cross + engolfo + rompimento20 (15m)...');
+  console.log(
+    '[Run-15m BG] Iniciando LP + swing-vwap + MA Cross + engolfo + rompimento20 + rsi_vendido (15m)...'
+  );
 
   try {
     const result = await run15mStrategiesPipeline(now);
@@ -17,6 +19,7 @@ async function run15mInBackground(now: Date): Promise<void> {
     const lp = result.liquidityPoolsPro;
     const sv = result.swingAnchoredVwap;
     const romp = result.rompimento20;
+    const rsiV = result.rsiVendido;
     console.log(
       `[Run-15m BG] MA Cross 12×30 -> ${ma.status}` +
         (typeof ma.signalsCreated === 'number' ? ` (${ma.signalsCreated} sinais)` : '')
@@ -40,6 +43,10 @@ async function run15mInBackground(now: Date): Promise<void> {
     console.log(
       `[Run-15m BG] rompimento20 -> ${romp.status}` +
         (typeof romp.signalsCreated === 'number' ? ` (${romp.signalsCreated} sinais)` : '')
+    );
+    console.log(
+      `[Run-15m BG] rsi_vendido -> ${rsiV.status}` +
+        (typeof rsiV.signalsCreated === 'number' ? ` (${rsiV.signalsCreated} sinais)` : '')
     );
   } catch (error) {
     console.error('[Run-15m BG] Falhou:', error);
@@ -67,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Cron 15m (LP + Swing VWAP + MA Cross + engolfo + Rompimento 20) iniciado em background',
+      message: 'Cron 15m (LP + Swing VWAP + MA Cross + engolfo + Rompimento 20 + rsi_vendido) iniciado em background',
       executedAt: now.toISOString(),
     });
   } catch (error) {

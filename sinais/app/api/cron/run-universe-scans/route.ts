@@ -7,7 +7,7 @@ import { runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
 /**
  * Scanner 1 + Scanner 2 + Scanner 6 + Scanner 7 (RSI 1d) + YTD mcap60
  * + rotação Top 4 (inactiva).
- * RSI>80 Top 3 LONG, rsi_vendido LONG e stch15long descontinuados (Set 2026).
+ * RSI>80 Top 3 LONG e stch15long descontinuados. rsi_vendido corre no cron 15m (Scanner 6).
  */
 let universeScansJobPromise: Promise<void> | null = null;
 let universeScansJobStartedAt: string | null = null;
@@ -92,7 +92,8 @@ export async function GET(request: NextRequest) {
       {
         accepted: true,
         background: true,
-        message: 'Scanners de universo iniciados em background (sem RSI>80 / rsi_vendido — descontinuados).',        startedAt,
+        message: 'Scanners de universo iniciados em background (Scanner 6 alimenta rsi_vendido 15m).',
+        startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN_4H),
       },
       { status: 202 }

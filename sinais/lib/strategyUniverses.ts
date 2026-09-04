@@ -194,18 +194,18 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     strategyName: 'RSI_VENDIDO_4H',
 
-    displayLabel: 'rsi_vendido LONG (4h)',
+    displayLabel: 'rsi_vendido LONG (15m)',
 
-    signalTimeframes: ['4h'],
+    signalTimeframes: ['15m'],
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_RSI_BELOW_32_4H',
+    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
 
     description:
-      'rsi_vendido. LONG se RSI(14) 4h cruza <25. SL −5%. Sai quando RSI cruza >32 (ou 24h). Só LONG.',
+      'Scanner 6. LONG se RSI(14) 15m fecha <28. SL −5%. TP1 +10% 30% | TP2 +48% 30%. Restante: RSI×SMA14 down com RSI>65.',
 
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
+    refresh: '/api/cron/run-15m (e run-rsi-vendido)',
 
   },
 
@@ -228,15 +228,11 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/6',
-    label: 'Scanner 6 — Acima SMA80 4h (SHORT rank #1)',
+    label: 'Scanner 6 — Acima SMA80 4h (rsi_vendido 15m)',
   },
   {
     href: '/scanners/7',
     label: 'Scanner 7 — RSI > 69 (1d)',
-  },
-  {
-    href: '/scanners/rsi_vendido',
-    label: 'rsi_vendido — RSI < 32 (4h)',
   },
   {
     href: '/scanners/lateral_volatile',

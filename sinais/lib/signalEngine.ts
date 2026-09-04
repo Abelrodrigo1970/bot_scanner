@@ -33,6 +33,7 @@ import {
   checkMaCross15mSignalGate,
   isMaCross15mHourBlocked,
   maCross15mGateLimitsFromParams,
+  maCrossBtcAlignFromParams,
   MA_CROSS_15M_MIN_TURNOVER_1H_USD,
 } from './maCross15mGuard';
 import {
@@ -2435,6 +2436,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
 
               if (isMaCross12x30) {
                 const gateLimits = maCross15mGateLimitsFromParams(params);
+                const btcAlign = maCrossBtcAlignFromParams(params);
                 const gate = await checkMaCross15mSignalGate(prisma, {
                   symbol,
                   strategyId: strategy.id,
@@ -2445,6 +2447,23 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
                   ),
                   maxSignalsPerDay: gateLimits.maxSignalsPerDay,
                   cooldownMs: gateLimits.cooldownMs,
+                  btcAlignFilter: btcAlign.btcAlignFilter,
+                  btcAlignMinAbsPct: btcAlign.btcAlignMinAbsPct,
+                  ...(params.maCross12x21EntryFilters === true
+                    ? {
+                        blockedHoursPt: Array.isArray(params.blockedHoursPt)
+                          ? (params.blockedHoursPt as number[])
+                          : undefined,
+                        allowedHourMinPt:
+                          params.allowedHourMinPt != null
+                            ? Number(params.allowedHourMinPt)
+                            : undefined,
+                        allowedHourMaxPt:
+                          params.allowedHourMaxPt != null
+                            ? Number(params.allowedHourMaxPt)
+                            : undefined,
+                      }
+                    : {}),
                 });
                 canCreate = gate.allowed;
                 if (!gate.allowed) skipReason = gate.reason;

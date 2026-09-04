@@ -41,6 +41,7 @@ const ALLOWED_STRATEGIES = [
   'Scanner 2 RSI>80 Top 3 LONG (4h)',
   'SCANNER2_RSI80_TOP3_LONG_4H',
   'rsi_vendido LONG (4h)',
+  'rsi_vendido LONG (15m)',
   'RSI_VENDIDO_4H',
 ];
 

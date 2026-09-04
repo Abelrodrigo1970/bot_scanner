@@ -57,7 +57,7 @@ export const SCANNER_2_MIN_DISTANCE_PCT = -5;
 export const SCANNER_2_MAX_DISTANCE_PCT = 15;
 export const SCANNER_2_EMA80_BAND_LABEL = '-5% a +15% da EMA80 (1h)';
 
-/** Scanners 1, 2, 6, rsi_vendido e YTD mcap60 — actualizados em run-universe-scans (4 h). */
+/** Scanners 1, 2, 6, 7, rsi_vendido (legado) e YTD mcap60 — actualizados em run-universe-scans (4 h). */
 export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = {
   UNIVERSE_ABOVE_MA200_1H: {
     ruleType: 'ABOVE_MA',
@@ -236,8 +236,8 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA80_4H: {
     displayName: 'Scanner 6 — Acima SMA80 (4h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Rotação long no bot_cripto.',
-    strategyNames: 'SCANNER_MA80_4H_TOP6 (bot_cripto)',
+      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Universo do rsi_vendido LONG 15m.',
+    strategyNames: 'rsi_vendido LONG (15m)',
   },
   UNIVERSE_RSI_ABOVE_69_1D: {
     displayName: `Scanner 7 — RSI > ${SCANNER_7_RSI_THRESHOLD} (1d)`,
@@ -245,10 +245,10 @@ export const BUILTIN_UNIVERSE_META: Record<
     strategyNames: 'MA Cross 12×21 (15m, só COMPRA)',
   },
   UNIVERSE_RSI_BELOW_32_4H: {
-    displayName: 'rsi_vendido — RSI < 32 (4h)',
+    displayName: 'rsi_vendido — RSI < 32 (4h, legado)',
     description:
-      'Perpétuos USDT (top volume) com RSI(14) abaixo de 32 em velas de 4h, ordenados pelo RSI mais baixo primeiro. Mín. 500k USDT volume 24h. Actualização no cron de 4h (run-universe-scans).',
-    strategyNames: 'rsi_vendido LONG (4h)',
+      'Legado: RSI(14) 4h < 32. A estratégia rsi_vendido passou a usar Scanner 6 em 15m.',
+    strategyNames: '— (legado)',
   },
   UNIVERSE_LATERAL_VOLATILE_4H: {
     displayName: 'Lateral EMA21/70 (4h)',
@@ -266,9 +266,10 @@ export const BUILTIN_UNIVERSE_META: Record<
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
   '2': 'Scanner 2 activo: engolfo top 3 + Liquidity Pools + Swing VWAP (15m). stch15long e RSI>80 descontinuados.',
+  '6': 'Scanner 6: universo do rsi_vendido LONG (15m) — RSI <28, SL −5%, TP1 +10% 30%, TP2 +48% 30%, resto RSI×MA>65.',
   '7': 'MA Cross 12×21 (15m): só COMPRA no universo Scanner 7 (RSI 1d ≥ 69).',
   rsi_vendido:
-    'DESCONTINUADO (Set 2026). rsi_vendido LONG (4h) removido do bot.',
+    'Legado RSI <32 4h. A estratégia activa usa Scanner 6 em 15m (cron run-15m / run-rsi-vendido).',
   ytd_mcap60:
     'Universo YTD (mcap > $60M) disponível para ligar a estratégias via dataKey UNIVERSE_TOP50_YTD_MCAP60M.',
 };

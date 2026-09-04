@@ -14,6 +14,7 @@ import {
   isMaCross12x21HourBlocked,
   isMaCross15mHourBlocked,
   maCross15mGateLimitsFromParams,
+  maCrossBtcAlignFromParams,
   MA_CROSS_15M_MIN_TURNOVER_1H_USD,
   MA_CROSS_12X21_BLOCKED_HOURS_PT,
   MA_CROSS_12X21_ALLOWED_HOUR_MIN_PT,
@@ -30,6 +31,7 @@ import { runEngolfo15mPipeline } from '@/lib/engolfo15mStrategy';
 import { runLiquidityPoolsPro15mPipeline } from '@/lib/liquidityPoolsPro15mStrategy';
 import { runSwingAnchoredVwap15mPipeline } from '@/lib/swingAnchoredVwap15mStrategy';
 import { runRompimento20_15mPipeline } from '@/lib/rompimento20_15mStrategy';
+import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 
 const TIMEFRAME_15M = '15m' as const;
 const MA_CROSS_MIN_STRENGTH = 70;
@@ -100,6 +102,7 @@ async function runMaCross15mWorker(
         }
 
         const gateLimits = maCross15mGateLimitsFromParams(params);
+        const btcAlign = maCrossBtcAlignFromParams(params);
         const gate = await checkMaCross15mSignalGate(prisma, {
           symbol,
           strategyId: strategy.id,
@@ -107,6 +110,8 @@ async function runMaCross15mWorker(
           minTurnover3hUsd,
           maxSignalsPerDay: gateLimits.maxSignalsPerDay,
           cooldownMs: gateLimits.cooldownMs,
+          btcAlignFilter: btcAlign.btcAlignFilter,
+          btcAlignMinAbsPct: btcAlign.btcAlignMinAbsPct,
           ...(params.maCross12x21EntryFilters === true
             ? {
                 blockedHoursPt:
@@ -311,10 +316,11 @@ export interface Cron15mAllResult {
   liquidityPoolsPro: Cron15mResult;
   swingAnchoredVwap: Cron15mResult;
   rompimento20: Cron15mResult;
+  rsiVendido: Cron15mResult;
 }
 
 /**
- * Cron único 15m: Liquidity Pools (S2, 10 símbolos) primeiro, depois MA Cross + engolfo + Rompimento 20.
+ * Cron único 15m: Liquidity Pools primeiro, depois MA Cross + engolfo + Rompimento 20 + rsi_vendido.
  * LP corre antes do MA Cross 12×21 (80 símbolos) para não ficar bloqueado no pipeline.
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
@@ -385,5 +391,29 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     rompimento20 = { status: 'not-found' };
   }
 
-  return { maCross, maCross12x21S2, engolfo, liquidityPoolsPro, swingAnchoredVwap, rompimento20 };
+  let rsiVendido: Cron15mResult;
+  try {
+    const r = await runRsiVendidoPipeline({ logPrefix: '[Run-15m → rsi_vendido]' });
+    if (r.status === 'skipped') {
+      console.log(`[Run-15m → rsi_vendido] Saltado: ${r.reason}`);
+      if (r.reason.includes('inactiva')) rsiVendido = { status: 'inactive' };
+      else if (r.reason.includes('não encontrada')) rsiVendido = { status: 'not-found' };
+      else rsiVendido = { status: 'done', signalsCreated: 0 };
+    } else {
+      rsiVendido = { status: 'done', signalsCreated: r.signalsCreated };
+    }
+  } catch (err) {
+    console.error('[Run-15m → rsi_vendido] Falhou:', err);
+    rsiVendido = { status: 'not-found' };
+  }
+
+  return {
+    maCross,
+    maCross12x21S2,
+    engolfo,
+    liquidityPoolsPro,
+    swingAnchoredVwap,
+    rompimento20,
+    rsiVendido,
+  };
 }

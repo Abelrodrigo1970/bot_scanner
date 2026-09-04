@@ -140,11 +140,11 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   },
   {
     strategyName: 'RSI_VENDIDO_4H',
-    displayNames: ['rsi_vendido LONG (4h)'],
-    buy: side(5, 0, 0, 0, 0, 24),
+    displayNames: ['rsi_vendido LONG (15m)', 'rsi_vendido LONG (4h)'],
+    buy: side(5, 10, 30, 48, 30, 0),
     sell: null,
     summary:
-      'DESCONTINUADA (Set 2026). rsi_vendido RSI 4h <25 LONG. SL −5%. Sai >32 ou 24h.',
+      'Scanner 6. RSI(14) 15m <28 LONG. SL −5%. TP1 +10% 30% | TP2 +48% 30%. Restante RSI×SMA14 down com RSI>65.',
   },
   {
     strategyName: 'SCANNER3_RSI_FLIP_1H',
