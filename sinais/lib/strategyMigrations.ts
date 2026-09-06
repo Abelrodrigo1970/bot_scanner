@@ -1,26 +1,16 @@
 import type { PrismaClient } from '@prisma/client';
 
-/** Estratégias retiradas (não recriar no seed / apagar da BD em produção). */
-export const REMOVED_DEPRECATED_STRATEGY_NAMES = [
-  'VOLUME_SPIKE',
-  'RSI',
-  'RSI_15M',
-  'RSI_BYBIT_15M',
-  'MA_CROSS_15M',
-  'MA_CROSS_1H',
-  'MA_VOLATILE',
-  'AFASTAMENTO_MEDIO',
-  'AFASTAMENTO_MEDIO_30M',
-  'MA200_VOLATILE',
-  'MACD_HISTOGRAM_PMO',
-  'EMA_SCALPING',
-  'EMA_SCALPING_SELL',
-  'RSI_OVERBOUGHT_DROP_1H',
-  'RSI_OVERBOUGHT_DROP_LEGACY_1H',
-  'PIVOT_BOSS_BEAR_1H',
-  'STCH15LONG',
-  'SCANNER2_RSI80_TOP3_LONG_4H',
-] as const;
+export {
+  REMOVED_DEPRECATED_STRATEGY_NAMES,
+  DISCONTINUED_STRATEGY_NAMES,
+  DEPRECATED_TOP_ROTATION_NAMES,
+  TOP_ROTATION_STRATEGY_NAMES,
+} from './strategyNameLists';
+
+import {
+  REMOVED_DEPRECATED_STRATEGY_NAMES,
+  DEPRECATED_TOP_ROTATION_NAMES,
+} from './strategyNameLists';
 
 export interface RemoveDeprecatedStrategiesResult {
   removed: string[];

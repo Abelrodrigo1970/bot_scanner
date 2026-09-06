@@ -1,9 +1,8 @@
-import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
-
 import {
+  REMOVED_DEPRECATED_STRATEGY_NAMES,
   DEPRECATED_TOP_ROTATION_NAMES,
   DISCONTINUED_STRATEGY_NAMES,
-} from './ensureMissingBuiltinStrategies';
+} from './strategyNameLists';
 
 
 

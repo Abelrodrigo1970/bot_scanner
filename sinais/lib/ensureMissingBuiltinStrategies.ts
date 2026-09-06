@@ -2,6 +2,17 @@ import type { PrismaClient } from '@prisma/client';
 
 import { mapLiquidityPoolSignalStrength } from './liquidityPoolsPro15mStrategy';
 
+export {
+  DISCONTINUED_STRATEGY_NAMES,
+  DEPRECATED_TOP_ROTATION_NAMES,
+  TOP_ROTATION_STRATEGY_NAMES,
+} from './strategyNameLists';
+
+import {
+  DISCONTINUED_STRATEGY_NAMES,
+  DEPRECATED_TOP_ROTATION_NAMES,
+} from './strategyNameLists';
+
 import {
   PIVOT_BOSS_BEAR_15M_DESCRIPTION,
   PIVOT_BOSS_BEAR_15M_PARAMS,
@@ -187,29 +198,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
   },
 ] as const;
 
-/** Estratégias descontinuadas (Ago 2026) — manter registo/histórico, sem trading. */
-export const DISCONTINUED_STRATEGY_NAMES = [
-  'PIVOT_BOSS_BEAR_15M',
-  'ACCUMULATION_BREAKOUT_15M',
-  'EMA80_SMA7_BREAKDOWN_15M',
-  'SCANNER2_SHORT_LEADER_24H',
-  'SCANNER3_RSI_FLIP_1H',
-  'SCANNER2_STOCH_RSI_5M',
-  'SCANNER1_TOP5',
-  'SCANNER3_RSI_BREAKOUT_15M',
-  'STCH15LONG',
-  'SCANNER2_RSI80_TOP3_LONG_4H',
-] as const;
-
-/** Rotações Top descontinuadas neste projeto. */
-export const DEPRECATED_TOP_ROTATION_NAMES = [
-  'SCANNER_MA80_TOP6',
-  'SCANNER_MA80_4H_TOP6',
-  'SCANNER1_TOP8',
-] as const;
-
-/** @deprecated Use DEPRECATED_TOP_ROTATION_NAMES */
-export const TOP_ROTATION_STRATEGY_NAMES = DEPRECATED_TOP_ROTATION_NAMES;
+/** Seeds builtin — ver sync em ensureMissingBuiltinStrategies. */
 
 export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Promise<void> {
   await deactivateDeprecatedStrategies(prisma, [...DEPRECATED_TOP_ROTATION_NAMES]);
