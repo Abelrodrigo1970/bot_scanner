@@ -602,6 +602,8 @@ export const ROMPIMENTO_20_15M_PARAMS = {
   sellEnabled: false,
   exchange: 'binance',
 } as const;
+
+export const ROMPIMENTO_20_15M_DISPLAY = 'Rompimento 20 (15m)';
 export const ROMPIMENTO_20_15M_DESC =
   'Scanner 1 top 20. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. Filtro Stochastic (K 50/40/11): só entra se %K < 30. SL −5%. TP1 +9% (50% pos.). Restante às 24h. Só COMPRA.';
 
