@@ -39,7 +39,7 @@ const MA_CROSS_5M_DEFAULT_PARAMS = {
   minQuoteVolume: 100000,
   allowBuy: true,
   allowSell: true,
-  exchange: 'binance' as const,
+  exchange: 'bybit' as const,
 };
 
 async function ensureMissingStrategies() {

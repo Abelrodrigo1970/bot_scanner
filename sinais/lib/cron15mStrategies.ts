@@ -21,6 +21,7 @@ import {
   MA_CROSS_12X21_ALLOWED_HOUR_MAX_PT,
 } from '@/lib/maCross15mGuard';
 import { update24hResults } from '@/lib/update24hResults';
+import { resolveStrategyExchange } from '@/lib/autoExecuteNewSignals';
 import {
   cleanupBybitOrphanOpenOrders,
   executeSignalReal,
@@ -85,7 +86,7 @@ async function runMaCross15mWorker(
     `[${logTag} BG] Iniciando ${symbols.length} símbolos (${universe.label} top ${topN})…`
   );
   let signalsCreated = 0;
-  const ex = (params.exchange === 'bybit' ? 'bybit' : 'binance') as 'binance' | 'bybit';
+  const ex = resolveStrategyExchange(params as Record<string, unknown>);
 
   for (const symbol of symbols) {
     try {

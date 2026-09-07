@@ -1800,6 +1800,53 @@ export async function migrateScanner2StrategiesToBybit(
   return { migrated };
 }
 
+/** Uma vez: estratégias activas 15m / rsi_vendido → Bybit (sync preservava binance antigo). */
+export async function migrateActiveStrategiesExchangeToBybit(
+  prisma: PrismaClient
+): Promise<{ migrated: string[] }> {
+  const key = 'MIGRATED_ACTIVE_STRATEGIES_EXCHANGE_BYBIT_V1';
+  const done = await prisma.appSetting.findUnique({ where: { key } });
+  if (done?.value === '1') return { migrated: [] };
+
+  const names = [
+    'MA_CROSS_5M',
+    'MA_CROSS_12X21_S2',
+    'ENGOLFO_15M',
+    'LIQUIDITY_POOLS_PRO_15M',
+    'SWING_ANCHORED_VWAP_15M',
+    'ROMPIMENTO_20_15M',
+    'RSI_VENDIDO_4H',
+  ] as const;
+
+  const migrated: string[] = [];
+  for (const name of names) {
+    const row = await prisma.strategy.findUnique({
+      where: { name },
+      select: { params: true },
+    });
+    if (!row) continue;
+    let p: Record<string, unknown> = {};
+    try {
+      p = row.params ? JSON.parse(row.params) : {};
+    } catch {
+      p = {};
+    }
+    if (p.exchange === 'bybit') continue;
+    await prisma.strategy.update({
+      where: { name },
+      data: { params: JSON.stringify({ ...p, exchange: 'bybit' }) },
+    });
+    migrated.push(name);
+  }
+
+  await prisma.appSetting.upsert({
+    where: { key },
+    create: { key, value: '1' },
+    update: { value: '1' },
+  });
+  return { migrated };
+}
+
 /** Renomeia SCANNER_S6_SHORT_LEADER_12H → SCANNER2_SHORT_LEADER_24H (uma vez). */
 export async function migrateScannerS6ShortToScanner2ShortLeader24h(
   prisma: PrismaClient
