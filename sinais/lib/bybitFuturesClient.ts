@@ -214,8 +214,13 @@ export async function createBybitOrder(params: {
     timeInForce: 'IOC',
   };
 
-  if (params.stopLoss)           body.stopLoss        = params.stopLoss;
-  if (params.slTriggerBy)        body.slTriggerBy     = params.slTriggerBy;
+  if (params.stopLoss) {
+    // Full position SL (Market) — sem tpslMode a Bybit por vezes aceita a entrada e ignora o SL
+    body.stopLoss = params.stopLoss;
+    body.tpslMode = 'Full';
+    body.slOrderType = 'Market';
+    if (params.slTriggerBy) body.slTriggerBy = params.slTriggerBy;
+  }
   if (params.stopOrderType)      body.stopOrderType   = params.stopOrderType;
   if (params.triggerPrice)       body.triggerPrice    = params.triggerPrice;
   if (params.triggerBy)          body.triggerBy       = params.triggerBy;
@@ -223,6 +228,36 @@ export async function createBybitOrder(params: {
   if (params.reduceOnly)         body.reduceOnly      = true;
 
   return signedPost<{ orderId: string; symbol: string; orderStatus: string }>('/v5/order/create', body);
+}
+
+/**
+ * Define / confirma SL (e opcionalmente TP) ao nível da posição.
+ * Usar após fill de market — garante SL mesmo se o attach na create-order falhar.
+ */
+export async function setBybitTradingStop(params: {
+  symbol: string;
+  stopLoss: string;
+  slTriggerBy?: 'MarkPrice' | 'LastPrice' | 'IndexPrice';
+  takeProfit?: string;
+  tpTriggerBy?: 'MarkPrice' | 'LastPrice' | 'IndexPrice';
+  /** 0 = one-way (default) */
+  positionIdx?: 0 | 1 | 2;
+}): Promise<void> {
+  const body: Record<string, unknown> = {
+    category: 'linear',
+    symbol: params.symbol,
+    tpslMode: 'Full',
+    stopLoss: params.stopLoss,
+    slTriggerBy: params.slTriggerBy ?? 'MarkPrice',
+    slOrderType: 'Market',
+    positionIdx: params.positionIdx ?? 0,
+  };
+  if (params.takeProfit) {
+    body.takeProfit = params.takeProfit;
+    body.tpTriggerBy = params.tpTriggerBy ?? 'MarkPrice';
+    body.tpOrderType = 'Market';
+  }
+  await signedPost('/v5/position/trading-stop', body);
 }
 
 /** Cancela todas as ordens abertas / condicionais do par linear (inclui TP órfãs). */

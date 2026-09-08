@@ -38,6 +38,7 @@ import {
   getBybitLotSizeStep,
   getBybitTickSize,
   listOpenLinearOrderSymbols,
+  setBybitTradingStop,
 } from './bybitFuturesClient';
 import { fetchCurrentPriceSafe } from './marketData';
 
@@ -403,7 +404,7 @@ async function executeSignalBybit(
     const bybitSide: 'Buy' | 'Sell' = executionSignal.direction === 'BUY' ? 'Buy' : 'Sell';
     const bybitSlSide: 'Buy' | 'Sell' = bybitSide === 'Buy' ? 'Sell' : 'Buy';
 
-    // Ordem de entrada com SL embutido
+    // Ordem de entrada com SL embutido (tpslMode Full no client)
     const entryOrder = await createBybitOrder({
       symbol:     executionSignal.symbol,
       side:       bybitSide,
@@ -411,7 +412,30 @@ async function executeSignalBybit(
       stopLoss:   slPriceStr,
       slTriggerBy: 'MarkPrice',
     });
-    console.log(`[Bybit] Entrada: ${entryOrder.orderId} | SL @ ${slPriceStr}`);
+    console.log(`[Bybit] Entrada: ${entryOrder.orderId} | SL attach @ ${slPriceStr}`);
+
+    // Confirma SL ao nível da posição (fallback se o attach na create-order for ignorado)
+    let slConfirmed = false;
+    let slError: string | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, 400 * attempt));
+      }
+      try {
+        await setBybitTradingStop({
+          symbol: executionSignal.symbol,
+          stopLoss: slPriceStr,
+          slTriggerBy: 'MarkPrice',
+          positionIdx: 0,
+        });
+        slConfirmed = true;
+        console.log(`[Bybit] SL confirmado via trading-stop @ ${slPriceStr}`);
+        break;
+      } catch (e) {
+        slError = e instanceof Error ? e.message : String(e);
+        console.warn(`[Bybit] trading-stop SL tentativa ${attempt + 1}/3:`, slError);
+      }
+    }
 
     // Ordens de Take Profit separadas
     const tps      = params.takeProfits ?? [];
@@ -447,13 +471,20 @@ async function executeSignalBybit(
     }
 
     const tpWarning = tpErrors.length > 0 ? ` (TPs não colocados: ${tpErrors.join('; ')})` : '';
+    const slWarning = slConfirmed
+      ? ''
+      : ` (⚠️ SL NÃO confirmado @ ${slPriceStr}: ${slError ?? 'desconhecido'})`;
     // Bybit usa UUIDs — parseInt daria NaN → 0 (falsy). Usa 1 como fallback não-zero.
     const parsedId = parseInt(entryOrder.orderId, 10);
     const orderIdNum = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : 1;
     return {
       success: true,
       dryRun:  false,
-      message: `[Bybit] Trade: ${executionSignal.symbol} ${executionSignal.direction} order ${entryOrder.orderId}` + tpWarning,
+      message:
+        `[Bybit] Trade: ${executionSignal.symbol} ${executionSignal.direction} order ${entryOrder.orderId}` +
+        (slConfirmed ? ` | SL ${slPriceStr}` : '') +
+        slWarning +
+        tpWarning,
       params,
       orderId: orderIdNum,
     };
