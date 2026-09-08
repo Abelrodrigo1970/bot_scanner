@@ -34,11 +34,11 @@ import {
 import {
   cancelAllBybitLinearOrders,
   createBybitOrder,
+  ensureBybitStopLoss,
   getBybitPositionRisk,
   getBybitLotSizeStep,
   getBybitTickSize,
   listOpenLinearOrderSymbols,
-  setBybitTradingStop,
 } from './bybitFuturesClient';
 import { fetchCurrentPriceSafe } from './marketData';
 
@@ -411,31 +411,21 @@ async function executeSignalBybit(
       qty:        qtyStr,
       stopLoss:   slPriceStr,
       slTriggerBy: 'MarkPrice',
+      positionIdx: 0,
     });
     console.log(`[Bybit] Entrada: ${entryOrder.orderId} | SL attach @ ${slPriceStr}`);
 
-    // Confirma SL ao nível da posição (fallback se o attach na create-order for ignorado)
-    let slConfirmed = false;
-    let slError: string | null = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (attempt > 0) {
-        await new Promise((r) => setTimeout(r, 400 * attempt));
-      }
-      try {
-        await setBybitTradingStop({
-          symbol: executionSignal.symbol,
-          stopLoss: slPriceStr,
-          slTriggerBy: 'MarkPrice',
-          positionIdx: 0,
-        });
-        slConfirmed = true;
-        console.log(`[Bybit] SL confirmado via trading-stop @ ${slPriceStr}`);
-        break;
-      } catch (e) {
-        slError = e instanceof Error ? e.message : String(e);
-        console.warn(`[Bybit] trading-stop SL tentativa ${attempt + 1}/3:`, slError);
-      }
-    }
+    // Confirma SL (trading-stop + verify + stop condicional se precisar)
+    let slResult = await ensureBybitStopLoss({
+      symbol: executionSignal.symbol,
+      side: bybitSide,
+      stopLoss: slPriceStr,
+      qty: qtyStr,
+    });
+    console.log(
+      `[Bybit] SL ensure: ok=${slResult.ok} method=${slResult.method}` +
+        (slResult.error ? ` err=${slResult.error}` : '')
+    );
 
     // Ordens de Take Profit separadas
     const tps      = params.takeProfits ?? [];
@@ -461,6 +451,7 @@ async function executeSignalBybit(
           // SELL position: TP dispara quando preço DESCE até ao alvo (2)
           triggerDirection: executionSignal.direction === 'BUY' ? 1 : 2,
           reduceOnly:       true,
+          positionIdx:      0,
         });
         console.log(`[Bybit] TP${i + 1}: ${tpQtyStr} @ ${tpTrigger} | order: ${tpOrder.orderId}`);
       } catch (tpErr) {
@@ -470,10 +461,25 @@ async function executeSignalBybit(
       }
     }
 
+    // Re-confirma SL após TPs (Bybit por vezes desfaz o SL full ao criar TP parcial)
+    if (slResult.ok) {
+      const again = await ensureBybitStopLoss({
+        symbol: executionSignal.symbol,
+        side: bybitSide,
+        stopLoss: slPriceStr,
+        qty: qtyStr,
+      });
+      slResult = again;
+      console.log(
+        `[Bybit] SL re-ensure após TP: ok=${again.ok} method=${again.method}` +
+          (again.error ? ` err=${again.error}` : '')
+      );
+    }
+
     const tpWarning = tpErrors.length > 0 ? ` (TPs não colocados: ${tpErrors.join('; ')})` : '';
-    const slWarning = slConfirmed
-      ? ''
-      : ` (⚠️ SL NÃO confirmado @ ${slPriceStr}: ${slError ?? 'desconhecido'})`;
+    const slWarning = slResult.ok
+      ? ` | SL ${slPriceStr} (${slResult.method})`
+      : ` (⚠️ SL NÃO confirmado @ ${slPriceStr}: ${slResult.error ?? 'desconhecido'})`;
     // Bybit usa UUIDs — parseInt daria NaN → 0 (falsy). Usa 1 como fallback não-zero.
     const parsedId = parseInt(entryOrder.orderId, 10);
     const orderIdNum = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : 1;
@@ -482,7 +488,6 @@ async function executeSignalBybit(
       dryRun:  false,
       message:
         `[Bybit] Trade: ${executionSignal.symbol} ${executionSignal.direction} order ${entryOrder.orderId}` +
-        (slConfirmed ? ` | SL ${slPriceStr}` : '') +
         slWarning +
         tpWarning,
       params,

@@ -172,6 +172,9 @@ export async function getBybitPositionRisk(symbol?: string): Promise<Array<{
   avgPrice:      string;
   unrealisedPnl: string;
   leverage:      string;
+  stopLoss:      string;
+  takeProfit:    string;
+  positionIdx:   number;
 }>> {
   const params: Record<string, string> = { category: 'linear' };
   if (symbol) params.symbol = symbol;
@@ -185,6 +188,9 @@ export async function getBybitPositionRisk(symbol?: string): Promise<Array<{
     avgPrice:      p.avgPrice      ?? '0',
     unrealisedPnl: p.unrealisedPnl ?? '0',
     leverage:      p.leverage      ?? '1',
+    stopLoss:      p.stopLoss      ?? '',
+    takeProfit:    p.takeProfit    ?? '',
+    positionIdx:   Number.parseInt(p.positionIdx ?? '0', 10) || 0,
   }));
 }
 
@@ -204,6 +210,8 @@ export async function createBybitOrder(params: {
   /** 1 = preço sobe até ao trigger (TP de BUY) | 2 = preço desce até ao trigger (TP de SELL) */
   triggerDirection?: 1 | 2;
   reduceOnly?:      boolean;
+  closeOnTrigger?:  boolean;
+  positionIdx?:     0 | 1 | 2;
 }): Promise<{ orderId: string; symbol: string; orderStatus: string }> {
   const body: Record<string, unknown> = {
     category:  'linear',
@@ -212,6 +220,7 @@ export async function createBybitOrder(params: {
     orderType: 'Market',
     qty:       params.qty,
     timeInForce: 'IOC',
+    positionIdx: params.positionIdx ?? 0,
   };
 
   if (params.stopLoss) {
@@ -226,6 +235,7 @@ export async function createBybitOrder(params: {
   if (params.triggerBy)          body.triggerBy       = params.triggerBy;
   if (params.triggerDirection)   body.triggerDirection = params.triggerDirection;
   if (params.reduceOnly)         body.reduceOnly      = true;
+  if (params.closeOnTrigger)     body.closeOnTrigger  = true;
 
   return signedPost<{ orderId: string; symbol: string; orderStatus: string }>('/v5/order/create', body);
 }
@@ -240,7 +250,7 @@ export async function setBybitTradingStop(params: {
   slTriggerBy?: 'MarkPrice' | 'LastPrice' | 'IndexPrice';
   takeProfit?: string;
   tpTriggerBy?: 'MarkPrice' | 'LastPrice' | 'IndexPrice';
-  /** 0 = one-way (default) */
+  /** 0 = one-way (default); hedge: 1=Buy, 2=Sell */
   positionIdx?: 0 | 1 | 2;
 }): Promise<void> {
   const body: Record<string, unknown> = {
@@ -258,6 +268,92 @@ export async function setBybitTradingStop(params: {
     body.tpOrderType = 'Market';
   }
   await signedPost('/v5/position/trading-stop', body);
+}
+
+/**
+ * Garante SL na posição: trading-stop (vários positionIdx) + verificação + stop condicional.
+ */
+export async function ensureBybitStopLoss(params: {
+  symbol: string;
+  side: 'Buy' | 'Sell';
+  stopLoss: string;
+  qty: string;
+}): Promise<{ ok: boolean; method: 'position' | 'conditional' | 'none'; error?: string }> {
+  const hedgeIdx: 0 | 1 | 2 = params.side === 'Buy' ? 1 : 2;
+  const idxTries: Array<0 | 1 | 2> = [0, hedgeIdx];
+
+  let lastErr = '';
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 350 * attempt));
+
+    let positionIdx: 0 | 1 | 2 = 0;
+    try {
+      const positions = await getBybitPositionRisk(params.symbol);
+      const active = positions.find(
+        (p) => p.symbol === params.symbol && parseFloat(p.size) > 0 && p.side === params.side
+      );
+      if (active) {
+        const idx = active.positionIdx;
+        positionIdx = idx === 1 || idx === 2 ? idx : 0;
+        if (active.stopLoss && parseFloat(active.stopLoss) > 0) {
+          const want = parseFloat(params.stopLoss);
+          const have = parseFloat(active.stopLoss);
+          // Já tem SL próximo do pedido — OK
+          if (Number.isFinite(have) && Number.isFinite(want) && Math.abs(have - want) / want < 0.02) {
+            return { ok: true, method: 'position' };
+          }
+        }
+      }
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : String(e);
+    }
+
+    for (const idx of idxTries) {
+      try {
+        await setBybitTradingStop({
+          symbol: params.symbol,
+          stopLoss: params.stopLoss,
+          slTriggerBy: 'MarkPrice',
+          positionIdx: idx === 0 ? positionIdx || 0 : idx,
+        });
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : String(e);
+        continue;
+      }
+      try {
+        const positions = await getBybitPositionRisk(params.symbol);
+        const active = positions.find(
+          (p) => p.symbol === params.symbol && parseFloat(p.size) > 0 && p.side === params.side
+        );
+        if (active?.stopLoss && parseFloat(active.stopLoss) > 0) {
+          return { ok: true, method: 'position' };
+        }
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : String(e);
+      }
+    }
+  }
+
+  // Fallback: ordem stop condicional (fecha posição se trading-stop falhar)
+  for (const idx of idxTries) {
+    try {
+      await createBybitOrder({
+        symbol: params.symbol,
+        side: params.side === 'Buy' ? 'Sell' : 'Buy',
+        qty: params.qty,
+        triggerPrice: params.stopLoss,
+        triggerBy: 'MarkPrice',
+        triggerDirection: params.side === 'Buy' ? 2 : 1,
+        reduceOnly: true,
+        closeOnTrigger: true,
+        positionIdx: idx,
+      });
+      return { ok: true, method: 'conditional' };
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : String(e);
+    }
+  }
+  return { ok: false, method: 'none', error: lastErr || 'SL não aplicado' };
 }
 
 /** Cancela todas as ordens abertas / condicionais do par linear (inclui TP órfãs). */
