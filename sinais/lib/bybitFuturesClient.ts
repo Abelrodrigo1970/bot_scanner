@@ -272,17 +272,58 @@ export async function setBybitTradingStop(params: {
 
 /**
  * Garante SL na posição: trading-stop (vários positionIdx) + verificação + stop condicional.
+ * Ajusta o SL se o mark já o invalidou (comum em shorts que disparam logo após a entrada).
  */
 export async function ensureBybitStopLoss(params: {
   symbol: string;
   side: 'Buy' | 'Sell';
   stopLoss: string;
   qty: string;
-}): Promise<{ ok: boolean; method: 'position' | 'conditional' | 'none'; error?: string }> {
+}): Promise<{ ok: boolean; method: 'position' | 'conditional' | 'none'; stopLoss?: string; error?: string }> {
   const hedgeIdx: 0 | 1 | 2 = params.side === 'Buy' ? 1 : 2;
   const idxTries: Array<0 | 1 | 2> = [0, hedgeIdx];
 
+  let slPrice = parseFloat(params.stopLoss);
+  if (!(slPrice > 0)) {
+    return { ok: false, method: 'none', error: 'stopLoss inválido' };
+  }
+
+  // Qualquer SL já na posição conta (inclui manuais) — não sobrescrever
+  try {
+    const positions = await getBybitPositionRisk(params.symbol);
+    const active = positions.find(
+      (p) => p.symbol === params.symbol && parseFloat(p.size) > 0 && p.side === params.side
+    );
+    if (active?.stopLoss && parseFloat(active.stopLoss) > 0) {
+      return { ok: true, method: 'position', stopLoss: active.stopLoss };
+    }
+  } catch {
+    // continua
+  }
+
+  // Ajusta SL vs mark actual (Bybit rejeita SL do lado errado do preço)
+  try {
+    const tick = await getBybitTickSize(params.symbol);
+    const mark = await fetchBybitMarkPrice(params.symbol);
+    if (mark != null && mark > 0 && Number.isFinite(tick) && tick > 0) {
+      const minGap = Math.max(mark * 0.002, tick * 10);
+      if (params.side === 'Buy' && slPrice >= mark) {
+        slPrice = Math.max(tick, mark - minGap);
+      } else if (params.side === 'Sell' && slPrice <= mark) {
+        slPrice = mark + minGap;
+      }
+      // arredondar ao tick
+      const mult = slPrice / tick;
+      slPrice =
+        params.side === 'Buy' ? Math.floor(mult) * tick : Math.ceil(mult) * tick;
+    }
+  } catch {
+    // usa sl original
+  }
+
+  const slStr = formatBybitPrice(slPrice);
   let lastErr = '';
+
   for (let attempt = 0; attempt < 4; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 350 * attempt));
 
@@ -296,12 +337,7 @@ export async function ensureBybitStopLoss(params: {
         const idx = active.positionIdx;
         positionIdx = idx === 1 || idx === 2 ? idx : 0;
         if (active.stopLoss && parseFloat(active.stopLoss) > 0) {
-          const want = parseFloat(params.stopLoss);
-          const have = parseFloat(active.stopLoss);
-          // Já tem SL próximo do pedido — OK
-          if (Number.isFinite(have) && Number.isFinite(want) && Math.abs(have - want) / want < 0.02) {
-            return { ok: true, method: 'position' };
-          }
+          return { ok: true, method: 'position', stopLoss: active.stopLoss };
         }
       }
     } catch (e) {
@@ -312,7 +348,7 @@ export async function ensureBybitStopLoss(params: {
       try {
         await setBybitTradingStop({
           symbol: params.symbol,
-          stopLoss: params.stopLoss,
+          stopLoss: slStr,
           slTriggerBy: 'MarkPrice',
           positionIdx: idx === 0 ? positionIdx || 0 : idx,
         });
@@ -326,34 +362,55 @@ export async function ensureBybitStopLoss(params: {
           (p) => p.symbol === params.symbol && parseFloat(p.size) > 0 && p.side === params.side
         );
         if (active?.stopLoss && parseFloat(active.stopLoss) > 0) {
-          return { ok: true, method: 'position' };
+          return { ok: true, method: 'position', stopLoss: active.stopLoss };
         }
+        lastErr = 'trading-stop OK mas posição sem stopLoss';
       } catch (e) {
         lastErr = e instanceof Error ? e.message : String(e);
       }
     }
   }
 
-  // Fallback: ordem stop condicional (fecha posição se trading-stop falhar)
+  // Fallback: ordem stop condicional (closeOnTrigger)
   for (const idx of idxTries) {
     try {
       await createBybitOrder({
         symbol: params.symbol,
         side: params.side === 'Buy' ? 'Sell' : 'Buy',
         qty: params.qty,
-        triggerPrice: params.stopLoss,
+        triggerPrice: slStr,
         triggerBy: 'MarkPrice',
         triggerDirection: params.side === 'Buy' ? 2 : 1,
         reduceOnly: true,
         closeOnTrigger: true,
         positionIdx: idx,
       });
-      return { ok: true, method: 'conditional' };
+      return { ok: true, method: 'conditional', stopLoss: slStr };
     } catch (e) {
       lastErr = e instanceof Error ? e.message : String(e);
     }
   }
   return { ok: false, method: 'none', error: lastErr || 'SL não aplicado' };
+}
+
+async function fetchBybitMarkPrice(symbol: string): Promise<number | null> {
+  try {
+    const result = await signedGet<{ list?: Array<{ markPrice?: string; lastPrice?: string }> }>(
+      '/v5/market/tickers',
+      { category: 'linear', symbol }
+    );
+    const row = result?.list?.[0];
+    const mark = parseFloat(row?.markPrice || row?.lastPrice || '');
+    return Number.isFinite(mark) && mark > 0 ? mark : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatBybitPrice(price: number): string {
+  if (!(price > 0)) return '0';
+  const s = price.toFixed(10).replace(/\.?0+$/, '');
+  return s || String(price);
 }
 
 /** Cancela todas as ordens abertas / condicionais do par linear (inclui TP órfãs). */

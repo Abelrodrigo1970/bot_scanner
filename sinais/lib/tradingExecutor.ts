@@ -24,6 +24,7 @@ import {
   isBybitTestnet,
 } from './bybitConfig';
 import { getTradingEnabled } from './settings';
+import { prisma } from './db';
 import {
   createOrder,
   createAlgoOrder,
@@ -753,6 +754,85 @@ export async function cleanupBybitOrphanOpenOrders(): Promise<{
   }
 
   return { cancelledSymbols, errors };
+}
+
+/**
+ * Para cada posição Bybit sem stopLoss, tenta aplicar o SL do sinal IN_PROGRESS.
+ * Corre no cron de cleanup / fim dos jobs 15m — recupera SL perdido ou nunca aplicado.
+ */
+export async function syncBybitMissingStopLosses(): Promise<{
+  checked: number;
+  fixed: number;
+  skipped: number;
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  let checked = 0;
+  let fixed = 0;
+  let skipped = 0;
+
+  const tradingEnabled = await getTradingEnabled();
+  if (!tradingEnabled || !hasBybitCredentials() || !canExecuteOnBybit()) {
+    return { checked, fixed, skipped, errors };
+  }
+
+  try {
+    const positions = await getBybitPositionRisk();
+    const open = positions.filter(
+      (p) => parseFloat(p.size) > 0 && p.side !== 'None'
+    );
+    checked = open.length;
+
+    for (const pos of open) {
+      if (pos.stopLoss && parseFloat(pos.stopLoss) > 0) {
+        skipped++;
+        continue;
+      }
+
+      const direction = pos.side === 'Buy' ? 'BUY' : 'SELL';
+      const signal = await prisma.signal.findFirst({
+        where: {
+          symbol: pos.symbol,
+          direction,
+          status: 'IN_PROGRESS',
+        },
+        orderBy: { generatedAt: 'desc' },
+      });
+
+      let sl = signal?.stopLoss != null ? Number(signal.stopLoss) : NaN;
+      const avg = parseFloat(pos.avgPrice);
+      if (!(sl > 0) && avg > 0) {
+        // fallback 5% se não houver sinal
+        sl = pos.side === 'Buy' ? avg * 0.95 : avg * 1.05;
+      }
+      if (!(sl > 0)) {
+        errors.push(`${pos.symbol}: sem SL calculável`);
+        continue;
+      }
+
+      const tick = await getBybitTickSize(pos.symbol);
+      const slStr = roundPriceStopLoss(sl, Number.isFinite(tick) && tick > 0 ? tick : 0.01, direction);
+      const result = await ensureBybitStopLoss({
+        symbol: pos.symbol,
+        side: pos.side as 'Buy' | 'Sell',
+        stopLoss: slStr,
+        qty: pos.size,
+      });
+
+      if (result.ok) {
+        fixed++;
+        console.log(
+          `[Bybit sync SL] ${pos.symbol} ${pos.side} → ${result.stopLoss ?? slStr} (${result.method})`
+        );
+      } else {
+        errors.push(`${pos.symbol}: ${result.error ?? 'falhou'}`);
+      }
+    }
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : String(e));
+  }
+
+  return { checked, fixed, skipped, errors };
 }
 
 /**

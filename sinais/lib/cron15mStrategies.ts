@@ -26,6 +26,7 @@ import {
   cleanupBybitOrphanOpenOrders,
   executeSignalReal,
   inspectActivePositionForSymbol,
+  syncBybitMissingStopLosses,
 } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 import { runEngolfo15mPipeline } from '@/lib/engolfo15mStrategy';
@@ -228,6 +229,13 @@ async function runMaCross15mWorker(
     console.log(
       `[${logTag} BG] Bybit órfãs: cancelados ${orphanCleanup.cancelledSymbols.length} símbolo(s)` +
         (orphanCleanup.errors.length ? `; erros: ${orphanCleanup.errors.join('; ')}` : '')
+    );
+  }
+  const slSync = await syncBybitMissingStopLosses();
+  if (slSync.fixed > 0 || slSync.errors.length > 0) {
+    console.log(
+      `[${logTag} BG] Bybit SL sync: fixed=${slSync.fixed}/${slSync.checked}` +
+        (slSync.errors.length ? `; erros: ${slSync.errors.join('; ')}` : '')
     );
   }
   console.log(
