@@ -36,6 +36,12 @@ export const UNIVERSE_CODE_LATERAL_VOLATILE = 'UNIVERSE_LATERAL_VOLATILE_4H' as 
 /** Top 50 YTD desde 1 Jan com market cap > $60M (CoinGecko). */
 export const UNIVERSE_CODE_YTD_MCAP60 = 'UNIVERSE_TOP50_YTD_MCAP60M' as const;
 
+/** Preço lastPrice entre min e max USDT (todos os perps que cabem na faixa). */
+export const UNIVERSE_CODE_PRICE_RANGE = 'UNIVERSE_LAST_PRICE_RANGE_USDT' as const;
+
+export const PRICE_RANGE_MIN_DEFAULT = 0.65;
+export const PRICE_RANGE_MAX_DEFAULT = 0.8;
+
 export const YTD_MCAP60_MIN_USD = 60_000_000;
 export const YTD_MCAP60_RESULT_LIMIT = 50;
 
@@ -120,6 +126,17 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
     resultLimit: YTD_MCAP60_RESULT_LIMIT,
     minMarketCapUsd: YTD_MCAP60_MIN_USD,
   },
+  UNIVERSE_LAST_PRICE_RANGE_USDT: {
+    ruleType: 'LAST_PRICE_RANGE',
+    maPeriod: 0,
+    minDistancePct: null,
+    maxDistancePct: null,
+    timeframe: '24h',
+    minQuoteVolume: 500_000,
+    candidateLimit: 2000,
+    minPrice: PRICE_RANGE_MIN_DEFAULT,
+    maxPrice: PRICE_RANGE_MAX_DEFAULT,
+  },
 };
 
 /** Lateral EMA21/70 — só às 00h e 12h (Europe/Lisbon) via cron dedicado. */
@@ -190,6 +207,7 @@ export function isTickerRankUniverseScan(code: string): boolean {
     rt === 'TOP_PRICE_CHANGE_24H' ||
     rt === 'TOP_VOLUME_24H' ||
     rt === 'TOP_YTD_MCAP' ||
+    rt === 'LAST_PRICE_RANGE' ||
     rt === 'RSI_ABOVE' ||
     rt === 'RSI_BELOW' ||
     rt === 'LATERAL_VOLATILE'
@@ -262,6 +280,11 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Top 50 perpétuos USDT com melhor valorização desde 1 de janeiro (abertura da 1.ª vela diária), filtrados por market cap CoinGecko > $60M e volume 24h ≥ $1M. Ordenados por % YTD. Actualização no cron de 4h (run-universe-scans).',
     strategyNames: '— (universo disponível para estratégias)',
   },
+  UNIVERSE_LAST_PRICE_RANGE_USDT: {
+    displayName: `Preço $${PRICE_RANGE_MIN_DEFAULT}–$${PRICE_RANGE_MAX_DEFAULT}`,
+    description: `Todos os perpétuos USDT com lastPrice entre $${PRICE_RANGE_MIN_DEFAULT} e $${PRICE_RANGE_MAX_DEFAULT} (inclusive). Ordenados por volume 24h. Mín. 500k USDT volume. Para faixa $0.065–$0.080 altera minPrice/maxPrice no definition ou no POST (?min=0.065&max=0.08). Cron 4h.`,
+    strategyNames: '— (screener; sem estratégia ligada)',
+  },
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
@@ -272,6 +295,8 @@ export const SCANNER_ROTATION_NOTES: Record<string, string> = {
     'Legado RSI <32 4h. A estratégia activa usa Scanner 6 em 15m (cron run-15m / run-rsi-vendido).',
   ytd_mcap60:
     'Universo YTD (mcap > $60M) disponível para ligar a estratégias via dataKey UNIVERSE_TOP50_YTD_MCAP60M.',
+  price_range:
+    'Todos os perps USDT com preço no intervalo configurado (default $0.65–$0.80). Sem estratégia ligada — screener.',
 };
 
 export const SCANNER_UI_ROUTES = [
@@ -283,6 +308,7 @@ export const SCANNER_UI_ROUTES = [
   { scannerId: 'rsi_vendido', code: UNIVERSE_CODE_RSI_VENDIDO },
   { scannerId: 'lateral_volatile', code: UNIVERSE_CODE_LATERAL_VOLATILE },
   { scannerId: 'ytd_mcap60', code: UNIVERSE_CODE_YTD_MCAP60 },
+  { scannerId: 'price_range', code: UNIVERSE_CODE_PRICE_RANGE },
 ] as const;
 
 export function getScannerByUiId(scannerId: string) {

@@ -2,7 +2,13 @@
  * Scanners de universo: filtra perpétuos USDT por regra vs média móvel (SMA ou EMA).
  */
 
-import { fetchCandles, fetchTopSymbolsByVolume, fetchTopPriceChange24hTickers, type Candle } from './marketData';
+import {
+  fetchCandles,
+  fetchTopSymbolsByVolume,
+  fetchTopPriceChange24hTickers,
+  fetchUsdtPerpTickersInPriceRange,
+  type Candle,
+} from './marketData';
 import {
   calculateEMA,
   calculateLastEMA,
@@ -39,6 +45,10 @@ export interface UniverseScanDefinition {
   lookbackDays?: number;
   /** YTD+mcap: market cap mínimo USD. */
   minMarketCapUsd?: number;
+  /** LAST_PRICE_RANGE: preço mínimo USDT (inclusive). */
+  minPrice?: number;
+  /** LAST_PRICE_RANGE: preço máximo USDT (inclusive). */
+  maxPrice?: number;
 }
 
 function maAtClose(closes: number[], def: UniverseScanDefinition): number | null {
@@ -63,6 +73,27 @@ const BATCH_DELAY_MS = 120;
 async function scanTopPriceChange24hUniverse(def: UniverseScanDefinition): Promise<UniverseScanRow[]> {
   const limit = Math.max(1, Math.floor(def.resultLimit ?? def.candidateLimit ?? 30));
   const tickers = await fetchTopPriceChange24hTickers(limit, def.minQuoteVolume);
+  return tickers.map((t) => ({
+    symbol: t.symbol,
+    close: t.lastPrice,
+    ma: t.quoteVolume,
+    pctFromMa: t.priceChangePercent,
+  }));
+}
+
+/** LAST_PRICE_RANGE: todos os USDT perps com lastPrice em [minPrice, maxPrice]. */
+async function scanLastPriceRangeUniverse(def: UniverseScanDefinition): Promise<UniverseScanRow[]> {
+  const minPrice = Number(def.minPrice ?? 0.65);
+  const maxPrice = Number(def.maxPrice ?? 0.8);
+  if (!(Number.isFinite(minPrice) && Number.isFinite(maxPrice))) {
+    throw new Error('LAST_PRICE_RANGE exige minPrice/maxPrice numéricos');
+  }
+  const tickers = await fetchUsdtPerpTickersInPriceRange(
+    minPrice,
+    maxPrice,
+    def.minQuoteVolume,
+    def.resultLimit
+  );
   return tickers.map((t) => ({
     symbol: t.symbol,
     close: t.lastPrice,
@@ -213,6 +244,9 @@ export async function scanSymbolUniverse(
 ): Promise<UniverseScanRow[]> {
   if (def.ruleType === 'TOP_PRICE_CHANGE_24H') {
     return scanTopPriceChange24hUniverse(def);
+  }
+  if (def.ruleType === 'LAST_PRICE_RANGE') {
+    return scanLastPriceRangeUniverse(def);
   }
   if (def.ruleType === 'TOP_YTD_MCAP') {
     return scanTopYtdMcapUniverse({

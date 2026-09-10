@@ -1309,6 +1309,49 @@ export async function fetchTopVolume24hTickers(
   }
 }
 
+/**
+ * Todos os perpétuos USDT com lastPrice em [minPrice, maxPrice], ordenados por volume 24h.
+ */
+export async function fetchUsdtPerpTickersInPriceRange(
+  minPrice: number,
+  maxPrice: number,
+  minQuoteVolume: number = 0,
+  resultLimit?: number
+): Promise<TopVolume24hTickerRow[]> {
+  const lo = Math.min(minPrice, maxPrice);
+  const hi = Math.max(minPrice, maxPrice);
+  try {
+    const data = await fetchUsdtPerpTickers24hr();
+    const usdtPairs = data
+      .filter((ticker) => {
+        const price = parseFloat(ticker.lastPrice || '0');
+        return (
+          ticker.symbol.endsWith('USDT') &&
+          !ticker.symbol.includes('BUSD') &&
+          Number.isFinite(price) &&
+          price >= lo &&
+          price <= hi &&
+          parseFloat(ticker.quoteVolume) >= minQuoteVolume
+        );
+      })
+      .map((ticker) => ({
+        symbol: ticker.symbol,
+        quoteVolume: parseFloat(ticker.quoteVolume),
+        lastPrice: parseFloat(ticker.lastPrice || '0'),
+        priceChangePercent: parseFloat(ticker.priceChangePercent || '0'),
+      }))
+      .sort((a, b) => b.quoteVolume - a.quoteVolume);
+
+    if (resultLimit != null && resultLimit > 0) {
+      return usdtPairs.slice(0, Math.floor(resultLimit));
+    }
+    return usdtPairs;
+  } catch (error) {
+    console.error('Erro ao buscar tickers por faixa de preço:', error);
+    throw error;
+  }
+}
+
 /** Top N perpétuos USDT por variação de preço 24h (Bybit ou Binance ticker/24hr). */
 export async function fetchTopPriceChange24hTickers(
   limit: number = 30,

@@ -242,6 +242,10 @@ export const DATA_SOURCE_MENU_ITEMS = [
     href: '/scanners/ytd_mcap60',
     label: 'YTD — Top 50 (mcap > $60M)',
   },
+  {
+    href: '/scanners/price_range',
+    label: 'Preço $0.65–$0.80 (todos os perps na faixa)',
+  },
 ] as const;
 
 

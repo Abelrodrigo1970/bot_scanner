@@ -80,7 +80,7 @@ const activeScanJobs = new Map<string, Promise<void>>();
  * POST: inicia scan Binance em background e devolve 202 imediatamente.
  * O cliente deve fazer polling ao GET para obter os resultados quando prontos.
  */
-export async function POST(_request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
     if (!(await isAuthenticated())) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
@@ -88,9 +88,18 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     const { code } = await context.params;
     const meta = BUILTIN_UNIVERSE_META[code];
-    const def = getBuiltinScanDefinition(code);
-    if (!meta || !def) {
+    const baseDef = getBuiltinScanDefinition(code);
+    if (!meta || !baseDef) {
       return NextResponse.json({ error: 'Scanner desconhecido' }, { status: 404 });
+    }
+
+    const def = { ...baseDef };
+    if (def.ruleType === 'LAST_PRICE_RANGE') {
+      const sp = request.nextUrl.searchParams;
+      const minRaw = sp.get('min');
+      const maxRaw = sp.get('max');
+      if (minRaw != null && Number.isFinite(Number(minRaw))) def.minPrice = Number(minRaw);
+      if (maxRaw != null && Number.isFinite(Number(maxRaw))) def.maxPrice = Number(maxRaw);
     }
 
     if (activeScanJobs.has(code)) {
@@ -108,7 +117,13 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     const job = (async () => {
       try {
-        console.log(`[universe-scans UI] A executar ${code}...`);
+        console.log(
+          `[universe-scans UI] A executar ${code}` +
+            (def.ruleType === 'LAST_PRICE_RANGE'
+              ? ` ($${def.minPrice}–$${def.maxPrice})`
+              : '') +
+            '...'
+        );
         const rows = await scanSymbolUniverse(def);
         await persistUniverseScan({ universeCode: code, source: 'ui/universe-scans', rows });
         console.log(`[universe-scans UI] ${code}: ${rows.length} símbolos gravados`);
@@ -127,6 +142,9 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         background: true,
         code,
         startedAt,
+        definition: def.ruleType === 'LAST_PRICE_RANGE'
+          ? { minPrice: def.minPrice, maxPrice: def.maxPrice }
+          : undefined,
         message: `Scan ${meta.displayName} iniciado em background. Recarregue a página em 2–3 minutos para ver os resultados.`,
       },
       { status: 202 }

@@ -34,6 +34,7 @@ export default function UniverseScannerPage() {
   const meta = code ? BUILTIN_UNIVERSE_META[code] : null;
   const scanDef = code ? getBuiltinScanDefinition(code) : null;
   const isPriceRankScanner = scanDef?.ruleType === 'TOP_PRICE_CHANGE_24H';
+  const isPriceRangeScanner = scanDef?.ruleType === 'LAST_PRICE_RANGE';
   const isYtdMcapScanner = scanDef?.ruleType === 'TOP_YTD_MCAP';
   const isRsiAboveScanner = scanDef?.ruleType === 'RSI_ABOVE';
   const isRsiBelowScanner = scanDef?.ruleType === 'RSI_BELOW';
@@ -42,21 +43,23 @@ export default function UniverseScannerPage() {
   const isVolumeRankScanner = scanDef?.ruleType === 'TOP_VOLUME_24H';
   const isTickerRankScanner =
     isPriceRankScanner ||
+    isPriceRangeScanner ||
     isYtdMcapScanner ||
     isRsiRankScanner ||
     isVolumeRankScanner ||
     isLateralVolatileScanner;
   /** Scanner 1 e Scanner 2: colunas de valor anterior + delta (como afastamento / % 24h). */
   const showPrevValueCols =
-    (!isTickerRankScanner || isPriceRankScanner || isYtdMcapScanner) && !isLateralVolatileScanner;
+    (!isTickerRankScanner || isPriceRankScanner || isPriceRangeScanner || isYtdMcapScanner) &&
+    !isLateralVolatileScanner;
   const prevMetricLabel = isYtdMcapScanner
     ? '% YTD ant.'
-    : isPriceRankScanner
+    : isPriceRankScanner || isPriceRangeScanner
       ? '% anterior'
       : 'Afast. anterior';
   const nowMetricLabel = isYtdMcapScanner
     ? '% YTD'
-    : isPriceRankScanner
+    : isPriceRankScanner || isPriceRangeScanner
     ? '% 24h'
     : isRsiRankScanner
       ? 'Δ RSI'
@@ -65,7 +68,10 @@ export default function UniverseScannerPage() {
         : isVolumeRankScanner
           ? '% 24h'
           : 'Afast. agora';
-  const deltaMetricLabel = isYtdMcapScanner || isPriceRankScanner ? 'Δ %' : 'Δ afast.';
+  const deltaMetricLabel =
+    isYtdMcapScanner || isPriceRankScanner || isPriceRangeScanner ? 'Δ %' : 'Δ afast.';
+  const priceRangeMin = scanDef?.minPrice ?? 0.65;
+  const priceRangeMax = scanDef?.maxPrice ?? 0.8;
   const rsiThresholdLabel = scanDef?.rsiThreshold ?? 75;
   const rsiPeriodLabel = scanDef?.rsiPeriod ?? 14;
   const maFastLabel = scanDef?.maFastPeriod ?? 21;
@@ -250,6 +256,22 @@ export default function UniverseScannerPage() {
                 <li>Mín. 500k USDT volume 24h — Binance Futures (ticker/24hr)</li>
                 <li>Colunas «% anterior» e «Δ %» comparam com o scan de 4 h anterior (como no Scanner 1)</li>
               </>
+            ) : isPriceRangeScanner ? (
+              <>
+                <li>
+                  Todos os perpétuos USDT com <strong>lastPrice</strong> entre{' '}
+                  <strong>
+                    ${priceRangeMin}–${priceRangeMax}
+                  </strong>{' '}
+                  (inclusive), ordenados por volume 24h
+                </li>
+                <li>Mín. 500k USDT volume 24h — Bybit/Binance Futures (ticker/24hr)</li>
+                <li>
+                  Para $0.065–$0.080: actualiza o scan com{' '}
+                  <code className="text-[10px]">?min=0.065&amp;max=0.08</code> no POST (ou altera
+                  defaults no código)
+                </li>
+              </>
             ) : isVolumeRankScanner ? (
               <>
                 <li>Top 30 perpétuos USDT por turnover 24h — Binance Futures (ticker/24hr)</li>
@@ -347,7 +369,7 @@ export default function UniverseScannerPage() {
                       <th
                         className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         title={
-                          isPriceRankScanner
+                          isPriceRankScanner || isPriceRangeScanner
                             ? 'Variação % 24h no scan anterior'
                             : 'Afastamento (% vs MA) no scan anterior'
                         }
@@ -368,7 +390,7 @@ export default function UniverseScannerPage() {
                       <th
                         className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         title={
-                          isPriceRankScanner
+                          isPriceRankScanner || isPriceRangeScanner
                             ? 'Mudança na variação % 24h vs scan anterior'
                             : 'Mudança na distância à média vs scan anterior'
                         }
@@ -409,10 +431,14 @@ export default function UniverseScannerPage() {
                           ) : (
                             <span
                               className={
-                                (isPriceRankScanner || isYtdMcapScanner) &&
+                                (isPriceRankScanner ||
+                                  isPriceRangeScanner ||
+                                  isYtdMcapScanner) &&
                                 item.pctFromMaPrev >= 0
                                   ? 'text-green-600 dark:text-green-400'
-                                  : isPriceRankScanner || isYtdMcapScanner
+                                  : isPriceRankScanner ||
+                                      isPriceRangeScanner ||
+                                      isYtdMcapScanner
                                     ? 'text-red-600 dark:text-red-400'
                                     : ''
                               }
