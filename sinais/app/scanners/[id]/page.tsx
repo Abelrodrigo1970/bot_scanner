@@ -175,6 +175,12 @@ export default function UniverseScannerPage() {
     return `$${usd.toFixed(0)}`;
   };
 
+  /** Chart TradingView Bybit USDT perpetual (ex.: BYBIT:BTCUSDT.P). */
+  const tradingViewUrl = (symbol: string) => {
+    const base = symbol.replace(/\.P$/i, '').toUpperCase();
+    return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(`BYBIT:${base}.P`)}`;
+  };
+
   if (!scanner || !meta) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -351,6 +357,9 @@ export default function UniverseScannerPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Símbolo
                     </th>
+                    <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                      TV
+                    </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Fecho
                     </th>
@@ -411,6 +420,17 @@ export default function UniverseScannerPage() {
                       </td>
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
                         {item.symbol}
+                      </td>
+                      <td className="px-3 py-4 text-center">
+                        <a
+                          href={tradingViewUrl(item.symbol)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium bg-violet-100 text-violet-800 hover:bg-violet-200 dark:bg-violet-900/40 dark:text-violet-200 dark:hover:bg-violet-800/60 transition-colors"
+                          title={`Abrir ${item.symbol} no TradingView (Bybit perp)`}
+                        >
+                          TV
+                        </a>
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-gray-900 dark:text-white">
                         ${formatPrice(item.close)}
