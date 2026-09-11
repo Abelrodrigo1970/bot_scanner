@@ -1,15 +1,19 @@
 /**
- * rsi_vendido LONG (15m) — Scanner 6 (acima SMA80 4h).
- * Entrada: RSI(14) 15m fecha abaixo de 28 (cruzamento).
- * SL −5% | TP1 +10% (30% pos.) | TP2 +48% (30% pos.).
- * Restante: RSI cruza para baixo da SMA(RSI) com RSI > 65.
+ * rsi_vendido LONG — Scanner 7 (RSI 1d > 69).
+ * Entrada: símbolo entra no Scanner 7 (novo no universo) e fecho 4h ≥ EMA70.
+ * Saída: sai do Scanner 7 OU fecho 4h cruza abaixo da EMA70.
+ * Reentrada: ainda no Scanner 7 e fecho 4h cruza acima da EMA70.
+ * SL −15% (segurança); sem TP — gestão por scanner + EMA.
  */
 
 import { prisma } from './db';
 import { fetchCandles } from './marketData';
-import { calculateRSISeries, calculateSMASeries, getCloses } from './indicators';
-import { UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H } from './symbolUniverseDefaults';
-import { resolveUniverseScanSymbolsTopN } from './universeScanPersistence';
+import { calculateLastEMA, getCloses } from './indicators';
+import { UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D } from './symbolUniverseDefaults';
+import {
+  buildScanItemsWithPreviousDelta,
+  getLatestUniverseScanPair,
+} from './universeScanPersistence';
 import { autoExecuteNewSignalsForStrategy, resolveStrategyExchange } from './autoExecuteNewSignals';
 import { closeActivePositionForSymbol, inspectActivePositionForSymbol } from './tradingExecutor';
 
@@ -20,22 +24,9 @@ export type RsiVendidoParams = {
   /** @deprecated Prefer universeTopN */
   topN?: number;
   chartTimeframe?: string;
-  rsiPeriod?: number;
-  /** Compra quando RSI fecha abaixo deste nível (cruzamento). */
-  rsiEntryLevel?: number;
-  /** SMA sobre o RSI (linha base). */
-  rsiMaPeriod?: number;
-  /** Saída do resto: cruzamento RSI×MA só conta se RSI > este nível. */
-  rsiTrailMinLevel?: number;
-  /** @deprecated Use rsiEntryLevel */
-  rsiLevel?: number;
+  /** EMA de saída / reentrada (4h). */
+  emaExitPeriod?: number;
   stopLossPct?: number;
-  tp1Pct?: number;
-  tp1Position?: number;
-  tp2Pct?: number;
-  tp2Position?: number;
-  /** 0 = sem fecho por tempo. */
-  closeAfterHours?: number;
   autoExecuteMinStrength?: number;
   allowBuy?: boolean;
   allowSell?: boolean;
@@ -48,9 +39,10 @@ export type RsiVendidoResult =
   | { status: 'skipped'; reason: string }
   | {
       status: 'done';
-      timedClosed: number;
-      rsiMaClosed: number;
+      leftScannerClosed: number;
+      emaClosed: number;
       signalsCreated: number;
+      reentries: number;
       executed: number;
       symbols: string[];
       closedSymbols: string[];
@@ -64,11 +56,11 @@ function parseParams(raw: string | null): RsiVendidoParams {
   }
 }
 
-function strengthForRsi(rsi: number): number {
-  if (rsi < 18) return 94;
-  if (rsi < 22) return 90;
-  if (rsi < 26) return 86;
-  if (rsi < 28) return 82;
+function strengthForScannerRsi(rsi: number): number {
+  if (rsi >= 85) return 94;
+  if (rsi >= 80) return 90;
+  if (rsi >= 75) return 86;
+  if (rsi >= 72) return 82;
   return 78;
 }
 
@@ -77,15 +69,13 @@ async function closeOpenLong(
   symbol: string,
   exchange: 'binance' | 'bybit',
   logPrefix: string,
-  reason: string,
-  timedClose = false
+  reason: string
 ): Promise<boolean> {
   const pos = await inspectActivePositionForSymbol(symbol, exchange);
   let closed = false;
   if (pos.inspectable && pos.hasPosition) {
     const result = await closeActivePositionForSymbol(symbol, exchange, {
-      rotationClose: !timedClose,
-      timedClose,
+      rotationClose: true,
     });
     closed = !!result.closed;
     if (result.closed) {
@@ -108,47 +98,110 @@ async function closeOpenLong(
   return closed;
 }
 
-async function closeTimedOutPositions(
-  strategyId: string,
-  defaultCloseHours: number,
-  exchange: 'binance' | 'bybit',
-  logPrefix: string
-): Promise<number> {
-  if (defaultCloseHours <= 0) return 0;
+type Closed4hBar = {
+  close: number;
+  prevClose: number;
+  ema: number;
+  prevEma: number;
+  barCloseTs: number;
+};
 
-  const openSignals = await prisma.signal.findMany({
-    where: { strategyId, status: 'IN_PROGRESS' },
-    select: { id: true, symbol: true, generatedAt: true, extraInfo: true },
-    orderBy: { generatedAt: 'asc' },
-  });
-
-  const now = Date.now();
-  let closed = 0;
-
-  for (const sig of openSignals) {
-    let closeHours = defaultCloseHours;
-    try {
-      const extra = sig.extraInfo ? (JSON.parse(sig.extraInfo) as Record<string, unknown>) : {};
-      if (extra.closeAfterHours != null) closeHours = Number(extra.closeAfterHours);
-    } catch {
-      /* keep default */
-    }
-    if (!(closeHours > 0)) continue;
-
-    const ageMs = now - sig.generatedAt.getTime();
-    if (ageMs < closeHours * 3600000) continue;
-
-    await closeOpenLong(strategyId, sig.symbol, exchange, logPrefix, `${closeHours}h`, true);
-    closed++;
+async function fetchClosed4hWithEma(
+  symbol: string,
+  chartTimeframe: string,
+  emaPeriod: number
+): Promise<Closed4hBar | null> {
+  const need = Math.max(emaPeriod + 10, 90);
+  let candles;
+  try {
+    candles = await fetchCandles(symbol, chartTimeframe as '4h', need);
+  } catch {
+    return null;
   }
+  if (candles.length < emaPeriod + 3) return null;
 
-  return closed;
+  const closed = candles.slice(0, -1);
+  const closes = getCloses(closed);
+  if (closes.length < emaPeriod + 2) return null;
+
+  const ema = calculateLastEMA(closes, emaPeriod);
+  const prevEma = calculateLastEMA(closes.slice(0, -1), emaPeriod);
+  if (ema == null || prevEma == null) return null;
+
+  const close = closes[closes.length - 1]!;
+  const prevClose = closes[closes.length - 2]!;
+  const bar = closed[closed.length - 1]!;
+  if (!(close > 0) || !(prevClose > 0)) return null;
+
+  return {
+    close,
+    prevClose,
+    ema,
+    prevEma,
+    barCloseTs: bar.timestamp,
+  };
+}
+
+async function createLongSignal(opts: {
+  strategyId: string;
+  strategyDisplayName: string;
+  symbol: string;
+  entryPrice: number;
+  stopLossPct: number;
+  chartTimeframe: string;
+  emaExitPeriod: number;
+  topN: number;
+  barCloseTs: number;
+  scannerRsi: number | null;
+  scannerRank: number | null;
+  scanRunId: string | null;
+  trigger: 'enter_scanner' | 'ema70_cross_up';
+  logPrefix: string;
+}): Promise<void> {
+  const stopLoss = opts.entryPrice * (1 - opts.stopLossPct);
+  const strength =
+    opts.scannerRsi != null ? strengthForScannerRsi(opts.scannerRsi) : 80;
+
+  console.log(
+    `${opts.logPrefix} 🟢 LONG ${opts.symbol} @ ${opts.entryPrice} (${opts.trigger} | Scanner 7 | 4h EMA${opts.emaExitPeriod} | SL −${(opts.stopLossPct * 100).toFixed(0)}%)`
+  );
+
+  await prisma.signal.create({
+    data: {
+      symbol: opts.symbol,
+      direction: 'BUY',
+      timeframe: opts.chartTimeframe,
+      strategyId: opts.strategyId,
+      strategyName: opts.strategyDisplayName,
+      entryPrice: opts.entryPrice,
+      stopLoss,
+      target1: null,
+      target2: null,
+      target3: null,
+      strength,
+      status: 'NEW',
+      extraInfo: JSON.stringify({
+        setup: 'rsi_vendido_s7_4h_ema70',
+        universe: UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
+        universeTopN: opts.topN,
+        barCloseTs: opts.barCloseTs,
+        trigger: opts.trigger,
+        scannerRsi: opts.scannerRsi,
+        scannerRank: opts.scannerRank,
+        scanRunId: opts.scanRunId,
+        emaExitPeriod: opts.emaExitPeriod,
+        stopLossPct: opts.stopLossPct,
+        chartTimeframe: opts.chartTimeframe,
+        executionProfile: `LONG Scanner 7 (RSI 1d>69) top ${opts.topN} | TF ${opts.chartTimeframe} | entra ao entrar no scanner (fecho ≥ EMA${opts.emaExitPeriod}) | sai ao sair do scanner ou fecho < EMA${opts.emaExitPeriod} | reentra se ainda no scanner e fecho cruza > EMA${opts.emaExitPeriod} | SL −${(opts.stopLossPct * 100).toFixed(0)}%`,
+      }),
+    },
+  });
 }
 
 export async function runRsiVendidoPipeline(options?: {
   logPrefix?: string;
 }): Promise<RsiVendidoResult> {
-  const logPrefix = options?.logPrefix ?? '[rsi_vendido 15m]';
+  const logPrefix = options?.logPrefix ?? '[rsi_vendido S7 4h]';
 
   const strategy = await prisma.strategy.findUnique({
     where: { name: RSI_VENDIDO_STRATEGY_NAME },
@@ -166,39 +219,29 @@ export async function runRsiVendidoPipeline(options?: {
   const params = parseParams(strategy.params);
   const topN = Math.max(
     1,
-    Math.min(80, Math.floor(Number(params.universeTopN ?? params.topN ?? 40)))
+    Math.min(120, Math.floor(Number(params.universeTopN ?? params.topN ?? 80)))
   );
-  const chartTimeframe = String(params.chartTimeframe ?? '15m');
-  const rsiPeriod = Math.max(2, Math.floor(Number(params.rsiPeriod ?? 14)));
-  const rsiEntryLevel = Number(params.rsiEntryLevel ?? params.rsiLevel ?? 28);
-  const rsiMaPeriod = Math.max(2, Math.floor(Number(params.rsiMaPeriod ?? 14)));
-  const rsiTrailMinLevel = Number(params.rsiTrailMinLevel ?? 65);
-  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.05));
-  const tp1Pct = Math.max(0.1, Number(params.tp1Pct ?? 10));
-  const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 30))));
-  const tp2Pct = Math.max(0.1, Number(params.tp2Pct ?? 48));
-  const tp2Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp2Position ?? 30))));
-  const closeAfterHours = Math.max(0, Math.floor(Number(params.closeAfterHours ?? 0)));
+  const chartTimeframe = String(params.chartTimeframe ?? '4h');
+  const emaExitPeriod = Math.max(2, Math.floor(Number(params.emaExitPeriod ?? 70)));
+  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.15));
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const allowBuy = params.buyEnabled !== false && params.allowBuy !== false;
 
-  const symbols = await resolveUniverseScanSymbolsTopN(
-    UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H,
-    topN
-  );
-  if (symbols.length === 0) {
+  const pair = await getLatestUniverseScanPair(UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D);
+  if (!pair.current || pair.current.rows.length === 0) {
     return {
       status: 'skipped',
-      reason: 'Scanner 6 vazio — correr run-universe-scans',
+      reason: 'Scanner 7 vazio — correr run-universe-scans',
     };
   }
 
-  const timedClosed = await closeTimedOutPositions(
-    strategy.id,
-    closeAfterHours,
-    exchange,
-    logPrefix
+  const allItems = buildScanItemsWithPreviousDelta(
+    pair.current.rows,
+    pair.previous?.rows ?? null
   );
+  const items = allItems.slice(0, topN);
+  const universeSet = new Set(items.map((r) => r.symbol));
+  const itemBySymbol = new Map(items.map((r) => [r.symbol, r]));
 
   const openLongs = await prisma.signal.findMany({
     where: {
@@ -209,78 +252,86 @@ export async function runRsiVendidoPipeline(options?: {
     select: { symbol: true },
   });
   const openLongSet = new Set(openLongs.map((s) => s.symbol));
-  const universeSymbols = new Set(symbols);
 
-  const startedAt = new Date();
-  let rsiMaClosed = 0;
-  let signalsCreated = 0;
-  const hitSymbols: string[] = [];
-  const closedSymbols: string[] = [];
-  const candleLimit = Math.min(500, Math.max(rsiPeriod + rsiMaPeriod + 40, 120));
-
-  const toCheck = new Set<string>([...universeSymbols, ...openLongSet]);
   console.log(
-    `${logPrefix} Scanner 6 top ${topN}: ${symbols.length} símbolos | abertos ${openLongSet.size}`
+    `${logPrefix} Scanner 7 top ${topN}: ${universeSet.size} | abertos ${openLongSet.size} | prevScan=${pair.previous ? 'yes' : 'no'}`
   );
 
+  const startedAt = new Date();
+  let leftScannerClosed = 0;
+  let emaClosed = 0;
+  let signalsCreated = 0;
+  let reentries = 0;
+  const hitSymbols: string[] = [];
+  const closedSymbols: string[] = [];
+
+  // 1) Saiu do Scanner 7 → fecha LONG
+  for (const symbol of [...openLongSet]) {
+    if (universeSet.has(symbol)) continue;
+    await closeOpenLong(strategy.id, symbol, exchange, logPrefix, 'saiu Scanner 7');
+    leftScannerClosed++;
+    closedSymbols.push(symbol);
+    openLongSet.delete(symbol);
+  }
+
+  // 2) Ainda no scanner: fecho 4h < EMA70 → fecha; cruzamento ↑ → reentra; novo no scanner → entra
+  const toCheck = new Set<string>([...universeSet, ...openLongSet]);
+
   for (const symbol of toCheck) {
-    let candles;
-    try {
-      candles = await fetchCandles(symbol, chartTimeframe as '15m', candleLimit);
-    } catch (err) {
-      console.warn(`${logPrefix} ⚠️ Candles ${symbol}:`, err);
-      continue;
-    }
-    if (candles.length < rsiPeriod + rsiMaPeriod + 5) continue;
+    const bar = await fetchClosed4hWithEma(symbol, chartTimeframe, emaExitPeriod);
+    if (!bar) continue;
 
-    const closed = candles.slice(0, -1);
-    const closes = getCloses(closed);
-    const rsi = calculateRSISeries(closes, rsiPeriod);
-    const rsiMa = calculateSMASeries(rsi, rsiMaPeriod);
-    if (rsi.length < 2 || rsiMa.length < 2) continue;
+    const inUniverse = universeSet.has(symbol);
+    const hasOpen = openLongSet.has(symbol);
+    const row = itemBySymbol.get(symbol) ?? null;
+    const scannerRsi = row != null && Number.isFinite(row.pctFromMa) ? row.pctFromMa : null;
 
-    const curr = rsi[rsi.length - 1]!;
-    const prev = rsi[rsi.length - 2]!;
-    const currMa = rsiMa[rsiMa.length - 1];
-    const prevMa = rsiMa[rsiMa.length - 2];
-    const signalBar = closed[closed.length - 1]!;
-    const entryPrice = signalBar.close;
-    if (!(entryPrice > 0) || !Number.isFinite(curr) || !Number.isFinite(prev)) continue;
-
-    const hasOpenLong = openLongSet.has(symbol);
-
-    // Saída resto: RSI cruza para baixo da SMA(RSI) com RSI > 65
-    if (
-      hasOpenLong &&
-      currMa != null &&
-      prevMa != null &&
-      Number.isFinite(currMa) &&
-      Number.isFinite(prevMa) &&
-      curr > rsiTrailMinLevel &&
-      prev >= prevMa &&
-      curr < currMa
-    ) {
+    // Saída EMA: fecho 4h abaixo da EMA
+    if (hasOpen && inUniverse && bar.close < bar.ema) {
       await closeOpenLong(
         strategy.id,
         symbol,
         exchange,
         logPrefix,
-        `RSI×MA down RSI ${curr.toFixed(1)} > ${rsiTrailMinLevel}`
+        `fecho 4h < EMA${emaExitPeriod} (${bar.close.toFixed(6)} < ${bar.ema.toFixed(6)})`
       );
-      rsiMaClosed++;
+      emaClosed++;
       closedSymbols.push(symbol);
       openLongSet.delete(symbol);
-      console.log(
-        `${logPrefix} ⏹️ EXIT resto ${symbol} RSI ${prev.toFixed(1)}→${curr.toFixed(1)} cruza MA ${prevMa.toFixed(1)}→${currMa.toFixed(1)}`
-      );
-      continue;
     }
 
-    // Entrada: RSI fecha abaixo de 28 (cruzamento)
-    const crossBelow =
-      Number.isFinite(prev) && Number.isFinite(curr) && prev >= rsiEntryLevel && curr < rsiEntryLevel;
+    if (!allowBuy) continue;
 
-    if (!allowBuy || !crossBelow || !universeSymbols.has(symbol) || hasOpenLong) continue;
+    const hasOpenNow = openLongSet.has(symbol);
+    if (hasOpenNow || !inUniverse) continue;
+
+    const reclaimEma = bar.prevClose < bar.prevEma && bar.close >= bar.ema;
+    const isNew = !!row?.isNewInUniverse && !!pair.previous;
+    // Entrada ao entrar no scanner: exige fecho ≥ EMA70 (senão reentra no reclaim)
+    const enterNew = isNew && bar.close >= bar.ema;
+    // Reentrada: ainda no scanner e fecho volta acima da EMA70
+    const reenter = !isNew && reclaimEma;
+
+    if (!enterNew && !reenter) continue;
+
+    // Dedup mesmo barCloseTs
+    const recent = await prisma.signal.findFirst({
+      where: {
+        strategyId: strategy.id,
+        symbol,
+        generatedAt: { gte: new Date(Date.now() - 48 * 3600000) },
+      },
+      select: { extraInfo: true },
+      orderBy: { generatedAt: 'desc' },
+    });
+    if (recent?.extraInfo) {
+      try {
+        const ex = JSON.parse(recent.extraInfo) as { barCloseTs?: number };
+        if (ex.barCloseTs === bar.barCloseTs) continue;
+      } catch {
+        /* ignore */
+      }
+    }
 
     const openSame = await prisma.signal.findFirst({
       where: {
@@ -293,77 +344,31 @@ export async function runRsiVendidoPipeline(options?: {
     });
     if (openSame) continue;
 
-    const barCloseTs = signalBar.timestamp;
-    const recentSameBar = await prisma.signal.findFirst({
-      where: {
-        strategyId: strategy.id,
-        symbol,
-        generatedAt: { gte: new Date(Date.now() - 48 * 3600000) },
-      },
-      select: { id: true, extraInfo: true },
-      orderBy: { generatedAt: 'desc' },
-    });
-    if (recentSameBar?.extraInfo) {
-      try {
-        const ex = JSON.parse(recentSameBar.extraInfo) as { barCloseTs?: number };
-        if (ex.barCloseTs === barCloseTs) {
-          console.log(`${logPrefix} ⏭️ Cruzamento já sinalizado ${symbol} bar ${barCloseTs}`);
-          continue;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
-    const stopLoss = entryPrice * (1 - stopLossPct);
-    const target1 = entryPrice * (1 + tp1Pct / 100);
-    const target2 = entryPrice * (1 + tp2Pct / 100);
-    const strength = strengthForRsi(curr);
-
-    console.log(
-      `${logPrefix} 🟢 LONG ${symbol} @ ${entryPrice} (RSI ${prev.toFixed(1)}→${curr.toFixed(1)} < ${rsiEntryLevel} | SL −${(stopLossPct * 100).toFixed(0)}% | TP1 +${tp1Pct}% ${tp1Position}% | TP2 +${tp2Pct}% ${tp2Position}%)`
-    );
-
-    await prisma.signal.create({
-      data: {
-        symbol,
-        direction: 'BUY',
-        timeframe: chartTimeframe,
-        strategyId: strategy.id,
-        strategyName: strategy.displayName,
-        entryPrice,
-        stopLoss,
-        target1,
-        target2,
-        target3: null,
-        strength,
-        status: 'NEW',
-        extraInfo: JSON.stringify({
-          setup: 'rsi_vendido_15m',
-          universe: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H,
-          universeTopN: topN,
-          barCloseTs,
-          rsiPrev: Number(prev.toFixed(2)),
-          rsi: Number(curr.toFixed(2)),
-          rsiEntryLevel,
-          rsiMaPeriod,
-          rsiTrailMinLevel,
-          rsiPeriod,
-          stopLossPct,
-          tp1Pct,
-          tp1Position,
-          tp2Pct,
-          tp2Position,
-          closeAfterHours,
-          crossover: `RSI(${rsiPeriod}) ${chartTimeframe} fecha/cruza abaixo de ${rsiEntryLevel}`,
-          executionProfile: `LONG Scanner 6 top ${topN} | RSI(${rsiPeriod}) 15m < ${rsiEntryLevel} | SL −${(stopLossPct * 100).toFixed(0)}% | TP1 +${tp1Pct}% (${tp1Position}%) | TP2 +${tp2Pct}% (${tp2Position}%) | resto: RSI×SMA${rsiMaPeriod} down com RSI > ${rsiTrailMinLevel}`,
-        }),
-      },
+    await createLongSignal({
+      strategyId: strategy.id,
+      strategyDisplayName: strategy.displayName,
+      symbol,
+      entryPrice: bar.close,
+      stopLossPct,
+      chartTimeframe,
+      emaExitPeriod,
+      topN,
+      barCloseTs: bar.barCloseTs,
+      scannerRsi,
+      scannerRank: row?.rank ?? null,
+      scanRunId: pair.current.id,
+      trigger: enterNew ? 'enter_scanner' : 'ema70_cross_up',
+      logPrefix,
     });
 
     signalsCreated++;
+    if (reenter) reentries++;
     hitSymbols.push(symbol);
     openLongSet.add(symbol);
+  }
+
+  if (!pair.previous) {
+    console.log(`${logPrefix} Sem scan anterior — LONGs de «entrar no scanner» só no próximo ciclo`);
   }
 
   const minStrength = Number(params.autoExecuteMinStrength ?? 70);
@@ -375,14 +380,15 @@ export async function runRsiVendidoPipeline(options?: {
   });
 
   console.log(
-    `${logPrefix} Concluído: ${timedClosed} por tempo, ${rsiMaClosed} RSI×MA, ${signalsCreated} LONG, ${executed} executados`
+    `${logPrefix} Concluído: ${leftScannerClosed} saíram S7, ${emaClosed} EMA, ${signalsCreated} LONG (${reentries} reentradas), ${executed} executados`
   );
 
   return {
     status: 'done',
-    timedClosed,
-    rsiMaClosed,
+    leftScannerClosed,
+    emaClosed,
     signalsCreated,
+    reentries,
     executed,
     symbols: hitSymbols,
     closedSymbols,

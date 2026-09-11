@@ -254,18 +254,18 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA80_4H: {
     displayName: 'Scanner 6 — Acima SMA80 (4h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Universo do rsi_vendido LONG 15m.',
-    strategyNames: 'rsi_vendido LONG (15m)',
+      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Screener (sem estratégia activa ligada).',
+    strategyNames: '— (screener)',
   },
   UNIVERSE_RSI_ABOVE_69_1D: {
     displayName: `Scanner 7 — RSI > ${SCANNER_7_RSI_THRESHOLD} (1d)`,
     description: `Perpétuos USDT (top volume) com RSI(${SCANNER_7_RSI_PERIOD}) acima de ${SCANNER_7_RSI_THRESHOLD} em velas diárias, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h.`,
-    strategyNames: 'MA Cross 12×21 (15m, só COMPRA)',
+    strategyNames: 'MA Cross 12×21 (15m); rsi_vendido LONG (4h)',
   },
   UNIVERSE_RSI_BELOW_32_4H: {
     displayName: 'rsi_vendido — RSI < 32 (4h, legado)',
     description:
-      'Legado: RSI(14) 4h < 32. A estratégia rsi_vendido passou a usar Scanner 6 em 15m.',
+      'Legado: RSI(14) 4h < 32. A estratégia rsi_vendido passou a usar Scanner 7 em 4h + EMA70.',
     strategyNames: '— (legado)',
   },
   UNIVERSE_LATERAL_VOLATILE_4H: {
@@ -289,10 +289,10 @@ export const BUILTIN_UNIVERSE_META: Record<
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
   '2': 'Scanner 2 activo: engolfo top 3 + Liquidity Pools + Swing VWAP (15m). stch15long e RSI>80 descontinuados.',
-  '6': 'Scanner 6: universo do rsi_vendido LONG (15m) — RSI <28, SL −5%, TP1 +10% 30%, TP2 +48% 30%, resto RSI×MA>65.',
-  '7': 'MA Cross 12×21 (15m): só COMPRA no universo Scanner 7 (RSI 1d ≥ 69).',
+  '6': 'Scanner 6: screener SMA80 4h (sem estratégia activa).',
+  '7': 'Scanner 7: MA Cross 12×21 (15m) + rsi_vendido LONG (4h, EMA70). Universo RSI 1d ≥ 69.',
   rsi_vendido:
-    'Legado RSI <32 4h. A estratégia activa usa Scanner 6 em 15m (cron run-15m / run-rsi-vendido).',
+    'Legado RSI <32 4h. A estratégia activa usa Scanner 7 em 4h + EMA70 (cron run-15m / run-rsi-vendido).',
   ytd_mcap60:
     'Universo YTD (mcap > $60M) disponível para ligar a estratégias via dataKey UNIVERSE_TOP50_YTD_MCAP60M.',
   price_range:

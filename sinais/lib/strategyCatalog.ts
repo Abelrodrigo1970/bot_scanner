@@ -128,10 +128,10 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     cronLabel: 'Cron 15m',
 
-    timeframe: '15m',
+    timeframe: '4h',
 
     universe:
-      'Scanner 6 (SMA80 4h); RSI(14) 15m < 28 → LONG SL −5% | TP1 +10% 30% | TP2 +48% 30% | resto RSI×SMA14 down com RSI>65',
+      'Scanner 7 (RSI 1d > 69); entra LONG ao entrar no scanner (fecho 4h ≥ EMA70); sai ao sair do scanner ou fecho < EMA70; reentra se ainda no scanner e fecho ≥ EMA70; SL −15%; sem TP',
 
   },
 
@@ -362,7 +362,7 @@ export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; descrip
     title: 'Cron 15m',
 
     description:
-      'MA Cross 12×30 (S1) + MA Cross 12×21 (S7 BUY) + engolfo (S2) + LP + Swing VWAP + Rompimento 20 + rsi_vendido (S6)',
+      'MA Cross 12×30 (S1) + MA Cross 12×21 (S7 BUY) + engolfo (S2) + LP + Swing VWAP + Rompimento 20 + rsi_vendido (S7 4h)',
 
   },
 

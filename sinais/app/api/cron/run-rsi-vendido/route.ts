@@ -6,7 +6,7 @@ import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 export const dynamic = 'force-dynamic';
 
 /**
- * Cron / manual: rsi_vendido LONG 15m (Scanner 6).
+ * Cron / manual: rsi_vendido LONG 4h (Scanner 7 + EMA70).
  * Também incluído no pipeline run-15m.
  */
 export async function GET(request: NextRequest) {

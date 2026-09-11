@@ -140,11 +140,11 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   },
   {
     strategyName: 'RSI_VENDIDO_4H',
-    displayNames: ['rsi_vendido LONG (15m)', 'rsi_vendido LONG (4h)'],
-    buy: side(5, 10, 30, 48, 30, 0),
+    displayNames: ['rsi_vendido LONG (4h)', 'rsi_vendido LONG (15m)'],
+    buy: side(15, 0, 0, 0, 0, 0),
     sell: null,
     summary:
-      'Scanner 6. RSI(14) 15m <28 LONG. SL −5%. TP1 +10% 30% | TP2 +48% 30%. Restante RSI×SMA14 down com RSI>65.',
+      'Scanner 7. LONG ao entrar (fecho 4h ≥ EMA70). Sai ao sair do scanner ou fecho < EMA70. Reentra reclaim EMA70. SL −15%. Sem TP.',
   },
   {
     strategyName: 'SCANNER3_RSI_FLIP_1H',

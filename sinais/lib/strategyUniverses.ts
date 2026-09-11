@@ -194,16 +194,16 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     strategyName: 'RSI_VENDIDO_4H',
 
-    displayLabel: 'rsi_vendido LONG (15m)',
+    displayLabel: 'rsi_vendido LONG (4h)',
 
-    signalTimeframes: ['15m'],
+    signalTimeframes: ['4h'],
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
+    dataKey: 'UNIVERSE_RSI_ABOVE_69_1D',
 
     description:
-      'Scanner 6. LONG se RSI(14) 15m fecha <28. SL −5%. TP1 +10% 30% | TP2 +48% 30%. Restante: RSI×SMA14 down com RSI>65.',
+      'Scanner 7. LONG ao entrar (fecho 4h ≥ EMA70). Sai ao sair do scanner ou fecho < EMA70. Reentra se ainda no scanner e fecho volta ≥ EMA70. SL −15%. Sem TP.',
 
     refresh: '/api/cron/run-15m (e run-rsi-vendido)',
 
@@ -228,11 +228,11 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/6',
-    label: 'Scanner 6 — Acima SMA80 4h (rsi_vendido 15m)',
+    label: 'Scanner 6 — Acima SMA80 4h',
   },
   {
     href: '/scanners/7',
-    label: 'Scanner 7 — RSI > 69 (1d)',
+    label: 'Scanner 7 — RSI > 69 (1d) (MA Cross 12×21 + rsi_vendido)',
   },
   {
     href: '/scanners/lateral_volatile',

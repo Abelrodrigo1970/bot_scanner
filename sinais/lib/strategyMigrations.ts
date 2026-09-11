@@ -1138,25 +1138,17 @@ export const STCH15LONG_PARAMS = {
   exchange: 'bybit',
 } as const;
 
-export const RSI_VENDIDO_4H_DISPLAY = 'rsi_vendido LONG (15m)';
+export const RSI_VENDIDO_4H_DISPLAY = 'rsi_vendido LONG (4h)';
 
 export const RSI_VENDIDO_4H_DESCRIPTION =
-  'Universo Scanner 6 (fecho acima SMA80 4h). LONG em 15m quando RSI(14) fecha abaixo de 28. SL −5%. TP1 +10% (30% pos.) | TP2 +48% (30% pos.). Restante: RSI cruza para baixo da SMA(14) do RSI com RSI > 65. Só LONG.';
+  'Universo Scanner 7 (RSI 1d > 69). LONG 4h ao entrar no scanner (fecho ≥ EMA70). Sai ao sair do scanner ou fecho 4h < EMA70. Reentra se ainda no scanner e fecho volta ≥ EMA70. SL −15%. Sem TP. Só LONG.';
 
 export const RSI_VENDIDO_4H_PARAMS = {
-  universeTopN: 40,
-  topN: 40,
-  chartTimeframe: '15m',
-  rsiPeriod: 14,
-  rsiEntryLevel: 28,
-  rsiMaPeriod: 14,
-  rsiTrailMinLevel: 65,
-  stopLossPct: 0.05,
-  tp1Pct: 10,
-  tp1Position: 30,
-  tp2Pct: 48,
-  tp2Position: 30,
-  closeAfterHours: 0,
+  universeTopN: 80,
+  topN: 80,
+  chartTimeframe: '4h',
+  emaExitPeriod: 70,
+  stopLossPct: 0.15,
   autoExecuteMinStrength: 70,
   allowBuy: true,
   buyEnabled: true,
@@ -1165,7 +1157,7 @@ export const RSI_VENDIDO_4H_PARAMS = {
   exchange: 'bybit',
 } as const;
 
-/** Garante registo/descrição da estratégia rsi_vendido LONG 15m (Scanner 6). */
+/** Garante registo/descrição da estratégia rsi_vendido LONG 4h (Scanner 7). */
 export async function syncRsiVendido4hConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -1196,16 +1188,8 @@ export async function syncRsiVendido4hConfig(
     universeTopN: RSI_VENDIDO_4H_PARAMS.universeTopN,
     topN: RSI_VENDIDO_4H_PARAMS.topN,
     chartTimeframe: RSI_VENDIDO_4H_PARAMS.chartTimeframe,
-    rsiPeriod: RSI_VENDIDO_4H_PARAMS.rsiPeriod,
-    rsiEntryLevel: RSI_VENDIDO_4H_PARAMS.rsiEntryLevel,
-    rsiMaPeriod: RSI_VENDIDO_4H_PARAMS.rsiMaPeriod,
-    rsiTrailMinLevel: RSI_VENDIDO_4H_PARAMS.rsiTrailMinLevel,
+    emaExitPeriod: RSI_VENDIDO_4H_PARAMS.emaExitPeriod,
     stopLossPct: RSI_VENDIDO_4H_PARAMS.stopLossPct,
-    tp1Pct: RSI_VENDIDO_4H_PARAMS.tp1Pct,
-    tp1Position: RSI_VENDIDO_4H_PARAMS.tp1Position,
-    tp2Pct: RSI_VENDIDO_4H_PARAMS.tp2Pct,
-    tp2Position: RSI_VENDIDO_4H_PARAMS.tp2Position,
-    closeAfterHours: RSI_VENDIDO_4H_PARAMS.closeAfterHours,
     allowBuy: RSI_VENDIDO_4H_PARAMS.allowBuy,
     buyEnabled: RSI_VENDIDO_4H_PARAMS.buyEnabled,
     allowSell: RSI_VENDIDO_4H_PARAMS.allowSell,
@@ -1213,6 +1197,16 @@ export async function syncRsiVendido4hConfig(
     exchange: userExchange,
     autoExecuteMinStrength: userAutoStrength,
   };
+  // Remove params legados (RSI 15m / TPs Scanner 6)
+  delete (next as Record<string, unknown>).rsiPeriod;
+  delete (next as Record<string, unknown>).rsiEntryLevel;
+  delete (next as Record<string, unknown>).rsiMaPeriod;
+  delete (next as Record<string, unknown>).rsiTrailMinLevel;
+  delete (next as Record<string, unknown>).tp1Pct;
+  delete (next as Record<string, unknown>).tp1Position;
+  delete (next as Record<string, unknown>).tp2Pct;
+  delete (next as Record<string, unknown>).tp2Position;
+  delete (next as Record<string, unknown>).closeAfterHours;
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== RSI_VENDIDO_4H_DISPLAY ||

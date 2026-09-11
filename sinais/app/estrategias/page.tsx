@@ -785,34 +785,24 @@ export default function EstrategiasPage() {
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               <strong>rsi_vendido</strong> — <strong>LONG</strong> no{' '}
-              <strong>Scanner 6</strong> (top {p.universeTopN ?? p.topN ?? 40}). Quando o{' '}
-              <strong>RSI({p.rsiPeriod ?? 14})</strong> em <strong>{p.chartTimeframe ?? '15m'}</strong>{' '}
-              fecha abaixo de <strong>{p.rsiEntryLevel ?? 28}</strong>. SL −
-              {((p.stopLossPct ?? 0.05) * 100).toFixed(0)}%. TP1 +{p.tp1Pct ?? 10}% (
-              {p.tp1Position ?? 30}% pos.) | TP2 +{p.tp2Pct ?? 48}% ({p.tp2Position ?? 30}% pos.).
-              Restante: RSI cruza para baixo da SMA({p.rsiMaPeriod ?? 14}) com RSI &gt;{' '}
-              {p.rsiTrailMinLevel ?? 65}. Só LONG. Cron{' '}
+              <strong>Scanner 7</strong> (RSI 1d &gt; 69, top {p.universeTopN ?? p.topN ?? 80}).
+              Entra ao <strong>entrar no scanner</strong> com fecho{' '}
+              <strong>{p.chartTimeframe ?? '4h'}</strong> ≥ EMA{p.emaExitPeriod ?? 70}. Sai ao sair
+              do scanner ou fecho &lt; EMA{p.emaExitPeriod ?? 70}. Reentra se ainda no scanner e
+              fecho volta ≥ EMA{p.emaExitPeriod ?? 70}. SL −
+              {((p.stopLossPct ?? 0.15) * 100).toFixed(0)}%. Sem TP. Cron{' '}
               <code className="text-[10px]">run-15m</code> /{' '}
               <code className="text-[10px]">run-rsi-vendido</code>.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Top N Scanner 6', p.universeTopN ?? p.topN ?? 40, (v) =>
-                upd({ universeTopN: Math.min(80, Math.max(1, v)), topN: Math.min(80, Math.max(1, v)) })
+              {numField('Top N Scanner 7', p.universeTopN ?? p.topN ?? 80, (v) =>
+                upd({ universeTopN: Math.min(120, Math.max(1, v)), topN: Math.min(120, Math.max(1, v)) })
               )}
-              {numField('RSI entrada (cruzar abaixo)', p.rsiEntryLevel ?? 28, (v) =>
-                upd({ rsiEntryLevel: v })
+              {numField('EMA saída/reentrada', p.emaExitPeriod ?? 70, (v) =>
+                upd({ emaExitPeriod: Math.min(200, Math.max(2, v)) })
               )}
-              {numField('Período RSI', p.rsiPeriod ?? 14, (v) => upd({ rsiPeriod: v }))}
-              {numField('SMA do RSI (base)', p.rsiMaPeriod ?? 14, (v) => upd({ rsiMaPeriod: v }))}
-              {numField('RSI mín. saída (×MA)', p.rsiTrailMinLevel ?? 65, (v) =>
-                upd({ rsiTrailMinLevel: v })
-              )}
-              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.05) * 100, (v) =>
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.15) * 100, (v) =>
                 upd({ stopLossPct: v / 100 }), 0.5)}
-              {numField('TP1 lucro (%)', p.tp1Pct ?? 10, (v) => upd({ tp1Pct: v }), 0.5)}
-              {numField('TP1 % posição', p.tp1Position ?? 30, (v) => upd({ tp1Position: v }))}
-              {numField('TP2 lucro (%)', p.tp2Pct ?? 48, (v) => upd({ tp2Pct: v }), 0.5)}
-              {numField('TP2 % posição', p.tp2Position ?? 30, (v) => upd({ tp2Position: v }))}
               {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 70, (v) =>
                 upd({ autoExecuteMinStrength: v })
               )}
