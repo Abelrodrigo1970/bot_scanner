@@ -416,6 +416,24 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     rsiVendido = { status: 'not-found' };
   }
 
+  // Sempre sincroniza SL em falta (não depende só do worker MA Cross)
+  try {
+    const orphanCleanup = await cleanupBybitOrphanOpenOrders();
+    if (orphanCleanup.cancelledSymbols.length > 0 || orphanCleanup.errors.length > 0) {
+      console.log(
+        `[Run-15m] Bybit órfãs: cancelados ${orphanCleanup.cancelledSymbols.length}` +
+          (orphanCleanup.errors.length ? `; erros: ${orphanCleanup.errors.join('; ')}` : '')
+      );
+    }
+    const slSync = await syncBybitMissingStopLosses();
+    console.log(
+      `[Run-15m] Bybit SL sync: fixed=${slSync.fixed}/${slSync.checked} skipped=${slSync.skipped}` +
+        (slSync.errors.length ? `; erros: ${slSync.errors.slice(0, 12).join('; ')}` : '')
+    );
+  } catch (err) {
+    console.error('[Run-15m] Bybit SL sync falhou:', err);
+  }
+
   return {
     maCross,
     maCross12x21S2,

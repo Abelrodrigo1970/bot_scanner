@@ -6,7 +6,8 @@
 
 | Endpoint | Estratégias | Frequência |
 |----------|-------------|------------|
-| `/api/cron/run-15m` | **Liquidity Pools** + **Swing VWAP** (S2) + **MA Cross 12×30** (S1) + **MA Cross 12×21** (S7) + **engolfo** (S2) + **Rompimento 20** (S1) | `*/15 * * * *` (24h) |
+| `/api/cron/run-15m` | **Liquidity Pools** + **Swing VWAP** (S2) + **MA Cross 12×30** (S1) + **MA Cross 12×21** (S7) + **engolfo** (S2) + **Rompimento 20** (S1) + **rsi_vendido** (S7) + **sync SL Bybit** | `*/15 * * * *` (24h) |
+| `/api/cron/cleanup-bybit-orphan-orders` | Cancela TP/SL órfãs + **reaplica SL** em posições Bybit sem `stopLoss` | `*/10 * * * *` (recomendado) |
 | `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** + Scanner 6 + Scanner 7 (RSI 1d) + YTD mcap60 | `0 */4 * * *` (24h) |
 | `/api/cron/run-lateral-volatile` | **Lateral EMA21/70** (só 00h e 12h Lisboa; ignora outras horas) | `0 0,12 * * *` |
 | `/api/cron/run-liquidity-pools` | Liquidity Pools 15m (backup manual) | opcional |
@@ -22,9 +23,10 @@
 
 2 jobs com header `Authorization: Bearer SEU_CRON_SECRET`:
 
-1. **Liquidity Pools + Swing VWAP + MA Cross + engolfo + Rompimento 20 (15m)** — `run-15m` — `*/15 * * * *`
+1. **Liquidity Pools + Swing VWAP + MA Cross + engolfo + Rompimento 20 + rsi_vendido (15m)** — `run-15m` — `*/15 * * * *`
 2. **Scanners** — `run-universe-scans` — `0 */4 * * *`
 3. **Lateral EMA21/70** — `run-lateral-volatile` — `0 0,12 * * *` (00h e 12h Lisboa)
+4. **Bybit cleanup + sync SL** — `cleanup-bybit-orphan-orders` — `*/10 * * * *` (posições sem SL)
 
 ## Segurança
 

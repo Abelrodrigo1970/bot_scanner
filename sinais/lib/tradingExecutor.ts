@@ -463,7 +463,7 @@ async function executeSignalBybit(
     }
 
     // Re-confirma SL após TPs (Bybit por vezes desfaz o SL full ao criar TP parcial)
-    if (slResult.ok) {
+    {
       const again = await ensureBybitStopLoss({
         symbol: executionSignal.symbol,
         side: bybitSide,
@@ -477,10 +477,71 @@ async function executeSignalBybit(
       );
     }
 
+    // Se ainda sem SL Full na posição: cancela condicionais, força Full, recoloca TPs
+    if (!slResult.ok || slResult.method !== 'position') {
+      try {
+        await cancelAllBybitLinearOrders(executionSignal.symbol);
+        const forced = await ensureBybitStopLoss({
+          symbol: executionSignal.symbol,
+          side: bybitSide,
+          stopLoss: slPriceStr,
+          qty: qtyStr,
+        });
+        slResult = forced;
+        console.log(
+          `[Bybit] SL force-Full após cancel: ok=${forced.ok} method=${forced.method}` +
+            (forced.error ? ` err=${forced.error}` : '')
+        );
+        // Recoloca TPs depois do SL Full
+        for (let i = 0; i < Math.min(tps.length, 2); i++) {
+          const tp = tps[i];
+          if (!tp || tp.price === executionSignal.entryPrice) continue;
+          const tpQty = totalQty * (tp.percentOfPosition / 100);
+          if (tpQty <= 0) continue;
+          const tpQtyStr = roundQuantity(tpQty, step);
+          if (parseFloat(tpQtyStr) <= 0) continue;
+          const tpTrigger = roundPrice(tp.price, tick);
+          try {
+            await createBybitOrder({
+              symbol: executionSignal.symbol,
+              side: bybitSlSide,
+              qty: tpQtyStr,
+              stopOrderType: 'TakeProfit',
+              triggerPrice: tpTrigger,
+              triggerBy: 'MarkPrice',
+              triggerDirection: executionSignal.direction === 'BUY' ? 1 : 2,
+              reduceOnly: true,
+              positionIdx: 0,
+            });
+          } catch (tpErr) {
+            const msg = tpErr instanceof Error ? tpErr.message : String(tpErr);
+            tpErrors.push(`TP${i + 1} re-place: ${msg}`);
+          }
+        }
+        // Última confirmação SL (TPs podem voltar a limpar)
+        const finalSl = await ensureBybitStopLoss({
+          symbol: executionSignal.symbol,
+          side: bybitSide,
+          stopLoss: slPriceStr,
+          qty: qtyStr,
+        });
+        slResult = finalSl;
+        console.log(
+          `[Bybit] SL final: ok=${finalSl.ok} method=${finalSl.method}` +
+            (finalSl.error ? ` err=${finalSl.error}` : '')
+        );
+      } catch (forceErr) {
+        console.warn('[Bybit] Force SL Full falhou:', forceErr);
+      }
+    }
+
     const tpWarning = tpErrors.length > 0 ? ` (TPs não colocados: ${tpErrors.join('; ')})` : '';
-    const slWarning = slResult.ok
-      ? ` | SL ${slPriceStr} (${slResult.method})`
-      : ` (⚠️ SL NÃO confirmado @ ${slPriceStr}: ${slResult.error ?? 'desconhecido'})`;
+    const slWarning =
+      slResult.ok && slResult.method === 'position'
+        ? ` | SL ${slResult.stopLoss ?? slPriceStr} (position)`
+        : slResult.ok && slResult.method === 'conditional'
+          ? ` (⚠️ SL só condicional @ ${slPriceStr} — UI pode mostrar --)`
+          : ` (⚠️ SL NÃO confirmado @ ${slPriceStr}: ${slResult.error ?? 'desconhecido'})`;
     // Bybit usa UUIDs — parseInt daria NaN → 0 (falsy). Usa 1 como fallback não-zero.
     const parsedId = parseInt(entryOrder.orderId, 10);
     const orderIdNum = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : 1;
@@ -802,8 +863,8 @@ export async function syncBybitMissingStopLosses(): Promise<{
       let sl = signal?.stopLoss != null ? Number(signal.stopLoss) : NaN;
       const avg = parseFloat(pos.avgPrice);
       if (!(sl > 0) && avg > 0) {
-        // fallback 5% se não houver sinal
-        sl = pos.side === 'Buy' ? avg * 0.95 : avg * 1.05;
+        // fallback apertado se não houver sinal (protege órfãs)
+        sl = pos.side === 'Buy' ? avg * 0.85 : avg * 1.08;
       }
       if (!(sl > 0)) {
         errors.push(`${pos.symbol}: sem SL calculável`);
@@ -812,20 +873,53 @@ export async function syncBybitMissingStopLosses(): Promise<{
 
       const tick = await getBybitTickSize(pos.symbol);
       const slStr = roundPriceStopLoss(sl, Number.isFinite(tick) && tick > 0 ? tick : 0.01, direction);
-      const result = await ensureBybitStopLoss({
+      let result = await ensureBybitStopLoss({
         symbol: pos.symbol,
         side: pos.side as 'Buy' | 'Sell',
         stopLoss: slStr,
         qty: pos.size,
       });
 
-      if (result.ok) {
-        fixed++;
-        console.log(
-          `[Bybit sync SL] ${pos.symbol} ${pos.side} → ${result.stopLoss ?? slStr} (${result.method})`
+      // Condicional ≠ SL Full na UI — força cancel + Full e verifica posição
+      if (!result.ok || result.method !== 'position') {
+        try {
+          await cancelAllBybitLinearOrders(pos.symbol);
+          result = await ensureBybitStopLoss({
+            symbol: pos.symbol,
+            side: pos.side as 'Buy' | 'Sell',
+            stopLoss: slStr,
+            qty: pos.size,
+          });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          errors.push(`${pos.symbol}: force Full: ${msg}`);
+        }
+      }
+
+      // Confirma no livro de posições (não confiar só no method)
+      let verified = false;
+      try {
+        const again = await getBybitPositionRisk(pos.symbol);
+        const active = again.find(
+          (p) => p.symbol === pos.symbol && parseFloat(p.size) > 0 && p.side === pos.side
         );
-      } else {
-        errors.push(`${pos.symbol}: ${result.error ?? 'falhou'}`);
+        verified = !!(active?.stopLoss && parseFloat(active.stopLoss) > 0);
+        if (verified) {
+          fixed++;
+          console.log(
+            `[Bybit sync SL] ${pos.symbol} ${pos.side} → ${active!.stopLoss} (position verified)`
+          );
+        }
+      } catch (e) {
+        errors.push(
+          `${pos.symbol}: verify: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
+
+      if (!verified) {
+        errors.push(
+          `${pos.symbol}: SL ainda em falta após ensure (${result.method}: ${result.error ?? 'n/a'})`
+        );
       }
     }
   } catch (e) {
