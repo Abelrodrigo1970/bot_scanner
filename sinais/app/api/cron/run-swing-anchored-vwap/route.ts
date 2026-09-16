@@ -6,7 +6,7 @@ import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrate
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/** Backup manual: Swing Anchored VWAP 15m (Scanner 2 top 15). */
+/** Backup manual: Swing Anchored VWAP 15m (Scanner 6 top 40). */
 
 export async function GET(request: NextRequest) {
   try {

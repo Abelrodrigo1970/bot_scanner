@@ -1,5 +1,5 @@
 /**
- * engolfo — SELL 15m no Scanner 2 top 3
+ * engolfo — SELL 15m no Scanner 7 top 3
  * Entrada: (EMA12 < EMA21) OU (|EMA12−EMA21|/EMA21 < 2%) + fecho ≥1% abaixo do anterior.
  * SL +8% | TP1 −20% (50% pos.) | restante às 24h.
  */
@@ -7,7 +7,7 @@
 import { prisma } from './db';
 import { fetchCandles, type Candle } from './marketData';
 import { calculateLastEMA, calculateSMA, getCloses } from './indicators';
-import { UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H } from './symbolUniverseDefaults';
+import { UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D } from './symbolUniverseDefaults';
 import { resolveUniverseScanSymbolsTopN } from './universeScanPersistence';
 import { autoExecuteNewSignalsForStrategy, resolveStrategyExchange } from './autoExecuteNewSignals';
 import { closeActivePositionForSymbol, inspectActivePositionForSymbol } from './tradingExecutor';
@@ -248,7 +248,7 @@ export async function runEngolfo15mPipeline(options?: {
   const minStrength = Math.max(60, Math.floor(Number(params.autoExecuteMinStrength ?? 70)));
 
   const symbols = await resolveUniverseScanSymbolsTopN(
-    UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H,
+    UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
     topN
   );
   if (symbols.length === 0) {

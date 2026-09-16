@@ -1,5 +1,5 @@
 /**
- * Liquidity Pools Pro — sweep + mitigation em 15m no Scanner 2.
+ * Liquidity Pools Pro — sweep + mitigation em 15m no Scanner 7.
  * BUY: sweep BSL (pivot lows) + fecho acima do nível.
  * SELL: sweep SSL (pivot highs) + fecho abaixo do nível.
  * SL 1,5×ATR | TP 1R / 2R / 3R (33% / 33% / resto 24h).
@@ -7,7 +7,7 @@
 
 import { prisma } from './db';
 import { dropFormingCandle, fetchCandles } from './marketData';
-import { UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H } from './symbolUniverseDefaults';
+import { UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D } from './symbolUniverseDefaults';
 import {
   ensureAllBuiltinUniverseScans,
   resolveUniverseScanSymbolsTopN,
@@ -160,7 +160,7 @@ export async function runLiquidityPoolsPro15mPipeline(options?: {
   const detectorParams = detectorParamsFrom(params);
 
   const symbols = await resolveUniverseScanSymbolsTopN(
-    UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H,
+    UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
     topN
   );
   if (symbols.length === 0) {

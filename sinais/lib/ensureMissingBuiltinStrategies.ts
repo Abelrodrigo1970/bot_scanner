@@ -215,22 +215,22 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const maCrossSync = await syncMaCrossScanner1UniverseDescriptions(prisma);
   if (maCrossSync.updated.length > 0) {
-    console.log(`✅ MA_CROSS_5M: display/descrição Scanner 1 (${maCrossSync.updated.join(', ')})`);
+    console.log(`✅ MA_CROSS_5M: display/descrição Scanner 3 (${maCrossSync.updated.join(', ')})`);
   }
 
   const maCross12x21Sync = await syncMaCross12x21Scanner2Config(prisma);
   if (maCross12x21Sync.updated) {
-    console.log('✅ MA_CROSS_12X21_S2: MA12×21 15m | Scanner 7 RSI 1d ≥ 69 | só COMPRA | spread 0,6–1,5%');
+    console.log('✅ MA_CROSS_12X21_S2: MA12×21 15m | Scanner 6 SMA80 4h | só COMPRA | spread 0,6–1,5%');
   }
 
   const engolfoSync = await syncEngolfo15mConfig(prisma);
   if (engolfoSync.updated) {
-    console.log('✅ ENGOLFO_15M: engolfo | EMA12/21 ou spread<2% | SELL 15m | Scanner 2 top 3 | SL +8% | TP1 −20% 50% | 24h');
+    console.log('✅ ENGOLFO_15M: engolfo | EMA12/21 ou spread<2% | SELL 15m | Scanner 7 top 3 | SL +8% | TP1 −20% 50% | 24h');
   }
 
   const liquidityPoolsSync = await syncLiquidityPoolsPro15mConfig(prisma);
   if (liquidityPoolsSync.updated) {
-    console.log('✅ LIQUIDITY_POOLS_PRO_15M: sweep mitigation 15m | Scanner 2 top 15 | SL 1,5×ATR | TP 1R/2R/3R');
+    console.log('✅ LIQUIDITY_POOLS_PRO_15M: sweep mitigation 15m | Scanner 7 top 15 | SL 1,5×ATR | TP 1R/2R/3R');
   }
 
   const lpStrategy = await prisma.strategy.findUnique({
@@ -268,20 +268,20 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const swingVwapSync = await syncSwingAnchoredVwap15mConfig(prisma);
   if (swingVwapSync.updated) {
-    console.log('✅ SWING_ANCHORED_VWAP_15M: VWAP ancorado length 50 | cruzamento linha azul (hVwap) | Scanner 2 top 15 | SL swing/5% | TP 10%');
+    console.log('✅ SWING_ANCHORED_VWAP_15M: VWAP ancorado length 50 | cruzamento linha azul (hVwap) | Scanner 6 top 40 | SL swing/5% | TP 10%');
   }
 
   const rompimentoSync = await syncRompimento20_15mConfig(prisma);
   if (rompimentoSync.updated) {
     console.log(
-      '✅ ROMPIMENTO_20_15M: Rompimento 20 | fecho > HH20 | filtro ≤30% acima EMA70 | Stoch K<30 (50/40/11) | LONG 15m | Scanner 1 top 20 (1h) | SL −5% | TP1 +9% 50% | 24h'
+      '✅ ROMPIMENTO_20_15M: Rompimento 20 | fecho > HH20 | filtro ≤30% acima EMA70 | Stoch K<30 (50/40/11) | LONG 15m | Scanner 6 top 40 (4h) | SL −5% | TP1 +9% 50% | 24h'
     );
   }
 
   const rsiVendidoSync = await syncRsiVendido4hConfig(prisma);
   if (rsiVendidoSync.updated) {
     console.log(
-      '✅ RSI_VENDIDO_4H: rsi_vendido 4h | Scanner 7 | entra ao entrar S7 (≥EMA70) | sai S7 ou fecho <EMA70 | reentra reclaim EMA70 | SL −15%'
+      '✅ RSI_VENDIDO_4H: rsi_vendido 4h | Scanner 6 | entra ao entrar S6 (≥EMA70) | sai S6 ou fecho <EMA70 | reentra reclaim EMA70 | SL −15%'
     );
   }
 

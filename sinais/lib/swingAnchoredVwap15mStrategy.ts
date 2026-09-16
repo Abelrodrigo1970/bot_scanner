@@ -1,11 +1,11 @@
 /**
- * Swing Anchored VWAP 15m — BigBeluga-style no Scanner 2.
+ * Swing Anchored VWAP 15m — BigBeluga-style no Scanner 6.
  * BUY: fecho cruza acima da linha azul (hVwap). SELL: fecho cruza abaixo da linha azul.
  */
 
 import { prisma } from './db';
 import { dropFormingCandle, fetchCandles } from './marketData';
-import { UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H } from './symbolUniverseDefaults';
+import { UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H } from './symbolUniverseDefaults';
 import {
   ensureAllBuiltinUniverseScans,
   resolveUniverseScanSymbolsTopN,
@@ -131,7 +131,7 @@ export async function runSwingAnchoredVwap15mPipeline(options?: {
 
   await ensureAllBuiltinUniverseScans('swing-anchored-vwap-15m');
 
-  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 15)));
+  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 40)));
   const chartTimeframe = String(params.chartTimeframe ?? '15m');
   const lookback = Math.max(5, Math.floor(Number(params.lookbackLength ?? 50)));
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
@@ -140,7 +140,7 @@ export async function runSwingAnchoredVwap15mPipeline(options?: {
   const detectorParams = detectorParamsFrom(params);
 
   const symbols = await resolveUniverseScanSymbolsTopN(
-    UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H,
+    UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H,
     topN
   );
   if (symbols.length === 0) {

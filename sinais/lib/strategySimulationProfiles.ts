@@ -50,7 +50,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(15, 44, 60),
     sell: side(15, 44, 60),
     summary:
-      'SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA30 < 0,5%.',
+      'Scanner 3 (RSI 1h ≥ 75). SL 15%. TP1 ±44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA30 < 0,5%.',
   },
   {
     strategyName: 'MA_CROSS_12X21_S2',
@@ -58,7 +58,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(15, 44, 60),
     sell: null,
     summary:
-      'Scanner 7 (RSI 1d ≥ 69). Só COMPRA. Spread 0,6–1,5%. SL 15%. TP1 +44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA21 < 0,5%. Sem tecto diário.',
+      'Scanner 6 (SMA80 4h). Só COMPRA. Spread 0,6–1,5%. SL 15%. TP1 +44% (60% pos.). Restante: fecho dinâmico se spread MA12/MA21 < 0,5%. Sem tecto diário.',
   },
   {
     strategyName: 'ENGOLFO_15M',
@@ -66,7 +66,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: null,
     sell: side(10, 20, 50, 0, 0, 24),
     summary:
-      'Scanner 2 top 3. Só VENDA. (EMA12<EMA21 OU |EMA12−EMA21|<2%) + fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante às 24h.',
+      'Scanner 7 top 3. Só VENDA. (EMA12<EMA21 OU |EMA12−EMA21|<2%) + fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante às 24h.',
   },
   {
     strategyName: 'LIQUIDITY_POOLS_PRO_15M',
@@ -74,7 +74,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(3, 3, 33, 6, 33, 24),
     sell: side(3, 3, 33, 6, 33, 24),
     summary:
-      'Scanner 2 top 15. Sweep mitigation BSL/SSL. SL 1,5×ATR (preço no sinal). TP1/2/3 ≈ 1R/2R/3R (33%/33%/resto 24h).',
+      'Scanner 7 top 15. Sweep mitigation BSL/SSL. SL 1,5×ATR (preço no sinal). TP1/2/3 ≈ 1R/2R/3R (33%/33%/resto 24h).',
   },
   {
     strategyName: 'SWING_ANCHORED_VWAP_15M',
@@ -82,7 +82,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 10, 50, 0, 0, 24),
     sell: side(5, 10, 50, 0, 0, 24),
     summary:
-      'Scanner 2 top 15. Cruzamento linha azul hVwap (length 50). BUY fecho > azul; SELL fecho < azul. SL swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.',
+      'Scanner 6 top 40. Cruzamento linha azul hVwap (length 50). BUY fecho > azul; SELL fecho < azul. SL swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.',
   },
   {
     strategyName: 'ROMPIMENTO_20_15M',
@@ -90,7 +90,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 9, 50, 0, 0, 24),
     sell: null,
     summary:
-      'Scanner 1 top 20. Só COMPRA. Fecho > máx. 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante às 24h.',
+      'Scanner 6 top 40. Só COMPRA. Fecho > máx. 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante às 24h.',
   },
   {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
@@ -144,7 +144,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(15, 0, 0, 0, 0, 0),
     sell: null,
     summary:
-      'Scanner 7. LONG ao entrar (fecho 4h ≥ EMA70). Sai ao sair do scanner ou fecho < EMA70. Reentra reclaim EMA70. SL −15%. Sem TP.',
+      'Scanner 6. LONG ao entrar (fecho 4h ≥ EMA70). Sai ao sair do scanner ou fecho < EMA70. Reentra reclaim EMA70. SL −15%. Sem TP.',
   },
   {
     strategyName: 'SCANNER3_RSI_FLIP_1H',

@@ -50,9 +50,9 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+    dataKey: 'UNIVERSE_RSI_ABOVE_75_1H',
 
-    description: 'Scanner 1: fecho acima SMA200 (1h).',
+    description: 'Scanner 3: RSI 14 (1h) ≥ 75. MA12/MA30 em 15m.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 
@@ -68,9 +68,9 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_RSI_ABOVE_69_1D',
+    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
 
-    description: 'Scanner 7: RSI 14 (1d) ≥ 69. MA12/MA21 em 15m; só COMPRA; spread 0,6–1,5%.',
+    description: 'Scanner 6: fecho acima SMA80 (4h). MA12/MA21 em 15m; só COMPRA; spread 0,6–1,5%.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 
@@ -86,10 +86,10 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
+    dataKey: 'UNIVERSE_RSI_ABOVE_69_1D',
 
     description:
-      'Scanner 2 top 3. SELL 15m: EMA12<EMA21 OU |EMA12−EMA21|<2%, fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante 24h.',
+      'Scanner 7 top 3. SELL 15m: EMA12<EMA21 OU |EMA12−EMA21|<2%, fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante 24h.',
 
     refresh: '/api/cron/run-15m (cada 15 min)',
 
@@ -105,10 +105,10 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
+    dataKey: 'UNIVERSE_RSI_ABOVE_69_1D',
 
     description:
-      'Scanner 2 top 15. Sweep de liquidez 15m (mitigation). SL 1,5×ATR. TP 1R/2R/3R (33%/33%/resto 24h).',
+      'Scanner 7 top 15. Sweep de liquidez 15m (mitigation). SL 1,5×ATR. TP 1R/2R/3R (33%/33%/resto 24h).',
 
     refresh: '/api/cron/run-15m (cada 15 min)',
 
@@ -124,10 +124,10 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_TOP30_PRICE_CHANGE_24H',
+    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
 
     description:
-      'Scanner 2 top 15. Cruzamento linha azul hVwap (length 50): BUY acima, SELL abaixo. SL swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.',
+      'Scanner 6 top 40. Cruzamento linha azul hVwap (length 50): BUY acima, SELL abaixo. SL swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.',
 
     refresh: '/api/cron/run-15m (cada 15 min)',
 
@@ -143,10 +143,10 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_ABOVE_MA200_1H',
+    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
 
     description:
-      'Scanner 1 top 20. LONG 15m: fecho > máximo das 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante 24h.',
+      'Scanner 6 top 40. LONG 15m: fecho > máximo das 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante 24h.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 
@@ -200,10 +200,10 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_RSI_ABOVE_69_1D',
+    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
 
     description:
-      'Scanner 7. LONG ao entrar (fecho 4h ≥ EMA70). Sai ao sair do scanner ou fecho < EMA70. Reentra se ainda no scanner e fecho volta ≥ EMA70. SL −15%. Sem TP.',
+      'Scanner 6. LONG ao entrar (fecho 4h ≥ EMA70). Sai ao sair do scanner ou fecho < EMA70. Reentra se ainda no scanner e fecho volta ≥ EMA70. SL −15%. Sem TP.',
 
     refresh: '/api/cron/run-15m (e run-rsi-vendido)',
 
@@ -216,7 +216,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 export const DATA_SOURCE_MENU_ITEMS = [
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — Acima SMA200 (MA Cross, Pivot Boss, Rompimento, rotações)',
+    label: 'Scanner 1 — Acima SMA200 (Pivot Boss, rotações)',
   },
   {
     href: '/scanners/2',
@@ -224,15 +224,15 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/3',
-    label: 'Scanner 3 — RSI > 75 (1h)',
+    label: 'Scanner 3 — RSI > 75 (1h) (MA Cross 12×30)',
   },
   {
     href: '/scanners/6',
-    label: 'Scanner 6 — Acima SMA80 4h',
+    label: 'Scanner 6 — Acima SMA80 4h (MA 12×21, VWAP, Rompimento, rsi_vendido)',
   },
   {
     href: '/scanners/7',
-    label: 'Scanner 7 — RSI > 69 (1d) (MA Cross 12×21 + rsi_vendido)',
+    label: 'Scanner 7 — RSI > 69 (1d) (engolfo, Liquidity Pools)',
   },
   {
     href: '/scanners/lateral_volatile',

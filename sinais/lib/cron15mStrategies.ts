@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db';
 import {
-  UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
-  UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
+  UNIVERSE_CODE_SCANNER_3_RSI75_1H,
+  UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H,
 } from '@/lib/symbolUniverseDefaults';
 import { resolveUniverseScanSymbolsTopN } from '@/lib/universeScanPersistence';
 import {
@@ -288,32 +288,32 @@ async function runNamedMaCrossPipeline(
   return { status: 'done', signalsCreated };
 }
 
-/** Pipeline MA Cross 12×30 (Scanner 1). */
+/** Pipeline MA Cross 12×30 (Scanner 3 RSI>75 1h). */
 export async function runMaCross15mPipeline(now: Date = new Date()): Promise<Cron15mResult> {
   return runNamedMaCrossPipeline(
     'MA_CROSS_5M',
     {
-      code: UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
-      label: 'Scanner 1',
-      defaultTopN: 20,
+      code: UNIVERSE_CODE_SCANNER_3_RSI75_1H,
+      label: 'Scanner 3',
+      defaultTopN: 40,
     },
     'MA Cross 12×30',
     now
   );
 }
 
-/** Pipeline MA Cross 12×21 (Scanner 7 RSI 1d ≥ 69, só COMPRA). */
+/** Pipeline MA Cross 12×21 (Scanner 6 SMA80 4h, só COMPRA). */
 export async function runMaCross12x21Scanner2Pipeline(
   now: Date = new Date()
 ): Promise<Cron15mResult> {
   return runNamedMaCrossPipeline(
     'MA_CROSS_12X21_S2',
     {
-      code: UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
-      label: 'Scanner 7',
-      defaultTopN: 80,
+      code: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H,
+      label: 'Scanner 6',
+      defaultTopN: 40,
     },
-    'MA Cross 12×21 S7',
+    'MA Cross 12×21 S6',
     now
   );
 }

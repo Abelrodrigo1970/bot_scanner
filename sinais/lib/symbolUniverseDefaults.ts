@@ -230,20 +230,20 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA200_1H: {
     displayName: 'Scanner 1 — Acima SMA200 (1h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. MA Cross e Rompimento 20: top 20.',
-    strategyNames: 'MA Cross 12×30 (15m), Rompimento 20 (15m)',
+      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Pivot Boss / rotações.',
+    strategyNames: 'Pivot Boss Bear (15m); rotações Scanner 1',
   },
   UNIVERSE_TOP30_PRICE_CHANGE_24H: {
     displayName: 'Scanner 2 — Top 30 subidas 24h',
     description:
       'Top 30 perpétuos USDT com maior subida de preço nas últimas 24h (apenas variação positiva). Mín. 500k USDT volume 24h.',
-    strategyNames: 'engolfo (top 3), Liquidity Pools, Swing VWAP (15m)',
+    strategyNames: 'rotação Top 4 (inactiva); stch15long / RSI>80 descontinuados',
   },
   UNIVERSE_RSI_ABOVE_75_1H: {
     displayName: 'Scanner 3 — RSI > 75 (1h)',
     description:
-      'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 1h, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h. Descontinuado (Flip off).',
-    strategyNames: '— (descontinuado)',
+      'Perpétuos USDT (top volume) com RSI(14) acima de 75 em velas de 1h, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h.',
+    strategyNames: 'MA Cross 12×30 (15m)',
   },
   UNIVERSE_RSI_ABOVE_75_15M: {
     displayName: 'Scanner 3 — RSI > 75 (15m, legado)',
@@ -254,18 +254,19 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_ABOVE_MA80_4H: {
     displayName: 'Scanner 6 — Acima SMA80 (4h)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h. Screener (sem estratégia activa ligada).',
-    strategyNames: '— (screener)',
+      'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h.',
+    strategyNames:
+      'MA Cross 12×21 (15m); Swing Anchored VWAP (15m); Rompimento 20 (15m); rsi_vendido LONG (4h)',
   },
   UNIVERSE_RSI_ABOVE_69_1D: {
     displayName: `Scanner 7 — RSI > ${SCANNER_7_RSI_THRESHOLD} (1d)`,
     description: `Perpétuos USDT (top volume) com RSI(${SCANNER_7_RSI_PERIOD}) acima de ${SCANNER_7_RSI_THRESHOLD} em velas diárias, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h.`,
-    strategyNames: 'MA Cross 12×21 (15m); rsi_vendido LONG (4h)',
+    strategyNames: 'engolfo (top 3); Liquidity Pools (15m)',
   },
   UNIVERSE_RSI_BELOW_32_4H: {
     displayName: 'rsi_vendido — RSI < 32 (4h, legado)',
     description:
-      'Legado: RSI(14) 4h < 32. A estratégia rsi_vendido passou a usar Scanner 7 em 4h + EMA70.',
+      'Legado: RSI(14) 4h < 32. A estratégia rsi_vendido passou a usar Scanner 6 em 4h + EMA70.',
     strategyNames: '— (legado)',
   },
   UNIVERSE_LATERAL_VOLATILE_4H: {
@@ -288,11 +289,12 @@ export const BUILTIN_UNIVERSE_META: Record<
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
-  '2': 'Scanner 2 activo: engolfo top 3 + Liquidity Pools + Swing VWAP (15m). stch15long e RSI>80 descontinuados.',
-  '6': 'Scanner 6: screener SMA80 4h (sem estratégia activa).',
-  '7': 'Scanner 7: MA Cross 12×21 (15m) + rsi_vendido LONG (4h, EMA70). Universo RSI 1d ≥ 69.',
+  '2': 'Scanner 2: rotação Top 4 (inactiva). stch15long e RSI>80 descontinuados.',
+  '3': 'Scanner 3: MA Cross 12×30 (15m). Universo RSI 1h ≥ 75.',
+  '6': 'Scanner 6: MA Cross 12×21 + Swing VWAP + Rompimento 20 + rsi_vendido (SMA80 4h).',
+  '7': 'Scanner 7: engolfo top 3 + Liquidity Pools (15m). Universo RSI 1d ≥ 69.',
   rsi_vendido:
-    'Legado RSI <32 4h. A estratégia activa usa Scanner 7 em 4h + EMA70 (cron run-15m / run-rsi-vendido).',
+    'Legado RSI <32 4h. A estratégia activa usa Scanner 6 em 4h + EMA70 (cron run-15m / run-rsi-vendido).',
   ytd_mcap60:
     'Universo YTD (mcap > $60M) disponível para ligar a estratégias via dataKey UNIVERSE_TOP50_YTD_MCAP60M.',
   price_range:

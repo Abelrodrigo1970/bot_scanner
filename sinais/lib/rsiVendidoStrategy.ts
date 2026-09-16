@@ -1,15 +1,15 @@
 /**
- * rsi_vendido LONG — Scanner 7 (RSI 1d > 69).
- * Entrada: símbolo entra no Scanner 7 (novo no universo) e fecho 4h ≥ EMA70.
- * Saída: sai do Scanner 7 OU fecho 4h cruza abaixo da EMA70.
- * Reentrada: ainda no Scanner 7 e fecho 4h cruza acima da EMA70.
+ * rsi_vendido LONG — Scanner 6 (SMA80 4h).
+ * Entrada: símbolo entra no Scanner 6 (novo no universo) e fecho 4h ≥ EMA70.
+ * Saída: sai do Scanner 6 OU fecho 4h cruza abaixo da EMA70.
+ * Reentrada: ainda no Scanner 6 e fecho 4h cruza acima da EMA70.
  * SL −15% (segurança); sem TP — gestão por scanner + EMA.
  */
 
 import { prisma } from './db';
 import { fetchCandles } from './marketData';
 import { calculateLastEMA, getCloses } from './indicators';
-import { UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D } from './symbolUniverseDefaults';
+import { UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H } from './symbolUniverseDefaults';
 import {
   buildScanItemsWithPreviousDelta,
   getLatestUniverseScanPair,
@@ -163,7 +163,7 @@ async function createLongSignal(opts: {
     opts.scannerRsi != null ? strengthForScannerRsi(opts.scannerRsi) : 80;
 
   console.log(
-    `${opts.logPrefix} 🟢 LONG ${opts.symbol} @ ${opts.entryPrice} (${opts.trigger} | Scanner 7 | 4h EMA${opts.emaExitPeriod} | SL −${(opts.stopLossPct * 100).toFixed(0)}%)`
+    `${opts.logPrefix} 🟢 LONG ${opts.symbol} @ ${opts.entryPrice} (${opts.trigger} | Scanner 6 | 4h EMA${opts.emaExitPeriod} | SL −${(opts.stopLossPct * 100).toFixed(0)}%)`
   );
 
   await prisma.signal.create({
@@ -181,8 +181,8 @@ async function createLongSignal(opts: {
       strength,
       status: 'NEW',
       extraInfo: JSON.stringify({
-        setup: 'rsi_vendido_s7_4h_ema70',
-        universe: UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
+        setup: 'rsi_vendido_s6_4h_ema70',
+        universe: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H,
         universeTopN: opts.topN,
         barCloseTs: opts.barCloseTs,
         trigger: opts.trigger,
@@ -192,7 +192,7 @@ async function createLongSignal(opts: {
         emaExitPeriod: opts.emaExitPeriod,
         stopLossPct: opts.stopLossPct,
         chartTimeframe: opts.chartTimeframe,
-        executionProfile: `LONG Scanner 7 (RSI 1d>69) top ${opts.topN} | TF ${opts.chartTimeframe} | entra ao entrar no scanner (fecho ≥ EMA${opts.emaExitPeriod}) | sai ao sair do scanner ou fecho < EMA${opts.emaExitPeriod} | reentra se ainda no scanner e fecho cruza > EMA${opts.emaExitPeriod} | SL −${(opts.stopLossPct * 100).toFixed(0)}%`,
+        executionProfile: `LONG Scanner 6 (SMA80 4h) top ${opts.topN} | TF ${opts.chartTimeframe} | entra ao entrar no scanner (fecho ≥ EMA${opts.emaExitPeriod}) | sai ao sair do scanner ou fecho < EMA${opts.emaExitPeriod} | reentra se ainda no scanner e fecho cruza > EMA${opts.emaExitPeriod} | SL −${(opts.stopLossPct * 100).toFixed(0)}%`,
       }),
     },
   });
@@ -201,7 +201,7 @@ async function createLongSignal(opts: {
 export async function runRsiVendidoPipeline(options?: {
   logPrefix?: string;
 }): Promise<RsiVendidoResult> {
-  const logPrefix = options?.logPrefix ?? '[rsi_vendido S7 4h]';
+  const logPrefix = options?.logPrefix ?? '[rsi_vendido S6 4h]';
 
   const strategy = await prisma.strategy.findUnique({
     where: { name: RSI_VENDIDO_STRATEGY_NAME },
@@ -219,7 +219,7 @@ export async function runRsiVendidoPipeline(options?: {
   const params = parseParams(strategy.params);
   const topN = Math.max(
     1,
-    Math.min(120, Math.floor(Number(params.universeTopN ?? params.topN ?? 80)))
+    Math.min(120, Math.floor(Number(params.universeTopN ?? params.topN ?? 40)))
   );
   const chartTimeframe = String(params.chartTimeframe ?? '4h');
   const emaExitPeriod = Math.max(2, Math.floor(Number(params.emaExitPeriod ?? 70)));
@@ -227,11 +227,11 @@ export async function runRsiVendidoPipeline(options?: {
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const allowBuy = params.buyEnabled !== false && params.allowBuy !== false;
 
-  const pair = await getLatestUniverseScanPair(UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D);
+  const pair = await getLatestUniverseScanPair(UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H);
   if (!pair.current || pair.current.rows.length === 0) {
     return {
       status: 'skipped',
-      reason: 'Scanner 7 vazio — correr run-universe-scans',
+      reason: 'Scanner 6 vazio — correr run-universe-scans',
     };
   }
 
@@ -254,7 +254,7 @@ export async function runRsiVendidoPipeline(options?: {
   const openLongSet = new Set(openLongs.map((s) => s.symbol));
 
   console.log(
-    `${logPrefix} Scanner 7 top ${topN}: ${universeSet.size} | abertos ${openLongSet.size} | prevScan=${pair.previous ? 'yes' : 'no'}`
+    `${logPrefix} Scanner 6 top ${topN}: ${universeSet.size} | abertos ${openLongSet.size} | prevScan=${pair.previous ? 'yes' : 'no'}`
   );
 
   const startedAt = new Date();
@@ -265,10 +265,10 @@ export async function runRsiVendidoPipeline(options?: {
   const hitSymbols: string[] = [];
   const closedSymbols: string[] = [];
 
-  // 1) Saiu do Scanner 7 → fecha LONG
+  // 1) Saiu do Scanner 6 → fecha LONG
   for (const symbol of [...openLongSet]) {
     if (universeSet.has(symbol)) continue;
-    await closeOpenLong(strategy.id, symbol, exchange, logPrefix, 'saiu Scanner 7');
+    await closeOpenLong(strategy.id, symbol, exchange, logPrefix, 'saiu Scanner 6');
     leftScannerClosed++;
     closedSymbols.push(symbol);
     openLongSet.delete(symbol);
@@ -380,7 +380,7 @@ export async function runRsiVendidoPipeline(options?: {
   });
 
   console.log(
-    `${logPrefix} Concluído: ${leftScannerClosed} saíram S7, ${emaClosed} EMA, ${signalsCreated} LONG (${reentries} reentradas), ${executed} executados`
+    `${logPrefix} Concluído: ${leftScannerClosed} saíram S6, ${emaClosed} EMA, ${signalsCreated} LONG (${reentries} reentradas), ${executed} executados`
   );
 
   return {

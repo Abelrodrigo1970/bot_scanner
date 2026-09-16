@@ -25,6 +25,7 @@ import {
   UNIVERSE_CODE_SCANNER_3_MA80_PCT4,
   UNIVERSE_CODE_SCANNER_3_RSI75_1H,
   UNIVERSE_CODE_SCANNER_4_ABOVE_MA200_1D,
+  UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H,
   UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
 } from './symbolUniverseDefaults';
 import { REMOVED_DEPRECATED_STRATEGY_NAMES } from './strategyMigrations';
@@ -2219,30 +2220,30 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'MA_CROSS_5M') {
-        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 20)));
-        console.log(`🔍 ${strategy.name}: Scanner 1 top ${topN} (|pct vs SMA200|)...`);
+        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 40)));
+        console.log(`🔍 ${strategy.name}: Scanner 3 top ${topN} (RSI 1h ≥ 75)...`);
         symbolsToAnalyze = await resolveUniverseScanSymbolsTopN(
-          UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
+          UNIVERSE_CODE_SCANNER_3_RSI75_1H,
           topN
         );
-        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1 top ${topN})`);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 3 top ${topN})`);
         if (symbolsToAnalyze.length === 0) {
           console.warn(
-            `⚠️ Scanner 1 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 1. Ignorando ${strategy.name}.`
+            `⚠️ Scanner 3 vazio. Corra /api/cron/run-scanner3-rsi-1h ou Origem de dados → Scanner 3. Ignorando ${strategy.name}.`
           );
           continue;
         }
       } else if (strategy.name === 'MA_CROSS_12X21_S2') {
-        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 80)));
-        console.log(`🔍 ${strategy.name}: Scanner 7 top ${topN} (RSI 1d ≥ 69)...`);
+        const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 40)));
+        console.log(`🔍 ${strategy.name}: Scanner 6 top ${topN} (SMA80 4h)...`);
         symbolsToAnalyze = await resolveUniverseScanSymbolsTopN(
-          UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D,
+          UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H,
           topN
         );
-        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 7 top ${topN})`);
+        console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 6 top ${topN})`);
         if (symbolsToAnalyze.length === 0) {
           console.warn(
-            `⚠️ Scanner 7 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 7. Ignorando ${strategy.name}.`
+            `⚠️ Scanner 6 vazio. Corra /api/cron/run-universe-scans ou Origem de dados → Scanner 6. Ignorando ${strategy.name}.`
           );
           continue;
         }

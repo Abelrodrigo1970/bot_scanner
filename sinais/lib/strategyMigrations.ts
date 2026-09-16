@@ -195,8 +195,10 @@ export const MA_CROSS_5M_PARAMS = {
   allowSell: true,
   exchange: 'bybit',
   autoExecuteMinStrength: 70,
-  /** Top N do Scanner 1 (|pctFromMa| desc). */
-  universeTopN: 20,
+  /** Top N do Scanner 3 (RSI>75 1h). */
+  universeTopN: 40,
+  /** Universo Scanner 3 (RSI 1h ≥ 75). */
+  universeCode: 'UNIVERSE_RSI_ABOVE_75_1H',
   /** Soma mínima turnover 3 velas 1h fechadas (USDT). */
   minTurnover3hUsd: 3_000_000,
   /** BTC↑ (>+0,5%) → só BUY · BTC↓ (&lt;−0,5%) → só SELL · flat bloqueia. */
@@ -206,9 +208,9 @@ export const MA_CROSS_5M_PARAMS = {
 
 export const MA_CROSS_5M_DISPLAY = 'MA Cross 12×30 (15m)';
 export const MA_CROSS_5M_DESC =
-  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% e < 1,8% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 1 top 20 (|afastamento| vs SMA200 1h). Filtro BTC: diário &gt;+0,5% só BUY · &lt;−0,5% só SELL · |Δ|≤0,5% sem sinais. Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
+  'MA12/MA30 em 15m: entrada por spread (|MA12−MA30|/MA30 > 0,9% e < 1,8% na direção). Em modo repetir tendência, exige novo impulso (cruzamento do limiar, mudança de alinhamento ou alargamento mínimo do spread vs vela anterior). TP parcial: 60% da posição quando o preço valoriza ≥44% vs entrada (compra +44%; venda −44%). Restante: fecho dinâmico quando spread < 0,5%. SL 15%. Filtro SELL se |preço−MA30|/MA30 > 6%. Universo = Scanner 3 top 40 (RSI 14 · 1h ≥ 75). Filtro BTC: diário &gt;+0,5% só BUY · &lt;−0,5% só SELL · |Δ|≤0,5% sem sinais. Turnover: soma 3×1h ≥ $3M; activo sáb/dom; cooldown 24h entre dias; máx. 2 sinais/símbolo/dia PT — 2.º só se 1.º fechado e verde, mesma direção.';
 
-/** MA Cross 12×21 (15m) — mesma lógica de spread que MA12×30; universo Scanner 7 (RSI 1d ≥ 69), só COMPRA. */
+/** MA Cross 12×21 (15m) — mesma lógica de spread que MA12×30; universo Scanner 6 (SMA80 4h), só COMPRA. */
 export const MA_CROSS_12X21_S2_PARAMS = {
   ma30Period: 12,
   ma200Period: 21,
@@ -229,9 +231,9 @@ export const MA_CROSS_12X21_S2_PARAMS = {
   sellEnabled: false,
   exchange: 'bybit',
   autoExecuteMinStrength: 70,
-  /** Universo Scanner 7 (RSI 1d ≥ 69), ordenado por RSI desc. */
-  universeCode: 'UNIVERSE_RSI_ABOVE_69_1D',
-  universeTopN: 80,
+  /** Universo Scanner 6 (SMA80 4h), ordenado por |pctFromMa| desc. */
+  universeCode: 'UNIVERSE_ABOVE_MA80_4H',
+  universeTopN: 40,
   minTurnover3hUsd: 3_000_000,
   /** 0 = sem tecto diário. */
   maxSignalsPerDay: 0,
@@ -255,7 +257,7 @@ export const MA_CROSS_12X21_S2_PARAMS = {
 
 export const MA_CROSS_12X21_S2_DISPLAY = 'MA Cross 12×21 (15m)';
 export const MA_CROSS_12X21_S2_DESC =
-  'MA12/MA21 em 15m: só COMPRA. Spread 0,6–1,5%; repetir tendência; TP parcial 60% a +44%; SL 15%. Universo Scanner 7 (RSI 14 · 1d ≥ 69), top 80 por RSI. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Filtro BTC: diário &gt;+0,5% só BUY · &lt;−0,5% ou flat sem sinais (estratégia só BUY). Turnover 3×1h ≥ $3M.';
+  'MA12/MA21 em 15m: só COMPRA. Spread 0,6–1,5%; repetir tendência; TP parcial 60% a +44%; SL 15%. Universo Scanner 6 (fecho acima SMA80 4h), top 40. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Filtro BTC: diário &gt;+0,5% só BUY · &lt;−0,5% ou flat sem sinais (estratégia só BUY). Turnover 3×1h ≥ $3M.';
 
 /** Garante registo MA Cross 12×21 Scanner 2 (não força isActive nem exchange — escolha do utilizador). */
 export async function syncMaCross12x21Scanner2Config(
@@ -331,7 +333,7 @@ export async function syncMaCross12x21Scanner2Config(
   return { updated: false };
 }
 
-/** engolfo — SELL 15m Scanner 2 top 3 (EMA12/21 ou spread &lt;2% + queda ≥1%). */
+/** engolfo — SELL 15m Scanner 7 top 3 (EMA12/21 ou spread &lt;2% + queda ≥1%). */
 export const ENGOLFO_15M_PARAMS = {
   universeTopN: 3,
   chartTimeframe: '15m',
@@ -357,7 +359,7 @@ export const ENGOLFO_15M_PARAMS = {
 
 export const ENGOLFO_15M_DISPLAY = 'engolfo';
 export const ENGOLFO_15M_DESC =
-  'Scanner 2 top 3. SELL em 15m: (EMA12 < EMA21 OU |EMA12−EMA21|/EMA21 < 2%), fecho abaixo da EMA21 e vela ≥1% abaixo do fecho anterior (bear). SL +8%. TP1 −20% (50% pos.). Restante às 24h. Só VENDA.';
+  'Scanner 7 top 3. SELL em 15m: (EMA12 < EMA21 OU |EMA12−EMA21|/EMA21 < 2%), fecho abaixo da EMA21 e vela ≥1% abaixo do fecho anterior (bear). SL +8%. TP1 −20% (50% pos.). Restante às 24h. Só VENDA.';
 
 export async function syncEngolfo15mConfig(
   prisma: PrismaClient
@@ -415,7 +417,7 @@ export async function syncEngolfo15mConfig(
   return { updated: false };
 }
 
-/** Liquidity Pools Pro — sweep + mitigation 15m Scanner 2. */
+/** Liquidity Pools Pro — sweep + mitigation 15m Scanner 7. */
 export const LIQUIDITY_POOLS_PRO_15M_PARAMS = {
   universeTopN: 15,
   chartTimeframe: '15m',
@@ -447,11 +449,11 @@ export const LIQUIDITY_POOLS_PRO_15M_PARAMS = {
 
 export const LIQUIDITY_POOLS_PRO_15M_DISPLAY = 'Liquidity Pools (15m)';
 export const LIQUIDITY_POOLS_PRO_15M_DESC =
-  'Scanner 2 top 15. Sweep de liquidez 15m: wick passa pool de pivots iguais (±0,25×ATR) e fecho reverte (mitigation). BSL → BUY; SSL → SELL. SL 1,5×ATR. TP1/2/3 = 1R/2R/3R (33%/33%/resto 24h).';
+  'Scanner 7 top 15. Sweep de liquidez 15m: wick passa pool de pivots iguais (±0,25×ATR) e fecho reverte (mitigation). BSL → BUY; SSL → SELL. SL 1,5×ATR. TP1/2/3 = 1R/2R/3R (33%/33%/resto 24h).';
 
-/** Swing Anchored VWAP (BigBeluga) — trend flip 15m Scanner 2. */
+/** Swing Anchored VWAP (BigBeluga) — trend flip 15m Scanner 6. */
 export const SWING_ANCHORED_VWAP_15M_PARAMS = {
-  universeTopN: 15,
+  universeTopN: 40,
   chartTimeframe: '15m',
   lookbackLength: 50,
   stopLossPct: 0.05,
@@ -470,7 +472,7 @@ export const SWING_ANCHORED_VWAP_15M_PARAMS = {
 
 export const SWING_ANCHORED_VWAP_15M_DISPLAY = 'Swing Anchored VWAP (15m)';
 export const SWING_ANCHORED_VWAP_15M_DESC =
-  'Scanner 2 top 15. VWAP ancorado em swing high/low (length 50). BUY quando o fecho cruza acima da linha azul (hVwap); SELL quando cruza abaixo. SL no swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.';
+  'Scanner 6 top 40. VWAP ancorado em swing high/low (length 50). BUY quando o fecho cruza acima da linha azul (hVwap); SELL quando cruza abaixo. SL no swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.';
 
 export async function syncSwingAnchoredVwap15mConfig(
   prisma: PrismaClient
@@ -575,9 +577,9 @@ export async function syncLiquidityPoolsPro15mConfig(
   return { updated: false };
 }
 
-/** Rompimento 20 — LONG 15m Scanner 1 (fecho > máx. 20 velas anteriores). */
+/** Rompimento 20 — LONG 15m Scanner 6 (fecho > máx. 20 velas anteriores). */
 export const ROMPIMENTO_20_15M_PARAMS = {
-  universeTopN: 20,
+  universeTopN: 40,
   chartTimeframe: '15m',
   breakoutLookback: 20,
   requireBullishClose: false,
@@ -605,7 +607,7 @@ export const ROMPIMENTO_20_15M_PARAMS = {
 
 export const ROMPIMENTO_20_15M_DISPLAY = 'Rompimento 20 (15m)';
 export const ROMPIMENTO_20_15M_DESC =
-  'Scanner 1 top 20. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. Filtro Stochastic (K 50/40/11): só entra se %K < 30. SL −5%. TP1 +9% (50% pos.). Restante às 24h. Só COMPRA.';
+  'Scanner 6 top 40. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. Filtro Stochastic (K 50/40/11): só entra se %K < 30. SL −5%. TP1 +9% (50% pos.). Restante às 24h. Só COMPRA.';
 
 export async function syncRompimento20_15mConfig(
   prisma: PrismaClient
@@ -1141,11 +1143,11 @@ export const STCH15LONG_PARAMS = {
 export const RSI_VENDIDO_4H_DISPLAY = 'rsi_vendido LONG (4h)';
 
 export const RSI_VENDIDO_4H_DESCRIPTION =
-  'Universo Scanner 7 (RSI 1d > 69). LONG 4h ao entrar no scanner (fecho ≥ EMA70). Sai ao sair do scanner ou fecho 4h < EMA70. Reentra se ainda no scanner e fecho volta ≥ EMA70. SL −15%. Sem TP. Só LONG.';
+  'Universo Scanner 6 (SMA80 4h). LONG 4h ao entrar no scanner (fecho ≥ EMA70). Sai ao sair do scanner ou fecho 4h < EMA70. Reentra se ainda no scanner e fecho volta ≥ EMA70. SL −15%. Sem TP. Só LONG.';
 
 export const RSI_VENDIDO_4H_PARAMS = {
-  universeTopN: 80,
-  topN: 80,
+  universeTopN: 40,
+  topN: 40,
   chartTimeframe: '4h',
   emaExitPeriod: 70,
   stopLossPct: 0.15,
@@ -1157,7 +1159,7 @@ export const RSI_VENDIDO_4H_PARAMS = {
   exchange: 'bybit',
 } as const;
 
-/** Garante registo/descrição da estratégia rsi_vendido LONG 4h (Scanner 7). */
+/** Garante registo/descrição da estratégia rsi_vendido LONG 4h (Scanner 6). */
 export async function syncRsiVendido4hConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {
@@ -2604,7 +2606,9 @@ export async function syncMaCrossScanner1UniverseDescriptions(
       row.description?.includes('+2-20%') ||
       row.description?.includes('inactivo sáb/dom') ||
       row.description?.includes('$10M') ||
-      !row.description?.includes('top 20') ||
+      row.description?.includes('Scanner 1') ||
+      !row.description?.includes('Scanner 3') ||
+      !row.description?.includes('top 40') ||
       row.description !== description;
     const needsDisplayUpdate =
       name === 'MA_CROSS_5M' && row.displayName !== MA_CROSS_5M_DISPLAY;
@@ -2622,6 +2626,7 @@ export async function syncMaCrossScanner1UniverseDescriptions(
         ...MA_CROSS_5M_PARAMS,
         ...p,
         universeTopN: MA_CROSS_5M_PARAMS.universeTopN,
+        universeCode: MA_CROSS_5M_PARAMS.universeCode,
         minTurnover3hUsd: MA_CROSS_5M_PARAMS.minTurnover3hUsd,
         entryMaxDiffPct: MA_CROSS_5M_PARAMS.entryMaxDiffPct,
         btcAlignFilter: MA_CROSS_5M_PARAMS.btcAlignFilter,
@@ -2637,6 +2642,7 @@ export async function syncMaCrossScanner1UniverseDescriptions(
       };
       needsParamsUpdate =
         Number(p.universeTopN) !== MA_CROSS_5M_PARAMS.universeTopN ||
+        p.universeCode !== MA_CROSS_5M_PARAMS.universeCode ||
         Number(p.minTurnover3hUsd) !== MA_CROSS_5M_PARAMS.minTurnover3hUsd ||
         Number(p.entryMaxDiffPct ?? 0) !== MA_CROSS_5M_PARAMS.entryMaxDiffPct ||
         p.btcAlignFilter !== MA_CROSS_5M_PARAMS.btcAlignFilter ||
