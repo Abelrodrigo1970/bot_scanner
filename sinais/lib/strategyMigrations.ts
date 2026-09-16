@@ -1159,6 +1159,48 @@ export const RSI_VENDIDO_4H_PARAMS = {
   exchange: 'bybit',
 } as const;
 
+/** Remove chaves "0","1",… de um objecto params (spread acidental de JSON string). */
+export function stripNumericParamKeys(
+  p: Record<string, unknown>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(p)) {
+    if (/^\d+$/.test(k)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+/**
+ * Repara params corrompidos (chaves numéricas) em todas as estratégias.
+ * Corre em cada boot/cron até não haver corrupção.
+ */
+export async function repairCorruptedStrategyParams(
+  prisma: PrismaClient
+): Promise<{ repaired: string[] }> {
+  const rows = await prisma.strategy.findMany({
+    select: { name: true, params: true },
+  });
+  const repaired: string[] = [];
+  for (const row of rows) {
+    if (!row.params) continue;
+    let p: Record<string, unknown> = {};
+    try {
+      p = JSON.parse(row.params) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    if (!Object.keys(p).some((k) => /^\d+$/.test(k))) continue;
+    const clean = stripNumericParamKeys(p);
+    await prisma.strategy.update({
+      where: { name: row.name },
+      data: { params: JSON.stringify(clean) },
+    });
+    repaired.push(row.name);
+  }
+  return { repaired };
+}
+
 /** Garante registo/descrição da estratégia rsi_vendido LONG 4h (Scanner 6). */
 export async function syncRsiVendido4hConfig(
   prisma: PrismaClient
@@ -1171,7 +1213,7 @@ export async function syncRsiVendido4hConfig(
 
   let p: Record<string, unknown> = {};
   try {
-    p = row.params ? JSON.parse(row.params) : {};
+    p = row.params ? stripNumericParamKeys(JSON.parse(row.params)) : {};
   } catch {
     p = {};
   }
@@ -1184,31 +1226,12 @@ export async function syncRsiVendido4hConfig(
     ? Number(p.autoExecuteMinStrength)
     : RSI_VENDIDO_4H_PARAMS.autoExecuteMinStrength;
 
+  // Params limpos — não re-espalhar `p` (evita regravar chaves numéricas / lixo legado).
   const next = {
     ...RSI_VENDIDO_4H_PARAMS,
-    ...p,
-    universeTopN: RSI_VENDIDO_4H_PARAMS.universeTopN,
-    topN: RSI_VENDIDO_4H_PARAMS.topN,
-    chartTimeframe: RSI_VENDIDO_4H_PARAMS.chartTimeframe,
-    emaExitPeriod: RSI_VENDIDO_4H_PARAMS.emaExitPeriod,
-    stopLossPct: RSI_VENDIDO_4H_PARAMS.stopLossPct,
-    allowBuy: RSI_VENDIDO_4H_PARAMS.allowBuy,
-    buyEnabled: RSI_VENDIDO_4H_PARAMS.buyEnabled,
-    allowSell: RSI_VENDIDO_4H_PARAMS.allowSell,
-    sellEnabled: RSI_VENDIDO_4H_PARAMS.sellEnabled,
     exchange: userExchange,
     autoExecuteMinStrength: userAutoStrength,
   };
-  // Remove params legados (RSI 15m / TPs Scanner 6)
-  delete (next as Record<string, unknown>).rsiPeriod;
-  delete (next as Record<string, unknown>).rsiEntryLevel;
-  delete (next as Record<string, unknown>).rsiMaPeriod;
-  delete (next as Record<string, unknown>).rsiTrailMinLevel;
-  delete (next as Record<string, unknown>).tp1Pct;
-  delete (next as Record<string, unknown>).tp1Position;
-  delete (next as Record<string, unknown>).tp2Pct;
-  delete (next as Record<string, unknown>).tp2Position;
-  delete (next as Record<string, unknown>).closeAfterHours;
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== RSI_VENDIDO_4H_DISPLAY ||
@@ -1776,7 +1799,7 @@ export async function migrateScanner2StrategiesToBybit(
     if (!row) continue;
     let p: Record<string, unknown> = {};
     try {
-      p = row.params ? JSON.parse(row.params) : {};
+      p = row.params ? stripNumericParamKeys(JSON.parse(row.params)) : {};
     } catch {
       p = {};
     }
@@ -1822,7 +1845,7 @@ export async function migrateActiveStrategiesExchangeToBybit(
     if (!row) continue;
     let p: Record<string, unknown> = {};
     try {
-      p = row.params ? JSON.parse(row.params) : {};
+      p = row.params ? stripNumericParamKeys(JSON.parse(row.params)) : {};
     } catch {
       p = {};
     }

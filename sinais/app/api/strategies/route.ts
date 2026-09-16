@@ -216,22 +216,42 @@ export async function PUT(request: NextRequest) {
       updateData.isActive = isActive;
     }
 
-    // allowBuy / allowSell podem vir directamente no body ou dentro de params
-    if (params || typeof allowBuy === 'boolean' || typeof allowSell === 'boolean') {
-      // Se vierem allowBuy/allowSell directamente, mergear com params existentes
-      if (typeof allowBuy === 'boolean' || typeof allowSell === 'boolean') {
-        const current = await prisma.strategy.findUnique({ where: { id } });
-        const currentParams = current?.params ? JSON.parse(current.params) : {};
-        const merged = {
-          ...currentParams,
-          ...(params ?? {}),
-          ...(typeof allowBuy  === 'boolean' ? { allowBuy }  : {}),
-          ...(typeof allowSell === 'boolean' ? { allowSell } : {}),
-        };
-        updateData.params = JSON.stringify(merged);
-      } else {
-        updateData.params = JSON.stringify(params);
+    // allowBuy / allowSell podem vir directamente no body ou dentro de params.
+    // Nunca fazer spread de string — isso grava chaves "0","1",… (params corrompidos).
+    if (params != null || typeof allowBuy === 'boolean' || typeof allowSell === 'boolean') {
+      const coerceParams = (raw: unknown): Record<string, unknown> => {
+        if (raw == null) return {};
+        if (typeof raw === 'string') {
+          try {
+            return coerceParams(JSON.parse(raw));
+          } catch {
+            return {};
+          }
+        }
+        if (typeof raw !== 'object' || Array.isArray(raw)) return {};
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+          if (/^\d+$/.test(k)) continue;
+          out[k] = v;
+        }
+        return out;
+      };
+
+      const current = await prisma.strategy.findUnique({ where: { id } });
+      let currentParams: Record<string, unknown> = {};
+      try {
+        currentParams = current?.params ? coerceParams(JSON.parse(current.params)) : {};
+      } catch {
+        currentParams = {};
       }
+      const incoming = coerceParams(params);
+      const merged = {
+        ...currentParams,
+        ...incoming,
+        ...(typeof allowBuy === 'boolean' ? { allowBuy } : {}),
+        ...(typeof allowSell === 'boolean' ? { allowSell } : {}),
+      };
+      updateData.params = JSON.stringify(merged);
     }
 
     const strategy = await prisma.strategy.update({

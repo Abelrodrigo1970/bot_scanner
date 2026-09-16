@@ -1,8 +1,7 @@
 /**
- * rsi_vendido LONG — Scanner 6 (SMA80 4h).
- * Entrada: símbolo entra no Scanner 6 (novo no universo) e fecho 4h ≥ EMA70.
- * Saída: sai do Scanner 6 OU fecho 4h cruza abaixo da EMA70.
- * Reentrada: ainda no Scanner 6 e fecho 4h cruza acima da EMA70.
+ * rsi_vendido LONG — Scanner 6 (SMA80 4h) top N.
+ * Entrada: símbolo entra no top N (fecho 4h ≥ EMA70) OU reclaim EMA70 ainda no top N.
+ * Saída: sai do top N OU fecho 4h cruza abaixo da EMA70.
  * SL −15% (segurança); sem TP — gestão por scanner + EMA.
  */
 
@@ -242,6 +241,11 @@ export async function runRsiVendidoPipeline(options?: {
   const items = allItems.slice(0, topN);
   const universeSet = new Set(items.map((r) => r.symbol));
   const itemBySymbol = new Map(items.map((r) => [r.symbol, r]));
+  // «Novo» = entrou no topN (não no scan completo de 80). Símbolos que sobem de #50→#20
+  // contam como entrada; isNewInUniverse do scan completo falhava nesses casos.
+  const prevTopSet = new Set(
+    (pair.previous?.rows ?? []).slice(0, topN).map((r) => r.symbol)
+  );
 
   const openLongs = await prisma.signal.findMany({
     where: {
@@ -265,6 +269,28 @@ export async function runRsiVendidoPipeline(options?: {
   const hitSymbols: string[] = [];
   const closedSymbols: string[] = [];
 
+  const minStrength = Number(params.autoExecuteMinStrength ?? 70);
+
+  // 0) Auto-exec NEW pendentes ANTES de expirar por saída — senão sinais nunca preenchidos morrem no EXPIRED
+  let executed = await autoExecuteNewSignalsForStrategy({
+    strategy,
+    startedAt,
+    minStrength,
+    logPrefix: `${logPrefix} [retry]`,
+  });
+
+  // Refresh abertos após retry (NEW→IN_PROGRESS)
+  const openAfterRetry = await prisma.signal.findMany({
+    where: {
+      strategyId: strategy.id,
+      direction: 'BUY',
+      status: { in: ['NEW', 'IN_PROGRESS'] },
+    },
+    select: { symbol: true },
+  });
+  openLongSet.clear();
+  for (const s of openAfterRetry) openLongSet.add(s.symbol);
+
   // 1) Saiu do Scanner 6 → fecha LONG
   for (const symbol of [...openLongSet]) {
     if (universeSet.has(symbol)) continue;
@@ -274,7 +300,7 @@ export async function runRsiVendidoPipeline(options?: {
     openLongSet.delete(symbol);
   }
 
-  // 2) Ainda no scanner: fecho 4h < EMA70 → fecha; cruzamento ↑ → reentra; novo no scanner → entra
+  // 2) Ainda no scanner: fecho 4h < EMA70 → fecha; cruzamento ↑ → reentra; novo no topN → entra
   const toCheck = new Set<string>([...universeSet, ...openLongSet]);
 
   for (const symbol of toCheck) {
@@ -306,8 +332,8 @@ export async function runRsiVendidoPipeline(options?: {
     if (hasOpenNow || !inUniverse) continue;
 
     const reclaimEma = bar.prevClose < bar.prevEma && bar.close >= bar.ema;
-    const isNew = !!row?.isNewInUniverse && !!pair.previous;
-    // Entrada ao entrar no scanner: exige fecho ≥ EMA70 (senão reentra no reclaim)
+    const isNew = !!pair.previous && !prevTopSet.has(symbol);
+    // Entrada ao entrar no topN: exige fecho ≥ EMA70 (senão reentra no reclaim)
     const enterNew = isNew && bar.close >= bar.ema;
     // Reentrada: ainda no scanner e fecho volta acima da EMA70
     const reenter = !isNew && reclaimEma;
@@ -371,8 +397,7 @@ export async function runRsiVendidoPipeline(options?: {
     console.log(`${logPrefix} Sem scan anterior — LONGs de «entrar no scanner» só no próximo ciclo`);
   }
 
-  const minStrength = Number(params.autoExecuteMinStrength ?? 70);
-  const executed = await autoExecuteNewSignalsForStrategy({
+  executed += await autoExecuteNewSignalsForStrategy({
     strategy,
     startedAt,
     minStrength,

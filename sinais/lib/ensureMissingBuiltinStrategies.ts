@@ -81,6 +81,7 @@ import {
   SCANNER2_SHORT_LEADER_24H_PARAMS,
   migrateScanner2StrategiesToBybit,
   migrateActiveStrategiesExchangeToBybit,
+  repairCorruptedStrategyParams,
 } from './strategyMigrations';
 
 /** Estratégias de sinal no bot_scanner (Scanner 1). */
@@ -203,6 +204,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
 
 export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Promise<void> {
   await deactivateDeprecatedStrategies(prisma, [...DEPRECATED_TOP_ROTATION_NAMES]);
+
+  const repairedParams = await repairCorruptedStrategyParams(prisma);
+  if (repairedParams.repaired.length > 0) {
+    console.log(
+      `✅ Params corrompidos (chaves numéricas) reparados: ${repairedParams.repaired.join(', ')}`
+    );
+  }
 
   for (const def of IMPORTED_BUILTIN_STRATEGY_SEEDS) {
     const existing = await prisma.strategy.findUnique({ where: { name: def.name } });
