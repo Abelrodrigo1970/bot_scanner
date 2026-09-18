@@ -309,8 +309,9 @@ export default function EstrategiasPage() {
               {isS2 ? (
                 <>
                   <strong>Frequência:</strong> só COMPRA; activo sáb/dom; turnover 3×1h ≥ $3M; spread de entrada{' '}
-                  <strong>0,6–1,5%</strong>; <strong>sem limite de sinais/dia</strong> nem cooldown entre trades;
-                  <strong> filtro BTC OFF</strong>. Não abre posição nova se já existir trade aberto no mesmo sentido.
+                  <strong>0,6–1,5%</strong>; <strong>sem limite de sinais/dia</strong>; cooldown{' '}
+                  <strong>12h</strong> por par; <strong>filtro BTC OFF</strong>. Não abre se já existir
+                  sinal NEW/IN_PROGRESS ou posição no mesmo sentido.
                 </>
               ) : (
                 <>

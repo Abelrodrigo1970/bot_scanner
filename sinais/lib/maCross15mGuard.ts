@@ -253,6 +253,7 @@ async function isSignalProfitable(
  * - activo sáb/dom; qualquer hora PT
  * - filtro BTC opcional: BTC↑ (>minAbs) só BUY · BTC↓ (&lt;−minAbs) só SELL · flat bloqueia
  * - soma turnover 3 últimas velas 1h ≥ $3M USDT
+ * - bloqueia se já existir sinal NEW/IN_PROGRESS no mesmo par+direcção
  * - 1.º sinal do dia: cooldown 24h desde o último sinal do par (salvo cooldownMs = 0)
  * - 2.º sinal no mesmo dia: só se 1.º fechado, verde (líquido) e mesma direção
  * - máx. N sinais por símbolo por dia civil PT (0 = sem tecto)
@@ -313,6 +314,24 @@ export async function checkMaCross15mSignalGate(
     return {
       allowed: false,
       reason: `soma turnover 3 velas 1h insuficiente ($${(turnover3hSum / 1e6).toFixed(2)}M < $${minUsd / 1e6}M)`,
+    };
+  }
+
+  // Bloqueia spam: não criar outro sinal se já houver NEW / IN_PROGRESS no mesmo sentido
+  const openSame = await prisma.signal.findFirst({
+    where: {
+      symbol: input.symbol,
+      strategyId: input.strategyId,
+      direction: input.direction,
+      status: { in: ['NEW', 'IN_PROGRESS'] },
+    },
+    orderBy: { generatedAt: 'desc' },
+    select: { id: true, status: true, generatedAt: true },
+  });
+  if (openSame) {
+    return {
+      allowed: false,
+      reason: `já existe sinal ${openSame.status} (${input.symbol}, ${openSame.generatedAt.toISOString()})`,
     };
   }
 
