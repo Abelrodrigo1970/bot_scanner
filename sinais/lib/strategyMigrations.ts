@@ -250,14 +250,14 @@ export const MA_CROSS_12X21_S2_PARAMS = {
   blockedHoursPt: [4, 5, 6, 7, 8, 9, 10],
   allowedHourMinPt: 11,
   allowedHourMaxPt: 22,
-  /** BTC↑ (>+0,5%) → só BUY · BTC↓ (&lt;−0,5%) → só SELL · flat bloqueia. */
-  btcAlignFilter: true,
+  /** Filtro BTC diário ±0,5% — OFF (estudo 10/20/30d: cortava PnL absoluto). */
+  btcAlignFilter: false,
   btcAlignMinAbsPct: 0.5,
 } as const;
 
 export const MA_CROSS_12X21_S2_DISPLAY = 'MA Cross 12×21 (15m)';
 export const MA_CROSS_12X21_S2_DESC =
-  'MA12/MA21 em 15m: só COMPRA. Spread 0,6–1,5%; repetir tendência; TP parcial 60% a +44%; SL 15%. Universo Scanner 6 (fecho acima SMA80 4h), top 40. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Filtro BTC: diário &gt;+0,5% só BUY · &lt;−0,5% ou flat sem sinais (estratégia só BUY). Turnover 3×1h ≥ $3M.';
+  'MA12/MA21 em 15m: só COMPRA. Spread 0,6–1,5%; repetir tendência; TP parcial 60% a +44%; SL 15%. Universo Scanner 6 (fecho acima SMA80 4h), top 40. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Sem filtro BTC. Turnover 3×1h ≥ $3M.';
 
 /** Garante registo MA Cross 12×21 Scanner 2 (não força isActive nem exchange — escolha do utilizador). */
 export async function syncMaCross12x21Scanner2Config(
