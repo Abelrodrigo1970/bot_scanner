@@ -489,6 +489,8 @@ export async function syncSwingAnchoredVwap15mConfig(
   });
   if (!row) return { updated: false };
 
+  const shouldDeactivate = row.isActive;
+
   let p: Record<string, unknown> = {};
   try {
     p = row.params ? JSON.parse(row.params) : {};
@@ -514,13 +516,14 @@ export async function syncSwingAnchoredVwap15mConfig(
     row.displayName !== SWING_ANCHORED_VWAP_15M_DISPLAY ||
     row.description !== SWING_ANCHORED_VWAP_15M_DESC;
 
-  if (needParams || needMeta) {
+  if (needParams || needMeta || shouldDeactivate) {
     await prisma.strategy.update({
       where: { name: 'SWING_ANCHORED_VWAP_15M' },
       data: {
         displayName: SWING_ANCHORED_VWAP_15M_DISPLAY,
         description: SWING_ANCHORED_VWAP_15M_DESC,
         params: JSON.stringify(next),
+        isActive: false,
       },
     });
     return { updated: true };

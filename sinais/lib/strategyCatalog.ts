@@ -18,8 +18,6 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'LIQUIDITY_POOLS_PRO_15M',
 
-  'SWING_ANCHORED_VWAP_15M',
-
   'ROMPIMENTO_20_15M',
 
   'RSI_VENDIDO_4H',
@@ -260,6 +258,8 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
 
 export const REMOVED_STRATEGY_LABELS: Record<string, string> = {
+
+  SWING_ANCHORED_VWAP_15M: 'Swing Anchored VWAP (15m) — descontinuado',
 
   SCANNER_S6_SHORT_LEADER_12H: 'Scanner 6 Short Leader 12h (substituído por Scanner 2 Short Leader 24h)',
 

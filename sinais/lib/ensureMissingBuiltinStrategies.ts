@@ -188,7 +188,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'SWING_ANCHORED_VWAP_15M',
     displayName: SWING_ANCHORED_VWAP_15M_DISPLAY,
     description: SWING_ANCHORED_VWAP_15M_DESC,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(SWING_ANCHORED_VWAP_15M_PARAMS),
   },
   {
@@ -276,7 +276,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const swingVwapSync = await syncSwingAnchoredVwap15mConfig(prisma);
   if (swingVwapSync.updated) {
-    console.log('✅ SWING_ANCHORED_VWAP_15M: VWAP ancorado length 50 | cruzamento linha azul (hVwap) | Scanner 6 top 40 | SL swing/5% | TP 10%');
+    console.log('⏸️ SWING_ANCHORED_VWAP_15M desactivada');
   }
 
   const rompimentoSync = await syncRompimento20_15mConfig(prisma);

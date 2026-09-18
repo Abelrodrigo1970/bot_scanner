@@ -37,6 +37,7 @@ export const DISCONTINUED_STRATEGY_NAMES = [
   'SCANNER3_RSI_BREAKOUT_15M',
   'STCH15LONG',
   'SCANNER2_RSI80_TOP3_LONG_4H',
+  'SWING_ANCHORED_VWAP_15M',
 ] as const;
 
 /** Rotações Top descontinuadas neste projeto. */

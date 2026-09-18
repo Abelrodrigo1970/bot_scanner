@@ -256,7 +256,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     description:
       'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h.',
     strategyNames:
-      'MA Cross 12×21 (15m); Swing Anchored VWAP (15m); Rompimento 20 (15m); rsi_vendido LONG (4h)',
+      'MA Cross 12×21 (15m); Rompimento 20 (15m); rsi_vendido LONG (4h)',
   },
   UNIVERSE_RSI_ABOVE_69_1D: {
     displayName: `Scanner 7 — RSI > ${SCANNER_7_RSI_THRESHOLD} (1d)`,

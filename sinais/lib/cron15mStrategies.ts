@@ -31,7 +31,6 @@ import {
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 import { runEngolfo15mPipeline } from '@/lib/engolfo15mStrategy';
 import { runLiquidityPoolsPro15mPipeline } from '@/lib/liquidityPoolsPro15mStrategy';
-import { runSwingAnchoredVwap15mPipeline } from '@/lib/swingAnchoredVwap15mStrategy';
 import { runRompimento20_15mPipeline } from '@/lib/rompimento20_15mStrategy';
 import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 
@@ -340,7 +339,6 @@ export interface Cron15mAllResult {
   maCross12x21S2: Cron15mResult;
   engolfo: Cron15mResult;
   liquidityPoolsPro: Cron15mResult;
-  swingAnchoredVwap: Cron15mResult;
   rompimento20: Cron15mResult;
   rsiVendido: Cron15mResult;
 }
@@ -364,22 +362,6 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
   } catch (err) {
     console.error('[Run-15m → liquidity-pools] Falhou:', err);
     liquidityPoolsPro = { status: 'not-found' };
-  }
-
-  let swingAnchoredVwap: Cron15mResult;
-  try {
-    const r = await runSwingAnchoredVwap15mPipeline({ logPrefix: '[Run-15m → swing-vwap]' });
-    if (r.status === 'skipped') {
-      console.log(`[Run-15m → swing-vwap] Saltado: ${r.reason}`);
-      if (r.reason.includes('inactiva')) swingAnchoredVwap = { status: 'inactive' };
-      else if (r.reason.includes('não encontrada')) swingAnchoredVwap = { status: 'not-found' };
-      else swingAnchoredVwap = { status: 'done', signalsCreated: 0 };
-    } else {
-      swingAnchoredVwap = { status: 'done', signalsCreated: r.signalsCreated };
-    }
-  } catch (err) {
-    console.error('[Run-15m → swing-vwap] Falhou:', err);
-    swingAnchoredVwap = { status: 'not-found' };
   }
 
   const maCross = await runMaCross15mPipeline(now);
@@ -456,7 +438,6 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     maCross12x21S2,
     engolfo,
     liquidityPoolsPro,
-    swingAnchoredVwap,
     rompimento20,
     rsiVendido,
   };

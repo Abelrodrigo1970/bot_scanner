@@ -116,25 +116,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
-    strategyName: 'SWING_ANCHORED_VWAP_15M',
-
-    displayLabel: 'Swing Anchored VWAP (15m)',
-
-    signalTimeframes: ['15m'],
-
-    source: 'universe_scan',
-
-    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
-
-    description:
-      'Scanner 6 top 40. Cruzamento linha azul hVwap (length 50): BUY acima, SELL abaixo. SL swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.',
-
-    refresh: '/api/cron/run-15m (cada 15 min)',
-
-  },
-
-  {
-
     strategyName: 'ROMPIMENTO_20_15M',
 
     displayLabel: 'Rompimento 20 (15m)',
