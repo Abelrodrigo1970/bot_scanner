@@ -355,7 +355,8 @@ async function executeSignalBinance(
 async function executeSignalBybit(
   signal: SignalForTrading,
   executionSignal: SignalForTrading,
-  params: ReturnType<typeof getExecutionParams>
+  params: ReturnType<typeof getExecutionParams>,
+  opts?: { forceUpdateStopLoss?: boolean; skipTakeProfits?: boolean }
 ): Promise<ExecuteResult> {
   if (!hasBybitCredentials()) {
     return { success: false, dryRun: false, message: 'Credenciais Bybit não configuradas (BYBIT_API_KEY / BYBIT_API_SECRET)' };
@@ -422,14 +423,16 @@ async function executeSignalBybit(
       side: bybitSide,
       stopLoss: slPriceStr,
       qty: qtyStr,
+      forceUpdate: opts?.forceUpdateStopLoss === true,
     });
     console.log(
       `[Bybit] SL ensure: ok=${slResult.ok} method=${slResult.method}` +
+        (opts?.forceUpdateStopLoss ? ' forceUpdate' : '') +
         (slResult.error ? ` err=${slResult.error}` : '')
     );
 
-    // Ordens de Take Profit separadas
-    const tps      = params.takeProfits ?? [];
+    // Ordens de Take Profit separadas (omitir em pirâmide — evita TP órfãos)
+    const tps = opts?.skipTakeProfits ? [] : params.takeProfits ?? [];
     const totalQty = qty;
     const tpErrors: string[] = [];
     for (let i = 0; i < Math.min(tps.length, 2); i++) {
@@ -469,6 +472,7 @@ async function executeSignalBybit(
         side: bybitSide,
         stopLoss: slPriceStr,
         qty: qtyStr,
+        forceUpdate: opts?.forceUpdateStopLoss === true,
       });
       slResult = again;
       console.log(
@@ -486,6 +490,7 @@ async function executeSignalBybit(
           side: bybitSide,
           stopLoss: slPriceStr,
           qty: qtyStr,
+          forceUpdate: true,
         });
         slResult = forced;
         console.log(
@@ -565,8 +570,13 @@ async function executeSignalBybit(
 /**
  * Execução real: encaminha para Bybit ou Binance conforme EXCHANGE env var.
  * Só executa se TRADING_ENABLED=true.
+ * @param opts.forceUpdateStopLoss — sobrescreve SL existente (pirâmide: SL da última entrada)
+ * @param opts.skipTakeProfits — não coloca TPs novos (usar em add-on / pirâmide)
  */
-export async function executeSignalReal(signal: SignalForTrading): Promise<ExecuteResult> {
+export async function executeSignalReal(
+  signal: SignalForTrading,
+  opts?: { forceUpdateStopLoss?: boolean; skipTakeProfits?: boolean }
+): Promise<ExecuteResult> {
   const executionSignal = applyVolumeSpike15mExecutionProfile(signal);
   const check = canExecuteSignal(toSignalForRules(executionSignal));
   if (!check.ok) {
@@ -586,7 +596,7 @@ export async function executeSignalReal(signal: SignalForTrading): Promise<Execu
   // Prioridade: exchange do sinal > variável EXCHANGE global
   const useBybit = signal.exchange === 'bybit' || (signal.exchange !== 'binance' && isBybitEnabled());
   if (useBybit) {
-    return executeSignalBybit(signal, executionSignal, params);
+    return executeSignalBybit(signal, executionSignal, params, opts);
   }
   return executeSignalBinance(signal, executionSignal, params);
 }

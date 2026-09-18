@@ -284,26 +284,31 @@ export async function ensureBybitStopLoss(params: {
   side: 'Buy' | 'Sell';
   stopLoss: string;
   qty: string;
+  /** Se true, sobrescreve SL existente (pirâmide — SL da última entrada). */
+  forceUpdate?: boolean;
 }): Promise<{ ok: boolean; method: 'position' | 'conditional' | 'none'; stopLoss?: string; error?: string }> {
   const hedgeIdx: 0 | 1 | 2 = params.side === 'Buy' ? 1 : 2;
   const idxTries: Array<0 | 1 | 2> = [0, hedgeIdx];
+  const forceUpdate = params.forceUpdate === true;
 
   let slPrice = parseFloat(params.stopLoss);
   if (!(slPrice > 0)) {
     return { ok: false, method: 'none', error: 'stopLoss inválido' };
   }
 
-  // Qualquer SL já na posição conta (inclui manuais) — não sobrescrever
-  try {
-    const positions = await getBybitPositionRisk(params.symbol);
-    const active = positions.find(
-      (p) => p.symbol === params.symbol && parseFloat(p.size) > 0 && p.side === params.side
-    );
-    if (active?.stopLoss && parseFloat(active.stopLoss) > 0) {
-      return { ok: true, method: 'position', stopLoss: active.stopLoss };
+  // Qualquer SL já na posição conta (inclui manuais) — não sobrescrever (salvo forceUpdate)
+  if (!forceUpdate) {
+    try {
+      const positions = await getBybitPositionRisk(params.symbol);
+      const active = positions.find(
+        (p) => p.symbol === params.symbol && parseFloat(p.size) > 0 && p.side === params.side
+      );
+      if (active?.stopLoss && parseFloat(active.stopLoss) > 0) {
+        return { ok: true, method: 'position', stopLoss: active.stopLoss };
+      }
+    } catch {
+      // continua
     }
-  } catch {
-    // continua
   }
 
   // Ajusta SL vs mark actual (Bybit rejeita SL do lado errado do preço)
@@ -342,7 +347,7 @@ export async function ensureBybitStopLoss(params: {
       if (active) {
         const idx = active.positionIdx;
         positionIdx = idx === 1 || idx === 2 ? idx : 0;
-        if (active.stopLoss && parseFloat(active.stopLoss) > 0) {
+        if (!forceUpdate && active.stopLoss && parseFloat(active.stopLoss) > 0) {
           return { ok: true, method: 'position', stopLoss: active.stopLoss };
         }
       }

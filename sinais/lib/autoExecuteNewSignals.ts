@@ -88,6 +88,41 @@ export async function autoExecuteNewSignalsForStrategy(opts: {
       }
 
       if (positionState.hasPosition && positionState.direction === sig.direction) {
+        if (stratParams.pyramidAddUpdateSl === true) {
+          console.log(
+            `${logPrefix} → Pirâmide ${sig.direction} ${sig.symbol}: add size + SL → ${sig.stopLoss}`
+          );
+          const execResult = await executeSignalReal(
+            {
+              id: sig.id,
+              symbol: sig.symbol,
+              direction: sig.direction as 'BUY' | 'SELL',
+              entryPrice: sig.entryPrice,
+              stopLoss: sig.stopLoss,
+              target1: sig.target1,
+              target2: sig.target2,
+              target3: sig.target3 ?? null,
+              strength: sig.strength,
+              strategyName: sig.strategyName,
+              status: sig.status,
+              extraInfo: sig.extraInfo,
+              exchange,
+            },
+            { forceUpdateStopLoss: true, skipTakeProfits: true }
+          );
+          if (execResult.success && execResult.orderId) {
+            await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${sig.id}`;
+            executed++;
+            console.log(
+              `${logPrefix} ✅ Pirâmide ${sig.symbol}: order ${execResult.orderId} | SL actualizado ${sig.stopLoss}`
+            );
+          } else {
+            console.warn(
+              `${logPrefix} ⚠️ Pirâmide falhou ${sig.symbol}: ${execResult.message}`
+            );
+          }
+          continue;
+        }
         console.log(
           `${logPrefix} ⏭️ Já existe posição real em ${sig.symbol} (${positionState.direction}) — sinal ignorado`
         );

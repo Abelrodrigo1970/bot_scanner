@@ -95,10 +95,12 @@ async function runMaCross15mWorker(
 
       if (signalResult && signalResult.strength >= MA_CROSS_MIN_STRENGTH) {
         const posGate = await inspectActivePositionForSymbol(symbol, ex);
+        const pyramid = params.pyramidAddUpdateSl === true;
         if (
           posGate.inspectable &&
           posGate.hasPosition &&
-          posGate.direction === signalResult.direction
+          posGate.direction === signalResult.direction &&
+          !pyramid
         ) {
           continue;
         }
@@ -114,6 +116,7 @@ async function runMaCross15mWorker(
           cooldownMs: gateLimits.cooldownMs,
           btcAlignFilter: btcAlign.btcAlignFilter,
           btcAlignMinAbsPct: btcAlign.btcAlignMinAbsPct,
+          allowPyramidOpenSignal: pyramid,
           ...(params.maCross12x21EntryFilters === true
             ? {
                 blockedHoursPt:
@@ -158,7 +161,8 @@ async function runMaCross15mWorker(
             strategyAllowsAutoExecuteDirection(signalResult.direction, params)
           ) {
             console.log(
-              `[${logTag} BG] Auto-exec (${ex}): ${symbol} força ${signalResult.strength} (>= ${autoMinStrength})`
+              `[${logTag} BG] Auto-exec (${ex}): ${symbol} força ${signalResult.strength} (>= ${autoMinStrength})` +
+                (pyramid && posGate.hasPosition ? ' [pirâmide]' : '')
             );
             try {
               const positionState = await inspectActivePositionForSymbol(created.symbol, ex);
@@ -170,10 +174,12 @@ async function runMaCross15mWorker(
               }
 
               if (positionState.hasPosition && positionState.direction === created.direction) {
-                console.log(
-                  `[${logTag} BG] ⏭️ Já existe posição real em ${created.symbol} (${positionState.direction}) — sinal ignorado`
-                );
-                continue;
+                if (!pyramid) {
+                  console.log(
+                    `[${logTag} BG] ⏭️ Já existe posição real em ${created.symbol} (${positionState.direction}) — sinal ignorado`
+                  );
+                  continue;
+                }
               }
 
               if (positionState.hasPosition && positionState.direction !== created.direction) {
@@ -183,25 +189,36 @@ async function runMaCross15mWorker(
                 continue;
               }
 
-              const result = await executeSignalReal({
-                id: created.id,
-                symbol: created.symbol,
-                direction: created.direction as 'BUY' | 'SELL',
-                entryPrice: created.entryPrice,
-                stopLoss: created.stopLoss,
-                target1: created.target1,
-                target2: created.target2,
-                target3: created.target3 ?? null,
-                strength: created.strength,
-                strategyName: created.strategyName,
-                status: created.status,
-                extraInfo: created.extraInfo,
-                exchange: ex,
-              });
+              const isPyramid =
+                pyramid &&
+                positionState.hasPosition &&
+                positionState.direction === created.direction;
+
+              const result = await executeSignalReal(
+                {
+                  id: created.id,
+                  symbol: created.symbol,
+                  direction: created.direction as 'BUY' | 'SELL',
+                  entryPrice: created.entryPrice,
+                  stopLoss: created.stopLoss,
+                  target1: created.target1,
+                  target2: created.target2,
+                  target3: created.target3 ?? null,
+                  strength: created.strength,
+                  strategyName: created.strategyName,
+                  status: created.status,
+                  extraInfo: created.extraInfo,
+                  exchange: ex,
+                },
+                isPyramid
+                  ? { forceUpdateStopLoss: true, skipTakeProfits: true }
+                  : undefined
+              );
               if (result.success && result.orderId) {
                 await prisma.$executeRaw`UPDATE "Signal" SET status = 'IN_PROGRESS' WHERE id = ${created.id}`;
                 console.log(
-                  `[${logTag} BG] Auto-executado: ${created.symbol} order ${result.orderId}`
+                  `[${logTag} BG] Auto-executado${isPyramid ? ' (pirâmide+SL)' : ''}: ${created.symbol} order ${result.orderId}` +
+                    (isPyramid ? ` SL→${created.stopLoss}` : '')
                 );
               } else {
                 console.warn(

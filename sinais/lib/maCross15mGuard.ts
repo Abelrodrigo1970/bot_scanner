@@ -104,6 +104,11 @@ export interface MaCross15mSignalGateInput {
   btcAlignFilter?: boolean;
   /** Limiar absoluto BTC % (default 0,5). */
   btcAlignMinAbsPct?: number;
+  /**
+   * Se true, permite novo sinal mesmo com IN_PROGRESS (pirâmide + SL da última entrada).
+   * Continua a bloquear se houver NEW pendente.
+   */
+  allowPyramidOpenSignal?: boolean;
 }
 
 /** Lê tecto diário e cooldown dos params da estratégia. */
@@ -329,10 +334,14 @@ export async function checkMaCross15mSignalGate(
     select: { id: true, status: true, generatedAt: true },
   });
   if (openSame) {
-    return {
-      allowed: false,
-      reason: `já existe sinal ${openSame.status} (${input.symbol}, ${openSame.generatedAt.toISOString()})`,
-    };
+    const pyramidOk =
+      input.allowPyramidOpenSignal === true && openSame.status === 'IN_PROGRESS';
+    if (!pyramidOk) {
+      return {
+        allowed: false,
+        reason: `já existe sinal ${openSame.status} (${input.symbol}, ${openSame.generatedAt.toISOString()})`,
+      };
+    }
   }
 
   const dayKey = localDayKey(now);
