@@ -238,7 +238,7 @@ export const MA_CROSS_12X21_S2_PARAMS = {
   /** 0 = sem tecto diário. */
   maxSignalsPerDay: 0,
   /** Cooldown entre sinais do mesmo par (horas). Evita spam a cada 15m. */
-  signalCooldownHours: 12,
+  signalCooldownHours: 4,
   /**
    * Pirâmide: se já há LONG, aceita nova entrada (add size) e move o SL
    * para o da última entrada (ex. 3.57→SL 3.03, depois 3.66→SL 3.11).
@@ -262,7 +262,7 @@ export const MA_CROSS_12X21_S2_PARAMS = {
 
 export const MA_CROSS_12X21_S2_DISPLAY = 'MA Cross 12×21 (15m)';
 export const MA_CROSS_12X21_S2_DESC =
-  'MA12/MA21 em 15m: só COMPRA. Spread 0,6–1,5%; repetir tendência; TP parcial 60% a +44%; SL 15%. Universo Scanner 6 (fecho acima SMA80 4h), top 40. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Sem filtro BTC. Cooldown 12h por par. Pirâmide: nova entrada aumenta size e actualiza SL para o da última entrada. Turnover 3×1h ≥ $3M.';
+  'MA12/MA21 em 15m: só COMPRA. Spread 0,6–1,5%; repetir tendência; TP parcial 60% a +44%; SL 15%. Universo Scanner 6 (fecho acima SMA80 4h), top 40. Filtros: |preço−MA21| 2–4% (máx. 6%); momentum 1h a favor; horário 11h–22h PT (evita 4h–10h). Sem filtro BTC. Cooldown 4h por par. Pirâmide: nova entrada aumenta size e actualiza SL para o da última entrada. Turnover 3×1h ≥ $3M.';
 
 /** Garante registo MA Cross 12×21 Scanner 2 (não força isActive nem exchange — escolha do utilizador). */
 export async function syncMaCross12x21Scanner2Config(

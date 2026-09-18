@@ -309,7 +309,7 @@ export default function EstrategiasPage() {
               {isS2 ? (
                 <>
                   <strong>Frequência:</strong> só COMPRA; activo sáb/dom; turnover 3×1h ≥ $3M; spread de entrada{' '}
-                  <strong>0,6–1,5%</strong>; cooldown <strong>12h</strong> por par; <strong>filtro BTC OFF</strong>.
+                  <strong>0,6–1,5%</strong>; cooldown <strong>4h</strong> por par; <strong>filtro BTC OFF</strong>.
                   Pirâmide: nova entrada no mesmo sentido <strong>aumenta size</strong> e move o SL para o da{' '}
                   <strong>última entrada</strong>.
                 </>
