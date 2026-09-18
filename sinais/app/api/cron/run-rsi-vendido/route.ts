@@ -6,8 +6,8 @@ import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 export const dynamic = 'force-dynamic';
 
 /**
- * Cron / manual: rsi_vendido LONG 4h (Scanner 6 + EMA70).
- * Também incluído no pipeline run-15m.
+ * Cron / manual: rsi_vendido LONG 4h (Scanner 6 + EMA21 +0,8%).
+ * No run-15m corre só de 2em2h (Lisboa). Este endpoint força execução (?force=0 para respeitar horário).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +18,11 @@ export async function GET(request: NextRequest) {
     }
 
     await ensureMissingBuiltinStrategies(prisma);
-    const result = await runRsiVendidoPipeline({ logPrefix: '[run-rsi-vendido]' });
+    const force = request.nextUrl.searchParams.get('force') !== '0';
+    const result = await runRsiVendidoPipeline({
+      logPrefix: '[run-rsi-vendido]',
+      force,
+    });
 
     return NextResponse.json({
       success: true,

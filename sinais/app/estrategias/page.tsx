@@ -785,26 +785,35 @@ export default function EstrategiasPage() {
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               <strong>rsi_vendido</strong> — <strong>LONG</strong> no{' '}
-              <strong>Scanner 7</strong> (RSI 1d &gt; 69, top {p.universeTopN ?? p.topN ?? 80}).
-              Entra ao <strong>entrar no scanner</strong> com fecho{' '}
-              <strong>{p.chartTimeframe ?? '4h'}</strong> ≥ EMA{p.emaExitPeriod ?? 70}. Sai ao sair
-              do scanner ou fecho &lt; EMA{p.emaExitPeriod ?? 70}. Reentra se ainda no scanner e
-              fecho volta ≥ EMA{p.emaExitPeriod ?? 70}. SL −
-              {((p.stopLossPct ?? 0.15) * 100).toFixed(0)}%. Sem TP. Cron{' '}
-              <code className="text-[10px]">run-15m</code> /{' '}
-              <code className="text-[10px]">run-rsi-vendido</code>.
+              <strong>Scanner 6</strong> (SMA80 4h, top {p.universeTopN ?? p.topN ?? 40}).
+              Ao <strong>entrar no top N</strong> só compra se fecho{' '}
+              <strong>{p.chartTimeframe ?? '4h'}</strong> &gt; EMA{p.emaExitPeriod ?? 21} +{' '}
+              {(((p.emaReentryMinPctAbove as number | undefined) ?? 0.008) * 100).toFixed(1)}%. Sai ao
+              sair do scanner ou fecho &lt; EMA{p.emaExitPeriod ?? 21}. Reentra (ainda no top N) com o
+              mesmo filtro +{(((p.emaReentryMinPctAbove as number | undefined) ?? 0.008) * 100).toFixed(1)}%.
+              SL −{((p.stopLossPct ?? 0.15) * 100).toFixed(0)}%. Sem TP. Cron{' '}
+              <code className="text-[10px]">run-15m</code> (2em2h Lisboa).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Top N Scanner 7', p.universeTopN ?? p.topN ?? 80, (v) =>
+              {numField('Top N Scanner 6', p.universeTopN ?? p.topN ?? 40, (v) =>
                 upd({ universeTopN: Math.min(120, Math.max(1, v)), topN: Math.min(120, Math.max(1, v)) })
               )}
-              {numField('EMA saída/reentrada', p.emaExitPeriod ?? 70, (v) =>
+              {numField('EMA saída/filtro compra', p.emaExitPeriod ?? 21, (v) =>
                 upd({ emaExitPeriod: Math.min(200, Math.max(2, v)) })
+              )}
+              {numField(
+                'Mín. % acima EMA p/ comprar',
+                ((p.emaReentryMinPctAbove as number | undefined) ?? 0.008) * 100,
+                (v) => upd({ emaReentryMinPctAbove: Math.max(0, v) / 100 }),
+                0.1
               )}
               {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.15) * 100, (v) =>
                 upd({ stopLossPct: v / 100 }), 0.5)}
               {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 70, (v) =>
                 upd({ autoExecuteMinStrength: v })
+              )}
+              {numField('Cron a cada N horas', p.runEveryHours ?? 2, (v) =>
+                upd({ runEveryHours: Math.min(24, Math.max(0, Math.floor(v))) })
               )}
             </div>
           </div>

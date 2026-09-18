@@ -266,7 +266,7 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_RSI_BELOW_32_4H: {
     displayName: 'rsi_vendido — RSI < 32 (4h, legado)',
     description:
-      'Legado: RSI(14) 4h < 32. A estratégia rsi_vendido passou a usar Scanner 6 em 4h + EMA70.',
+      'Legado: RSI(14) 4h < 32. A estratégia rsi_vendido passou a usar Scanner 6 em 4h + EMA21.',
     strategyNames: '— (legado)',
   },
   UNIVERSE_LATERAL_VOLATILE_4H: {
@@ -294,7 +294,7 @@ export const SCANNER_ROTATION_NOTES: Record<string, string> = {
   '6': 'Scanner 6: MA Cross 12×21 + Swing VWAP + Rompimento 20 + rsi_vendido (SMA80 4h).',
   '7': 'Scanner 7: engolfo top 3 + Liquidity Pools (15m). Universo RSI 1d ≥ 69.',
   rsi_vendido:
-    'Legado RSI <32 4h. A estratégia activa usa Scanner 6 em 4h + EMA70 (cron run-15m / run-rsi-vendido).',
+    'Legado RSI <32 4h. A estratégia activa usa Scanner 6 em 4h + EMA21 +0,8% (cron run-15m).',
   ytd_mcap60:
     'Universo YTD (mcap > $60M) disponível para ligar a estratégias via dataKey UNIVERSE_TOP50_YTD_MCAP60M.',
   price_range:

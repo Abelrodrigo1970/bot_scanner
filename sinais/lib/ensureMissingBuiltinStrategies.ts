@@ -289,7 +289,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const rsiVendidoSync = await syncRsiVendido4hConfig(prisma);
   if (rsiVendidoSync.updated) {
     console.log(
-      '✅ RSI_VENDIDO_4H: rsi_vendido 4h | Scanner 6 | entra ao entrar S6 (≥EMA70) | sai S6 ou fecho <EMA70 | reentra reclaim EMA70 | SL −15%'
+      '✅ RSI_VENDIDO_4H: rsi_vendido 4h | Scanner 6 | EMA21+0,8% | sai <EMA21 | cron 2em2h Lisboa | SL −15%'
     );
   }
 

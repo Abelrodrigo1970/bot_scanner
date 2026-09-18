@@ -203,9 +203,9 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     dataKey: 'UNIVERSE_ABOVE_MA80_4H',
 
     description:
-      'Scanner 6. LONG ao entrar (fecho 4h ≥ EMA70). Sai ao sair do scanner ou fecho < EMA70. Reentra se ainda no scanner e fecho volta ≥ EMA70. SL −15%. Sem TP.',
+      'Scanner 6. LONG ao entrar/reentrar com fecho 4h > EMA21 + 0,8%. Sai ao sair do scanner ou fecho < EMA21. SL −15%. Sem TP.',
 
-    refresh: '/api/cron/run-15m (e run-rsi-vendido)',
+    refresh: '/api/cron/run-15m (rsi_vendido só de 2em2h Lisboa)',
 
   },
 

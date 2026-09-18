@@ -1143,13 +1143,17 @@ export const STCH15LONG_PARAMS = {
 export const RSI_VENDIDO_4H_DISPLAY = 'rsi_vendido LONG (4h)';
 
 export const RSI_VENDIDO_4H_DESCRIPTION =
-  'Universo Scanner 6 (SMA80 4h). LONG 4h ao entrar no scanner (fecho ≥ EMA70). Sai ao sair do scanner ou fecho 4h < EMA70. Reentra se ainda no scanner e fecho volta ≥ EMA70. SL −15%. Sem TP. Só LONG.';
+  'Universo Scanner 6 (SMA80 4h). LONG 4h ao entrar no scanner ou reentrar com fecho > EMA21 + 0,8%. Sai ao sair do scanner ou fecho 4h < EMA21. SL −15%. Sem TP. Só LONG. Cron de 2 em 2 h (Lisboa).';
 
 export const RSI_VENDIDO_4H_PARAMS = {
   universeTopN: 40,
   topN: 40,
   chartTimeframe: '4h',
-  emaExitPeriod: 70,
+  emaExitPeriod: 21,
+  /** Fecho ≥ EMA21 × (1 + 0,8%) para entrar / reentrar. */
+  emaReentryMinPctAbove: 0.008,
+  /** Intervalo mínimo entre execuções do pipeline (horas, fuso Lisboa). */
+  runEveryHours: 2,
   stopLossPct: 0.15,
   autoExecuteMinStrength: 70,
   allowBuy: true,
