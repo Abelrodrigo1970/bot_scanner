@@ -27,6 +27,9 @@ export const UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H = 'UNIVERSE_ABOVE_MA80_4H' as
 /** Scanner 7 — RSI(14) > 69 em velas diárias (1d). */
 export const UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D = 'UNIVERSE_RSI_ABOVE_69_1D' as const;
 
+/** Scanner 8 — Bybit TradFi stock perps (EMA21/70 diário; UI dedicada /scanners/8). */
+export const UNIVERSE_CODE_SCANNER_8_BYBIT_STOCKS = 'UNIVERSE_BYBIT_STOCKS_1D' as const;
+
 /** rsi_vendido — RSI(14) 4h abaixo de 32. */
 export const UNIVERSE_CODE_RSI_VENDIDO = 'UNIVERSE_RSI_BELOW_32_4H' as const;
 
@@ -263,6 +266,12 @@ export const BUILTIN_UNIVERSE_META: Record<
     description: `Perpétuos USDT (top volume) com RSI(${SCANNER_7_RSI_PERIOD}) acima de ${SCANNER_7_RSI_THRESHOLD} em velas diárias, ordenados por RSI (maior primeiro). Mín. 500k USDT volume 24h.`,
     strategyNames: 'engolfo (top 3); Liquidity Pools (15m)',
   },
+  UNIVERSE_BYBIT_STOCKS_1D: {
+    displayName: 'Scanner 8 — Bybit Stocks (TradFi)',
+    description:
+      'Perpétuos Bybit symbolType=stock. % 24h, % 1 semana, EMA21 e EMA70 (velas 1D). Link TradingView. Actualização manual na página.',
+    strategyNames: '— (screener; sem estratégia ligada)',
+  },
   UNIVERSE_RSI_BELOW_32_4H: {
     displayName: 'rsi_vendido — RSI < 32 (4h, legado)',
     description:
@@ -293,6 +302,7 @@ export const SCANNER_ROTATION_NOTES: Record<string, string> = {
   '3': 'Scanner 3: MA Cross 12×30 (15m). Universo RSI 1h ≥ 75.',
   '6': 'Scanner 6: MA Cross 12×21 + Swing VWAP + Rompimento 20 + rsi_vendido (SMA80 4h).',
   '7': 'Scanner 7: engolfo top 3 + Liquidity Pools (15m). Universo RSI 1d ≥ 69.',
+  '8': 'Scanner 8: Bybit stock perps — %24h / %1s / EMA21 / EMA70 (1D) + TradingView. Sem estratégia.',
   rsi_vendido:
     'Legado RSI <32 4h. A estratégia activa usa Scanner 6 em 4h + EMA21 +0,8% (cron run-15m).',
   ytd_mcap60:
@@ -307,6 +317,7 @@ export const SCANNER_UI_ROUTES = [
   { scannerId: '3', code: UNIVERSE_CODE_SCANNER_3_RSI75_1H },
   { scannerId: '6', code: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H },
   { scannerId: '7', code: UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D },
+  { scannerId: '8', code: UNIVERSE_CODE_SCANNER_8_BYBIT_STOCKS },
   { scannerId: 'rsi_vendido', code: UNIVERSE_CODE_RSI_VENDIDO },
   { scannerId: 'lateral_volatile', code: UNIVERSE_CODE_LATERAL_VOLATILE },
   { scannerId: 'ytd_mcap60', code: UNIVERSE_CODE_YTD_MCAP60 },

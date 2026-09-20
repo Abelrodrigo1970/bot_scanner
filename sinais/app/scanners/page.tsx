@@ -30,15 +30,18 @@ export default function ScannersIndexPage() {
             const def = getBuiltinScanDefinition(code);
             if (!meta) return null;
 
-            const metricLabel = isRsiRankUniverseScan(code)
-              ? `RSI${def?.rsiPeriod ?? 14} (${def?.timeframe ?? '—'})`
-              : def?.maType === 'EMA'
-                ? `EMA${def?.maPeriod}`
-                : def?.ruleType === 'TOP_PRICE_CHANGE_24H'
-                  ? 'Top subidas 24h'
-                  : def?.ruleType === 'TOP_YTD_MCAP'
-                    ? 'Top YTD'
-                    : `SMA${def?.maPeriod ?? 200}`;
+            const isScanner8 = scannerId === '8';
+            const metricLabel = isScanner8
+              ? 'EMA21 / EMA70'
+              : isRsiRankUniverseScan(code)
+                ? `RSI${def?.rsiPeriod ?? 14} (${def?.timeframe ?? '—'})`
+                : def?.maType === 'EMA'
+                  ? `EMA${def?.maPeriod}`
+                  : def?.ruleType === 'TOP_PRICE_CHANGE_24H'
+                    ? 'Top subidas 24h'
+                    : def?.ruleType === 'TOP_YTD_MCAP'
+                      ? 'Top YTD'
+                      : `SMA${def?.maPeriod ?? 200}`;
 
             return (
               <Link
@@ -55,11 +58,16 @@ export default function ScannersIndexPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{meta.description}</p>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
                   <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
-                    Velas {def?.timeframe ?? '—'}
+                    Velas {isScanner8 ? '1d' : (def?.timeframe ?? '—')}
                   </span>
                   <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
                     {metricLabel}
                   </span>
+                  {isScanner8 ? (
+                    <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
+                      %24h · %1s · TradingView
+                    </span>
+                  ) : null}
                   {meta.strategyNames && meta.strategyNames !== '— (dados para análise)' ? (
                     <span className="px-2 py-1 rounded bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
                       {meta.strategyNames}

@@ -216,6 +216,10 @@ export const DATA_SOURCE_MENU_ITEMS = [
     label: 'Scanner 7 — RSI > 69 (1d) (engolfo, Liquidity Pools)',
   },
   {
+    href: '/scanners/8',
+    label: 'Scanner 8 — Bybit Stocks (%24h / 1s / EMA21 / EMA70)',
+  },
+  {
     href: '/scanners/lateral_volatile',
     label: 'Lateral — |EMA21−EMA70| < 10% (4h, 15 dias)',
   },
