@@ -42,6 +42,7 @@ import {
   getBybitTickSize,
   hasBybitConditionalStopLoss,
   listOpenLinearOrderSymbols,
+  setBybitTradingStop,
 } from './bybitFuturesClient';
 import { fetchCurrentPriceSafe } from './marketData';
 
@@ -408,7 +409,6 @@ async function executeSignalBybit(
 
     // Bybit usa "Buy"/"Sell" (capitalizado)
     const bybitSide: 'Buy' | 'Sell' = executionSignal.direction === 'BUY' ? 'Buy' : 'Sell';
-    const bybitSlSide: 'Buy' | 'Sell' = bybitSide === 'Buy' ? 'Sell' : 'Buy';
 
     // Ordem de entrada com SL embutido (tpslMode Full no client)
     const entryOrder = await createBybitOrder({
@@ -421,7 +421,10 @@ async function executeSignalBybit(
     });
     console.log(`[Bybit] Entrada: ${entryOrder.orderId} | SL attach @ ${slPriceStr}`);
 
-    // Confirma SL (trading-stop + verify + stop condicional se precisar)
+    // Confirma SL Full na posição (tpslMode Full)
+    // NÃO usar TakeProfit condicionais Partial — na Bybit isso APAGA o SL Full da UI.
+    await cancelBybitTakeProfitOrders(executionSignal.symbol).catch(() => 0);
+
     let slResult = await ensureBybitStopLoss({
       symbol: executionSignal.symbol,
       side: bybitSide,
@@ -435,57 +438,41 @@ async function executeSignalBybit(
         (slResult.error ? ` err=${slResult.error}` : '')
     );
 
-    // Ordens de Take Profit separadas (omitir em pirâmide — evita TP órfãos)
-    const tps = opts?.skipTakeProfits ? [] : params.takeProfits ?? [];
-    const totalQty = qty;
     const tpErrors: string[] = [];
-    for (let i = 0; i < Math.min(tps.length, 2); i++) {
-      const tp = tps[i];
-      if (!tp || tp.price === executionSignal.entryPrice) continue;
-      const tpQty    = totalQty * (tp.percentOfPosition / 100);
-      if (tpQty <= 0) continue;
-      const tpQtyStr  = roundQuantity(tpQty, step);
-      if (parseFloat(tpQtyStr) <= 0) continue;
-      const tpTrigger = roundPrice(tp.price, tick);
-      try {
-        const tpOrder = await createBybitOrder({
-          symbol:           executionSignal.symbol,
-          side:             bybitSlSide,
-          qty:              tpQtyStr,
-          stopOrderType:    'TakeProfit',
-          triggerPrice:     tpTrigger,
-          triggerBy:        'MarkPrice',
-          // BUY position: TP dispara quando preço SOBE até ao alvo (1)
-          // SELL position: TP dispara quando preço DESCE até ao alvo (2)
-          triggerDirection: executionSignal.direction === 'BUY' ? 1 : 2,
-          reduceOnly:       true,
-          positionIdx:      0,
-        });
-        console.log(`[Bybit] TP${i + 1}: ${tpQtyStr} @ ${tpTrigger} | order: ${tpOrder.orderId}`);
-      } catch (tpErr) {
-        const msg = tpErr instanceof Error ? tpErr.message : String(tpErr);
-        tpErrors.push(`TP${i + 1}: ${msg}`);
-        console.warn(`[Bybit] Erro TP${i + 1}:`, tpErr);
+    // Um único TP Full (posição inteira) via trading-stop — compatível com SL Full
+    if (!opts?.skipTakeProfits && slResult.ok && slResult.method === 'position') {
+      const tp1 = (params.takeProfits ?? [])[0];
+      if (tp1 && tp1.price !== executionSignal.entryPrice) {
+        try {
+          const positions = await getBybitPositionRisk(executionSignal.symbol);
+          const active = positions.find(
+            (p) =>
+              p.symbol === executionSignal.symbol &&
+              parseFloat(p.size) > 0 &&
+              p.side === bybitSide
+          );
+          const positionIdx =
+            active?.positionIdx === 1 || active?.positionIdx === 2
+              ? (active.positionIdx as 1 | 2)
+              : 0;
+          const tpStr = roundPrice(tp1.price, tick);
+          await setBybitTradingStop({
+            symbol: executionSignal.symbol,
+            stopLoss: slResult.stopLoss ?? slPriceStr,
+            takeProfit: tpStr,
+            slTriggerBy: 'MarkPrice',
+            tpTriggerBy: 'MarkPrice',
+            positionIdx,
+          });
+          console.log(`[Bybit] TP Full @ ${tpStr} (com SL Full)`);
+        } catch (tpErr) {
+          const msg = tpErr instanceof Error ? tpErr.message : String(tpErr);
+          tpErrors.push(`TP Full: ${msg}`);
+          console.warn('[Bybit] TP Full falhou (SL mantém-se):', tpErr);
+        }
       }
     }
 
-    // Re-confirma SL após TPs (Bybit por vezes desfaz o SL full ao criar TP parcial)
-    {
-      const again = await ensureBybitStopLoss({
-        symbol: executionSignal.symbol,
-        side: bybitSide,
-        stopLoss: slPriceStr,
-        qty: qtyStr,
-        forceUpdate: opts?.forceUpdateStopLoss === true,
-      });
-      slResult = again;
-      console.log(
-        `[Bybit] SL re-ensure após TP: ok=${again.ok} method=${again.method}` +
-          (again.error ? ` err=${again.error}` : '')
-      );
-    }
-
-    // Se ainda sem SL Full na posição: cancela só TPs (nunca SL), força Full, recoloca TPs
     if (!slResult.ok || slResult.method !== 'position') {
       try {
         await cancelBybitTakeProfitOrders(executionSignal.symbol);
@@ -498,53 +485,15 @@ async function executeSignalBybit(
         });
         slResult = forced;
         console.log(
-          `[Bybit] SL force-Full após cancel-TP: ok=${forced.ok} method=${forced.method}` +
+          `[Bybit] SL force-Full: ok=${forced.ok} method=${forced.method}` +
             (forced.error ? ` err=${forced.error}` : '')
-        );
-        // Recoloca TPs depois do SL Full
-        for (let i = 0; i < Math.min(tps.length, 2); i++) {
-          const tp = tps[i];
-          if (!tp || tp.price === executionSignal.entryPrice) continue;
-          const tpQty = totalQty * (tp.percentOfPosition / 100);
-          if (tpQty <= 0) continue;
-          const tpQtyStr = roundQuantity(tpQty, step);
-          if (parseFloat(tpQtyStr) <= 0) continue;
-          const tpTrigger = roundPrice(tp.price, tick);
-          try {
-            await createBybitOrder({
-              symbol: executionSignal.symbol,
-              side: bybitSlSide,
-              qty: tpQtyStr,
-              stopOrderType: 'TakeProfit',
-              triggerPrice: tpTrigger,
-              triggerBy: 'MarkPrice',
-              triggerDirection: executionSignal.direction === 'BUY' ? 1 : 2,
-              reduceOnly: true,
-              positionIdx: 0,
-            });
-          } catch (tpErr) {
-            const msg = tpErr instanceof Error ? tpErr.message : String(tpErr);
-            tpErrors.push(`TP${i + 1} re-place: ${msg}`);
-          }
-        }
-        // Última confirmação SL (TPs podem voltar a limpar)
-        const finalSl = await ensureBybitStopLoss({
-          symbol: executionSignal.symbol,
-          side: bybitSide,
-          stopLoss: slPriceStr,
-          qty: qtyStr,
-        });
-        slResult = finalSl;
-        console.log(
-          `[Bybit] SL final: ok=${finalSl.ok} method=${finalSl.method}` +
-            (finalSl.error ? ` err=${finalSl.error}` : '')
         );
       } catch (forceErr) {
         console.warn('[Bybit] Force SL Full falhou:', forceErr);
       }
     }
 
-    const tpWarning = tpErrors.length > 0 ? ` (TPs não colocados: ${tpErrors.join('; ')})` : '';
+    const tpWarning = tpErrors.length > 0 ? ` (TPs: ${tpErrors.join('; ')})` : '';
     const slWarning =
       slResult.ok && slResult.method === 'position'
         ? ` | SL ${slResult.stopLoss ?? slPriceStr} (position)`
@@ -876,7 +825,32 @@ export async function syncBybitMissingStopLosses(): Promise<{
     checked = open.length;
 
     for (const pos of open) {
-      if (pos.stopLoss && parseFloat(pos.stopLoss) > 0) {
+      // TPs parciais (StopOrder) limpam o SL Full na Bybit — remover sempre antes de validar
+      try {
+        const n = await cancelBybitTakeProfitOrders(pos.symbol);
+        if (n > 0) {
+          console.log(`[Bybit sync SL] cancel-TP parciais ${pos.symbol}: ${n}`);
+        }
+      } catch {
+        /* ignore */
+      }
+
+      // Re-ler SL após cancelar TPs (por vezes a Bybit já tinha limpo o Full)
+      let currentSl = pos.stopLoss;
+      try {
+        const again = await getBybitPositionRisk(pos.symbol);
+        const active = again.find(
+          (p) =>
+            p.symbol === pos.symbol &&
+            parseFloat(p.size) > 0 &&
+            p.side === pos.side
+        );
+        if (active) currentSl = active.stopLoss;
+      } catch {
+        /* keep */
+      }
+
+      if (currentSl && parseFloat(currentSl) > 0) {
         skipped++;
         continue;
       }
