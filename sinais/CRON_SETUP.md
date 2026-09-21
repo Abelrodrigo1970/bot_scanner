@@ -9,7 +9,8 @@
 | `/api/cron/run-15m` | **Liquidity Pools** + **MA Cross** + **engolfo** + **Rompimento 20** + **rsi_vendido** (só de **2em2h** Lisboa) + **sync SL Bybit** | `*/15 * * * *` (24h) |
 | `/api/cron/sync-bybit-sl` | **Reaplica SL** em todas as posições Bybit abertas sem `stopLoss` | `0 */4 * * *` (4 em 4h) |
 | `/api/cron/cleanup-bybit-orphan-orders` | Cancela TP/SL órfãs + **reaplica SL** em posições Bybit sem `stopLoss` | `*/10 * * * *` (recomendado) |
-| `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** + Scanner 6 + Scanner 7 (RSI 1d) + YTD mcap60 | `0 */4 * * *` (24h) |
+| `/api/cron/run-universe-scans` | Scanner 1 + **Scanner 2** + Scanner 6 + Scanner 7 (RSI 1d) + YTD mcap60 + **sync SL Bybit** | `0 */4 * * *` (24h) |
+| `/api/cron/run-rsi-vendido` | **rsi_vendido** + **sync SL Bybit** (repor SLs em falta, ex. NEAR) | opcional / manual; no `run-15m` de 2em2h |
 | `/api/cron/run-lateral-volatile` | **Lateral EMA21/70** (só 00h e 12h Lisboa; ignora outras horas) | `0 0,12 * * *` |
 | `/api/cron/run-liquidity-pools` | Liquidity Pools 15m (backup manual) | opcional |
 

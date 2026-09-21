@@ -3,11 +3,13 @@ import { BUILTIN_UNIVERSE_SCAN_4H } from '@/lib/symbolUniverseDefaults';
 import { scanSymbolUniverse } from '@/lib/universeScanner';
 import { persistUniverseScan } from '@/lib/universeScanPersistence';
 import { runScanner1Top5Pipeline } from '@/lib/scanner1Top8Strategy';
+import { syncBybitMissingStopLosses } from '@/lib/tradingExecutor';
 
 /**
  * Scanner 1 + Scanner 2 + Scanner 6 + Scanner 7 (RSI 1d) + YTD mcap60
  * + rotação Top 4 (inactiva).
  * RSI>80 Top 3 LONG e stch15long descontinuados. rsi_vendido / MA12×21 / VWAP / Rompimento no Scanner 6.
+ * No fim do job: sync SL Bybit (repor SLs que a bolsa removeu da UI).
  */
 let universeScansJobPromise: Promise<void> | null = null;
 let universeScansJobStartedAt: string | null = null;
@@ -46,6 +48,21 @@ async function runUniverseScansJob(): Promise<ScanJobResult[]> {
     console.log('[Universe-Scans] Scanner 2 Top 4:', top8);
   } catch (err) {
     console.error('[Universe-Scans] Scanner 2 Top 4 falhou:', err);
+  }
+
+  // Reaplica SL Full em posições abertas sem stop (a Bybit por vezes limpa o SL da UI)
+  try {
+    const slSync = await syncBybitMissingStopLosses();
+    console.log(
+      `[Universe-Scans] Bybit SL sync: fixed=${slSync.fixed}/${slSync.checked} skipped=${slSync.skipped}` +
+        (slSync.dustClosed.length ? ` dustClosed=${slSync.dustClosed.join(',')}` : '') +
+        (slSync.conditionalOnly.length
+          ? ` condOnly=${slSync.conditionalOnly.join(',')}`
+          : '') +
+        (slSync.missing.length ? ` MISSING=${slSync.missing.join(',')}` : '')
+    );
+  } catch (err) {
+    console.error('[Universe-Scans] Bybit SL sync falhou:', err);
   }
 
   return results;
