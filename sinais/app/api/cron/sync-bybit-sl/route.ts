@@ -3,7 +3,7 @@ import { syncBybitMissingStopLosses } from '@/lib/tradingExecutor';
 
 /**
  * Cron 4h: verifica posições Bybit abertas sem stopLoss Full e reaplica SL.
- * Agendar: `0 */4 * * *` (00, 04, 08, 12, 16, 20) Europe/Lisbon
+ * Agendar no cron-job.org: 0 every-4-hours * * *  (00, 04, 08, 12, 16, 20) Europe/Lisbon
  * Header: Authorization: Bearer CRON_SECRET
  */
 export async function GET(request: NextRequest) {
