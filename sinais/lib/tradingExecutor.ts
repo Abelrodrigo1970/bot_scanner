@@ -34,11 +34,13 @@ import {
 } from './binanceFuturesClient';
 import {
   cancelAllBybitLinearOrders,
+  cancelBybitTakeProfitOrders,
   createBybitOrder,
   ensureBybitStopLoss,
   getBybitPositionRisk,
   getBybitLotSizeStep,
   getBybitTickSize,
+  hasBybitConditionalStopLoss,
   listOpenLinearOrderSymbols,
 } from './bybitFuturesClient';
 import { fetchCurrentPriceSafe } from './marketData';
@@ -483,10 +485,10 @@ async function executeSignalBybit(
       );
     }
 
-    // Se ainda sem SL Full na posição: cancela condicionais, força Full, recoloca TPs
+    // Se ainda sem SL Full na posição: cancela só TPs (nunca SL), força Full, recoloca TPs
     if (!slResult.ok || slResult.method !== 'position') {
       try {
-        await cancelAllBybitLinearOrders(executionSignal.symbol);
+        await cancelBybitTakeProfitOrders(executionSignal.symbol);
         const forced = await ensureBybitStopLoss({
           symbol: executionSignal.symbol,
           side: bybitSide,
@@ -496,7 +498,7 @@ async function executeSignalBybit(
         });
         slResult = forced;
         console.log(
-          `[Bybit] SL force-Full após cancel: ok=${forced.ok} method=${forced.method}` +
+          `[Bybit] SL force-Full após cancel-TP: ok=${forced.ok} method=${forced.method}` +
             (forced.error ? ` err=${forced.error}` : '')
         );
         // Recoloca TPs depois do SL Full
@@ -836,8 +838,9 @@ export async function cleanupBybitOrphanOpenOrders(): Promise<{
 }
 
 /**
- * Para cada posição Bybit sem stopLoss, tenta aplicar o SL do sinal IN_PROGRESS/NEW.
- * Retry agressivo (cancel TPs → Full SL). Dust sem SL é fechado.
+ * Para cada posição Bybit sem stopLoss Full, tenta aplicar o SL do sinal IN_PROGRESS/NEW.
+ * NUNCA faz cancel-all em posição aberta (apagava SLs manuais/condicionais).
+ * Só cancela TakeProfit para desbloquear tpslMode Full. Dust sem SL é fechado.
  * Corre no cron de cleanup / fim dos jobs 15m.
  */
 export async function syncBybitMissingStopLosses(): Promise<{
@@ -846,18 +849,20 @@ export async function syncBybitMissingStopLosses(): Promise<{
   skipped: number;
   dustClosed: string[];
   missing: string[];
+  conditionalOnly: string[];
   errors: string[];
 }> {
   const errors: string[] = [];
   const dustClosed: string[] = [];
   const missing: string[] = [];
+  const conditionalOnly: string[] = [];
   let checked = 0;
   let fixed = 0;
   let skipped = 0;
 
   const tradingEnabled = await getTradingEnabled();
   if (!tradingEnabled || !hasBybitCredentials() || !canExecuteOnBybit()) {
-    return { checked, fixed, skipped, dustClosed, missing, errors };
+    return { checked, fixed, skipped, dustClosed, missing, conditionalOnly, errors };
   }
 
   const DUST_NOTIONAL_USDT = 2;
@@ -940,8 +945,9 @@ export async function syncBybitMissingStopLosses(): Promise<{
       for (let round = 0; round < MAX_ROUNDS && !verified; round++) {
         if (round > 0) {
           await new Promise((r) => setTimeout(r, 500 * round));
+          // Só TP — nunca cancel-all (apagava SL condicional/manual)
           try {
-            await cancelAllBybitLinearOrders(pos.symbol);
+            await cancelBybitTakeProfitOrders(pos.symbol);
           } catch (e) {
             lastErr = e instanceof Error ? e.message : String(e);
           }
@@ -959,7 +965,7 @@ export async function syncBybitMissingStopLosses(): Promise<{
 
         if (!result.ok || result.method !== 'position') {
           try {
-            await cancelAllBybitLinearOrders(pos.symbol);
+            await cancelBybitTakeProfitOrders(pos.symbol);
             const forced = await ensureBybitStopLoss({
               symbol: pos.symbol,
               side: pos.side as 'Buy' | 'Sell',
@@ -996,16 +1002,29 @@ export async function syncBybitMissingStopLosses(): Promise<{
       }
 
       if (!verified) {
-        missing.push(pos.symbol);
-        const alert = `🚨 SL EM FALTA ${pos.symbol} ${pos.side} size=${pos.size} (último: ${lastMethod}: ${lastErr || 'n/a'})`;
-        errors.push(alert);
-        console.error(`[Bybit sync SL] ${alert}`);
+        const hasCond = await hasBybitConditionalStopLoss(pos.symbol);
+        if (hasCond) {
+          conditionalOnly.push(pos.symbol);
+          console.warn(
+            `[Bybit sync SL] ⚠️ ${pos.symbol} sem SL Full na UI mas tem StopLoss condicional (protegido)`
+          );
+        } else {
+          missing.push(pos.symbol);
+          const alert = `🚨 SL EM FALTA ${pos.symbol} ${pos.side} size=${pos.size} (último: ${lastMethod}: ${lastErr || 'n/a'})`;
+          errors.push(alert);
+          console.error(`[Bybit sync SL] ${alert}`);
+        }
       }
     }
 
     if (missing.length > 0) {
       console.error(
         `[Bybit sync SL] 🚨 ${missing.length} posição(ões) AINDA sem SL Full: ${missing.join(', ')}`
+      );
+    }
+    if (conditionalOnly.length > 0) {
+      console.warn(
+        `[Bybit sync SL] Condicional-only (UI --): ${conditionalOnly.join(', ')}`
       );
     }
     if (dustClosed.length > 0) {
@@ -1017,7 +1036,7 @@ export async function syncBybitMissingStopLosses(): Promise<{
     errors.push(e instanceof Error ? e.message : String(e));
   }
 
-  return { checked, fixed, skipped, dustClosed, missing, errors };
+  return { checked, fixed, skipped, dustClosed, missing, conditionalOnly, errors };
 }
 
 /**

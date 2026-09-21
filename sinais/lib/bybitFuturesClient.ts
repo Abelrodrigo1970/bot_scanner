@@ -382,12 +382,12 @@ export async function ensureBybitStopLoss(params: {
       }
     }
 
-    // Partial TP/SL condicionais bloqueiam o SL Full na UI — cancela e tenta Full de novo
+    // Partial TP condicionais bloqueiam SL Full — cancela SÓ TakeProfit (nunca StopLoss)
     if ((!didCancelForFull && lastErr.includes('sem stopLoss')) || (forceUpdate && attempt === 1)) {
       try {
-        await cancelAllBybitLinearOrders(params.symbol);
+        const cancelled = await cancelBybitTakeProfitOrders(params.symbol);
         didCancelForFull = true;
-        lastErr = 'cancel-all para forçar tpslMode Full';
+        lastErr = `cancel-TP(${cancelled}) para forçar tpslMode Full`;
         continue;
       } catch (e) {
         lastErr = e instanceof Error ? e.message : String(e);
@@ -472,6 +472,109 @@ export async function cancelAllBybitLinearOrders(symbol: string): Promise<void> 
     category: 'linear',
     symbol,
   });
+}
+
+export type BybitOpenStopOrder = {
+  orderId: string;
+  symbol: string;
+  side: string;
+  stopOrderType: string;
+  reduceOnly: boolean;
+  triggerPrice: string;
+  qty: string;
+};
+
+function isTakeProfitStopType(t: string): boolean {
+  const u = t.toUpperCase();
+  return u.includes('TAKEPROFIT') || u === 'PARTIALTAKEPROFIT' || u === 'TP';
+}
+
+function isStopLossStopType(t: string): boolean {
+  const u = t.toUpperCase();
+  return u.includes('STOPLOSS') || u === 'PARTIALSTOPLOSS' || u === 'SL';
+}
+
+/**
+ * Lista StopOrders abertas (TP/SL condicionais) dum símbolo.
+ * NÃO usa cancel-all — necessário para não apagar SL de proteção.
+ */
+export async function listBybitOpenStopOrders(symbol: string): Promise<BybitOpenStopOrder[]> {
+  const out: BybitOpenStopOrder[] = [];
+  const filters = ['StopOrder', 'tpslOrder'] as const;
+  for (const orderFilter of filters) {
+    let cursor: string | undefined;
+    for (;;) {
+      const params: Record<string, string> = {
+        category: 'linear',
+        symbol,
+        openOnly: '0',
+        limit: '50',
+        orderFilter,
+      };
+      if (cursor) params.cursor = cursor;
+      try {
+        const result = await signedGet<{
+          list?: Array<Record<string, string | boolean | undefined>>;
+          nextPageCursor?: string;
+        }>('/v5/order/realtime', params);
+        for (const o of result?.list ?? []) {
+          const orderId = String(o.orderId ?? '');
+          if (!orderId) continue;
+          if (out.some((x) => x.orderId === orderId)) continue;
+          out.push({
+            orderId,
+            symbol: String(o.symbol ?? symbol),
+            side: String(o.side ?? ''),
+            stopOrderType: String(o.stopOrderType ?? o.orderType ?? ''),
+            reduceOnly: o.reduceOnly === true || o.reduceOnly === 'true',
+            triggerPrice: String(o.triggerPrice ?? ''),
+            qty: String(o.qty ?? ''),
+          });
+        }
+        const next = result?.nextPageCursor;
+        if (next == null || String(next).trim() === '') break;
+        cursor = String(next);
+      } catch {
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+/** True se já existe StopLoss condicional reduce-only (protege mesmo com UI --). */
+export async function hasBybitConditionalStopLoss(symbol: string): Promise<boolean> {
+  try {
+    const orders = await listBybitOpenStopOrders(symbol);
+    return orders.some(
+      (o) => isStopLossStopType(o.stopOrderType) && (o.reduceOnly || true)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Cancela apenas TakeProfit condicionais — NUNCA cancela StopLoss.
+ * Usar para desbloquear tpslMode Full sem deixar a posição desprotegida.
+ */
+export async function cancelBybitTakeProfitOrders(symbol: string): Promise<number> {
+  const orders = await listBybitOpenStopOrders(symbol);
+  const tps = orders.filter((o) => isTakeProfitStopType(o.stopOrderType));
+  let cancelled = 0;
+  for (const o of tps) {
+    try {
+      await signedPost('/v5/order/cancel', {
+        category: 'linear',
+        symbol,
+        orderId: o.orderId,
+      });
+      cancelled++;
+    } catch {
+      /* ignore single cancel failure */
+    }
+  }
+  return cancelled;
 }
 
 type OpenOrdersRealtimePage = {

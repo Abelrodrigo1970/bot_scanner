@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
         skipped: sync.skipped,
         dustClosed: sync.dustClosed,
         missing: sync.missing,
+        conditionalOnly: sync.conditionalOnly,
         errors: sync.errors,
       },
       executedAt: new Date().toISOString(),
