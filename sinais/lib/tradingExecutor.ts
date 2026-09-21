@@ -62,6 +62,8 @@ export type ClosePositionOptions = {
   rotationClose?: boolean;
   /** Fecho por tempo (ex. Scanner 6 Short Leader 12h). */
   timedClose?: boolean;
+  /** Fecho de dust sem SL (qty/notional abaixo do mínimo Bybit). */
+  dustClose?: boolean;
 };
 
 export interface ClosePositionResult {
@@ -698,7 +700,13 @@ export async function closeActivePositionForSymbol(
   exchange?: 'binance' | 'bybit',
   options?: ClosePositionOptions
 ): Promise<ClosePositionResult> {
-  if (!options?.manual && !options?.rotationClose && !options?.timedClose && !STRATEGY_AUTO_CLOSE_POSITIONS) {
+  if (
+    !options?.manual &&
+    !options?.rotationClose &&
+    !options?.timedClose &&
+    !options?.dustClose &&
+    !STRATEGY_AUTO_CLOSE_POSITIONS
+  ) {
     return {
       closed: false,
       message: 'Fecho automático desactivado — saída apenas por SL/TP na exchange',
@@ -828,24 +836,32 @@ export async function cleanupBybitOrphanOpenOrders(): Promise<{
 }
 
 /**
- * Para cada posição Bybit sem stopLoss, tenta aplicar o SL do sinal IN_PROGRESS.
- * Corre no cron de cleanup / fim dos jobs 15m — recupera SL perdido ou nunca aplicado.
+ * Para cada posição Bybit sem stopLoss, tenta aplicar o SL do sinal IN_PROGRESS/NEW.
+ * Retry agressivo (cancel TPs → Full SL). Dust sem SL é fechado.
+ * Corre no cron de cleanup / fim dos jobs 15m.
  */
 export async function syncBybitMissingStopLosses(): Promise<{
   checked: number;
   fixed: number;
   skipped: number;
+  dustClosed: string[];
+  missing: string[];
   errors: string[];
 }> {
   const errors: string[] = [];
+  const dustClosed: string[] = [];
+  const missing: string[] = [];
   let checked = 0;
   let fixed = 0;
   let skipped = 0;
 
   const tradingEnabled = await getTradingEnabled();
   if (!tradingEnabled || !hasBybitCredentials() || !canExecuteOnBybit()) {
-    return { checked, fixed, skipped, errors };
+    return { checked, fixed, skipped, dustClosed, missing, errors };
   }
+
+  const DUST_NOTIONAL_USDT = 2;
+  const MAX_ROUNDS = 3;
 
   try {
     const positions = await getBybitPositionRisk();
@@ -860,83 +876,148 @@ export async function syncBybitMissingStopLosses(): Promise<{
         continue;
       }
 
+      const size = parseFloat(pos.size);
+      const avg = parseFloat(pos.avgPrice);
+      const notional = size > 0 && avg > 0 ? size * avg : 0;
+      let qtyStep = 0.001;
+      try {
+        qtyStep = await getBybitLotSizeStep(pos.symbol);
+      } catch {
+        /* keep default */
+      }
+      const isDust =
+        (Number.isFinite(qtyStep) && qtyStep > 0 && size < qtyStep) ||
+        (notional > 0 && notional < DUST_NOTIONAL_USDT);
+
+      if (isDust) {
+        const closed = await closeActivePositionForSymbol(pos.symbol, 'bybit', {
+          dustClose: true,
+        });
+        if (closed.closed) {
+          dustClosed.push(pos.symbol);
+          console.warn(
+            `[Bybit sync SL] 🧹 Dust fechado ${pos.symbol} size=${pos.size} notional≈${notional.toFixed(2)} USDT (sem SL)`
+          );
+        } else {
+          errors.push(`${pos.symbol}: dust sem SL — fecho falhou: ${closed.message}`);
+          missing.push(pos.symbol);
+        }
+        continue;
+      }
+
       const direction = pos.side === 'Buy' ? 'BUY' : 'SELL';
       const signal = await prisma.signal.findFirst({
         where: {
           symbol: pos.symbol,
           direction,
-          status: 'IN_PROGRESS',
+          status: { in: ['IN_PROGRESS', 'NEW'] },
         },
         orderBy: { generatedAt: 'desc' },
       });
 
       let sl = signal?.stopLoss != null ? Number(signal.stopLoss) : NaN;
-      const avg = parseFloat(pos.avgPrice);
       if (!(sl > 0) && avg > 0) {
-        // fallback apertado se não houver sinal (protege órfãs)
+        // fallback se não houver sinal (protege órfãs)
         sl = pos.side === 'Buy' ? avg * 0.85 : avg * 1.08;
       }
       if (!(sl > 0)) {
         errors.push(`${pos.symbol}: sem SL calculável`);
+        missing.push(pos.symbol);
         continue;
       }
 
       const tick = await getBybitTickSize(pos.symbol);
-      const slStr = roundPriceStopLoss(sl, Number.isFinite(tick) && tick > 0 ? tick : 0.01, direction);
-      let result = await ensureBybitStopLoss({
-        symbol: pos.symbol,
-        side: pos.side as 'Buy' | 'Sell',
-        stopLoss: slStr,
-        qty: pos.size,
-      });
+      const slStr = roundPriceStopLoss(
+        sl,
+        Number.isFinite(tick) && tick > 0 ? tick : 0.01,
+        direction
+      );
 
-      // Condicional ≠ SL Full na UI — força cancel + Full e verifica posição
-      if (!result.ok || result.method !== 'position') {
-        try {
-          await cancelAllBybitLinearOrders(pos.symbol);
-          result = await ensureBybitStopLoss({
-            symbol: pos.symbol,
-            side: pos.side as 'Buy' | 'Sell',
-            stopLoss: slStr,
-            qty: pos.size,
-          });
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          errors.push(`${pos.symbol}: force Full: ${msg}`);
-        }
-      }
-
-      // Confirma no livro de posições (não confiar só no method)
       let verified = false;
-      try {
-        const again = await getBybitPositionRisk(pos.symbol);
-        const active = again.find(
-          (p) => p.symbol === pos.symbol && parseFloat(p.size) > 0 && p.side === pos.side
-        );
-        verified = !!(active?.stopLoss && parseFloat(active.stopLoss) > 0);
-        if (verified) {
-          fixed++;
-          console.log(
-            `[Bybit sync SL] ${pos.symbol} ${pos.side} → ${active!.stopLoss} (position verified)`
-          );
+      let lastMethod = 'none';
+      let lastErr = '';
+
+      for (let round = 0; round < MAX_ROUNDS && !verified; round++) {
+        if (round > 0) {
+          await new Promise((r) => setTimeout(r, 500 * round));
+          try {
+            await cancelAllBybitLinearOrders(pos.symbol);
+          } catch (e) {
+            lastErr = e instanceof Error ? e.message : String(e);
+          }
         }
-      } catch (e) {
-        errors.push(
-          `${pos.symbol}: verify: ${e instanceof Error ? e.message : String(e)}`
-        );
+
+        const result = await ensureBybitStopLoss({
+          symbol: pos.symbol,
+          side: pos.side as 'Buy' | 'Sell',
+          stopLoss: slStr,
+          qty: pos.size,
+          forceUpdate: round > 0,
+        });
+        lastMethod = result.method;
+        lastErr = result.error ?? lastErr;
+
+        if (!result.ok || result.method !== 'position') {
+          try {
+            await cancelAllBybitLinearOrders(pos.symbol);
+            const forced = await ensureBybitStopLoss({
+              symbol: pos.symbol,
+              side: pos.side as 'Buy' | 'Sell',
+              stopLoss: slStr,
+              qty: pos.size,
+              forceUpdate: true,
+            });
+            lastMethod = forced.method;
+            lastErr = forced.error ?? lastErr;
+          } catch (e) {
+            lastErr = e instanceof Error ? e.message : String(e);
+          }
+        }
+
+        try {
+          const again = await getBybitPositionRisk(pos.symbol);
+          const active = again.find(
+            (p) =>
+              p.symbol === pos.symbol &&
+              parseFloat(p.size) > 0 &&
+              p.side === pos.side
+          );
+          verified = !!(active?.stopLoss && parseFloat(active.stopLoss) > 0);
+          if (verified) {
+            fixed++;
+            console.log(
+              `[Bybit sync SL] ✅ ${pos.symbol} ${pos.side} → ${active!.stopLoss}` +
+                (round > 0 ? ` (round ${round + 1})` : '')
+            );
+          }
+        } catch (e) {
+          lastErr = e instanceof Error ? e.message : String(e);
+        }
       }
 
       if (!verified) {
-        errors.push(
-          `${pos.symbol}: SL ainda em falta após ensure (${result.method}: ${result.error ?? 'n/a'})`
-        );
+        missing.push(pos.symbol);
+        const alert = `🚨 SL EM FALTA ${pos.symbol} ${pos.side} size=${pos.size} (último: ${lastMethod}: ${lastErr || 'n/a'})`;
+        errors.push(alert);
+        console.error(`[Bybit sync SL] ${alert}`);
       }
+    }
+
+    if (missing.length > 0) {
+      console.error(
+        `[Bybit sync SL] 🚨 ${missing.length} posição(ões) AINDA sem SL Full: ${missing.join(', ')}`
+      );
+    }
+    if (dustClosed.length > 0) {
+      console.warn(
+        `[Bybit sync SL] Dust fechados (${dustClosed.length}): ${dustClosed.join(', ')}`
+      );
     }
   } catch (e) {
     errors.push(e instanceof Error ? e.message : String(e));
   }
 
-  return { checked, fixed, skipped, errors };
+  return { checked, fixed, skipped, dustClosed, missing, errors };
 }
 
 /**

@@ -248,10 +248,17 @@ async function runMaCross15mWorker(
     );
   }
   const slSync = await syncBybitMissingStopLosses();
-  if (slSync.fixed > 0 || slSync.errors.length > 0) {
+  if (
+    slSync.fixed > 0 ||
+    slSync.errors.length > 0 ||
+    slSync.dustClosed.length > 0 ||
+    slSync.missing.length > 0
+  ) {
     console.log(
       `[${logTag} BG] Bybit SL sync: fixed=${slSync.fixed}/${slSync.checked}` +
-        (slSync.errors.length ? `; erros: ${slSync.errors.join('; ')}` : '')
+        (slSync.dustClosed.length ? ` dustClosed=${slSync.dustClosed.join(',')}` : '') +
+        (slSync.missing.length ? ` MISSING=${slSync.missing.join(',')}` : '') +
+        (slSync.errors.length ? `; erros: ${slSync.errors.slice(0, 12).join('; ')}` : '')
     );
   }
   console.log(
@@ -427,6 +434,8 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     const slSync = await syncBybitMissingStopLosses();
     console.log(
       `[Run-15m] Bybit SL sync: fixed=${slSync.fixed}/${slSync.checked} skipped=${slSync.skipped}` +
+        (slSync.dustClosed.length ? ` dustClosed=${slSync.dustClosed.length}` : '') +
+        (slSync.missing.length ? ` MISSING=${slSync.missing.join(',')}` : '') +
         (slSync.errors.length ? `; erros: ${slSync.errors.slice(0, 12).join('; ')}` : '')
     );
   } catch (err) {

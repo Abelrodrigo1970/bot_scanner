@@ -334,9 +334,10 @@ export async function ensureBybitStopLoss(params: {
   const slStr = formatBybitPrice(slPrice);
   let lastErr = '';
   let didCancelForFull = false;
+  const maxAttempts = forceUpdate ? 8 : 5;
 
-  for (let attempt = 0; attempt < 5; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 350 * attempt));
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt));
 
     let positionIdx: 0 | 1 | 2 = 0;
     try {
@@ -382,7 +383,7 @@ export async function ensureBybitStopLoss(params: {
     }
 
     // Partial TP/SL condicionais bloqueiam o SL Full na UI — cancela e tenta Full de novo
-    if (!didCancelForFull && lastErr.includes('sem stopLoss')) {
+    if ((!didCancelForFull && lastErr.includes('sem stopLoss')) || (forceUpdate && attempt === 1)) {
       try {
         await cancelAllBybitLinearOrders(params.symbol);
         didCancelForFull = true;

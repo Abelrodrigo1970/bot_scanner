@@ -23,7 +23,14 @@ export async function GET(request: NextRequest) {
       success: true,
       cancelledSymbols: orphan.cancelledSymbols,
       orphanErrors: orphan.errors,
-      slSync: sync,
+      slSync: {
+        checked: sync.checked,
+        fixed: sync.fixed,
+        skipped: sync.skipped,
+        dustClosed: sync.dustClosed,
+        missing: sync.missing,
+        errors: sync.errors,
+      },
       executedAt: new Date().toISOString(),
     });
   } catch (error) {
