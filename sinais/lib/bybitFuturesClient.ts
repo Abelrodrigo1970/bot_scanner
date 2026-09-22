@@ -295,7 +295,7 @@ export async function ensureBybitStopLoss(params: {
     return { ok: false, method: 'none', error: 'stopLoss inválido' };
   }
 
-  // Qualquer SL Full já na posição conta (inclui manuais) — não sobrescrever (salvo forceUpdate)
+  // Qualquer SL Full já na posição OU ordem Entire Position (UI TP/SL) conta
   if (!forceUpdate) {
     try {
       const positions = await getBybitPositionRisk(params.symbol);
@@ -304,6 +304,18 @@ export async function ensureBybitStopLoss(params: {
       );
       if (active?.stopLoss && parseFloat(active.stopLoss) > 0) {
         return { ok: true, method: 'position', stopLoss: active.stopLoss };
+      }
+    } catch {
+      // continua
+    }
+    try {
+      const entire = await hasBybitEntirePositionStopLoss(params.symbol);
+      if (entire.has) {
+        return {
+          ok: true,
+          method: 'position',
+          stopLoss: entire.triggerPrice || params.stopLoss,
+        };
       }
     } catch {
       // continua
@@ -336,20 +348,11 @@ export async function ensureBybitStopLoss(params: {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 350 * attempt));
 
-    // Tentativa 0: só trading-stop. Tentativa 1+: limpa TP/SL condicionais (modo Partial).
-    // Tentativa 3+: cancel-all do símbolo (último recurso) e repor Full de imediato.
-    if (attempt === 1 || attempt === 2) {
+    // Tentativa 0: só trading-stop. Tentativa 1+: limpa só Partial (nunca Entire Position SL).
+    if (attempt >= 1) {
       try {
-        const n = await cancelBybitAllStopOrders(params.symbol);
-        lastErr = `cancel-stop-orders(${n})`;
-      } catch (e) {
-        lastErr = e instanceof Error ? e.message : String(e);
-      }
-    } else if (attempt >= 3) {
-      try {
-        await cancelAllBybitLinearOrders(params.symbol);
-        lastErr = 'cancel-all linear';
-        await new Promise((r) => setTimeout(r, 300));
+        const n = await cancelBybitPartialTpslOrders(params.symbol);
+        lastErr = `cancel-partial(${n})`;
       } catch (e) {
         lastErr = e instanceof Error ? e.message : String(e);
       }
@@ -399,6 +402,15 @@ export async function ensureBybitStopLoss(params: {
         if (active?.stopLoss && parseFloat(active.stopLoss) > 0) {
           return { ok: true, method: 'position', stopLoss: active.stopLoss };
         }
+        // Por vezes a coluna stopLoss fica vazia mas o Entire Position SL existe no separador TP/SL
+        const entire = await hasBybitEntirePositionStopLoss(params.symbol);
+        if (entire.has) {
+          return {
+            ok: true,
+            method: 'position',
+            stopLoss: entire.triggerPrice || slStr,
+          };
+        }
         lastErr = 'trading-stop OK mas posição sem stopLoss Full';
       } catch (e) {
         lastErr = e instanceof Error ? e.message : String(e);
@@ -442,6 +454,7 @@ export type BybitOpenStopOrder = {
   symbol: string;
   side: string;
   stopOrderType: string;
+  createType: string;
   reduceOnly: boolean;
   triggerPrice: string;
   qty: string;
@@ -457,9 +470,33 @@ function isStopLossStopType(t: string): boolean {
   return u.includes('STOPLOSS') || u === 'PARTIALSTOPLOSS' || u === 'SL';
 }
 
+/** SL/TP Full (Entire Position) — NÃO cancelar. */
+function isEntirePositionTpsl(o: BybitOpenStopOrder): boolean {
+  const c = o.createType.toUpperCase().replace(/_/g, '');
+  if (c.includes('PARTIAL')) return false;
+  // CreateByStopLoss / CreateByTakeProfit = Full via trading-stop (separador TP/SL)
+  return (
+    c === 'CREATEBYSTOPLOSS' ||
+    c === 'CREATEBYTAKEPROFIT' ||
+    c.endsWith('BYSTOPLOSS') ||
+    c.endsWith('BYTAKEPROFIT')
+  );
+}
+
+/** Ordens Partial / condicionais que bloqueiam o SL Full na coluna da posição. */
+function isPartialTpslOrder(o: BybitOpenStopOrder): boolean {
+  if (isEntirePositionTpsl(o)) return false;
+  const c = o.createType.toUpperCase();
+  const t = o.stopOrderType.toUpperCase();
+  if (c.includes('PARTIAL') || t.includes('PARTIAL')) return true;
+  if (isTakeProfitStopType(o.stopOrderType) || isStopLossStopType(o.stopOrderType)) {
+    return true;
+  }
+  return false;
+}
+
 /**
- * Lista StopOrders abertas (TP/SL condicionais) dum símbolo.
- * NÃO usa cancel-all — necessário para não apagar SL de proteção.
+ * Lista StopOrders / tpsl abertas dum símbolo.
  */
 export async function listBybitOpenStopOrders(symbol: string): Promise<BybitOpenStopOrder[]> {
   const out: BybitOpenStopOrder[] = [];
@@ -489,6 +526,7 @@ export async function listBybitOpenStopOrders(symbol: string): Promise<BybitOpen
             symbol: String(o.symbol ?? symbol),
             side: String(o.side ?? ''),
             stopOrderType: String(o.stopOrderType ?? o.orderType ?? ''),
+            createType: String(o.createType ?? ''),
             reduceOnly: o.reduceOnly === true || o.reduceOnly === 'true',
             triggerPrice: String(o.triggerPrice ?? ''),
             qty: String(o.qty ?? ''),
@@ -505,50 +543,47 @@ export async function listBybitOpenStopOrders(symbol: string): Promise<BybitOpen
   return out;
 }
 
-/** True se já existe StopLoss condicional reduce-only (protege mesmo com UI --). */
-export async function hasBybitConditionalStopLoss(symbol: string): Promise<boolean> {
+/**
+ * True se já existe SL Full (Entire Position) — mesmo quando a coluna da posição mostra --.
+ */
+export async function hasBybitEntirePositionStopLoss(
+  symbol: string
+): Promise<{ has: boolean; triggerPrice?: string }> {
   try {
     const orders = await listBybitOpenStopOrders(symbol);
-    return orders.some(
-      (o) => isStopLossStopType(o.stopOrderType) && (o.reduceOnly || true)
+    const sl = orders.find(
+      (o) => isEntirePositionTpsl(o) && isStopLossStopType(o.stopOrderType)
     );
+    if (sl) {
+      return { has: true, triggerPrice: sl.triggerPrice || undefined };
+    }
   } catch {
-    return false;
+    /* ignore */
   }
+  return { has: false };
+}
+
+/** @deprecated prefer hasBybitEntirePositionStopLoss */
+export async function hasBybitConditionalStopLoss(symbol: string): Promise<boolean> {
+  const r = await hasBybitEntirePositionStopLoss(symbol);
+  return r.has;
 }
 
 /**
- * Cancela apenas TakeProfit condicionais — NUNCA cancela StopLoss.
- * Usar para desbloquear tpslMode Full sem deixar a posição desprotegida.
+ * Cancela apenas TakeProfit / SL Partial — NUNCA cancela Entire Position (CreateByStopLoss).
  */
 export async function cancelBybitTakeProfitOrders(symbol: string): Promise<number> {
-  const orders = await listBybitOpenStopOrders(symbol);
-  const tps = orders.filter((o) => isTakeProfitStopType(o.stopOrderType));
-  let cancelled = 0;
-  for (const o of tps) {
-    try {
-      await signedPost('/v5/order/cancel', {
-        category: 'linear',
-        symbol,
-        orderId: o.orderId,
-      });
-      cancelled++;
-    } catch {
-      /* ignore single cancel failure */
-    }
-  }
-  return cancelled;
+  return cancelBybitPartialTpslOrders(symbol);
 }
 
 /**
- * Cancela TODAS as StopOrders/tpsl (TP e SL condicionais).
- * Necessário para sair do modo Partial e gravar SL Full na posição (UI).
- * Chamar só imediatamente antes de setBybitTradingStop Full.
+ * Cancela só ordens Partial (bloqueiam Full). Preserva SL/TP Entire Position.
  */
-export async function cancelBybitAllStopOrders(symbol: string): Promise<number> {
+export async function cancelBybitPartialTpslOrders(symbol: string): Promise<number> {
   const orders = await listBybitOpenStopOrders(symbol);
+  const toCancel = orders.filter((o) => isPartialTpslOrder(o) && !isEntirePositionTpsl(o));
   let cancelled = 0;
-  for (const o of orders) {
+  for (const o of toCancel) {
     try {
       await signedPost('/v5/order/cancel', {
         category: 'linear',
@@ -561,6 +596,13 @@ export async function cancelBybitAllStopOrders(symbol: string): Promise<number> 
     }
   }
   return cancelled;
+}
+
+/**
+ * @deprecated nome antigo — agora só cancela Partial, nunca Entire Position SL.
+ */
+export async function cancelBybitAllStopOrders(symbol: string): Promise<number> {
+  return cancelBybitPartialTpslOrders(symbol);
 }
 
 type OpenOrdersRealtimePage = {

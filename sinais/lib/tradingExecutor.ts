@@ -33,14 +33,15 @@ import {
   getTickSize,
 } from './binanceFuturesClient';
 import {
-  cancelAllBybitLinearOrders,
   cancelBybitAllStopOrders,
   createBybitOrder,
   ensureBybitStopLoss,
   getBybitPositionRisk,
   getBybitLotSizeStep,
   getBybitTickSize,
+  hasBybitEntirePositionStopLoss,
   listOpenLinearOrderSymbols,
+  cancelAllBybitLinearOrders,
 } from './bybitFuturesClient';
 import { fetchCurrentPriceSafe } from './marketData';
 
@@ -438,7 +439,6 @@ async function executeSignalBybit(
     if (!slResult.ok || slResult.method !== 'position') {
       try {
         await cancelBybitAllStopOrders(executionSignal.symbol);
-        await cancelAllBybitLinearOrders(executionSignal.symbol).catch(() => undefined);
         const forced = await ensureBybitStopLoss({
           symbol: executionSignal.symbol,
           side: bybitSide,
@@ -803,6 +803,20 @@ export async function syncBybitMissingStopLosses(): Promise<{
         continue;
       }
 
+      // Entire Position SL no separador TP/SL (mesmo com coluna -- na posição)
+      try {
+        const entire = await hasBybitEntirePositionStopLoss(pos.symbol);
+        if (entire.has) {
+          skipped++;
+          console.log(
+            `[Bybit sync SL] ${pos.symbol}: já tem Entire Position SL @ ${entire.triggerPrice ?? '?'} (UI posição pode mostrar --)`
+          );
+          continue;
+        }
+      } catch {
+        /* continua para aplicar */
+      }
+
       const size = parseFloat(pos.size);
       const avg = parseFloat(pos.avgPrice);
       const notional = size > 0 && avg > 0 ? size * avg : 0;
@@ -870,10 +884,7 @@ export async function syncBybitMissingStopLosses(): Promise<{
         try {
           const n = await cancelBybitAllStopOrders(pos.symbol);
           if (n > 0) {
-            console.log(`[Bybit sync SL] ${pos.symbol}: cancel ${n} stop/tp order(s)`);
-          }
-          if (round >= 2) {
-            await cancelAllBybitLinearOrders(pos.symbol);
+            console.log(`[Bybit sync SL] ${pos.symbol}: cancel ${n} partial TP/SL`);
           }
         } catch (e) {
           lastErr = e instanceof Error ? e.message : String(e);
@@ -898,7 +909,17 @@ export async function syncBybitMissingStopLosses(): Promise<{
               p.side === pos.side
           );
           verified = !!(active?.stopLoss && parseFloat(active.stopLoss) > 0);
-          if (verified) {
+          if (!verified) {
+            const entire = await hasBybitEntirePositionStopLoss(pos.symbol);
+            if (entire.has) {
+              verified = true;
+              fixed++;
+              console.log(
+                `[Bybit sync SL] ✅ ${pos.symbol} Entire Position SL → ${entire.triggerPrice}` +
+                  (round > 0 ? ` (round ${round + 1})` : '')
+              );
+            }
+          } else {
             fixed++;
             console.log(
               `[Bybit sync SL] ✅ ${pos.symbol} ${pos.side} → ${active!.stopLoss}` +
