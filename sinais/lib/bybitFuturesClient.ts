@@ -276,8 +276,9 @@ export async function setBybitTradingStop(params: {
 }
 
 /**
- * Garante SL na posição: trading-stop (vários positionIdx) + verificação + stop condicional.
- * Ajusta o SL se o mark já o invalidou (comum em shorts que disparam logo após a entrada).
+ * Garante SL Full na posição (campo stopLoss na UI).
+ * Ordens condicionais Partial bloqueiam/limpam o Full — cancela-as e reaplica Full.
+ * NÃO deixa StopLoss condicional como "sucesso" (UI fica --).
  */
 export async function ensureBybitStopLoss(params: {
   symbol: string;
@@ -287,8 +288,6 @@ export async function ensureBybitStopLoss(params: {
   /** Se true, sobrescreve SL existente (pirâmide — SL da última entrada). */
   forceUpdate?: boolean;
 }): Promise<{ ok: boolean; method: 'position' | 'conditional' | 'none'; stopLoss?: string; error?: string }> {
-  const hedgeIdx: 0 | 1 | 2 = params.side === 'Buy' ? 1 : 2;
-  const idxTries: Array<0 | 1 | 2> = [0, hedgeIdx];
   const forceUpdate = params.forceUpdate === true;
 
   let slPrice = parseFloat(params.stopLoss);
@@ -296,7 +295,7 @@ export async function ensureBybitStopLoss(params: {
     return { ok: false, method: 'none', error: 'stopLoss inválido' };
   }
 
-  // Qualquer SL já na posição conta (inclui manuais) — não sobrescrever (salvo forceUpdate)
+  // Qualquer SL Full já na posição conta (inclui manuais) — não sobrescrever (salvo forceUpdate)
   if (!forceUpdate) {
     try {
       const positions = await getBybitPositionRisk(params.symbol);
@@ -322,7 +321,6 @@ export async function ensureBybitStopLoss(params: {
       } else if (params.side === 'Sell' && slPrice <= mark) {
         slPrice = mark + minGap;
       }
-      // arredondar ao tick
       const mult = slPrice / tick;
       slPrice =
         params.side === 'Buy' ? Math.floor(mult) * tick : Math.ceil(mult) * tick;
@@ -333,11 +331,29 @@ export async function ensureBybitStopLoss(params: {
 
   const slStr = formatBybitPrice(slPrice);
   let lastErr = '';
-  let didCancelForFull = false;
-  const maxAttempts = forceUpdate ? 8 : 5;
+  const maxAttempts = 6;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt));
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 350 * attempt));
+
+    // Tentativa 0: só trading-stop. Tentativa 1+: limpa TP/SL condicionais (modo Partial).
+    // Tentativa 3+: cancel-all do símbolo (último recurso) e repor Full de imediato.
+    if (attempt === 1 || attempt === 2) {
+      try {
+        const n = await cancelBybitAllStopOrders(params.symbol);
+        lastErr = `cancel-stop-orders(${n})`;
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : String(e);
+      }
+    } else if (attempt >= 3) {
+      try {
+        await cancelAllBybitLinearOrders(params.symbol);
+        lastErr = 'cancel-all linear';
+        await new Promise((r) => setTimeout(r, 300));
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : String(e);
+      }
+    }
 
     let positionIdx: 0 | 1 | 2 = 0;
     try {
@@ -345,16 +361,22 @@ export async function ensureBybitStopLoss(params: {
       const active = positions.find(
         (p) => p.symbol === params.symbol && parseFloat(p.size) > 0 && p.side === params.side
       );
-      if (active) {
-        const idx = active.positionIdx;
-        positionIdx = idx === 1 || idx === 2 ? idx : 0;
-        if (!forceUpdate && active.stopLoss && parseFloat(active.stopLoss) > 0) {
-          return { ok: true, method: 'position', stopLoss: active.stopLoss };
-        }
+      if (!active) {
+        lastErr = 'posição já fechada';
+        return { ok: false, method: 'none', error: lastErr };
+      }
+      const idx = active.positionIdx;
+      positionIdx = idx === 1 || idx === 2 ? idx : 0;
+      if (!forceUpdate && active.stopLoss && parseFloat(active.stopLoss) > 0) {
+        return { ok: true, method: 'position', stopLoss: active.stopLoss };
       }
     } catch (e) {
       lastErr = e instanceof Error ? e.message : String(e);
     }
+
+    // One-way: só 0. Hedge: tentar idx real primeiro.
+    const idxTries: Array<0 | 1 | 2> =
+      positionIdx === 0 ? [0] : [positionIdx, 0];
 
     for (const idx of idxTries) {
       try {
@@ -362,65 +384,13 @@ export async function ensureBybitStopLoss(params: {
           symbol: params.symbol,
           stopLoss: slStr,
           slTriggerBy: 'MarkPrice',
-          positionIdx: idx === 0 ? positionIdx || 0 : idx,
-        });
-      } catch (e) {
-        lastErr = e instanceof Error ? e.message : String(e);
-        continue;
-      }
-      try {
-        const positions = await getBybitPositionRisk(params.symbol);
-        const active = positions.find(
-          (p) => p.symbol === params.symbol && parseFloat(p.size) > 0 && p.side === params.side
-        );
-        if (active?.stopLoss && parseFloat(active.stopLoss) > 0) {
-          return { ok: true, method: 'position', stopLoss: active.stopLoss };
-        }
-        lastErr = 'trading-stop OK mas posição sem stopLoss';
-      } catch (e) {
-        lastErr = e instanceof Error ? e.message : String(e);
-      }
-    }
-
-    // Partial TP condicionais bloqueiam SL Full — cancela SÓ TakeProfit (nunca StopLoss)
-    if ((!didCancelForFull && lastErr.includes('sem stopLoss')) || (forceUpdate && attempt === 1)) {
-      try {
-        const cancelled = await cancelBybitTakeProfitOrders(params.symbol);
-        didCancelForFull = true;
-        lastErr = `cancel-TP(${cancelled}) para forçar tpslMode Full`;
-        continue;
-      } catch (e) {
-        lastErr = e instanceof Error ? e.message : String(e);
-      }
-    }
-  }
-
-  // Fallback: StopOrder condicional (reduce-only) — protege mesmo se a UI não mostrar SL Full
-  for (const idx of idxTries) {
-    try {
-      await createBybitOrder({
-        symbol: params.symbol,
-        side: params.side === 'Buy' ? 'Sell' : 'Buy',
-        qty: params.qty,
-        stopOrderType: 'StopLoss',
-        triggerPrice: slStr,
-        triggerBy: 'MarkPrice',
-        triggerDirection: params.side === 'Buy' ? 2 : 1,
-        reduceOnly: true,
-        closeOnTrigger: true,
-        positionIdx: idx,
-      });
-      // Preferir ainda SL Full na posição
-      try {
-        await setBybitTradingStop({
-          symbol: params.symbol,
-          stopLoss: slStr,
-          slTriggerBy: 'MarkPrice',
           positionIdx: idx,
         });
-      } catch {
-        /* ignore */
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : String(e);
+        continue;
       }
+      await new Promise((r) => setTimeout(r, 200));
       try {
         const positions = await getBybitPositionRisk(params.symbol);
         const active = positions.find(
@@ -429,21 +399,14 @@ export async function ensureBybitStopLoss(params: {
         if (active?.stopLoss && parseFloat(active.stopLoss) > 0) {
           return { ok: true, method: 'position', stopLoss: active.stopLoss };
         }
-      } catch {
-        /* ignore */
+        lastErr = 'trading-stop OK mas posição sem stopLoss Full';
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : String(e);
       }
-      // Condicional colocado, mas UI pode continuar -- ; sync voltará a tentar Full
-      return {
-        ok: true,
-        method: 'conditional',
-        stopLoss: slStr,
-        error: 'StopOrder colocado; posição sem stopLoss Full (UI pode mostrar --)',
-      };
-    } catch (e) {
-      lastErr = e instanceof Error ? e.message : String(e);
     }
   }
-  return { ok: false, method: 'none', error: lastErr || 'SL não aplicado' };
+
+  return { ok: false, method: 'none', error: lastErr || 'SL Full não aplicado' };
 }
 
 async function fetchBybitMarkPrice(symbol: string): Promise<number | null> {
@@ -572,6 +535,29 @@ export async function cancelBybitTakeProfitOrders(symbol: string): Promise<numbe
       cancelled++;
     } catch {
       /* ignore single cancel failure */
+    }
+  }
+  return cancelled;
+}
+
+/**
+ * Cancela TODAS as StopOrders/tpsl (TP e SL condicionais).
+ * Necessário para sair do modo Partial e gravar SL Full na posição (UI).
+ * Chamar só imediatamente antes de setBybitTradingStop Full.
+ */
+export async function cancelBybitAllStopOrders(symbol: string): Promise<number> {
+  const orders = await listBybitOpenStopOrders(symbol);
+  let cancelled = 0;
+  for (const o of orders) {
+    try {
+      await signedPost('/v5/order/cancel', {
+        category: 'linear',
+        symbol,
+        orderId: o.orderId,
+      });
+      cancelled++;
+    } catch {
+      /* ignore */
     }
   }
   return cancelled;

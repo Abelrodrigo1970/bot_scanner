@@ -34,15 +34,13 @@ import {
 } from './binanceFuturesClient';
 import {
   cancelAllBybitLinearOrders,
-  cancelBybitTakeProfitOrders,
+  cancelBybitAllStopOrders,
   createBybitOrder,
   ensureBybitStopLoss,
   getBybitPositionRisk,
   getBybitLotSizeStep,
   getBybitTickSize,
-  hasBybitConditionalStopLoss,
   listOpenLinearOrderSymbols,
-  setBybitTradingStop,
 } from './bybitFuturesClient';
 import { fetchCurrentPriceSafe } from './marketData';
 
@@ -421,16 +419,15 @@ async function executeSignalBybit(
     });
     console.log(`[Bybit] Entrada: ${entryOrder.orderId} | SL attach @ ${slPriceStr}`);
 
-    // Confirma SL Full na posição (tpslMode Full)
-    // NÃO usar TakeProfit condicionais Partial — na Bybit isso APAGA o SL Full da UI.
-    await cancelBybitTakeProfitOrders(executionSignal.symbol).catch(() => 0);
+    // Confirma SL Full na posição. Sem TP na bolsa (Partial/Full TP apaga SL na Bybit).
+    await cancelBybitAllStopOrders(executionSignal.symbol).catch(() => 0);
 
     let slResult = await ensureBybitStopLoss({
       symbol: executionSignal.symbol,
       side: bybitSide,
       stopLoss: slPriceStr,
       qty: qtyStr,
-      forceUpdate: opts?.forceUpdateStopLoss === true,
+      forceUpdate: true,
     });
     console.log(
       `[Bybit] SL ensure: ok=${slResult.ok} method=${slResult.method}` +
@@ -438,44 +435,10 @@ async function executeSignalBybit(
         (slResult.error ? ` err=${slResult.error}` : '')
     );
 
-    const tpErrors: string[] = [];
-    // Um único TP Full (posição inteira) via trading-stop — compatível com SL Full
-    if (!opts?.skipTakeProfits && slResult.ok && slResult.method === 'position') {
-      const tp1 = (params.takeProfits ?? [])[0];
-      if (tp1 && tp1.price !== executionSignal.entryPrice) {
-        try {
-          const positions = await getBybitPositionRisk(executionSignal.symbol);
-          const active = positions.find(
-            (p) =>
-              p.symbol === executionSignal.symbol &&
-              parseFloat(p.size) > 0 &&
-              p.side === bybitSide
-          );
-          const positionIdx =
-            active?.positionIdx === 1 || active?.positionIdx === 2
-              ? (active.positionIdx as 1 | 2)
-              : 0;
-          const tpStr = roundPrice(tp1.price, tick);
-          await setBybitTradingStop({
-            symbol: executionSignal.symbol,
-            stopLoss: slResult.stopLoss ?? slPriceStr,
-            takeProfit: tpStr,
-            slTriggerBy: 'MarkPrice',
-            tpTriggerBy: 'MarkPrice',
-            positionIdx,
-          });
-          console.log(`[Bybit] TP Full @ ${tpStr} (com SL Full)`);
-        } catch (tpErr) {
-          const msg = tpErr instanceof Error ? tpErr.message : String(tpErr);
-          tpErrors.push(`TP Full: ${msg}`);
-          console.warn('[Bybit] TP Full falhou (SL mantém-se):', tpErr);
-        }
-      }
-    }
-
     if (!slResult.ok || slResult.method !== 'position') {
       try {
-        await cancelBybitTakeProfitOrders(executionSignal.symbol);
+        await cancelBybitAllStopOrders(executionSignal.symbol);
+        await cancelAllBybitLinearOrders(executionSignal.symbol).catch(() => undefined);
         const forced = await ensureBybitStopLoss({
           symbol: executionSignal.symbol,
           side: bybitSide,
@@ -493,13 +456,10 @@ async function executeSignalBybit(
       }
     }
 
-    const tpWarning = tpErrors.length > 0 ? ` (TPs: ${tpErrors.join('; ')})` : '';
     const slWarning =
       slResult.ok && slResult.method === 'position'
-        ? ` | SL ${slResult.stopLoss ?? slPriceStr} (position)`
-        : slResult.ok && slResult.method === 'conditional'
-          ? ` (⚠️ SL só condicional @ ${slPriceStr} — UI pode mostrar --)`
-          : ` (⚠️ SL NÃO confirmado @ ${slPriceStr}: ${slResult.error ?? 'desconhecido'})`;
+        ? ` | SL ${slResult.stopLoss ?? slPriceStr} (position Full)`
+        : ` (⚠️ SL NÃO confirmado @ ${slPriceStr}: ${slResult.error ?? 'desconhecido'})`;
     // Bybit usa UUIDs — parseInt daria NaN → 0 (falsy). Usa 1 como fallback não-zero.
     const parsedId = parseInt(entryOrder.orderId, 10);
     const orderIdNum = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : 1;
@@ -508,8 +468,7 @@ async function executeSignalBybit(
       dryRun:  false,
       message:
         `[Bybit] Trade: ${executionSignal.symbol} ${executionSignal.direction} order ${entryOrder.orderId}` +
-        slWarning +
-        tpWarning,
+        slWarning,
       params,
       orderId: orderIdNum,
     };
@@ -787,10 +746,9 @@ export async function cleanupBybitOrphanOpenOrders(): Promise<{
 }
 
 /**
- * Para cada posição Bybit sem stopLoss Full, tenta aplicar o SL do sinal IN_PROGRESS/NEW.
- * NUNCA faz cancel-all em posição aberta (apagava SLs manuais/condicionais).
- * Só cancela TakeProfit para desbloquear tpslMode Full. Dust sem SL é fechado.
- * Corre no cron de cleanup / fim dos jobs 15m.
+ * Para cada posição Bybit sem stopLoss Full, aplica SL do sinal IN_PROGRESS/NEW.
+ * Limpa TP/SL condicionais (modo Partial) e força SL Full na posição (visível na UI).
+ * Dust sem SL é fechado. Corre no cron de cleanup / scanners / 15m / 4h.
  */
 export async function syncBybitMissingStopLosses(): Promise<{
   checked: number;
@@ -815,7 +773,7 @@ export async function syncBybitMissingStopLosses(): Promise<{
   }
 
   const DUST_NOTIONAL_USDT = 2;
-  const MAX_ROUNDS = 3;
+  const MAX_ROUNDS = 4;
 
   try {
     const positions = await getBybitPositionRisk();
@@ -825,17 +783,7 @@ export async function syncBybitMissingStopLosses(): Promise<{
     checked = open.length;
 
     for (const pos of open) {
-      // TPs parciais (StopOrder) limpam o SL Full na Bybit — remover sempre antes de validar
-      try {
-        const n = await cancelBybitTakeProfitOrders(pos.symbol);
-        if (n > 0) {
-          console.log(`[Bybit sync SL] cancel-TP parciais ${pos.symbol}: ${n}`);
-        }
-      } catch {
-        /* ignore */
-      }
-
-      // Re-ler SL após cancelar TPs (por vezes a Bybit já tinha limpo o Full)
+      // Re-ler SL actual
       let currentSl = pos.stopLoss;
       try {
         const again = await getBybitPositionRisk(pos.symbol);
@@ -896,7 +844,7 @@ export async function syncBybitMissingStopLosses(): Promise<{
 
       let sl = signal?.stopLoss != null ? Number(signal.stopLoss) : NaN;
       if (!(sl > 0) && avg > 0) {
-        // fallback se não houver sinal (protege órfãs)
+        // fallback: LONG -15%, SHORT +8%
         sl = pos.side === 'Buy' ? avg * 0.85 : avg * 1.08;
       }
       if (!(sl > 0)) {
@@ -917,14 +865,18 @@ export async function syncBybitMissingStopLosses(): Promise<{
       let lastErr = '';
 
       for (let round = 0; round < MAX_ROUNDS && !verified; round++) {
-        if (round > 0) {
-          await new Promise((r) => setTimeout(r, 500 * round));
-          // Só TP — nunca cancel-all (apagava SL condicional/manual)
-          try {
-            await cancelBybitTakeProfitOrders(pos.symbol);
-          } catch (e) {
-            lastErr = e instanceof Error ? e.message : String(e);
+        if (round > 0) await new Promise((r) => setTimeout(r, 400 * round));
+
+        try {
+          const n = await cancelBybitAllStopOrders(pos.symbol);
+          if (n > 0) {
+            console.log(`[Bybit sync SL] ${pos.symbol}: cancel ${n} stop/tp order(s)`);
           }
+          if (round >= 2) {
+            await cancelAllBybitLinearOrders(pos.symbol);
+          }
+        } catch (e) {
+          lastErr = e instanceof Error ? e.message : String(e);
         }
 
         const result = await ensureBybitStopLoss({
@@ -932,27 +884,10 @@ export async function syncBybitMissingStopLosses(): Promise<{
           side: pos.side as 'Buy' | 'Sell',
           stopLoss: slStr,
           qty: pos.size,
-          forceUpdate: round > 0,
+          forceUpdate: true,
         });
         lastMethod = result.method;
         lastErr = result.error ?? lastErr;
-
-        if (!result.ok || result.method !== 'position') {
-          try {
-            await cancelBybitTakeProfitOrders(pos.symbol);
-            const forced = await ensureBybitStopLoss({
-              symbol: pos.symbol,
-              side: pos.side as 'Buy' | 'Sell',
-              stopLoss: slStr,
-              qty: pos.size,
-              forceUpdate: true,
-            });
-            lastMethod = forced.method;
-            lastErr = forced.error ?? lastErr;
-          } catch (e) {
-            lastErr = e instanceof Error ? e.message : String(e);
-          }
-        }
 
         try {
           const again = await getBybitPositionRisk(pos.symbol);
@@ -976,29 +911,16 @@ export async function syncBybitMissingStopLosses(): Promise<{
       }
 
       if (!verified) {
-        const hasCond = await hasBybitConditionalStopLoss(pos.symbol);
-        if (hasCond) {
-          conditionalOnly.push(pos.symbol);
-          console.warn(
-            `[Bybit sync SL] ⚠️ ${pos.symbol} sem SL Full na UI mas tem StopLoss condicional (protegido)`
-          );
-        } else {
-          missing.push(pos.symbol);
-          const alert = `🚨 SL EM FALTA ${pos.symbol} ${pos.side} size=${pos.size} (último: ${lastMethod}: ${lastErr || 'n/a'})`;
-          errors.push(alert);
-          console.error(`[Bybit sync SL] ${alert}`);
-        }
+        missing.push(pos.symbol);
+        const alert = `🚨 SL EM FALTA ${pos.symbol} ${pos.side} size=${pos.size} (último: ${lastMethod}: ${lastErr || 'n/a'})`;
+        errors.push(alert);
+        console.error(`[Bybit sync SL] ${alert}`);
       }
     }
 
     if (missing.length > 0) {
       console.error(
         `[Bybit sync SL] 🚨 ${missing.length} posição(ões) AINDA sem SL Full: ${missing.join(', ')}`
-      );
-    }
-    if (conditionalOnly.length > 0) {
-      console.warn(
-        `[Bybit sync SL] Condicional-only (UI --): ${conditionalOnly.join(', ')}`
       );
     }
     if (dustClosed.length > 0) {
