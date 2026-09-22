@@ -27,9 +27,21 @@ export function isTradingEnabled(): boolean {
   return process.env.TRADING_ENABLED === 'true';
 }
 
+/**
+ * Notional USDT por trade (posição).
+ * Produção: 80 USDT. `POSITION_SIZE_USDT` no Railway/env sobrescreve (excepto legado 60 → 80).
+ */
 export function getPositionSizeUsdt(): number {
-  const val = parseFloat(process.env.POSITION_SIZE_USDT || '100');
-  return Number.isFinite(val) && val > 0 ? val : 100;
+  const raw = process.env.POSITION_SIZE_USDT;
+  if (raw != null && String(raw).trim() !== '') {
+    const val = parseFloat(raw);
+    if (Number.isFinite(val) && val > 0) {
+      // Migração: produção tinha 60; pedido para passar a 80
+      if (val === 60) return 80;
+      return val;
+    }
+  }
+  return 80;
 }
 
 /** Força mínima para execução automática (sem confirmação). Default 80 para haver ordens automáticas. */
