@@ -5,8 +5,14 @@ import {
 } from '@/lib/tradingExecutor';
 
 /**
- * Cancela ordens Bybit linear em pares sem posição aberta (TP/SL órfãs após fecho na bolsa)
- * e reaplica SL em posições abertas que estejam sem stopLoss.
+ * Cron a cada 10 min (recomendado):
+ * 1) Cancela TP/SL órfãs em pares sem posição
+ * 2) Scan de SL: percorre posições abertas e coloca SL Full onde faltar
+ *
+ * Este job é o “scan” associado às posições abertas — não precisa de
+ * scanner de universo novo.
+ *
+ * Header: Authorization: Bearer CRON_SECRET
  */
 export async function GET(request: NextRequest) {
   try {
@@ -18,19 +24,46 @@ export async function GET(request: NextRequest) {
     }
 
     const orphan = await cleanupBybitOrphanOpenOrders();
-    const sync = await syncBybitMissingStopLosses();
+
+    // Scan SL em todas as posições (paginado). maxFix=25 por pedido.
+    let sync = await syncBybitMissingStopLosses({ maxFix: 25 });
+    if ((sync.remaining ?? 0) > 0) {
+      const again = await syncBybitMissingStopLosses({ maxFix: 25 });
+      sync = {
+        ...again,
+        fixed: sync.fixed + again.fixed,
+        dustClosed: [...sync.dustClosed, ...again.dustClosed],
+        missing: again.missing,
+        errors: [...sync.errors, ...again.errors],
+        details: [...(sync.details || []), ...(again.details || [])],
+        checked: again.checked,
+        skipped: again.skipped,
+        remaining: again.remaining,
+        conditionalOnly: again.conditionalOnly,
+      };
+    }
+
+    console.log(
+      `[cleanup-bybit-orphan-orders] orphan=${orphan.cancelledSymbols.length}` +
+        ` sl checked=${sync.checked} fixed=${sync.fixed} skipped=${sync.skipped}` +
+        (sync.remaining ? ` remaining=${sync.remaining}` : '') +
+        (sync.missing.length ? ` MISSING=${sync.missing.join(',')}` : '')
+    );
+
     return NextResponse.json({
       success: true,
       cancelledSymbols: orphan.cancelledSymbols,
       orphanErrors: orphan.errors,
-      slSync: {
+      slScan: {
         checked: sync.checked,
         fixed: sync.fixed,
         skipped: sync.skipped,
         dustClosed: sync.dustClosed,
         missing: sync.missing,
+        remaining: sync.remaining,
         conditionalOnly: sync.conditionalOnly,
         errors: sync.errors,
+        details: sync.details,
       },
       executedAt: new Date().toISOString(),
     });
