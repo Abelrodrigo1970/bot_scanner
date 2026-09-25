@@ -749,8 +749,12 @@ export async function cleanupBybitOrphanOpenOrders(): Promise<{
  * Para cada posição Bybit sem stopLoss Full, aplica SL do sinal IN_PROGRESS/NEW.
  * Limpa TP/SL condicionais (modo Partial) e força SL Full na posição (visível na UI).
  * Dust sem SL é fechado. Corre no cron de cleanup / scanners / 15m / 4h.
+ *
+ * @param opts.maxFix — máx. de reparações por pedido (default 20; evita timeout Railway).
  */
-export async function syncBybitMissingStopLosses(): Promise<{
+export async function syncBybitMissingStopLosses(opts?: {
+  maxFix?: number;
+}): Promise<{
   checked: number;
   fixed: number;
   skipped: number;
@@ -758,12 +762,13 @@ export async function syncBybitMissingStopLosses(): Promise<{
   missing: string[];
   conditionalOnly: string[];
   errors: string[];
+  remaining: number;
   /** Diagnóstico: como cada posição foi classificada */
   details: Array<{
     symbol: string;
     side: string;
     size: string;
-    status: 'has_position_sl' | 'has_entire_sl' | 'fixed' | 'dust_closed' | 'missing' | 'error';
+    status: 'has_position_sl' | 'has_entire_sl' | 'fixed' | 'dust_closed' | 'missing' | 'error' | 'deferred';
     stopLoss?: string;
     note?: string;
   }>;
@@ -776,23 +781,36 @@ export async function syncBybitMissingStopLosses(): Promise<{
     symbol: string;
     side: string;
     size: string;
-    status: 'has_position_sl' | 'has_entire_sl' | 'fixed' | 'dust_closed' | 'missing' | 'error';
+    status: 'has_position_sl' | 'has_entire_sl' | 'fixed' | 'dust_closed' | 'missing' | 'error' | 'deferred';
     stopLoss?: string;
     note?: string;
   }> = [];
   let checked = 0;
   let fixed = 0;
   let skipped = 0;
+  let remaining = 0;
+  const maxFix = Math.max(1, Math.min(50, Math.floor(opts?.maxFix ?? 20)));
 
   // Reparar SL em posições abertas NÃO depende de trading “ligado” na UI —
   // só de credenciais Bybit. Antes, getTradingEnabled=false saltava o sync
   // e deixava dezenas de posições sem SL.
   if (!hasBybitCredentials() || !canExecuteOnBybit()) {
-    return { checked, fixed, skipped, dustClosed, missing, conditionalOnly, errors, details };
+    return {
+      checked,
+      fixed,
+      skipped,
+      dustClosed,
+      missing,
+      conditionalOnly,
+      errors,
+      remaining,
+      details,
+    };
   }
 
   const DUST_NOTIONAL_USDT = 2;
-  const MAX_ROUNDS = 4;
+  const MAX_ROUNDS = 3;
+  let fixBudget = maxFix;
 
   try {
     const positions = await getBybitPositionRisk();
@@ -850,6 +868,19 @@ export async function syncBybitMissingStopLosses(): Promise<{
       } catch {
         /* continua para aplicar */
       }
+
+      if (fixBudget <= 0) {
+        remaining++;
+        details.push({
+          symbol: pos.symbol,
+          side: pos.side,
+          size: pos.size,
+          status: 'deferred',
+          note: `maxFix=${maxFix} — reexecutar cron`,
+        });
+        continue;
+      }
+      fixBudget--;
 
       const size = parseFloat(pos.size);
       const avg = parseFloat(pos.avgPrice);
@@ -1022,11 +1053,26 @@ export async function syncBybitMissingStopLosses(): Promise<{
         `[Bybit sync SL] Dust fechados (${dustClosed.length}): ${dustClosed.join(', ')}`
       );
     }
+    if (remaining > 0) {
+      console.warn(
+        `[Bybit sync SL] ${remaining} posição(ões) adiadas (maxFix=${maxFix}) — reexecutar cron`
+      );
+    }
   } catch (e) {
     errors.push(e instanceof Error ? e.message : String(e));
   }
 
-  return { checked, fixed, skipped, dustClosed, missing, conditionalOnly, errors, details };
+  return {
+    checked,
+    fixed,
+    skipped,
+    dustClosed,
+    missing,
+    conditionalOnly,
+    errors,
+    remaining,
+    details,
+  };
 }
 
 /**
