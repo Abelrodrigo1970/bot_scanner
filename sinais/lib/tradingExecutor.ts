@@ -758,18 +758,37 @@ export async function syncBybitMissingStopLosses(): Promise<{
   missing: string[];
   conditionalOnly: string[];
   errors: string[];
+  /** Diagnóstico: como cada posição foi classificada */
+  details: Array<{
+    symbol: string;
+    side: string;
+    size: string;
+    status: 'has_position_sl' | 'has_entire_sl' | 'fixed' | 'dust_closed' | 'missing' | 'error';
+    stopLoss?: string;
+    note?: string;
+  }>;
 }> {
   const errors: string[] = [];
   const dustClosed: string[] = [];
   const missing: string[] = [];
   const conditionalOnly: string[] = [];
+  const details: Array<{
+    symbol: string;
+    side: string;
+    size: string;
+    status: 'has_position_sl' | 'has_entire_sl' | 'fixed' | 'dust_closed' | 'missing' | 'error';
+    stopLoss?: string;
+    note?: string;
+  }> = [];
   let checked = 0;
   let fixed = 0;
   let skipped = 0;
 
-  const tradingEnabled = await getTradingEnabled();
-  if (!tradingEnabled || !hasBybitCredentials() || !canExecuteOnBybit()) {
-    return { checked, fixed, skipped, dustClosed, missing, conditionalOnly, errors };
+  // Reparar SL em posições abertas NÃO depende de trading “ligado” na UI —
+  // só de credenciais Bybit. Antes, getTradingEnabled=false saltava o sync
+  // e deixava dezenas de posições sem SL.
+  if (!hasBybitCredentials() || !canExecuteOnBybit()) {
+    return { checked, fixed, skipped, dustClosed, missing, conditionalOnly, errors, details };
   }
 
   const DUST_NOTIONAL_USDT = 2;
@@ -800,6 +819,13 @@ export async function syncBybitMissingStopLosses(): Promise<{
 
       if (currentSl && parseFloat(currentSl) > 0) {
         skipped++;
+        details.push({
+          symbol: pos.symbol,
+          side: pos.side,
+          size: pos.size,
+          status: 'has_position_sl',
+          stopLoss: currentSl,
+        });
         continue;
       }
 
@@ -808,6 +834,14 @@ export async function syncBybitMissingStopLosses(): Promise<{
         const entire = await hasBybitEntirePositionStopLoss(pos.symbol);
         if (entire.has) {
           skipped++;
+          details.push({
+            symbol: pos.symbol,
+            side: pos.side,
+            size: pos.size,
+            status: 'has_entire_sl',
+            stopLoss: entire.triggerPrice ?? undefined,
+            note: 'UI posição pode mostrar --',
+          });
           console.log(
             `[Bybit sync SL] ${pos.symbol}: já tem Entire Position SL @ ${entire.triggerPrice ?? '?'} (UI posição pode mostrar --)`
           );
@@ -836,12 +870,26 @@ export async function syncBybitMissingStopLosses(): Promise<{
         });
         if (closed.closed) {
           dustClosed.push(pos.symbol);
+          details.push({
+            symbol: pos.symbol,
+            side: pos.side,
+            size: pos.size,
+            status: 'dust_closed',
+            note: `notional≈${notional.toFixed(2)}`,
+          });
           console.warn(
             `[Bybit sync SL] 🧹 Dust fechado ${pos.symbol} size=${pos.size} notional≈${notional.toFixed(2)} USDT (sem SL)`
           );
         } else {
           errors.push(`${pos.symbol}: dust sem SL — fecho falhou: ${closed.message}`);
           missing.push(pos.symbol);
+          details.push({
+            symbol: pos.symbol,
+            side: pos.side,
+            size: pos.size,
+            status: 'error',
+            note: closed.message,
+          });
         }
         continue;
       }
@@ -864,6 +912,13 @@ export async function syncBybitMissingStopLosses(): Promise<{
       if (!(sl > 0)) {
         errors.push(`${pos.symbol}: sem SL calculável`);
         missing.push(pos.symbol);
+        details.push({
+          symbol: pos.symbol,
+          side: pos.side,
+          size: pos.size,
+          status: 'missing',
+          note: 'sem SL calculável',
+        });
         continue;
       }
 
@@ -877,6 +932,7 @@ export async function syncBybitMissingStopLosses(): Promise<{
       let verified = false;
       let lastMethod = 'none';
       let lastErr = '';
+      let appliedSl: string | undefined;
 
       for (let round = 0; round < MAX_ROUNDS && !verified; round++) {
         if (round > 0) await new Promise((r) => setTimeout(r, 400 * round));
@@ -913,6 +969,7 @@ export async function syncBybitMissingStopLosses(): Promise<{
             const entire = await hasBybitEntirePositionStopLoss(pos.symbol);
             if (entire.has) {
               verified = true;
+              appliedSl = entire.triggerPrice ?? slStr;
               fixed++;
               console.log(
                 `[Bybit sync SL] ✅ ${pos.symbol} Entire Position SL → ${entire.triggerPrice}` +
@@ -920,6 +977,7 @@ export async function syncBybitMissingStopLosses(): Promise<{
               );
             }
           } else {
+            appliedSl = active!.stopLoss;
             fixed++;
             console.log(
               `[Bybit sync SL] ✅ ${pos.symbol} ${pos.side} → ${active!.stopLoss}` +
@@ -935,7 +993,22 @@ export async function syncBybitMissingStopLosses(): Promise<{
         missing.push(pos.symbol);
         const alert = `🚨 SL EM FALTA ${pos.symbol} ${pos.side} size=${pos.size} (último: ${lastMethod}: ${lastErr || 'n/a'})`;
         errors.push(alert);
+        details.push({
+          symbol: pos.symbol,
+          side: pos.side,
+          size: pos.size,
+          status: 'missing',
+          note: `${lastMethod}: ${lastErr || 'n/a'}`,
+        });
         console.error(`[Bybit sync SL] ${alert}`);
+      } else {
+        details.push({
+          symbol: pos.symbol,
+          side: pos.side,
+          size: pos.size,
+          status: 'fixed',
+          stopLoss: appliedSl ?? slStr,
+        });
       }
     }
 
@@ -953,7 +1026,7 @@ export async function syncBybitMissingStopLosses(): Promise<{
     errors.push(e instanceof Error ? e.message : String(e));
   }
 
-  return { checked, fixed, skipped, dustClosed, missing, conditionalOnly, errors };
+  return { checked, fixed, skipped, dustClosed, missing, conditionalOnly, errors, details };
 }
 
 /**

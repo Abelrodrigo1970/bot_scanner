@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
       missing: sync.missing,
       conditionalOnly: sync.conditionalOnly,
       errors: sync.errors,
+      details: sync.details,
       executedAt: new Date().toISOString(),
     });
   } catch (error) {

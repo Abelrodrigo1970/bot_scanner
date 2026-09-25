@@ -165,6 +165,29 @@ async function signedPost<T>(path: string, body: Record<string, unknown> = {}): 
 // ---------------------------------------------------------------------------
 // Posições abertas
 // ---------------------------------------------------------------------------
+type BybitPositionListPage = {
+  list?: Array<Record<string, string>>;
+  nextPageCursor?: string;
+};
+
+function mapBybitPositionRow(p: Record<string, string>) {
+  return {
+    symbol:        p.symbol        ?? '',
+    side:          (p.side ?? 'None') as 'Buy' | 'Sell' | 'None',
+    size:          p.size          ?? '0',
+    avgPrice:      p.avgPrice      ?? '0',
+    unrealisedPnl: p.unrealisedPnl ?? '0',
+    leverage:      p.leverage      ?? '1',
+    stopLoss:      p.stopLoss      ?? '',
+    takeProfit:    p.takeProfit    ?? '',
+    positionIdx:   Number.parseInt(p.positionIdx ?? '0', 10) || 0,
+  };
+}
+
+/**
+ * Posições linear USDT. Sem `symbol`: pagina todas (Bybit default limit=20 —
+ * sem cursor só via as primeiras 20 e o sync de SL ignorava o resto).
+ */
 export async function getBybitPositionRisk(symbol?: string): Promise<Array<{
   symbol:        string;
   side:          'Buy' | 'Sell' | 'None';
@@ -176,22 +199,31 @@ export async function getBybitPositionRisk(symbol?: string): Promise<Array<{
   takeProfit:    string;
   positionIdx:   number;
 }>> {
-  const params: Record<string, string> = { category: 'linear' };
-  if (symbol) params.symbol = symbol;
-  else params.settleCoin = 'USDT';
+  if (symbol) {
+    const result = await signedGet<BybitPositionListPage>('/v5/position/list', {
+      category: 'linear',
+      symbol,
+    });
+    return (result?.list ?? []).map(mapBybitPositionRow);
+  }
 
-  const result = await signedGet<{ list: Array<Record<string, string>> }>('/v5/position/list', params);
-  return (result?.list ?? []).map((p) => ({
-    symbol:        p.symbol        ?? '',
-    side:          (p.side ?? 'None') as 'Buy' | 'Sell' | 'None',
-    size:          p.size          ?? '0',
-    avgPrice:      p.avgPrice      ?? '0',
-    unrealisedPnl: p.unrealisedPnl ?? '0',
-    leverage:      p.leverage      ?? '1',
-    stopLoss:      p.stopLoss      ?? '',
-    takeProfit:    p.takeProfit    ?? '',
-    positionIdx:   Number.parseInt(p.positionIdx ?? '0', 10) || 0,
-  }));
+  const all: Array<ReturnType<typeof mapBybitPositionRow>> = [];
+  let cursor: string | undefined;
+  for (;;) {
+    const params: Record<string, string> = {
+      category: 'linear',
+      settleCoin: 'USDT',
+      limit: '200',
+    };
+    if (cursor) params.cursor = cursor;
+    const result = await signedGet<BybitPositionListPage>('/v5/position/list', params);
+    const list = result?.list ?? [];
+    all.push(...list.map(mapBybitPositionRow));
+    const next = result?.nextPageCursor;
+    if (next == null || String(next).trim() === '') break;
+    cursor = String(next);
+  }
+  return all;
 }
 
 // ---------------------------------------------------------------------------
