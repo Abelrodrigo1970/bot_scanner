@@ -7,7 +7,7 @@ import { syncBybitMissingStopLosses } from '@/lib/tradingExecutor';
  *
  * Não é um scanner de universo — é um scan de risco sobre trades abertos.
  * Agendar no cron-job.org a cada 10 min (Europe/Lisbon):
- *   */10 * * * *
+ *   a cada 10 min → cron: star/10 * * * *  (substituir star por *)
  * Header: Authorization: Bearer CRON_SECRET
  *
  * Query: ?maxFix=20 (default) — quantas posições sem SL reparar por pedido.
