@@ -791,9 +791,10 @@ export default function EstrategiasPage() {
               <strong>{p.chartTimeframe ?? '4h'}</strong> &gt; EMA{p.emaExitPeriod ?? 21} +{' '}
               {(((p.emaReentryMinPctAbove as number | undefined) ?? 0.008) * 100).toFixed(1)}%{' '}
               <strong>e</strong> fecho &lt; EMA{(p.emaCapPeriod as number | undefined) ?? 70} +{' '}
-              {(((p.emaCapMaxPctAbove as number | undefined) ?? 0.15) * 100).toFixed(0)}%. Sai ao
-              sair do scanner ou fecho &lt; EMA{p.emaExitPeriod ?? 21}. Reentra (ainda no top N) com os
-              mesmos filtros. SL −{((p.stopLossPct ?? 0.15) * 100).toFixed(0)}%. Sem TP. Cron{' '}
+              {(((p.emaCapMaxPctAbove as number | undefined) ?? 0.15) * 100).toFixed(0)}%. Sai com
+              fecho &lt; EMA{p.emaExitPeriod ?? 21}, ou se ficar fora do top N ≥{' '}
+              {(p.scannerExitGraceHours as number | undefined) ?? 48}h (grace), ou SL −
+              {((p.stopLossPct ?? 0.15) * 100).toFixed(0)}%. Sem TP. Cron{' '}
               <code className="text-[10px]">run-15m</code> (2em2h Lisboa).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -817,6 +818,11 @@ export default function EstrategiasPage() {
                 ((p.emaCapMaxPctAbove as number | undefined) ?? 0.15) * 100,
                 (v) => upd({ emaCapMaxPctAbove: Math.max(0, v) / 100 }),
                 0.5
+              )}
+              {numField(
+                'Grace fora do scanner (h)',
+                (p.scannerExitGraceHours as number | undefined) ?? 48,
+                (v) => upd({ scannerExitGraceHours: Math.min(168, Math.max(0, Math.floor(v))) })
               )}
               {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.15) * 100, (v) =>
                 upd({ stopLossPct: v / 100 }), 0.5)}
