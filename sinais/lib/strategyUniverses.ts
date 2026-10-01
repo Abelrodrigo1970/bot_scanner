@@ -197,7 +197,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 export const DATA_SOURCE_MENU_ITEMS = [
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — Acima SMA200 (Pivot Boss, rotações)',
+    label: 'Scanner 1 — Acima EMA70 (1d)',
   },
   {
     href: '/scanners/2',

@@ -299,7 +299,7 @@ export default function EstrategiasPage() {
                   </>
                 ) : (
                   <>
-                    <strong>Scanner 1 top {defaultTopN}</strong> (maior |afastamento| vs SMA200 em 1h); actualize em Origem de dados → Scanner 1
+                    <strong>Scanner 1 top {defaultTopN}</strong> (maior |afastamento| vs EMA70 em 1d); actualize em Origem de dados → Scanner 1
                   </>
                 )}{' '}
                 ou aguarde o cron <strong>run-universe-scans</strong> (cada 4 h).
@@ -469,7 +469,7 @@ export default function EstrategiasPage() {
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Timeframe <strong>15m</strong>; só <strong>COMPRA</strong>. Universo = <strong>Scanner 1 top N</strong>{' '}
-              (acima SMA200 1h). Entrada quando o <strong>fecho</strong> da última vela fechada fica{' '}
+              (acima EMA70 1d). Entrada quando o <strong>fecho</strong> da última vela fechada fica{' '}
               <strong>acima do máximo</strong> das N velas anteriores (rompimento). Sem sinal se o preço estiver{' '}
               <strong>acima do limiar</strong> vs a média de filtro (EMA70 por defeito). Filtro{' '}
               <strong>Stochastic</strong>: só entra se <strong>%K &lt; 30</strong> (K 50 / smooth 40 / D 11).

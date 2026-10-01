@@ -56,7 +56,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 top 20 (acima SMA200, 1h)',
+    universe: 'Scanner 1 top 20 (acima EMA70, 1d)',
 
   },
 
@@ -189,7 +189,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 top 30 (acima SMA200, 1h)',
+    universe: 'Scanner 1 top 30 (acima EMA70, 1d)',
 
   },
 
@@ -201,7 +201,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 ranks 11–20 (acima SMA200, 1h); força 65–75; SL −3% / TP R×2 @100%',
+    universe: 'Scanner 1 ranks 11–20 (acima EMA70, 1d); força 65–75; SL −3% / TP R×2 @100%',
 
   },
 
@@ -213,7 +213,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 top 50 (acima SMA200, 1h)',
+    universe: 'Scanner 1 top 50 (acima EMA70, 1d)',
 
   },
 

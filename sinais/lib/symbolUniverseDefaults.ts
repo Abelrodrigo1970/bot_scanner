@@ -1,6 +1,13 @@
 import type { UniverseScanDefinition } from './universeScanner';
 
-export const UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 = 'UNIVERSE_ABOVE_MA200_1H' as const;
+/** Scanner 1 actual — fecho acima da EMA70 em velas diárias (1d). */
+export const UNIVERSE_CODE_SCANNER_1_ABOVE_EMA70_1D = 'UNIVERSE_ABOVE_EMA70_1D' as const;
+
+/** @deprecated Scanner 1 passou a EMA70 1d — alias do código actual. */
+export const UNIVERSE_CODE_SCANNER_1_ABOVE_MA200 = UNIVERSE_CODE_SCANNER_1_ABOVE_EMA70_1D;
+
+/** Código legado do Scanner 1 (SMA200 1h) — só histórico de scans. */
+export const UNIVERSE_CODE_SCANNER_1_LEGACY_MA200_1H = 'UNIVERSE_ABOVE_MA200_1H' as const;
 
 export const UNIVERSE_CODE_SCANNER_2_TOP30_PRICE_24H = 'UNIVERSE_TOP30_PRICE_CHANGE_24H' as const;
 
@@ -68,12 +75,13 @@ export const SCANNER_2_EMA80_BAND_LABEL = '-5% a +15% da EMA80 (1h)';
 
 /** Scanners 1, 2, 6, 7, rsi_vendido (legado) e YTD mcap60 — actualizados em run-universe-scans (4 h). */
 export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = {
-  UNIVERSE_ABOVE_MA200_1H: {
+  UNIVERSE_ABOVE_EMA70_1D: {
     ruleType: 'ABOVE_MA',
-    maPeriod: 200,
+    maPeriod: 70,
+    maType: 'EMA',
     minDistancePct: null,
     maxDistancePct: null,
-    timeframe: '1h',
+    timeframe: '1d',
     minQuoteVolume: 500000,
     candidateLimit: 400,
   },
@@ -142,6 +150,19 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
   },
 };
 
+/** Definições só para ler histórico — não correm no cron 4h. */
+export const BUILTIN_UNIVERSE_SCAN_LEGACY: Record<string, UniverseScanDefinition> = {
+  UNIVERSE_ABOVE_MA200_1H: {
+    ruleType: 'ABOVE_MA',
+    maPeriod: 200,
+    minDistancePct: null,
+    maxDistancePct: null,
+    timeframe: '1h',
+    minQuoteVolume: 500000,
+    candidateLimit: 400,
+  },
+};
+
 /** Lateral EMA21/70 — só às 00h e 12h (Europe/Lisbon) via cron dedicado. */
 export const BUILTIN_UNIVERSE_SCAN_LATERAL_12H: Record<string, UniverseScanDefinition> = {
   UNIVERSE_LATERAL_VOLATILE_4H: {
@@ -197,6 +218,7 @@ export const BUILTIN_UNIVERSE_SCAN: Record<string, UniverseScanDefinition> = {
   ...BUILTIN_UNIVERSE_SCAN_1H,
   ...BUILTIN_UNIVERSE_SCAN_15M,
   ...BUILTIN_UNIVERSE_SCAN_LATERAL_12H,
+  ...BUILTIN_UNIVERSE_SCAN_LEGACY,
 };
 
 export function getBuiltinScanDefinition(code: string): UniverseScanDefinition | null {
@@ -230,11 +252,17 @@ export const BUILTIN_UNIVERSE_META: Record<
   string,
   { displayName: string; description: string; strategyNames: string }
 > = {
-  UNIVERSE_ABOVE_MA200_1H: {
-    displayName: 'Scanner 1 — Acima SMA200 (1h)',
+  UNIVERSE_ABOVE_EMA70_1D: {
+    displayName: 'Scanner 1 — Acima EMA70 (1d)',
     description:
-      'Perpétuos USDT (top volume) com fecho acima da SMA200 em 1h. Pivot Boss / rotações.',
-    strategyNames: 'Pivot Boss Bear (15m); rotações Scanner 1',
+      'Perpétuos USDT (top volume) com fecho acima da EMA70 em velas diárias. Ordenados por |% vs EMA70|.',
+    strategyNames: 'Pivot Boss Bear (15m, inactivo); rotações Scanner 1 (inactivas)',
+  },
+  UNIVERSE_ABOVE_MA200_1H: {
+    displayName: 'Scanner 1 legado — Acima SMA200 (1h)',
+    description:
+      'Legado: fecho acima da SMA200 em 1h. Substituído pelo Scanner 1 EMA70 1d (UNIVERSE_ABOVE_EMA70_1D).',
+    strategyNames: '— (legado)',
   },
   UNIVERSE_TOP30_PRICE_CHANGE_24H: {
     displayName: 'Scanner 2 — Top 30 subidas 24h',
@@ -298,6 +326,7 @@ export const BUILTIN_UNIVERSE_META: Record<
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
+  '1': 'Scanner 1: fecho > EMA70 (1d). Estratégias Pivot Boss / rotações inactivas.',
   '2': 'Scanner 2: rotação Top 4 (inactiva). stch15long e RSI>80 descontinuados.',
   '3': 'Scanner 3: MA Cross 12×30 (15m). Universo RSI 1h ≥ 75.',
   '6': 'Scanner 6: MA Cross 12×21 + Swing VWAP + Rompimento 20 + rsi_vendido (SMA80 4h).',

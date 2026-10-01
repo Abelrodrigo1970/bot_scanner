@@ -2186,7 +2186,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
       } else if (strategy.name === 'PIVOT_BOSS_BEAR_15M') {
         const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 30)));
         console.log(
-          `🔍 ${strategy.name}: Scanner 1 top ${topN} (|pct vs SMA200|); sinais em 15m...`
+          `🔍 ${strategy.name}: Scanner 1 top ${topN} (|pct vs EMA70 1d|); sinais em 15m...`
         );
         symbolsToAnalyze = await resolveUniverseScanSymbolsTopN(
           UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
@@ -2253,7 +2253,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
         const minStrength = Math.max(60, Math.floor(Number(params.minStrength ?? 65)));
         const maxStrength = Math.max(minStrength, Math.floor(Number(params.maxStrength ?? 75)));
         console.log(
-          `🔍 ${strategy.name}: Scanner 1 ranks ${minRank}–${maxRank} (|pct vs SMA200|); força ${minStrength}–${maxStrength}; SL -${(Number(params.stopLossPct ?? 0.03) * 100).toFixed(0)}%; sinais em 15m...`
+          `🔍 ${strategy.name}: Scanner 1 ranks ${minRank}–${maxRank} (|pct vs EMA70 1d|); força ${minStrength}–${maxStrength}; SL -${(Number(params.stopLossPct ?? 0.03) * 100).toFixed(0)}%; sinais em 15m...`
         );
         symbolsToAnalyze = await resolveUniverseScanSymbolsRankRange(
           UNIVERSE_CODE_SCANNER_1_ABOVE_MA200,
@@ -2314,7 +2314,7 @@ export async function runAllStrategies(options?: RunAllStrategiesOptions): Promi
           continue;
         }
       } else if (strategy.name === 'AFASTAMENTO_MEDIO_30M') {
-        console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima SMA200, 1h); sinais em 30m...`);
+        console.log(`🔍 ${strategy.name}: universo Scanner 1 (acima EMA70 1d); sinais em 30m...`);
         symbolsToAnalyze = await resolveUniverseScanSymbols(UNIVERSE_CODE_SCANNER_1_ABOVE_MA200);
         console.log(`✅ ${symbolsToAnalyze.length} símbolos (Scanner 1)`);
         if (symbolsToAnalyze.length === 0) {
