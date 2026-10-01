@@ -4,11 +4,11 @@ import { prisma } from '@/lib/db';
 import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrategies';
 
 /**
- * Cron 15m: MA Cross + engolfo + Liquidity Pools + Rompimento 20 + rsi_vendido (S6 4h, só 2em2h Lisboa).
+ * Cron 15m: MA Cross + engolfo + Liquidity Pools + Rompimento 20 + Rumer's Box + rsi_vendido (S6 4h, só 2em2h Lisboa).
  */
 async function run15mInBackground(now: Date): Promise<void> {
   console.log(
-    '[Run-15m BG] Iniciando LP + MA Cross + engolfo + rompimento20 + rsi_vendido (S6 4h, 2em2h)...'
+    "[Run-15m BG] Iniciando LP + MA Cross + engolfo + rompimento20 + rumers-box + rsi_vendido (S6 4h, 2em2h)..."
   );
 
   try {
@@ -18,6 +18,7 @@ async function run15mInBackground(now: Date): Promise<void> {
     const eng = result.engolfo;
     const lp = result.liquidityPoolsPro;
     const romp = result.rompimento20;
+    const rumers = result.rumersBox;
     const rsiV = result.rsiVendido;
     console.log(
       `[Run-15m BG] MA Cross 12×30 -> ${ma.status}` +
@@ -38,6 +39,10 @@ async function run15mInBackground(now: Date): Promise<void> {
     console.log(
       `[Run-15m BG] rompimento20 -> ${romp.status}` +
         (typeof romp.signalsCreated === 'number' ? ` (${romp.signalsCreated} sinais)` : '')
+    );
+    console.log(
+      `[Run-15m BG] rumers-box -> ${rumers.status}` +
+        (typeof rumers.signalsCreated === 'number' ? ` (${rumers.signalsCreated} sinais)` : '')
     );
     console.log(
       `[Run-15m BG] rsi_vendido -> ${rsiV.status}` +
@@ -69,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Cron 15m (LP + MA Cross + engolfo + Rompimento 20 + rsi_vendido) iniciado em background',
+      message: "Cron 15m (LP + MA Cross + engolfo + Rompimento 20 + Rumer's Box + rsi_vendido) iniciado em background",
       executedAt: now.toISOString(),
     });
   } catch (error) {

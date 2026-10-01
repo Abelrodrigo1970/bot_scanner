@@ -511,6 +511,32 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'RUMERS_BOX_15M':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Timeframe <strong>15m</strong>; <strong>COMPRA e VENDA</strong>. Universo ={' '}
+              <strong>Scanner 1 top N</strong> (acima EMA70 1d). Caixa = <strong>high/low do dia anterior</strong>{' '}
+              (The Rumer&apos;s Box). <strong>BUY</strong> quando o fecho 15m <strong>cruza acima do PDH</strong>;{' '}
+              <strong>SELL</strong> quando <strong>cruza abaixo do PDL</strong> (vela anterior dentro da caixa). TP1 ={' '}
+              <strong>1× altura da caixa</strong> (mín. TP% configurável).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Top N Scanner 1', p.universeTopN ?? 20, (v) => upd({ universeTopN: v }))}
+              {numField('Caixa mín. (%)', p.minBoxRangePct ?? 0.8, (v) => upd({ minBoxRangePct: v }), 0.1)}
+              {numField('Caixa máx. (%)', p.maxBoxRangePct ?? 12, (v) => upd({ maxBoxRangePct: v }), 0.5)}
+              {numField('SL (%)', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('TP1 mín. (%)', (p.tp1Pct ?? 0.06) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
+              {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
+              {numField('Fecho restante (horas)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Restante da posição ({Math.max(0, 100 - Number(p.tp1Position ?? 50))}%) fecha automaticamente após{' '}
+              {p.closeAfterHours ?? 24}h (cron 15m). Exchange: Bybit por defeito.
+            </p>
+          </div>
+        );
+
       case 'RSI_OVERBOUGHT_DROP_1H':
         return (
           <div className="space-y-4">

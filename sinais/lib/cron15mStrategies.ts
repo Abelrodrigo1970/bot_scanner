@@ -32,6 +32,7 @@ import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 import { runEngolfo15mPipeline } from '@/lib/engolfo15mStrategy';
 import { runLiquidityPoolsPro15mPipeline } from '@/lib/liquidityPoolsPro15mStrategy';
 import { runRompimento20_15mPipeline } from '@/lib/rompimento20_15mStrategy';
+import { runRumersBox15mPipeline } from '@/lib/rumersBox15mStrategy';
 import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 
 const TIMEFRAME_15M = '15m' as const;
@@ -349,11 +350,12 @@ export interface Cron15mAllResult {
   engolfo: Cron15mResult;
   liquidityPoolsPro: Cron15mResult;
   rompimento20: Cron15mResult;
+  rumersBox: Cron15mResult;
   rsiVendido: Cron15mResult;
 }
 
 /**
- * Cron único 15m: Liquidity Pools primeiro, depois MA Cross + engolfo + Rompimento 20 + rsi_vendido.
+ * Cron único 15m: Liquidity Pools primeiro, depois MA Cross + engolfo + Rompimento 20 + Rumer's Box + rsi_vendido.
  * LP corre antes do MA Cross 12×21 (80 símbolos) para não ficar bloqueado no pipeline.
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
@@ -408,6 +410,22 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     rompimento20 = { status: 'not-found' };
   }
 
+  let rumersBox: Cron15mResult;
+  try {
+    const r = await runRumersBox15mPipeline({ logPrefix: '[Run-15m → rumers-box]' });
+    if (r.status === 'skipped') {
+      console.log(`[Run-15m → rumers-box] Saltado: ${r.reason}`);
+      if (r.reason.includes('inactiva')) rumersBox = { status: 'inactive' };
+      else if (r.reason.includes('não encontrada')) rumersBox = { status: 'not-found' };
+      else rumersBox = { status: 'done', signalsCreated: 0 };
+    } else {
+      rumersBox = { status: 'done', signalsCreated: r.signalsCreated };
+    }
+  } catch (err) {
+    console.error('[Run-15m → rumers-box] Falhou:', err);
+    rumersBox = { status: 'not-found' };
+  }
+
   let rsiVendido: Cron15mResult;
   try {
     const r = await runRsiVendidoPipeline({ logPrefix: '[Run-15m → rsi_vendido]' });
@@ -451,6 +469,7 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     engolfo,
     liquidityPoolsPro,
     rompimento20,
+    rumersBox,
     rsiVendido,
   };
 }

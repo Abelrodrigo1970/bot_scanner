@@ -135,6 +135,25 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
+    strategyName: 'RUMERS_BOX_15M',
+
+    displayLabel: "Rumer's Box (15m)",
+
+    signalTimeframes: ['15m'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_ABOVE_EMA70_1D',
+
+    description:
+      "Scanner 1 top 20. Caixa = high/low do dia anterior. BUY cruzamento PDH; SELL cruzamento PDL (vela ant. dentro da caixa). SL ±5%. TP1 1×altura. Restante 24h.",
+
+    refresh: '/api/cron/run-15m (cada 15 min)',
+
+  },
+
+  {
+
     strategyName: 'STCH15LONG',
 
     displayLabel: 'stch15long',

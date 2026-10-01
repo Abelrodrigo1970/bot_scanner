@@ -36,6 +36,8 @@ const ALLOWED_STRATEGIES = [
   'ENGOLFO_15M',
   'Rompimento 20 (15m)',
   'ROMPIMENTO_20_15M',
+  "Rumer's Box (15m)",
+  'RUMERS_BOX_15M',
   'Liquidity Pools',
   'LIQUIDITY_POOLS_PRO_15M',
   'stch15long',

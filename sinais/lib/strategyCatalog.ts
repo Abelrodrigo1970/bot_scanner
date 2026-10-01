@@ -20,6 +20,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'ROMPIMENTO_20_15M',
 
+  'RUMERS_BOX_15M',
+
   'RSI_VENDIDO_4H',
 
 ] as const;
@@ -117,6 +119,19 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '15m',
 
     universe: 'Scanner 1 top 20; fecho > máx. 20 velas; EMA70; Stoch K<30; LONG SL −5% | TP +9% 50%',
+
+  },
+
+  RUMERS_BOX_15M: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m',
+
+    timeframe: '15m',
+
+    universe:
+      "Scanner 1 top 20 (EMA70 1d); caixa PDH/PDL dia anterior; BUY cruzamento PDH / SELL cruzamento PDL; SL ±5%; TP1 1×range",
 
   },
 
@@ -362,7 +377,7 @@ export const CRON_GROUPS: { key: '15m' | '1h' | '1h+15m'; title: string; descrip
     title: 'Cron 15m',
 
     description:
-      'MA Cross 12×30 (S1) + MA Cross 12×21 (S7 BUY) + engolfo (S2) + LP + Swing VWAP + Rompimento 20 + rsi_vendido (S7 4h)',
+      "MA Cross 12×30 (S1) + MA Cross 12×21 (S7 BUY) + engolfo (S2) + LP + Rompimento 20 + Rumer's Box + rsi_vendido (S7 4h)",
 
   },
 

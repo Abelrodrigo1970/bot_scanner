@@ -93,6 +93,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Scanner 6 top 40. Só COMPRA. Fecho > máx. 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante às 24h.',
   },
   {
+    strategyName: 'RUMERS_BOX_15M',
+    displayNames: ["Rumer's Box (15m)"],
+    buy: side(5, 6, 50, 0, 0, 24),
+    sell: side(5, 6, 50, 0, 0, 24),
+    summary:
+      "Scanner 1 top 20. PDH/PDL dia anterior. BUY cruzamento PDH; SELL cruzamento PDL. SL ±5%. TP1 1×altura da caixa (mín. 6%). Restante 24h.",
+  },
+  {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
     displayNames: ['Pivot Boss Bear 15m (4 EMA venda)'],
     buy: null,

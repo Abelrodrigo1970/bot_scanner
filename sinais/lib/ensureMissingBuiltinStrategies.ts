@@ -59,6 +59,9 @@ import {
   ROMPIMENTO_20_15M_DESC,
   ROMPIMENTO_20_15M_DISPLAY,
   ROMPIMENTO_20_15M_PARAMS,
+  RUMERS_BOX_15M_DESC,
+  RUMERS_BOX_15M_DISPLAY,
+  RUMERS_BOX_15M_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncMaCross12x21Scanner2Config,
@@ -66,6 +69,7 @@ import {
   syncLiquidityPoolsPro15mConfig,
   syncSwingAnchoredVwap15mConfig,
   syncRompimento20_15mConfig,
+  syncRumersBox15mConfig,
   syncRsiVendido4hConfig,
   syncPivotBossBear15mUniverse,
   syncScanner1Top5Config,
@@ -198,6 +202,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     isActive: true,
     params: JSON.stringify(ROMPIMENTO_20_15M_PARAMS),
   },
+  {
+    name: 'RUMERS_BOX_15M',
+    displayName: RUMERS_BOX_15M_DISPLAY,
+    description: RUMERS_BOX_15M_DESC,
+    isActive: true,
+    params: JSON.stringify(RUMERS_BOX_15M_PARAMS),
+  },
 ] as const;
 
 /** Seeds builtin — ver sync em ensureMissingBuiltinStrategies. */
@@ -283,6 +294,13 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   if (rompimentoSync.updated) {
     console.log(
       '✅ ROMPIMENTO_20_15M: Rompimento 20 | fecho > HH20 | filtro ≤30% acima EMA70 | Stoch K<30 (50/40/11) | LONG 15m | Scanner 6 top 40 (4h) | SL −5% | TP1 +9% 50% | 24h'
+    );
+  }
+
+  const rumersBoxSync = await syncRumersBox15mConfig(prisma);
+  if (rumersBoxSync.updated) {
+    console.log(
+      "✅ RUMERS_BOX_15M: Rumer's Box | PDH/PDL dia anterior | cruzamento 15m | Scanner 1 top 20 | SL ±5% | TP1 1×range | 24h"
     );
   }
 

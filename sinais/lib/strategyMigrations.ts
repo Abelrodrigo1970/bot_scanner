@@ -680,6 +680,89 @@ export async function syncRompimento20_15mConfig(
   return { updated: false };
 }
 
+/** Rumer's Box — PDH/PDL do dia anterior; cruzamento 15m. */
+export const RUMERS_BOX_15M_PARAMS = {
+  universeTopN: 20,
+  chartTimeframe: '15m',
+  dailyTimeframe: '1d',
+  requireInsideBeforeBreak: true,
+  minBoxRangePct: 0.8,
+  maxBoxRangePct: 12,
+  stopLossPct: 0.05,
+  tp1Pct: 0.06,
+  tp1Position: 50,
+  closeAfterHours: 24,
+  autoExecuteMinStrength: 70,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: true,
+  sellEnabled: true,
+  exchange: 'bybit',
+} as const;
+
+export const RUMERS_BOX_15M_DISPLAY = "Rumer's Box (15m)";
+export const RUMERS_BOX_15M_DESC =
+  "Scanner 1 top 20 (acima EMA70 1d). Caixa = high/low do dia anterior (The Rumer's Box). LONG quando o fecho 15m cruza acima do PDH; SHORT quando cruza abaixo do PDL (exige vela anterior dentro da caixa). SL ±5%. TP1 = 1× altura da caixa (mín. 6%). Restante às 24h.";
+
+export async function syncRumersBox15mConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'RUMERS_BOX_15M' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? JSON.parse(row.params) : {};
+  } catch {
+    p = {};
+  }
+
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit'
+      ? p.exchange
+      : RUMERS_BOX_15M_PARAMS.exchange;
+
+  const next = {
+    ...RUMERS_BOX_15M_PARAMS,
+    ...p,
+    chartTimeframe: RUMERS_BOX_15M_PARAMS.chartTimeframe,
+    dailyTimeframe: RUMERS_BOX_15M_PARAMS.dailyTimeframe,
+    requireInsideBeforeBreak: RUMERS_BOX_15M_PARAMS.requireInsideBeforeBreak,
+    minBoxRangePct: RUMERS_BOX_15M_PARAMS.minBoxRangePct,
+    maxBoxRangePct: RUMERS_BOX_15M_PARAMS.maxBoxRangePct,
+    stopLossPct: RUMERS_BOX_15M_PARAMS.stopLossPct,
+    tp1Pct: RUMERS_BOX_15M_PARAMS.tp1Pct,
+    tp1Position: RUMERS_BOX_15M_PARAMS.tp1Position,
+    closeAfterHours: RUMERS_BOX_15M_PARAMS.closeAfterHours,
+    universeTopN: RUMERS_BOX_15M_PARAMS.universeTopN,
+    allowBuy: true,
+    buyEnabled: true,
+    allowSell: true,
+    sellEnabled: true,
+    exchange: userExchange,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== RUMERS_BOX_15M_DISPLAY ||
+    row.description !== RUMERS_BOX_15M_DESC;
+
+  if (needParams || needMeta) {
+    await prisma.strategy.update({
+      where: { name: 'RUMERS_BOX_15M' },
+      data: {
+        displayName: RUMERS_BOX_15M_DISPLAY,
+        description: RUMERS_BOX_15M_DESC,
+        params: JSON.stringify(next),
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 /** MA30/MA200 em 15m — mesma lógica de spread que MA12/MA30 (universo = scan Ma30Near6PriceBetween). */
 export const MA_CROSS_15M_STRATEGY_DESCRIPTION =
   'MA30 / MA200 em 15m: mesma lógica que MA12/MA30 (spread |rápida−lenta|/lenta). Entrada quando o spread ultrapassa o limiar na direção; modo repetir tendência com Δ mínimo opcional; TP parcial quando o preço favorece N% vs entrada; restante fecha quando o spread comprime abaixo do limiar de saída. SL 5%. Filtro SELL por distância do preço à MA200. Universo = scan MA30 entre −6% e +1% vs MA200 (1h) — menu Ma30Near6PriceBetween; actualiza esse scan antes de gerar sinais.';
