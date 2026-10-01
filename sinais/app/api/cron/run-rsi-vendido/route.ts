@@ -7,7 +7,7 @@ import { syncBybitMissingStopLosses } from '@/lib/tradingExecutor';
 export const dynamic = 'force-dynamic';
 
 /**
- * Cron / manual: rsi_vendido LONG 4h (Scanner 6 + EMA21 +0,8%).
+ * Cron / manual: rsi_vendido LONG 4h (Scanner 6 + EMA21 +0,8% + cap EMA70 +15%).
  * No run-15m corre só de 2em2h (Lisboa). Este endpoint força execução (?force=0 para respeitar horário).
  * No fim: verifica todas as posições Bybit abertas e coloca SL Full onde faltar
  * (a Bybit por vezes remove o SL Full da UI — este passo repõe).

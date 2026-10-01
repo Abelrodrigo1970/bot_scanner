@@ -1,7 +1,7 @@
 /**
  * rsi_vendido LONG — Scanner 6 (SMA80 4h) top N.
- * Entrada (novo no top N): só BUY se fecho 4h > EMA21 + 0,8%.
- * Reentrada (ainda no top N, sem posição): só BUY se fecho 4h > EMA21 + 0,8%.
+ * Entrada (novo no top N): só BUY se fecho 4h > EMA21 + 0,8% E fecho < EMA70 + 15%.
+ * Reentrada (ainda no top N, sem posição): mesmos filtros.
  * Saída: sai do top N OU fecho 4h < EMA21.
  * SL −15% (segurança); sem TP — gestão por scanner + EMA21.
  */
@@ -21,6 +21,12 @@ export const RSI_VENDIDO_STRATEGY_NAME = 'RSI_VENDIDO_4H' as const;
 
 /** Distância mínima acima da EMA21 para BUY ao entrar no top N / reentrar (0,8%). */
 export const RSI_VENDIDO_EMA_REENTRY_MIN_PCT_DEFAULT = 0.008;
+
+/** EMA de teto (stretch): default 70. */
+export const RSI_VENDIDO_EMA_CAP_PERIOD_DEFAULT = 70;
+
+/** Máx. % acima da EMA70 para permitir BUY (15% → fecho < EMA70 × 1.15). */
+export const RSI_VENDIDO_EMA_CAP_MAX_PCT_ABOVE_DEFAULT = 0.15;
 
 /** Intervalo default do cron rsi_vendido (horas, Lisboa). */
 export const RSI_VENDIDO_RUN_EVERY_HOURS_DEFAULT = 2;
@@ -74,6 +80,13 @@ export type RsiVendidoParams = {
    * (entrada no top N e reentrada). Ex.: 0.008 = +0,8%.
    */
   emaReentryMinPctAbove?: number;
+  /** EMA de teto (stretch filter). Default 70. */
+  emaCapPeriod?: number;
+  /**
+   * Fecho 4h tem de estar **abaixo** de EMA_cap × (1 + este %).
+   * Ex.: 0.15 = só entra se fecho < EMA70 + 15%.
+   */
+  emaCapMaxPctAbove?: number;
   /** Corre o pipeline no máximo de N em N horas (Europe/Lisbon). 0 = sempre. Default 2. */
   runEveryHours?: number;
   stopLossPct?: number;
@@ -153,41 +166,46 @@ type Closed4hBar = {
   prevClose: number;
   ema: number;
   prevEma: number;
+  /** EMA de teto (ex.: 70) para filtro de stretch. */
+  emaCap: number;
   barCloseTs: number;
 };
 
 async function fetchClosed4hWithEma(
   symbol: string,
   chartTimeframe: string,
-  emaPeriod: number
+  emaPeriod: number,
+  emaCapPeriod: number
 ): Promise<Closed4hBar | null> {
-  const need = Math.max(emaPeriod + 10, 90);
+  const need = Math.max(emaPeriod, emaCapPeriod) + 10;
   let candles;
   try {
     candles = await fetchCandles(symbol, chartTimeframe as '4h', need);
   } catch {
     return null;
   }
-  if (candles.length < emaPeriod + 3) return null;
+  if (candles.length < Math.max(emaPeriod, emaCapPeriod) + 3) return null;
 
   const closed = candles.slice(0, -1);
   const closes = getCloses(closed);
-  if (closes.length < emaPeriod + 2) return null;
+  if (closes.length < Math.max(emaPeriod, emaCapPeriod) + 2) return null;
 
   const ema = calculateLastEMA(closes, emaPeriod);
   const prevEma = calculateLastEMA(closes.slice(0, -1), emaPeriod);
-  if (ema == null || prevEma == null) return null;
+  const emaCap = calculateLastEMA(closes, emaCapPeriod);
+  if (ema == null || prevEma == null || emaCap == null) return null;
 
   const close = closes[closes.length - 1]!;
   const prevClose = closes[closes.length - 2]!;
   const bar = closed[closed.length - 1]!;
-  if (!(close > 0) || !(prevClose > 0)) return null;
+  if (!(close > 0) || !(prevClose > 0) || !(emaCap > 0)) return null;
 
   return {
     close,
     prevClose,
     ema,
     prevEma,
+    emaCap,
     barCloseTs: bar.timestamp,
   };
 }
@@ -201,6 +219,8 @@ async function createLongSignal(opts: {
   chartTimeframe: string;
   emaExitPeriod: number;
   emaReentryMinPctAbove: number;
+  emaCapPeriod: number;
+  emaCapMaxPctAbove: number;
   topN: number;
   barCloseTs: number;
   scannerRsi: number | null;
@@ -213,9 +233,10 @@ async function createLongSignal(opts: {
   const strength =
     opts.scannerRsi != null ? strengthForScannerRsi(opts.scannerRsi) : 80;
   const minAbovePct = opts.emaReentryMinPctAbove * 100;
+  const maxCapPct = opts.emaCapMaxPctAbove * 100;
 
   console.log(
-    `${opts.logPrefix} 🟢 LONG ${opts.symbol} @ ${opts.entryPrice} (${opts.trigger} | Scanner 6 | 4h EMA${opts.emaExitPeriod} +${minAbovePct.toFixed(1)}% | SL −${(opts.stopLossPct * 100).toFixed(0)}%)`
+    `${opts.logPrefix} 🟢 LONG ${opts.symbol} @ ${opts.entryPrice} (${opts.trigger} | Scanner 6 | 4h EMA${opts.emaExitPeriod} +${minAbovePct.toFixed(1)}% | cap EMA${opts.emaCapPeriod}+${maxCapPct.toFixed(0)}% | SL −${(opts.stopLossPct * 100).toFixed(0)}%)`
   );
 
   await prisma.signal.create({
@@ -243,9 +264,11 @@ async function createLongSignal(opts: {
         scanRunId: opts.scanRunId,
         emaExitPeriod: opts.emaExitPeriod,
         emaReentryMinPctAbove: opts.emaReentryMinPctAbove,
+        emaCapPeriod: opts.emaCapPeriod,
+        emaCapMaxPctAbove: opts.emaCapMaxPctAbove,
         stopLossPct: opts.stopLossPct,
         chartTimeframe: opts.chartTimeframe,
-        executionProfile: `LONG Scanner 6 (SMA80 4h) top ${opts.topN} | TF ${opts.chartTimeframe} | entra/reentra só com fecho > EMA${opts.emaExitPeriod} +${minAbovePct.toFixed(1)}% | sai ao sair do scanner ou fecho < EMA${opts.emaExitPeriod} | SL −${(opts.stopLossPct * 100).toFixed(0)}%`,
+        executionProfile: `LONG Scanner 6 (SMA80 4h) top ${opts.topN} | TF ${opts.chartTimeframe} | entra/reentra só com fecho > EMA${opts.emaExitPeriod} +${minAbovePct.toFixed(1)}% e fecho < EMA${opts.emaCapPeriod} +${maxCapPct.toFixed(0)}% | sai ao sair do scanner ou fecho < EMA${opts.emaExitPeriod} | SL −${(opts.stopLossPct * 100).toFixed(0)}%`,
       }),
     },
   });
@@ -293,6 +316,14 @@ export async function runRsiVendidoPipeline(options?: {
     0,
     Number(params.emaReentryMinPctAbove ?? RSI_VENDIDO_EMA_REENTRY_MIN_PCT_DEFAULT)
   );
+  const emaCapPeriod = Math.max(
+    2,
+    Math.floor(Number(params.emaCapPeriod ?? RSI_VENDIDO_EMA_CAP_PERIOD_DEFAULT))
+  );
+  const emaCapMaxPctAbove = Math.max(
+    0,
+    Number(params.emaCapMaxPctAbove ?? RSI_VENDIDO_EMA_CAP_MAX_PCT_ABOVE_DEFAULT)
+  );
   const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.15));
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const allowBuy = params.buyEnabled !== false && params.allowBuy !== false;
@@ -328,7 +359,7 @@ export async function runRsiVendidoPipeline(options?: {
   const openLongSet = new Set(openLongs.map((s) => s.symbol));
 
   console.log(
-    `${logPrefix} Scanner 6 top ${topN}: ${universeSet.size} | abertos ${openLongSet.size} | prevScan=${pair.previous ? 'yes' : 'no'} | EMA${emaExitPeriod} +${(emaReentryMinPctAbove * 100).toFixed(1)}%`
+    `${logPrefix} Scanner 6 top ${topN}: ${universeSet.size} | abertos ${openLongSet.size} | prevScan=${pair.previous ? 'yes' : 'no'} | EMA${emaExitPeriod} +${(emaReentryMinPctAbove * 100).toFixed(1)}% | cap EMA${emaCapPeriod}+${(emaCapMaxPctAbove * 100).toFixed(0)}%`
   );
 
   const startedAt = new Date();
@@ -369,11 +400,16 @@ export async function runRsiVendidoPipeline(options?: {
     openLongSet.delete(symbol);
   }
 
-  // 2) Ainda no scanner: fecho 4h < EMA21 → fecha; acima EMA21+0,8% → entra/reentra
+  // 2) Ainda no scanner: fecho 4h < EMA21 → fecha; acima EMA21+0,8% e < EMA70+15% → entra/reentra
   const toCheck = new Set<string>([...universeSet, ...openLongSet]);
 
   for (const symbol of toCheck) {
-    const bar = await fetchClosed4hWithEma(symbol, chartTimeframe, emaExitPeriod);
+    const bar = await fetchClosed4hWithEma(
+      symbol,
+      chartTimeframe,
+      emaExitPeriod,
+      emaCapPeriod
+    );
     if (!bar) continue;
 
     const inUniverse = universeSet.has(symbol);
@@ -381,6 +417,7 @@ export async function runRsiVendidoPipeline(options?: {
     const row = itemBySymbol.get(symbol) ?? null;
     const scannerRsi = row != null && Number.isFinite(row.pctFromMa) ? row.pctFromMa : null;
     const entryMinClose = bar.ema * (1 + emaReentryMinPctAbove);
+    const entryMaxClose = bar.emaCap * (1 + emaCapMaxPctAbove);
 
     // Saída EMA: fecho 4h abaixo da EMA21
     if (hasOpen && inUniverse && bar.close < bar.ema) {
@@ -415,11 +452,21 @@ export async function runRsiVendidoPipeline(options?: {
       continue;
     }
 
+    // Filtro stretch: fecho 4h < EMA70 × (1 + 15%)
+    if (!(bar.close < entryMaxClose)) {
+      const distCap =
+        bar.emaCap > 0 ? ((bar.close / bar.emaCap - 1) * 100).toFixed(2) : '?';
+      console.log(
+        `${logPrefix} ⏭ ${symbol} bloqueado: fecho ≥ EMA${emaCapPeriod}+${(emaCapMaxPctAbove * 100).toFixed(0)}% (fecho=${bar.close.toFixed(6)} emaCap=${bar.emaCap.toFixed(6)} dist=${distCap}%)`
+      );
+      continue;
+    }
+
     // Sem scan anterior não há «entrou no topN» fiável — só gere saídas neste ciclo.
     if (!pair.previous) continue;
 
-    // Entrada: acabou de entrar no top N (+ filtro EMA acima)
-    // Reentrada: já estava no top N, sem posição (+ filtro EMA acima)
+    // Entrada: acabou de entrar no top N (+ filtros EMA)
+    // Reentrada: já estava no top N, sem posição (+ filtros EMA)
     const enterNew = isNew;
     const reenter = !isNew;
 
@@ -462,6 +509,8 @@ export async function runRsiVendidoPipeline(options?: {
       chartTimeframe,
       emaExitPeriod,
       emaReentryMinPctAbove,
+      emaCapPeriod,
+      emaCapMaxPctAbove,
       topN,
       barCloseTs: bar.barCloseTs,
       scannerRsi,

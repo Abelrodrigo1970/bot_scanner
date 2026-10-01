@@ -789,10 +789,11 @@ export default function EstrategiasPage() {
               <strong>Scanner 6</strong> (SMA80 4h, top {p.universeTopN ?? p.topN ?? 40}).
               Ao <strong>entrar no top N</strong> só compra se fecho{' '}
               <strong>{p.chartTimeframe ?? '4h'}</strong> &gt; EMA{p.emaExitPeriod ?? 21} +{' '}
-              {(((p.emaReentryMinPctAbove as number | undefined) ?? 0.008) * 100).toFixed(1)}%. Sai ao
-              sair do scanner ou fecho &lt; EMA{p.emaExitPeriod ?? 21}. Reentra (ainda no top N) com o
-              mesmo filtro +{(((p.emaReentryMinPctAbove as number | undefined) ?? 0.008) * 100).toFixed(1)}%.
-              SL −{((p.stopLossPct ?? 0.15) * 100).toFixed(0)}%. Sem TP. Cron{' '}
+              {(((p.emaReentryMinPctAbove as number | undefined) ?? 0.008) * 100).toFixed(1)}%{' '}
+              <strong>e</strong> fecho &lt; EMA{(p.emaCapPeriod as number | undefined) ?? 70} +{' '}
+              {(((p.emaCapMaxPctAbove as number | undefined) ?? 0.15) * 100).toFixed(0)}%. Sai ao
+              sair do scanner ou fecho &lt; EMA{p.emaExitPeriod ?? 21}. Reentra (ainda no top N) com os
+              mesmos filtros. SL −{((p.stopLossPct ?? 0.15) * 100).toFixed(0)}%. Sem TP. Cron{' '}
               <code className="text-[10px]">run-15m</code> (2em2h Lisboa).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -807,6 +808,15 @@ export default function EstrategiasPage() {
                 ((p.emaReentryMinPctAbove as number | undefined) ?? 0.008) * 100,
                 (v) => upd({ emaReentryMinPctAbove: Math.max(0, v) / 100 }),
                 0.1
+              )}
+              {numField('EMA teto (stretch)', (p.emaCapPeriod as number | undefined) ?? 70, (v) =>
+                upd({ emaCapPeriod: Math.min(200, Math.max(2, Math.floor(v))) })
+              )}
+              {numField(
+                'Máx. % acima EMA teto',
+                ((p.emaCapMaxPctAbove as number | undefined) ?? 0.15) * 100,
+                (v) => upd({ emaCapMaxPctAbove: Math.max(0, v) / 100 }),
+                0.5
               )}
               {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.15) * 100, (v) =>
                 upd({ stopLossPct: v / 100 }), 0.5)}
