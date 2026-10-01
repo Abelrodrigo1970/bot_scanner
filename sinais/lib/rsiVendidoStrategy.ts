@@ -2,8 +2,8 @@
  * rsi_vendido LONG — Scanner 6 (SMA80 4h) top N.
  * Entrada (novo no top N): só BUY se fecho 4h > EMA21 + 0,8% E fecho < EMA70 + 15%.
  * Reentrada (ainda no top N, sem posição): mesmos filtros.
- * Saída: fecho 4h < EMA21 OU fora do top N há ≥48h (grace) OU SL −15%.
- * SL −15% (segurança); sem TP — gestão por scanner + EMA21.
+ * Saída: fecho 4h < EMA21 OU fora do top N há ≥48h (grace) OU SL −8%.
+ * SL −8% (segurança); sem TP — gestão por scanner + EMA21.
  */
 
 import { prisma } from './db';
@@ -381,7 +381,7 @@ export async function runRsiVendidoPipeline(options?: {
       Number(params.scannerExitGraceHours ?? RSI_VENDIDO_SCANNER_EXIT_GRACE_HOURS_DEFAULT)
     )
   );
-  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.15));
+  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.08));
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const allowBuy = params.buyEnabled !== false && params.allowBuy !== false;
 

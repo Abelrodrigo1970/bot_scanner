@@ -794,7 +794,7 @@ export default function EstrategiasPage() {
               {(((p.emaCapMaxPctAbove as number | undefined) ?? 0.15) * 100).toFixed(0)}%. Sai com
               fecho &lt; EMA{p.emaExitPeriod ?? 21}, ou se ficar fora do top N ≥{' '}
               {(p.scannerExitGraceHours as number | undefined) ?? 48}h (grace), ou SL −
-              {((p.stopLossPct ?? 0.15) * 100).toFixed(0)}%. Sem TP. Cron{' '}
+              {((p.stopLossPct ?? 0.08) * 100).toFixed(0)}%. Sem TP. Cron{' '}
               <code className="text-[10px]">run-15m</code> (2em2h Lisboa).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -824,7 +824,7 @@ export default function EstrategiasPage() {
                 (p.scannerExitGraceHours as number | undefined) ?? 48,
                 (v) => upd({ scannerExitGraceHours: Math.min(168, Math.max(0, Math.floor(v))) })
               )}
-              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.15) * 100, (v) =>
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.08) * 100, (v) =>
                 upd({ stopLossPct: v / 100 }), 0.5)}
               {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 70, (v) =>
                 upd({ autoExecuteMinStrength: v })
