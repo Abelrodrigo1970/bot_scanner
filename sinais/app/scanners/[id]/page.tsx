@@ -40,6 +40,7 @@ export default function UniverseScannerPage() {
   const isRsiBelowScanner = scanDef?.ruleType === 'RSI_BELOW';
   const isRsiRankScanner = isRsiAboveScanner || isRsiBelowScanner;
   const isLateralVolatileScanner = scanDef?.ruleType === 'LATERAL_VOLATILE';
+  const isNearRumersBandsScanner = scanDef?.ruleType === 'NEAR_RUMERS_BANDS';
   const isVolumeRankScanner = scanDef?.ruleType === 'TOP_VOLUME_24H';
   const isTickerRankScanner =
     isPriceRankScanner ||
@@ -47,11 +48,13 @@ export default function UniverseScannerPage() {
     isYtdMcapScanner ||
     isRsiRankScanner ||
     isVolumeRankScanner ||
-    isLateralVolatileScanner;
+    isLateralVolatileScanner ||
+    isNearRumersBandsScanner;
   /** Scanner 1 e Scanner 2: colunas de valor anterior + delta (como afastamento / % 24h). */
   const showPrevValueCols =
     (!isTickerRankScanner || isPriceRankScanner || isPriceRangeScanner || isYtdMcapScanner) &&
-    !isLateralVolatileScanner;
+    !isLateralVolatileScanner &&
+    !isNearRumersBandsScanner;
   const prevMetricLabel = isYtdMcapScanner
     ? '% YTD ant.'
     : isPriceRankScanner || isPriceRangeScanner
@@ -65,9 +68,11 @@ export default function UniverseScannerPage() {
       ? 'Δ RSI'
       : isLateralVolatileScanner
         ? '|EMA21−70|%'
-        : isVolumeRankScanner
-          ? '% 24h'
-          : 'Afast. agora';
+        : isNearRumersBandsScanner
+          ? 'Dist % banda'
+          : isVolumeRankScanner
+            ? '% 24h'
+            : 'Afast. agora';
   const deltaMetricLabel =
     isYtdMcapScanner || isPriceRankScanner || isPriceRangeScanner ? 'Δ %' : 'Δ afast.';
   const priceRangeMin = scanDef?.minPrice ?? 0.65;
@@ -78,6 +83,9 @@ export default function UniverseScannerPage() {
   const maSlowLabel = scanDef?.maSlowPeriod ?? 70;
   const maSpreadMaxLabel = scanDef?.maSpreadMaxPct ?? scanDef?.maxDistancePct ?? 10;
   const lookbackDaysLabel = scanDef?.lookbackDays ?? 15;
+  const nearBandsMaxPct = scanDef?.maxDistancePct ?? 1;
+  const nearBandsMinBox = scanDef?.minBoxRangePct ?? 0.8;
+  const nearBandsMaxBox = scanDef?.maxBoxRangePct ?? 12;
   const maLabel =
     scanDef?.maType === 'EMA'
       ? `EMA${scanDef.maPeriod}`
@@ -241,6 +249,18 @@ export default function UniverseScannerPage() {
                 </li>
                 <li>Top volume 24h (mín. 5M USDT) — Binance/Bybit Futures, ordenado pelo spread actual</li>
               </>
+            ) : isNearRumersBandsScanner ? (
+              <>
+                <li>
+                  Preço a ≤ <strong>{nearBandsMaxPct}%</strong> da <strong>PDH</strong> ou{' '}
+                  <strong>PDL</strong> (high/low do dia anterior) — bandas da Rumer&apos;s Box
+                </li>
+                <li>
+                  Caixa válida <strong>{nearBandsMinBox}–{nearBandsMaxBox}%</strong> (altura/mid) ·
+                  velas <strong>{timeframeLabel}</strong> · ordenado pela menor |distância|
+                </li>
+                <li>Top volume 24h (mín. 500k USDT) — Binance Futures</li>
+              </>
             ) : isYtdMcapScanner ? (
               <>
                 <li>
@@ -368,11 +388,13 @@ export default function UniverseScannerPage() {
                         ? `RSI ${timeframeLabel}`
                         : isLateralVolatileScanner
                           ? `EMA${maFastLabel}`
-                          : isYtdMcapScanner
-                            ? 'Mcap'
-                            : isTickerRankScanner
-                              ? 'Vol. 24h'
-                              : maLabel}
+                          : isNearRumersBandsScanner
+                            ? 'Banda (PDH/PDL)'
+                            : isYtdMcapScanner
+                              ? 'Mcap'
+                              : isTickerRankScanner
+                                ? 'Vol. 24h'
+                                : maLabel}
                     </th>
                     {!showPrevValueCols ? null : (
                       <th
@@ -438,7 +460,7 @@ export default function UniverseScannerPage() {
                       <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900 dark:text-white">
                         {isRsiRankScanner
                           ? item.ma.toFixed(1)
-                          : isLateralVolatileScanner
+                          : isLateralVolatileScanner || isNearRumersBandsScanner
                             ? `$${formatPrice(item.ma)}`
                             : isTickerRankScanner
                               ? formatVolume(item.ma)

@@ -49,6 +49,10 @@ export interface UniverseScanDefinition {
   minPrice?: number;
   /** LAST_PRICE_RANGE: preço máximo USDT (inclusive). */
   maxPrice?: number;
+  /** NEAR_RUMERS_BANDS: caixa PDH/PDL mín. % (altura/mid). */
+  minBoxRangePct?: number;
+  /** NEAR_RUMERS_BANDS: caixa PDH/PDL máx. %. */
+  maxBoxRangePct?: number;
 }
 
 function maAtClose(closes: number[], def: UniverseScanDefinition): number | null {
@@ -143,6 +147,69 @@ async function scanRsiThresholdUniverse(
   }
 
   results.sort((a, b) => (mode === 'below' ? a.ma - b.ma : b.ma - a.ma));
+  const limit = Math.floor(def.resultLimit ?? 0);
+  return limit > 0 ? results.slice(0, limit) : results;
+}
+
+/**
+ * NEAR_RUMERS_BANDS (1d): preço actual a ≤ maxDistancePct% da PDH ou PDL
+ * (bandas do dia anterior — Rumer's Box). Caixa 0,8–12% por defeito.
+ * Persistência: ma = banda mais próxima (PDH ou PDL), pctFromMa = % vs banda (assinado).
+ * Ordenado por |distância| crescente.
+ */
+async function scanNearRumersBandsUniverse(def: UniverseScanDefinition): Promise<UniverseScanRow[]> {
+  const maxDistPct = Number(def.maxDistancePct ?? 1);
+  const minBoxRangePct = Math.max(0, Number(def.minBoxRangePct ?? 0.8));
+  const maxBoxRangePct = Math.max(minBoxRangePct, Number(def.maxBoxRangePct ?? 12));
+  const symbols = await fetchTopSymbolsByVolume(
+    Math.min(Math.max(def.candidateLimit, 50), 600),
+    def.minQuoteVolume
+  );
+  const results: UniverseScanRow[] = [];
+
+  for (let i = 0; i < symbols.length; i += BATCH) {
+    const chunk = symbols.slice(i, i + BATCH);
+    const rows = await Promise.all(
+      chunk.map(async (symbol): Promise<UniverseScanRow | null> => {
+        try {
+          const candles = await fetchCandles(symbol, def.timeframe || '1d', 5);
+          if (candles.length < 2) return null;
+          const closed = candles.slice(0, -1);
+          if (closed.length < 1) return null;
+          const prev = closed[closed.length - 1]!;
+          const pdh = prev.high;
+          const pdl = prev.low;
+          if (!(pdh > 0) || !(pdl > 0) || !(pdh >= pdl)) return null;
+
+          const mid = (pdh + pdl) / 2;
+          const height = pdh - pdl;
+          if (!(height > 0) || !(mid > 0)) return null;
+          const boxRangePct = (height / mid) * 100;
+          if (boxRangePct < minBoxRangePct || boxRangePct > maxBoxRangePct) return null;
+
+          const close = candles[candles.length - 1]!.close;
+          if (!(close > 0)) return null;
+
+          const distHighPct = ((close - pdh) / pdh) * 100;
+          const distLowPct = ((close - pdl) / pdl) * 100;
+          const nearerHigh = Math.abs(distHighPct) <= Math.abs(distLowPct);
+          const pctFromMa = nearerHigh ? distHighPct : distLowPct;
+          const ma = nearerHigh ? pdh : pdl;
+
+          if (Math.abs(pctFromMa) > maxDistPct) return null;
+          return { symbol, close, ma, pctFromMa };
+        } catch {
+          return null;
+        }
+      })
+    );
+    for (const r of rows) {
+      if (r) results.push(r);
+    }
+    await delay(BATCH_DELAY_MS);
+  }
+
+  results.sort((a, b) => Math.abs(a.pctFromMa) - Math.abs(b.pctFromMa));
   const limit = Math.floor(def.resultLimit ?? 0);
   return limit > 0 ? results.slice(0, limit) : results;
 }
@@ -264,6 +331,9 @@ export async function scanSymbolUniverse(
   }
   if (def.ruleType === 'LATERAL_VOLATILE') {
     return scanLateralVolatileUniverse(def);
+  }
+  if (def.ruleType === 'NEAR_RUMERS_BANDS') {
+    return scanNearRumersBandsUniverse(def);
   }
 
   const symbols = await fetchTopSymbolsByVolume(

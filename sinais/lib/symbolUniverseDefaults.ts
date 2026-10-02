@@ -43,6 +43,9 @@ export const UNIVERSE_CODE_RSI_VENDIDO = 'UNIVERSE_RSI_BELOW_32_4H' as const;
 /** Lateral — |EMA21−EMA70| < 10% em 4h nos últimos 15 dias. */
 export const UNIVERSE_CODE_LATERAL_VOLATILE = 'UNIVERSE_LATERAL_VOLATILE_4H' as const;
 
+/** Rumer's Box — preço a ≤1% da PDH ou PDL (bandas do dia anterior). */
+export const UNIVERSE_CODE_RUMERS_NEAR_BANDS = 'UNIVERSE_RUMERS_NEAR_BANDS_1D' as const;
+
 /** Top 50 YTD desde 1 Jan com market cap > $60M (CoinGecko). */
 export const UNIVERSE_CODE_YTD_MCAP60 = 'UNIVERSE_TOP50_YTD_MCAP60M' as const;
 
@@ -68,6 +71,10 @@ export const LATERAL_MA_FAST = 21;
 export const LATERAL_MA_SLOW = 70;
 export const LATERAL_MA_SPREAD_MAX_PCT = 10;
 export const LATERAL_LOOKBACK_DAYS = 15;
+
+export const RUMERS_NEAR_BANDS_MAX_PCT = 1;
+export const RUMERS_NEAR_BANDS_MIN_BOX = 0.8;
+export const RUMERS_NEAR_BANDS_MAX_BOX = 12;
 
 export const SCANNER_2_MIN_DISTANCE_PCT = -5;
 export const SCANNER_2_MAX_DISTANCE_PCT = 15;
@@ -147,6 +154,18 @@ export const BUILTIN_UNIVERSE_SCAN_4H: Record<string, UniverseScanDefinition> = 
     candidateLimit: 2000,
     minPrice: PRICE_RANGE_MIN_DEFAULT,
     maxPrice: PRICE_RANGE_MAX_DEFAULT,
+  },
+  UNIVERSE_RUMERS_NEAR_BANDS_1D: {
+    ruleType: 'NEAR_RUMERS_BANDS',
+    maPeriod: 2,
+    minDistancePct: null,
+    maxDistancePct: RUMERS_NEAR_BANDS_MAX_PCT,
+    timeframe: '1d',
+    minQuoteVolume: 500_000,
+    candidateLimit: 400,
+    resultLimit: 80,
+    minBoxRangePct: RUMERS_NEAR_BANDS_MIN_BOX,
+    maxBoxRangePct: RUMERS_NEAR_BANDS_MAX_BOX,
   },
 };
 
@@ -235,7 +254,8 @@ export function isTickerRankUniverseScan(code: string): boolean {
     rt === 'LAST_PRICE_RANGE' ||
     rt === 'RSI_ABOVE' ||
     rt === 'RSI_BELOW' ||
-    rt === 'LATERAL_VOLATILE'
+    rt === 'LATERAL_VOLATILE' ||
+    rt === 'NEAR_RUMERS_BANDS'
   );
 }
 
@@ -312,6 +332,12 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Perpétuos USDT em 4h onde |EMA21 − EMA70| / EMA70 < 10% em todas as velas dos últimos 15 dias (90×4h). Ordenados pelo spread actual (mais apertado primeiro). Mín. 5M USDT volume 24h. Cron automático às 00h e 12h (Lisboa).',
     strategyNames: '— (screener; sem estratégia ligada)',
   },
+  UNIVERSE_RUMERS_NEAR_BANDS_1D: {
+    displayName: "Rumer's Box — perto das bandas (≤1%)",
+    description:
+      'Perpétuos USDT com preço a ≤1% da PDH ou PDL (high/low do dia anterior). Caixa 0,8–12% (como a estratégia). Ordenados pela menor distância à banda. Mín. 500k USDT volume 24h. Cron 4h.',
+    strategyNames: "Rumer's Box (15m) — screener de aproximação",
+  },
   UNIVERSE_TOP50_YTD_MCAP60M: {
     displayName: 'YTD — Top 50 (mcap > $60M)',
     description:
@@ -338,6 +364,8 @@ export const SCANNER_ROTATION_NOTES: Record<string, string> = {
     'Universo YTD (mcap > $60M) disponível para ligar a estratégias via dataKey UNIVERSE_TOP50_YTD_MCAP60M.',
   price_range:
     'Todos os perps USDT com preço no intervalo configurado (default $0.65–$0.80). Sem estratégia ligada — screener.',
+  rumers_bands:
+    "Screener: preço a ≤1% da PDH/PDL (bandas Rumer's Box). Sem entrada automática — só monitorização.",
 };
 
 export const SCANNER_UI_ROUTES = [
@@ -349,6 +377,7 @@ export const SCANNER_UI_ROUTES = [
   { scannerId: '8', code: UNIVERSE_CODE_SCANNER_8_BYBIT_STOCKS },
   { scannerId: 'rsi_vendido', code: UNIVERSE_CODE_RSI_VENDIDO },
   { scannerId: 'lateral_volatile', code: UNIVERSE_CODE_LATERAL_VOLATILE },
+  { scannerId: 'rumers_bands', code: UNIVERSE_CODE_RUMERS_NEAR_BANDS },
   { scannerId: 'ytd_mcap60', code: UNIVERSE_CODE_YTD_MCAP60 },
   { scannerId: 'price_range', code: UNIVERSE_CODE_PRICE_RANGE },
 ] as const;

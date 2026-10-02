@@ -35,13 +35,19 @@ export default function ScannersIndexPage() {
               ? 'EMA21 / EMA70'
               : isRsiRankUniverseScan(code)
                 ? `RSI${def?.rsiPeriod ?? 14} (${def?.timeframe ?? '—'})`
-                : def?.maType === 'EMA'
-                  ? `EMA${def?.maPeriod}`
-                  : def?.ruleType === 'TOP_PRICE_CHANGE_24H'
-                    ? 'Top subidas 24h'
-                    : def?.ruleType === 'TOP_YTD_MCAP'
-                      ? 'Top YTD'
-                      : `SMA${def?.maPeriod ?? 200}`;
+                : def?.ruleType === 'NEAR_RUMERS_BANDS'
+                  ? 'PDH/PDL ≤1%'
+                  : def?.ruleType === 'LATERAL_VOLATILE'
+                    ? `|EMA${def?.maFastPeriod ?? 21}−${def?.maSlowPeriod ?? 70}|`
+                    : def?.maType === 'EMA'
+                      ? `EMA${def?.maPeriod}`
+                      : def?.ruleType === 'TOP_PRICE_CHANGE_24H'
+                        ? 'Top subidas 24h'
+                        : def?.ruleType === 'TOP_YTD_MCAP'
+                          ? 'Top YTD'
+                          : def?.ruleType === 'LAST_PRICE_RANGE'
+                            ? 'Faixa preço'
+                            : `SMA${def?.maPeriod ?? 200}`;
 
             return (
               <Link

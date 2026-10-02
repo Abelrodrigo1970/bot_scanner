@@ -243,6 +243,10 @@ export const DATA_SOURCE_MENU_ITEMS = [
     label: 'Lateral — |EMA21−EMA70| < 10% (4h, 15 dias)',
   },
   {
+    href: '/scanners/rumers_bands',
+    label: "Rumer's Box — perto das bandas PDH/PDL (≤1%)",
+  },
+  {
     href: '/scanners/ytd_mcap60',
     label: 'YTD — Top 50 (mcap > $60M)',
   },
