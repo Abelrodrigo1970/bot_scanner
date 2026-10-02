@@ -16,6 +16,7 @@ interface Signal {
   strength: number;
   status: string;
   generatedAt: string;
+  extraInfo?: string | null;
   strategy?: { params: string } | null;
 }
 
@@ -36,6 +37,19 @@ function ExchangeBadge({ exchange }: { exchange: string }) {
       🔵 Binance
     </span>
   );
+}
+
+function parseRumersBands(extraInfo?: string | null): { prevHigh: number; prevLow: number } | null {
+  if (!extraInfo) return null;
+  try {
+    const ex = JSON.parse(extraInfo) as { setup?: string; prevHigh?: number; prevLow?: number };
+    if (ex.setup !== 'rumers_box_15m') return null;
+    if (!(typeof ex.prevHigh === 'number' && ex.prevHigh > 0)) return null;
+    if (!(typeof ex.prevLow === 'number' && ex.prevLow > 0)) return null;
+    return { prevHigh: ex.prevHigh, prevLow: ex.prevLow };
+  } catch {
+    return null;
+  }
 }
 
 export default function SignalCard({ signal }: SignalCardProps) {
@@ -67,6 +81,8 @@ export default function SignalCard({ signal }: SignalCardProps) {
       return 'binance';
     }
   })();
+
+  const bands = parseRumersBands(signal.extraInfo);
 
   return (
     <Link href={`/sinais/${signal.id}`}>
@@ -110,6 +126,22 @@ export default function SignalCard({ signal }: SignalCardProps) {
               </p>
             </div>
           )}
+          {bands ? (
+            <>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Banda superior (PDH)</p>
+                <p className="text-sm font-medium text-violet-700 dark:text-violet-300">
+                  ${formatPrice(bands.prevHigh)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Banda inferior (PDL)</p>
+                <p className="text-sm font-medium text-violet-700 dark:text-violet-300">
+                  ${formatPrice(bands.prevLow)}
+                </p>
+              </div>
+            </>
+          ) : null}
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Força</p>
             <div className="flex items-center space-x-2">
@@ -133,9 +165,3 @@ export default function SignalCard({ signal }: SignalCardProps) {
     </Link>
   );
 }
-
-
-
-
-
-

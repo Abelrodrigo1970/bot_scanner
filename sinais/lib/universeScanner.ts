@@ -154,8 +154,8 @@ async function scanRsiThresholdUniverse(
 /**
  * NEAR_RUMERS_BANDS (1d): preço actual a ≤ maxDistancePct% da PDH ou PDL
  * (bandas do dia anterior — Rumer's Box). Caixa 0,8–12% por defeito.
- * Persistência: ma = banda mais próxima (PDH ou PDL), pctFromMa = % vs banda (assinado).
- * Ordenado por |distância| crescente.
+ * Persistência: ma = PDH (banda superior), pctFromMa = PDL (banda inferior).
+ * Ordenado pela menor |distância| a qualquer das bandas.
  */
 async function scanNearRumersBandsUniverse(def: UniverseScanDefinition): Promise<UniverseScanRow[]> {
   const maxDistPct = Number(def.maxDistancePct ?? 1);
@@ -192,12 +192,14 @@ async function scanNearRumersBandsUniverse(def: UniverseScanDefinition): Promise
 
           const distHighPct = ((close - pdh) / pdh) * 100;
           const distLowPct = ((close - pdl) / pdl) * 100;
-          const nearerHigh = Math.abs(distHighPct) <= Math.abs(distLowPct);
-          const pctFromMa = nearerHigh ? distHighPct : distLowPct;
-          const ma = nearerHigh ? pdh : pdl;
+          const nearestAbs = Math.min(Math.abs(distHighPct), Math.abs(distLowPct));
+          if (nearestAbs > maxDistPct) return null;
 
-          if (Math.abs(pctFromMa) > maxDistPct) return null;
-          return { symbol, close, ma, pctFromMa };
+          // ma = PDH (banda superior) · pctFromMa = PDL (banda inferior)
+          // Distância usada só para ordenar (mais perto primeiro).
+          return { symbol, close, ma: pdh, pctFromMa: pdl, _nearAbs: nearestAbs } as UniverseScanRow & {
+            _nearAbs: number;
+          };
         } catch {
           return null;
         }
@@ -209,9 +211,19 @@ async function scanNearRumersBandsUniverse(def: UniverseScanDefinition): Promise
     await delay(BATCH_DELAY_MS);
   }
 
-  results.sort((a, b) => Math.abs(a.pctFromMa) - Math.abs(b.pctFromMa));
+  results.sort(
+    (a, b) =>
+      ((a as UniverseScanRow & { _nearAbs?: number })._nearAbs ?? 0) -
+      ((b as UniverseScanRow & { _nearAbs?: number })._nearAbs ?? 0)
+  );
+  const cleaned: UniverseScanRow[] = results.map(({ symbol, close, ma, pctFromMa }) => ({
+    symbol,
+    close,
+    ma,
+    pctFromMa,
+  }));
   const limit = Math.floor(def.resultLimit ?? 0);
-  return limit > 0 ? results.slice(0, limit) : results;
+  return limit > 0 ? cleaned.slice(0, limit) : cleaned;
 }
 
 /**

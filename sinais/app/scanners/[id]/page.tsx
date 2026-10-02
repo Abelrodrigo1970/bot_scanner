@@ -69,7 +69,7 @@ export default function UniverseScannerPage() {
       : isLateralVolatileScanner
         ? '|EMA21−70|%'
         : isNearRumersBandsScanner
-          ? 'Dist % banda'
+          ? 'Dist %'
           : isVolumeRankScanner
             ? '% 24h'
             : 'Afast. agora';
@@ -256,6 +256,10 @@ export default function UniverseScannerPage() {
                   <strong>PDL</strong> (high/low do dia anterior) — bandas da Rumer&apos;s Box
                 </li>
                 <li>
+                  Colunas <strong>Banda sup (PDH)</strong> e <strong>Banda inf (PDL)</strong>; Dist % =
+                  menor distância a qualquer das bandas
+                </li>
+                <li>
                   Caixa válida <strong>{nearBandsMinBox}–{nearBandsMaxBox}%</strong> (altura/mid) ·
                   velas <strong>{timeframeLabel}</strong> · ordenado pela menor |distância|
                 </li>
@@ -389,13 +393,18 @@ export default function UniverseScannerPage() {
                         : isLateralVolatileScanner
                           ? `EMA${maFastLabel}`
                           : isNearRumersBandsScanner
-                            ? 'Banda (PDH/PDL)'
+                            ? 'Banda sup (PDH)'
                             : isYtdMcapScanner
                               ? 'Mcap'
                               : isTickerRankScanner
                                 ? 'Vol. 24h'
                                 : maLabel}
                     </th>
+                    {isNearRumersBandsScanner ? (
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                        Banda inf (PDL)
+                      </th>
+                    ) : null}
                     {!showPrevValueCols ? null : (
                       <th
                         className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
@@ -466,6 +475,11 @@ export default function UniverseScannerPage() {
                               ? formatVolume(item.ma)
                               : `$${formatPrice(item.ma)}`}
                       </td>
+                      {isNearRumersBandsScanner ? (
+                        <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900 dark:text-white">
+                          ${formatPrice(item.pctFromMa)}
+                        </td>
+                      ) : null}
                       {!showPrevValueCols ? null : (
                         <td className="px-6 py-4 text-right text-sm text-gray-600 dark:text-gray-400">
                           {item.isNewInUniverse || item.pctFromMaPrev === null ? (
@@ -511,6 +525,20 @@ export default function UniverseScannerPage() {
                           <span className="text-violet-700 dark:text-violet-300">
                             {item.pctFromMa.toFixed(2)}%
                           </span>
+                        ) : isNearRumersBandsScanner ? (
+                          (() => {
+                            const pdh = item.ma;
+                            const pdl = item.pctFromMa;
+                            const dH = pdh > 0 ? (Math.abs(item.close - pdh) / pdh) * 100 : Infinity;
+                            const dL = pdl > 0 ? (Math.abs(item.close - pdl) / pdl) * 100 : Infinity;
+                            const dist = Math.min(dH, dL);
+                            const nearHigh = dH <= dL;
+                            return (
+                              <span className="text-violet-700 dark:text-violet-300" title={nearHigh ? 'mais perto da PDH' : 'mais perto da PDL'}>
+                                {dist.toFixed(3)}% {nearHigh ? '↑' : '↓'}
+                              </span>
+                            );
+                          })()
                         ) : (
                           <span
                             className={

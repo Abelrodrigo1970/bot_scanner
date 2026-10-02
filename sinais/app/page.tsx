@@ -20,6 +20,7 @@ interface Signal {
   strength: number;
   status: string;
   generatedAt: string;
+  extraInfo: string | null;
   strategy?: { params: string } | null;
 }
 

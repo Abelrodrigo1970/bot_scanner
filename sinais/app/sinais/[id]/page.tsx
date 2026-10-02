@@ -233,6 +233,47 @@ export default function SignalDetailPage() {
               </p>
             </div>
 
+            {(() => {
+              try {
+                const ex = signal.extraInfo
+                  ? (JSON.parse(signal.extraInfo) as {
+                      setup?: string;
+                      prevHigh?: number;
+                      prevLow?: number;
+                    })
+                  : null;
+                if (
+                  ex?.setup === 'rumers_box_15m' &&
+                  typeof ex.prevHigh === 'number' &&
+                  typeof ex.prevLow === 'number'
+                ) {
+                  return (
+                    <>
+                      <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-4">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                          Banda superior (PDH)
+                        </p>
+                        <p className="text-2xl font-bold text-violet-700 dark:text-violet-300">
+                          ${formatPrice(ex.prevHigh)}
+                        </p>
+                      </div>
+                      <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-4">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                          Banda inferior (PDL)
+                        </p>
+                        <p className="text-2xl font-bold text-violet-700 dark:text-violet-300">
+                          ${formatPrice(ex.prevLow)}
+                        </p>
+                      </div>
+                    </>
+                  );
+                }
+              } catch {
+                /* ignore */
+              }
+              return null;
+            })()}
+
             <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Força do Sinal</p>
               <div className="flex items-center space-x-2">
