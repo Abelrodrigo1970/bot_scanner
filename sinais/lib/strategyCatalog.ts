@@ -131,7 +131,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '15m',
 
     universe:
-      "Scanner 1 top 20 (EMA70 1d); caixa PDH/PDL dia anterior; BUY cruzamento PDH / SELL cruzamento PDL; SL ±5%; TP1 1×range",
+      "Scanner 1 top 20 (EMA70 1d); BUY cruzamento PDH; SL −12%; scale 30%@48h · 40%@72h · resto@7d",
 
   },
 

@@ -515,24 +515,23 @@ export default function EstrategiasPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>15m</strong>; <strong>COMPRA e VENDA</strong>. Universo ={' '}
-              <strong>Scanner 1 top N</strong> (acima EMA70 1d). Caixa = <strong>high/low do dia anterior</strong>{' '}
-              (The Rumer&apos;s Box). <strong>BUY</strong> quando o fecho 15m <strong>cruza acima do PDH</strong>;{' '}
-              <strong>SELL</strong> quando <strong>cruza abaixo do PDL</strong> (vela anterior dentro da caixa). TP1 ={' '}
-              <strong>1× altura da caixa</strong> (mín. TP% configurável).
+              Timeframe <strong>15m</strong>; só <strong>COMPRA</strong>. Universo ={' '}
+              <strong>Scanner 1 top N</strong> (acima EMA70 1d). Entrada: fecho 15m{' '}
+              <strong>cruza acima do PDH</strong> (high do dia anterior; vela ant. dentro da
+              caixa). <strong>SL −12%</strong>. Scale-out: <strong>30% às 48h</strong>,{' '}
+              <strong>40% às 72h</strong>, <strong>resto aos 7 dias</strong>. Sem TP de preço.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {numField('Top N Scanner 1', p.universeTopN ?? 20, (v) => upd({ universeTopN: v }))}
               {numField('Caixa mín. (%)', p.minBoxRangePct ?? 0.8, (v) => upd({ minBoxRangePct: v }), 0.1)}
               {numField('Caixa máx. (%)', p.maxBoxRangePct ?? 12, (v) => upd({ maxBoxRangePct: v }), 0.5)}
-              {numField('SL (%)', (p.stopLossPct ?? 0.05) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
-              {numField('TP1 mín. (%)', (p.tp1Pct ?? 0.06) * 100, (v) => upd({ tp1Pct: v / 100 }), 0.5)}
-              {numField('TP1 — % da posição', p.tp1Position ?? 50, (v) => upd({ tp1Position: v }))}
-              {numField('Fecho restante (horas)', p.closeAfterHours ?? 24, (v) => upd({ closeAfterHours: v }))}
+              {numField('SL (%)', (p.stopLossPct ?? 0.12) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Scale 1 — horas (30%)', p.scaleHours1 ?? 48, (v) => upd({ scaleHours1: v }))}
+              {numField('Scale 2 — horas (+40%)', p.scaleHours2 ?? 72, (v) => upd({ scaleHours2: v }))}
+              {numField('Fecho restante (horas)', p.closeAfterHours ?? 168, (v) => upd({ closeAfterHours: v }))}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Restante da posição ({Math.max(0, 100 - Number(p.tp1Position ?? 50))}%) fecha automaticamente após{' '}
-              {p.closeAfterHours ?? 24}h (cron 15m). Exchange: Bybit por defeito.
+              Parciais e fecho final via cron 15m. Exchange: Bybit por defeito.
             </p>
           </div>
         );

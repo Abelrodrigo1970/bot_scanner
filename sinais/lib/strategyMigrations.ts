@@ -680,7 +680,7 @@ export async function syncRompimento20_15mConfig(
   return { updated: false };
 }
 
-/** Rumer's Box — PDH/PDL do dia anterior; cruzamento 15m. */
+/** Rumer's Box — PDH breakout Scanner 1; scale-out 48h/72h/7d + SL12%. */
 export const RUMERS_BOX_15M_PARAMS = {
   universeTopN: 20,
   chartTimeframe: '15m',
@@ -688,21 +688,21 @@ export const RUMERS_BOX_15M_PARAMS = {
   requireInsideBeforeBreak: true,
   minBoxRangePct: 0.8,
   maxBoxRangePct: 12,
-  stopLossPct: 0.05,
-  tp1Pct: 0.06,
-  tp1Position: 50,
-  closeAfterHours: 24,
+  stopLossPct: 0.12,
+  scaleHours1: 48,
+  scaleHours2: 72,
+  closeAfterHours: 168,
   autoExecuteMinStrength: 70,
   allowBuy: true,
   buyEnabled: true,
-  allowSell: true,
-  sellEnabled: true,
+  allowSell: false,
+  sellEnabled: false,
   exchange: 'bybit',
 } as const;
 
 export const RUMERS_BOX_15M_DISPLAY = "Rumer's Box (15m)";
 export const RUMERS_BOX_15M_DESC =
-  "Scanner 1 top 20 (acima EMA70 1d). Caixa = high/low do dia anterior (The Rumer's Box). LONG quando o fecho 15m cruza acima do PDH; SHORT quando cruza abaixo do PDL (exige vela anterior dentro da caixa). SL ±5%. TP1 = 1× altura da caixa (mín. 6%). Restante às 24h.";
+  "Scanner 1 top 20 (acima EMA70 1d). Só COMPRA: fecho 15m cruza acima do high do dia anterior (vela ant. dentro da caixa 0,8–12%). SL −12%. Scale-out: 30% às 48h, 40% às 72h, restante aos 7 dias. Sem TP de preço.";
 
 export async function syncRumersBox15mConfig(
   prisma: PrismaClient
@@ -734,16 +734,20 @@ export async function syncRumersBox15mConfig(
     minBoxRangePct: RUMERS_BOX_15M_PARAMS.minBoxRangePct,
     maxBoxRangePct: RUMERS_BOX_15M_PARAMS.maxBoxRangePct,
     stopLossPct: RUMERS_BOX_15M_PARAMS.stopLossPct,
-    tp1Pct: RUMERS_BOX_15M_PARAMS.tp1Pct,
-    tp1Position: RUMERS_BOX_15M_PARAMS.tp1Position,
+    scaleHours1: RUMERS_BOX_15M_PARAMS.scaleHours1,
+    scaleHours2: RUMERS_BOX_15M_PARAMS.scaleHours2,
     closeAfterHours: RUMERS_BOX_15M_PARAMS.closeAfterHours,
     universeTopN: RUMERS_BOX_15M_PARAMS.universeTopN,
     allowBuy: true,
     buyEnabled: true,
-    allowSell: true,
-    sellEnabled: true,
+    allowSell: false,
+    sellEnabled: false,
     exchange: userExchange,
   };
+  // Remove params antigos de TP de preço
+  delete (next as Record<string, unknown>).tp1Pct;
+  delete (next as Record<string, unknown>).tp1Position;
+
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== RUMERS_BOX_15M_DISPLAY ||

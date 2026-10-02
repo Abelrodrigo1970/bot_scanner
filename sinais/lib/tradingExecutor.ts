@@ -66,6 +66,11 @@ export type ClosePositionOptions = {
   timedClose?: boolean;
   /** Fecho de dust sem SL (qty/notional abaixo do mínimo Bybit). */
   dustClose?: boolean;
+  /**
+   * Fecha só esta % da posição actual (1–100). Sem cancel-all (mantém SL).
+   * Usado em scale-outs temporais (ex. Rumer's Box 30%@48h).
+   */
+  percentOfPosition?: number;
 };
 
 export interface ClosePositionResult {
@@ -644,23 +649,32 @@ export async function closeActivePositionForSymbol(
       const active = positions.find((p) => p.symbol === symbol && parseFloat(p.size) > 0 && p.side !== 'None');
       if (!active) return { closed: false, message: `Sem posição ativa em ${symbol} (Bybit)` };
 
-      const size      = parseFloat(active.size);
+      const size = parseFloat(active.size);
       const closeSide: 'BUY' | 'SELL' = active.side === 'Buy' ? 'SELL' : 'BUY';
-      const step      = await getBybitLotSizeStep(symbol);
-      const qty       = roundQuantity(size, Number.isFinite(step) && step > 0 ? step : 0.001);
+      const step = await getBybitLotSizeStep(symbol);
+      const stepN = Number.isFinite(step) && step > 0 ? step : 0.001;
+      const pct = Math.min(100, Math.max(0, Number(options?.percentOfPosition ?? 100)));
+      const isPartial = pct > 0 && pct < 100;
+      const rawQty = isPartial ? size * (pct / 100) : size;
+      const qty = roundQuantity(rawQty, stepN);
 
       if (parseFloat(qty) <= 0) return { closed: false, message: `Quantidade inválida para fechar ${symbol}: ${qty}` };
 
       const bybitSide: 'Buy' | 'Sell' = closeSide === 'BUY' ? 'Buy' : 'Sell';
       const closeOrder = await createBybitOrder({ symbol, side: bybitSide, qty, reduceOnly: true });
-      try {
-        await cancelAllBybitLinearOrders(symbol);
-      } catch (cancelErr) {
-        console.warn(`[Bybit] cancel-all após fecho falhou ${symbol}:`, cancelErr);
+      // Parcial: não cancelar SL/TP pendentes. Fecho total: limpa órfãs.
+      if (!isPartial) {
+        try {
+          await cancelAllBybitLinearOrders(symbol);
+        } catch (cancelErr) {
+          console.warn(`[Bybit] cancel-all após fecho falhou ${symbol}:`, cancelErr);
+        }
       }
       return {
         closed: true,
-        message: `Posição fechada em ${symbol} (Bybit)`,
+        message: isPartial
+          ? `Parcial ${pct}% fechada em ${symbol} (Bybit)`
+          : `Posição fechada em ${symbol} (Bybit)`,
         side: closeSide,
         quantity: qty,
         orderId: parseInt(closeOrder.orderId, 10) || 0,
@@ -679,17 +693,29 @@ export async function closeActivePositionForSymbol(
     const active = positions.find((p) => p.symbol === symbol && Math.abs(parseFloat(p.positionAmt)) > 0);
     if (!active) return { closed: false, message: `Sem posição ativa em ${symbol}` };
 
-    const amt       = parseFloat(active.positionAmt);
+    const amt = parseFloat(active.positionAmt);
     const closeSide: 'BUY' | 'SELL' = amt > 0 ? 'SELL' : 'BUY';
-    const step      = await getLotSizeStep(symbol);
-    const qty       = roundQuantity(Math.abs(amt), Number.isFinite(step) && step > 0 ? step : 0.001);
+    const step = await getLotSizeStep(symbol);
+    const stepN = Number.isFinite(step) && step > 0 ? step : 0.001;
+    const pct = Math.min(100, Math.max(0, Number(options?.percentOfPosition ?? 100)));
+    const isPartial = pct > 0 && pct < 100;
+    const rawQty = isPartial ? Math.abs(amt) * (pct / 100) : Math.abs(amt);
+    const qty = roundQuantity(rawQty, stepN);
 
     if (parseFloat(qty) <= 0) return { closed: false, message: `Quantidade inválida para fechar ${symbol}: ${qty}` };
 
-    const closeOrder = await createOrder({ symbol, side: closeSide, type: 'MARKET', quantity: qty, reduceOnly: true });
+    const closeOrder = await createOrder({
+      symbol,
+      side: closeSide,
+      type: 'MARKET',
+      quantity: qty,
+      reduceOnly: true,
+    });
     return {
       closed: true,
-      message: `Posição fechada em ${symbol} (Binance)`,
+      message: isPartial
+        ? `Parcial ${pct}% fechada em ${symbol} (Binance)`
+        : `Posição fechada em ${symbol} (Binance)`,
       side: closeSide,
       quantity: qty,
       orderId: closeOrder.orderId,

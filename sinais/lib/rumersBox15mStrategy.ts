@@ -1,9 +1,12 @@
 /**
- * Rumer's Box (15m) — níveis do dia anterior (The Rumer's Box / PDH-PDL).
- * prevHigh / prevLow / prevMid da última vela diária fechada.
- * LONG: fecho 15m cruza acima de prevHigh.
- * SHORT: fecho 15m cruza abaixo de prevLow.
- * TP1 = 1× altura da caixa (measured move); SL % fixo; restante às N h.
+ * Rumer's Box (15m) — PDH breakout no Scanner 1 (EMA70 1d).
+ *
+ * Entrada: só BUY — fecho 15m cruza acima do high do dia anterior
+ *   (vela anterior dentro da caixa 0,8–12%).
+ * Saída (estudo SL12%):
+ *   SL −12% na exchange
+ *   Scale-out temporal: 30% @ 48h · 40% @ 72h · restante 30% @ 7d
+ *   (sem TP de preço)
  */
 
 import { prisma } from './db';
@@ -15,20 +18,23 @@ import { closeActivePositionForSymbol, inspectActivePositionForSymbol } from './
 
 export const RUMERS_BOX_15M_STRATEGY_NAME = 'RUMERS_BOX_15M' as const;
 
+/** % da posição *actual* a fechar em cada stage (após 48h rem=70%; 40/70≈57.14%). */
+const SCALE_PCT_OF_REMAINING_48H = 30;
+const SCALE_PCT_OF_REMAINING_72H = (40 / 70) * 100; // ≈57.142857 → deixa 30% da original
+
 export type RumersBox15mParams = {
   universeTopN?: number;
   chartTimeframe?: string;
   dailyTimeframe?: string;
-  /** Exige que a vela 15m anterior estivesse dentro da caixa (ou no lado correcto). */
   requireInsideBeforeBreak?: boolean;
-  /** Largura mínima da caixa: (high−low)/mid × 100. */
   minBoxRangePct?: number;
-  /** Largura máxima da caixa (%). */
   maxBoxRangePct?: number;
   stopLossPct?: number;
-  /** Fallback de TP1 em % se a caixa for demasiado estreita. */
-  tp1Pct?: number;
-  tp1Position?: number;
+  /** Horas até fechar 30% da posição original. */
+  scaleHours1?: number;
+  /** Horas até fechar +40% da original (sobre o remanescente). */
+  scaleHours2?: number;
+  /** Horas até fechar o restante (7d = 168). */
   closeAfterHours?: number;
   autoExecuteMinStrength?: number;
   allowBuy?: boolean;
@@ -59,15 +65,16 @@ export type RumersBoxLevels = {
 };
 
 export type RumersBoxHit = {
-  direction: 'BUY' | 'SELL';
+  direction: 'BUY';
   entryPrice: number;
   stopLoss: number;
-  target1: number;
   strength: number;
   barCloseTs: number;
   levels: RumersBoxLevels;
   extraInfo: string;
 };
+
+type ScaleStage = '48h' | '72h' | '7d';
 
 function parseParams(raw: string | null): RumersBox15mParams {
   try {
@@ -81,9 +88,6 @@ function utcDayKey(tsMs: number): string {
   return new Date(tsMs).toISOString().slice(0, 10);
 }
 
-/**
- * Níveis da última vela diária fechada (equivalente a high[1]/low[1] no Pine D).
- */
 export function computePrevDayLevels(dailyCandles: Candle[]): RumersBoxLevels | null {
   if (dailyCandles.length < 2) return null;
   const closed = dailyCandles.slice(0, -1);
@@ -97,25 +101,31 @@ export function computePrevDayLevels(dailyCandles: Candle[]): RumersBoxLevels | 
   const boxHeight = prevHigh - prevLow;
   if (!(boxHeight > 0) || !(prevMid > 0)) return null;
 
-  const boxRangePct = (boxHeight / prevMid) * 100;
-
   return {
     prevHigh,
     prevLow,
     prevMid,
     boxHeight,
-    boxRangePct,
+    boxRangePct: (boxHeight / prevMid) * 100,
     dayKey: utcDayKey(prev.timestamp),
     dailyBarTs: prev.timestamp,
   };
 }
 
-async function closeTimedOutPositions(
+/**
+ * Scale-out: 30% @ scaleHours1 · 40% @ scaleHours2 · resto @ closeAfterHours.
+ * Marca stages em extraInfo.scaleStagesDone.
+ */
+async function processScaleOutExits(
   strategyId: string,
-  defaultCloseHours: number,
+  params: RumersBox15mParams,
   exchange: 'binance' | 'bybit',
   logPrefix: string
 ): Promise<number> {
+  const h1 = Math.max(1, Math.floor(Number(params.scaleHours1 ?? 48)));
+  const h2 = Math.max(h1 + 1, Math.floor(Number(params.scaleHours2 ?? 72)));
+  const hFinal = Math.max(h2 + 1, Math.floor(Number(params.closeAfterHours ?? 168)));
+
   const openSignals = await prisma.signal.findMany({
     where: { strategyId, status: 'IN_PROGRESS' },
     select: { id: true, symbol: true, generatedAt: true, extraInfo: true },
@@ -123,39 +133,105 @@ async function closeTimedOutPositions(
   });
 
   const now = Date.now();
-  let closed = 0;
+  let actions = 0;
 
   for (const sig of openSignals) {
-    let closeHours = defaultCloseHours;
+    let extra: Record<string, unknown> = {};
     try {
-      const extra = sig.extraInfo ? (JSON.parse(sig.extraInfo) as Record<string, unknown>) : {};
-      if (extra.closeAfterHours != null) closeHours = Number(extra.closeAfterHours);
+      extra = sig.extraInfo ? (JSON.parse(sig.extraInfo) as Record<string, unknown>) : {};
     } catch {
-      /* keep default */
+      extra = {};
     }
 
-    const ageMs = now - sig.generatedAt.getTime();
-    if (ageMs < closeHours * 3600000) continue;
+    const stagesDone = Array.isArray(extra.scaleStagesDone)
+      ? (extra.scaleStagesDone as string[])
+      : [];
+    const ageH = (now - sig.generatedAt.getTime()) / 3600000;
 
     const pos = await inspectActivePositionForSymbol(sig.symbol, exchange);
-    if (pos.inspectable && pos.hasPosition) {
-      const result = await closeActivePositionForSymbol(sig.symbol, exchange, { timedClose: true });
-      if (result.closed) {
-        closed++;
-        console.log(`${logPrefix} ⏱️ Fechado ${sig.symbol} após ${closeHours}h: ${result.message}`);
-      } else {
-        console.warn(`${logPrefix} ⚠️ Falha fecho ${closeHours}h ${sig.symbol}: ${result.message}`);
-      }
+
+    // Sem posição (SL na exchange) → expirar sinal
+    if (pos.inspectable && !pos.hasPosition) {
+      await prisma.signal.update({ where: { id: sig.id }, data: { status: 'EXPIRED' } });
+      continue;
     }
 
-    await prisma.signal.update({ where: { id: sig.id }, data: { status: 'EXPIRED' } });
+    let nextStage: ScaleStage | null = null;
+    let pctOfCurrent = 0;
+
+    if (ageH >= hFinal) {
+      nextStage = '7d';
+      pctOfCurrent = 100;
+    } else if (ageH >= h2 && !stagesDone.includes('72h')) {
+      nextStage = '72h';
+      // Se 48h falhou/atrasou, fechar o equivalente a 70% da original de uma vez
+      pctOfCurrent = stagesDone.includes('48h')
+        ? SCALE_PCT_OF_REMAINING_72H
+        : 70;
+    } else if (ageH >= h1 && !stagesDone.includes('48h')) {
+      nextStage = '48h';
+      pctOfCurrent = SCALE_PCT_OF_REMAINING_48H;
+    }
+
+    if (!nextStage || !(pctOfCurrent > 0)) continue;
+
+    if (!(pos.inspectable && pos.hasPosition)) {
+      console.warn(`${logPrefix} ⚠️ Scale ${nextStage} ${sig.symbol}: posição não inspectável`);
+      continue;
+    }
+
+    const result = await closeActivePositionForSymbol(sig.symbol, exchange, {
+      timedClose: true,
+      percentOfPosition: pctOfCurrent,
+    });
+
+    if (!result.closed) {
+      console.warn(`${logPrefix} ⚠️ Scale ${nextStage} falhou ${sig.symbol}: ${result.message}`);
+      continue;
+    }
+
+    actions++;
+    const updatedStages = [...stagesDone];
+    if (nextStage === '48h') {
+      updatedStages.push('48h');
+    } else if (nextStage === '72h') {
+      if (!updatedStages.includes('48h')) updatedStages.push('48h');
+      updatedStages.push('72h');
+    } else {
+      if (!updatedStages.includes('48h')) updatedStages.push('48h');
+      if (!updatedStages.includes('72h')) updatedStages.push('72h');
+      updatedStages.push('7d');
+    }
+
+    const nextExtra = {
+      ...extra,
+      scaleStagesDone: updatedStages,
+      lastScaleAt: new Date().toISOString(),
+      lastScaleStage: nextStage,
+    };
+
+    if (nextStage === '7d' || pctOfCurrent >= 100) {
+      await prisma.signal.update({
+        where: { id: sig.id },
+        data: { status: 'EXPIRED', extraInfo: JSON.stringify(nextExtra) },
+      });
+      console.log(`${logPrefix} ⏱️ ${sig.symbol} scale ${nextStage} (fecho final): ${result.message}`);
+    } else {
+      await prisma.signal.update({
+        where: { id: sig.id },
+        data: { extraInfo: JSON.stringify(nextExtra) },
+      });
+      console.log(
+        `${logPrefix} ⏱️ ${sig.symbol} scale ${nextStage} (−${pctOfCurrent.toFixed(1)}% remanescente): ${result.message}`
+      );
+    }
   }
 
-  return closed;
+  return actions;
 }
 
 /**
- * Detecta cruzamento do PDH (BUY) ou PDL (SELL) na última vela 15m fechada.
+ * Detecta LONG: cruzamento do PDH na última vela 15m fechada.
  */
 export function detectRumersBox15m(
   candles15m: Candle[],
@@ -165,13 +241,13 @@ export function detectRumersBox15m(
   const requireInsideBeforeBreak = params.requireInsideBeforeBreak !== false;
   const minBoxRangePct = Math.max(0, Number(params.minBoxRangePct ?? 0.8));
   const maxBoxRangePct = Math.max(minBoxRangePct, Number(params.maxBoxRangePct ?? 12));
-  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.05));
-  const tp1Pct = Math.max(0.005, Number(params.tp1Pct ?? 0.06));
-  const tp1Position = Math.min(100, Math.max(1, Math.floor(Number(params.tp1Position ?? 50))));
-  const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
+  const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.12));
+  const scaleHours1 = Math.max(1, Math.floor(Number(params.scaleHours1 ?? 48)));
+  const scaleHours2 = Math.max(scaleHours1 + 1, Math.floor(Number(params.scaleHours2 ?? 72)));
+  const closeAfterHours = Math.max(scaleHours2 + 1, Math.floor(Number(params.closeAfterHours ?? 168)));
   const allowBuy = !(params.allowBuy === false || params.buyEnabled === false);
-  const allowSell = !(params.allowSell === false || params.sellEnabled === false);
 
+  if (!allowBuy) return null;
   if (levels.boxRangePct < minBoxRangePct || levels.boxRangePct > maxBoxRangePct) return null;
 
   const closed = candles15m.slice(0, -1);
@@ -183,57 +259,24 @@ export function detectRumersBox15m(
 
   const { prevHigh, prevLow, prevMid, boxHeight } = levels;
 
-  let direction: 'BUY' | 'SELL' | null = null;
-
-  if (allowBuy && curr.close > prevHigh && prevBar.close <= prevHigh) {
-    if (!requireInsideBeforeBreak || (prevBar.close >= prevLow && prevBar.close <= prevHigh)) {
-      direction = 'BUY';
-    }
-  } else if (allowSell && curr.close < prevLow && prevBar.close >= prevLow) {
-    if (!requireInsideBeforeBreak || (prevBar.close >= prevLow && prevBar.close <= prevHigh)) {
-      direction = 'SELL';
-    }
+  const crossedPdh = curr.close > prevHigh && prevBar.close <= prevHigh;
+  if (!crossedPdh) return null;
+  if (requireInsideBeforeBreak && !(prevBar.close >= prevLow && prevBar.close <= prevHigh)) {
+    return null;
   }
-
-  if (!direction) return null;
 
   const entryPrice = curr.close;
-  let stopLoss: number;
-  let target1: number;
-  const measured = boxHeight;
+  const stopLoss = entryPrice * (1 - stopLossPct);
+  if (!(stopLoss < entryPrice)) return null;
 
-  if (direction === 'BUY') {
-    stopLoss = entryPrice * (1 - stopLossPct);
-    const measuredTp = entryPrice + measured;
-    const pctTp = entryPrice * (1 + tp1Pct);
-    target1 = Math.max(measuredTp, pctTp);
-    if (!(stopLoss < entryPrice) || !(target1 > entryPrice)) return null;
-  } else {
-    stopLoss = entryPrice * (1 + stopLossPct);
-    const measuredTp = entryPrice - measured;
-    const pctTp = entryPrice * (1 - tp1Pct);
-    target1 = Math.min(measuredTp, pctTp);
-    if (!(stopLoss > entryPrice) || !(target1 < entryPrice)) return null;
-  }
-
-  const breakPct =
-    direction === 'BUY'
-      ? ((curr.close - prevHigh) / prevHigh) * 100
-      : ((prevLow - curr.close) / prevLow) * 100;
-
+  const breakPct = ((curr.close - prevHigh) / prevHigh) * 100;
   const strength = Math.min(95, Math.max(70, Math.round(72 + Math.min(18, breakPct * 10))));
-
   const slLabel = `${(stopLossPct * 100).toFixed(0)}%`;
-  const profile =
-    direction === 'BUY'
-      ? `BUY | Rumer's Box 15m (cruzamento PDH ${levels.dayKey}) | caixa ${(levels.boxRangePct).toFixed(2)}% | SL −${slLabel} | TP1 1×range | restante ${closeAfterHours}h`
-      : `SELL | Rumer's Box 15m (cruzamento PDL ${levels.dayKey}) | caixa ${(levels.boxRangePct).toFixed(2)}% | SL +${slLabel} | TP1 1×range | restante ${closeAfterHours}h`;
 
   return {
-    direction,
+    direction: 'BUY',
     entryPrice,
     stopLoss,
-    target1,
     strength,
     barCloseTs: curr.timestamp,
     levels,
@@ -251,17 +294,18 @@ export function detectRumersBox15m(
       minBoxRangePct,
       maxBoxRangePct,
       stopLossPct,
-      tp1Pct,
-      tp1Position,
+      scaleHours1,
+      scaleHours2,
       closeAfterHours,
+      scaleStagesDone: [],
       barCloseTs: curr.timestamp,
-      executionProfile: profile,
+      executionProfile: `BUY | Rumer's Box PDH ${levels.dayKey} | SL −${slLabel} | scale 30%@${scaleHours1}h · 40%@${scaleHours2}h · resto @${closeAfterHours}h`,
     }),
   };
 }
 
 /**
- * Cron 15m: Scanner 1 → Rumer's Box LONG/SHORT + fecho timed.
+ * Cron 15m: Scanner 1 → Rumer's Box LONG + scale-out timed.
  */
 export async function runRumersBox15mPipeline(options?: {
   logPrefix?: string;
@@ -282,16 +326,13 @@ export async function runRumersBox15mPipeline(options?: {
   }
 
   const params = parseParams(strategy.params);
-  const allowBuy = !(params.allowBuy === false || params.buyEnabled === false);
-  const allowSell = !(params.allowSell === false || params.sellEnabled === false);
-  if (!allowBuy && !allowSell) {
-    return { status: 'skipped', reason: 'BUY e SELL desactivados nos params' };
+  if (params.allowBuy === false || params.buyEnabled === false) {
+    return { status: 'skipped', reason: 'BUY desactivado nos params' };
   }
 
   const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 20)));
   const chartTimeframe = String(params.chartTimeframe ?? '15m');
   const dailyTimeframe = String(params.dailyTimeframe ?? '1d');
-  const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 24)));
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const minStrength = Math.max(60, Math.floor(Number(params.autoExecuteMinStrength ?? 70)));
 
@@ -303,12 +344,7 @@ export async function runRumersBox15mPipeline(options?: {
     };
   }
 
-  const timedClosed = await closeTimedOutPositions(
-    strategy.id,
-    closeAfterHours,
-    exchange,
-    logPrefix
-  );
+  const timedClosed = await processScaleOutExits(strategy.id, params, exchange, logPrefix);
 
   const startedAt = new Date();
   let signalsCreated = 0;
@@ -356,27 +392,26 @@ export async function runRumersBox15mPipeline(options?: {
       try {
         const ex = JSON.parse(recent.extraInfo) as { barCloseTs?: number; dayKey?: string };
         if (ex.barCloseTs === hit.barCloseTs) continue;
-        if (ex.dayKey === hit.levels.dayKey && recent.direction === hit.direction) continue;
+        if (ex.dayKey === hit.levels.dayKey) continue;
       } catch {
         /* ignore */
       }
     }
 
-    const arrow = hit.direction === 'BUY' ? '🟢' : '🔴';
     console.log(
-      `${logPrefix} ${arrow} ${hit.direction} ${symbol} @ ${hit.entryPrice} (PDH ${hit.levels.prevHigh} / PDL ${hit.levels.prevLow})`
+      `${logPrefix} 🟢 BUY ${symbol} @ ${hit.entryPrice} (PDH ${hit.levels.prevHigh} | SL −12% | scale 48/72/7d)`
     );
 
     await prisma.signal.create({
       data: {
         symbol,
-        direction: hit.direction,
+        direction: 'BUY',
         timeframe: chartTimeframe,
         strategyId: strategy.id,
         strategyName: strategy.displayName,
         entryPrice: hit.entryPrice,
         stopLoss: hit.stopLoss,
-        target1: hit.target1,
+        target1: null,
         target2: null,
         target3: null,
         strength: hit.strength,
@@ -396,7 +431,7 @@ export async function runRumersBox15mPipeline(options?: {
   });
 
   console.log(
-    `${logPrefix} Concluído: ${signalsCreated} sinais, ${executed} exec, ${timedClosed} fechos timed`
+    `${logPrefix} Concluído: ${signalsCreated} sinais, ${executed} exec, ${timedClosed} scale-outs`
   );
 
   return {
