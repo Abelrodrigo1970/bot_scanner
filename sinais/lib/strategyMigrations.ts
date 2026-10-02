@@ -680,7 +680,7 @@ export async function syncRompimento20_15mConfig(
   return { updated: false };
 }
 
-/** Rumer's Box — PDH breakout Scanner 1; scale-out 48h/72h/7d + SL12%. */
+/** Rumer's Box — PDH breakout Scanner 1; TP +65%@50% + resto 72h + SL12%. */
 export const RUMERS_BOX_15M_PARAMS = {
   universeTopN: 20,
   chartTimeframe: '15m',
@@ -689,9 +689,9 @@ export const RUMERS_BOX_15M_PARAMS = {
   minBoxRangePct: 0.8,
   maxBoxRangePct: 12,
   stopLossPct: 0.12,
-  scaleHours1: 48,
-  scaleHours2: 72,
-  closeAfterHours: 168,
+  tp1Pct: 0.65,
+  tp1Position: 50,
+  closeAfterHours: 72,
   autoExecuteMinStrength: 70,
   allowBuy: true,
   buyEnabled: true,
@@ -702,7 +702,7 @@ export const RUMERS_BOX_15M_PARAMS = {
 
 export const RUMERS_BOX_15M_DISPLAY = "Rumer's Box (15m)";
 export const RUMERS_BOX_15M_DESC =
-  "Scanner 1 top 20 (acima EMA70 1d). Só COMPRA: fecho 15m cruza acima do high do dia anterior (vela ant. dentro da caixa 0,8–12%). SL −12%. Scale-out: 30% às 48h, 40% às 72h, restante aos 7 dias. Sem TP de preço.";
+  "Scanner 1 top 20 (acima EMA70 1d). Só COMPRA: fecho 15m cruza acima do high do dia anterior (vela ant. dentro da caixa 0,8–12%). SL −12%. TP1 +65% (50% da posição). Restante às 72h.";
 
 export async function syncRumersBox15mConfig(
   prisma: PrismaClient
@@ -734,8 +734,8 @@ export async function syncRumersBox15mConfig(
     minBoxRangePct: RUMERS_BOX_15M_PARAMS.minBoxRangePct,
     maxBoxRangePct: RUMERS_BOX_15M_PARAMS.maxBoxRangePct,
     stopLossPct: RUMERS_BOX_15M_PARAMS.stopLossPct,
-    scaleHours1: RUMERS_BOX_15M_PARAMS.scaleHours1,
-    scaleHours2: RUMERS_BOX_15M_PARAMS.scaleHours2,
+    tp1Pct: RUMERS_BOX_15M_PARAMS.tp1Pct,
+    tp1Position: RUMERS_BOX_15M_PARAMS.tp1Position,
     closeAfterHours: RUMERS_BOX_15M_PARAMS.closeAfterHours,
     universeTopN: RUMERS_BOX_15M_PARAMS.universeTopN,
     allowBuy: true,
@@ -744,9 +744,9 @@ export async function syncRumersBox15mConfig(
     sellEnabled: false,
     exchange: userExchange,
   };
-  // Remove params antigos de TP de preço
-  delete (next as Record<string, unknown>).tp1Pct;
-  delete (next as Record<string, unknown>).tp1Position;
+  // Remove params antigos de scale-out temporal
+  delete (next as Record<string, unknown>).scaleHours1;
+  delete (next as Record<string, unknown>).scaleHours2;
 
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =

@@ -300,7 +300,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const rumersBoxSync = await syncRumersBox15mConfig(prisma);
   if (rumersBoxSync.updated) {
     console.log(
-      "✅ RUMERS_BOX_15M: Rumer's Box BUY | PDH | Scanner 1 top 20 | SL −12% | scale 30%@48h · 40%@72h · resto@7d"
+      "✅ RUMERS_BOX_15M: Rumer's Box BUY | PDH | Scanner 1 top 20 | SL −12% | TP1 +65% 50% | resto@72h"
     );
   }
 

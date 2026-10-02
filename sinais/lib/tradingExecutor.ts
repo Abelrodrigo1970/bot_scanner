@@ -68,7 +68,7 @@ export type ClosePositionOptions = {
   dustClose?: boolean;
   /**
    * Fecha só esta % da posição actual (1–100). Sem cancel-all (mantém SL).
-   * Usado em scale-outs temporais (ex. Rumer's Box 30%@48h).
+   * Usado em scale-outs / fechos parciais (ex. Rumer's Box TP parcial).
    */
   percentOfPosition?: number;
 };

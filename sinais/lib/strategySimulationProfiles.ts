@@ -95,10 +95,10 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
   {
     strategyName: 'RUMERS_BOX_15M',
     displayNames: ["Rumer's Box (15m)"],
-    buy: side(12, 0, 0, 0, 0, 168),
+    buy: side(12, 65, 50, 0, 0, 72),
     sell: null,
     summary:
-      "Scanner 1 top 20. Só BUY cruzamento PDH. SL −12%. Scale-out 30%@48h · 40%@72h · resto@7d. Sem TP de preço.",
+      "Scanner 1 top 20. Só BUY cruzamento PDH. SL −12%. TP1 +65% (50%). Restante às 72h.",
   },
   {
     strategyName: 'PIVOT_BOSS_BEAR_15M',

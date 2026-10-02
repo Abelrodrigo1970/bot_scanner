@@ -146,7 +146,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     dataKey: 'UNIVERSE_ABOVE_EMA70_1D',
 
     description:
-      "Scanner 1 top 20. Só BUY: cruzamento PDH (vela ant. dentro da caixa). SL −12%. Scale-out 30%@48h · 40%@72h · resto@7d. Sem TP de preço.",
+      "Scanner 1 top 20. Só BUY: cruzamento PDH (vela ant. dentro da caixa). SL −12%. TP1 +65% (50%). Restante às 72h.",
 
     refresh: '/api/cron/run-15m (cada 15 min)',
 
