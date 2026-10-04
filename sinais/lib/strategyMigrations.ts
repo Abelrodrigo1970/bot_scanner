@@ -682,7 +682,7 @@ export async function syncRompimento20_15mConfig(
 
 /** Rumer's Box — PDH breakout Scanner 1; TP +65%@50% + resto 72h + SL12%. */
 export const RUMERS_BOX_15M_PARAMS = {
-  universeTopN: 20,
+  universeTopN: 50,
   chartTimeframe: '15m',
   dailyTimeframe: '1d',
   requireInsideBeforeBreak: true,
@@ -702,7 +702,7 @@ export const RUMERS_BOX_15M_PARAMS = {
 
 export const RUMERS_BOX_15M_DISPLAY = "Rumer's Box (15m)";
 export const RUMERS_BOX_15M_DESC =
-  "Scanner 1 top 20 (acima EMA70 1d). Só COMPRA: fecho 15m cruza acima do high do dia anterior (vela ant. dentro da caixa 0,8–12%). SL −12%. TP1 +65% (50% da posição). Restante às 72h.";
+  "Scanner 1 top 50 (acima EMA70 1d). Só COMPRA: fecho 15m cruza acima do high do dia anterior (vela ant. dentro da caixa 0,8–12%). SL −12%. TP1 +65% (50% da posição). Restante às 72h.";
 
 export async function syncRumersBox15mConfig(
   prisma: PrismaClient
@@ -1239,23 +1239,23 @@ export const STCH15LONG_PARAMS = {
 export const RSI_VENDIDO_4H_DISPLAY = 'rsi_vendido LONG (4h)';
 
 export const RSI_VENDIDO_4H_DESCRIPTION =
-  'Universo Scanner 6 (SMA80 4h). LONG 4h ao entrar no scanner ou reentrar com fecho > EMA21 + 0,8% e fecho < EMA70 + 15%. Sai com fecho 4h < EMA21, ou se ficar fora do top40 ≥48h (grace), ou SL −8%. Sem TP. Só LONG. Cron de 2 em 2 h (Lisboa).';
+  'Universo Scanner 1 (EMA70 1d). LONG 4h ao entrar no scanner ou reentrar com fecho > EMA21 + 0,8% e fecho < EMA70 + 12%. Sai com fecho 4h < EMA21, ou se ficar fora do top50 ≥48h (grace), ou SL −8%. Sem TP. Só LONG. Cron de 4 em 4 h (Lisboa).';
 
 export const RSI_VENDIDO_4H_PARAMS = {
-  universeTopN: 40,
-  topN: 40,
+  universeTopN: 50,
+  topN: 50,
   chartTimeframe: '4h',
   emaExitPeriod: 21,
   /** Fecho ≥ EMA21 × (1 + 0,8%) para entrar / reentrar. */
   emaReentryMinPctAbove: 0.008,
   /** EMA de teto (stretch). */
   emaCapPeriod: 70,
-  /** Só entra se fecho < EMA70 × (1 + 15%). */
-  emaCapMaxPctAbove: 0.15,
+  /** Só entra se fecho < EMA70 × (1 + 12%). */
+  emaCapMaxPctAbove: 0.12,
   /** Só fecha por scanner se fora do top N há ≥ N horas. */
   scannerExitGraceHours: 48,
   /** Intervalo mínimo entre execuções do pipeline (horas, fuso Lisboa). */
-  runEveryHours: 2,
+  runEveryHours: 4,
   stopLossPct: 0.08,
   autoExecuteMinStrength: 70,
   allowBuy: true,
@@ -1307,7 +1307,7 @@ export async function repairCorruptedStrategyParams(
   return { repaired };
 }
 
-/** Garante registo/descrição da estratégia rsi_vendido LONG 4h (Scanner 6). */
+/** Garante registo/descrição da estratégia rsi_vendido LONG 4h (Scanner 1). */
 export async function syncRsiVendido4hConfig(
   prisma: PrismaClient
 ): Promise<{ updated: boolean }> {

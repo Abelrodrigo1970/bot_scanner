@@ -146,7 +146,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
     dataKey: 'UNIVERSE_ABOVE_EMA70_1D',
 
     description:
-      "Scanner 1 top 20. Só BUY: cruzamento PDH (vela ant. dentro da caixa). SL −12%. TP1 +65% (50%). Restante às 72h.",
+      "Scanner 1 top 50. Só BUY: cruzamento PDH (vela ant. dentro da caixa). SL −12%. TP1 +65% (50%). Restante às 72h.",
 
     refresh: '/api/cron/run-15m (cada 15 min)',
 
@@ -200,12 +200,12 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
+    dataKey: 'UNIVERSE_ABOVE_EMA70_1D',
 
     description:
-      'Scanner 6. LONG ao entrar/reentrar com fecho 4h > EMA21 + 0,8%. Sai ao sair do scanner ou fecho < EMA21. SL −15%. Sem TP.',
+      'Scanner 1. LONG ao entrar/reentrar com fecho 4h > EMA21 + 0,8%. Sai ao sair do scanner ou fecho < EMA21. SL −8%. Sem TP.',
 
-    refresh: '/api/cron/run-15m (rsi_vendido só de 2em2h Lisboa)',
+    refresh: '/api/cron/run-15m (rsi_vendido só de 4em4h Lisboa)',
 
   },
 
@@ -216,7 +216,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 export const DATA_SOURCE_MENU_ITEMS = [
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — Acima EMA70 (1d)',
+    label: 'Scanner 1 — Acima EMA70 (1d) (Rumer\'s Box, rsi_vendido)',
   },
   {
     href: '/scanners/2',
@@ -228,7 +228,7 @@ export const DATA_SOURCE_MENU_ITEMS = [
   },
   {
     href: '/scanners/6',
-    label: 'Scanner 6 — Acima SMA80 4h (MA 12×21, VWAP, Rompimento, rsi_vendido)',
+    label: 'Scanner 6 — Acima SMA80 4h (MA 12×21, VWAP, Rompimento)',
   },
   {
     href: '/scanners/7',

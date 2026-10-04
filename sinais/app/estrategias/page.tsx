@@ -522,7 +522,7 @@ export default function EstrategiasPage() {
               <strong>50%</strong> da posição; <strong>resto às 72h</strong>.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Top N Scanner 1', p.universeTopN ?? 20, (v) => upd({ universeTopN: v }))}
+              {numField('Top N Scanner 1', p.universeTopN ?? 50, (v) => upd({ universeTopN: v }))}
               {numField('Caixa mín. (%)', p.minBoxRangePct ?? 0.8, (v) => upd({ minBoxRangePct: v }), 0.1)}
               {numField('Caixa máx. (%)', p.maxBoxRangePct ?? 12, (v) => upd({ maxBoxRangePct: v }), 0.5)}
               {numField('SL (%)', (p.stopLossPct ?? 0.12) * 100, (v) => upd({ stopLossPct: v / 100 }), 0.5)}
@@ -811,19 +811,19 @@ export default function EstrategiasPage() {
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               <strong>rsi_vendido</strong> — <strong>LONG</strong> no{' '}
-              <strong>Scanner 6</strong> (SMA80 4h, top {p.universeTopN ?? p.topN ?? 40}).
+              <strong>Scanner 1</strong> (EMA70 1d, top {p.universeTopN ?? p.topN ?? 50}).
               Ao <strong>entrar no top N</strong> só compra se fecho{' '}
               <strong>{p.chartTimeframe ?? '4h'}</strong> &gt; EMA{p.emaExitPeriod ?? 21} +{' '}
               {(((p.emaReentryMinPctAbove as number | undefined) ?? 0.008) * 100).toFixed(1)}%{' '}
               <strong>e</strong> fecho &lt; EMA{(p.emaCapPeriod as number | undefined) ?? 70} +{' '}
-              {(((p.emaCapMaxPctAbove as number | undefined) ?? 0.15) * 100).toFixed(0)}%. Sai com
+              {(((p.emaCapMaxPctAbove as number | undefined) ?? 0.12) * 100).toFixed(0)}%. Sai com
               fecho &lt; EMA{p.emaExitPeriod ?? 21}, ou se ficar fora do top N ≥{' '}
               {(p.scannerExitGraceHours as number | undefined) ?? 48}h (grace), ou SL −
               {((p.stopLossPct ?? 0.08) * 100).toFixed(0)}%. Sem TP. Cron{' '}
-              <code className="text-[10px]">run-15m</code> (2em2h Lisboa).
+              <code className="text-[10px]">run-15m</code> (4em4h Lisboa).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Top N Scanner 6', p.universeTopN ?? p.topN ?? 40, (v) =>
+              {numField('Top N Scanner 1', p.universeTopN ?? p.topN ?? 50, (v) =>
                 upd({ universeTopN: Math.min(120, Math.max(1, v)), topN: Math.min(120, Math.max(1, v)) })
               )}
               {numField('EMA saída/filtro compra', p.emaExitPeriod ?? 21, (v) =>
@@ -840,7 +840,7 @@ export default function EstrategiasPage() {
               )}
               {numField(
                 'Máx. % acima EMA teto',
-                ((p.emaCapMaxPctAbove as number | undefined) ?? 0.15) * 100,
+                ((p.emaCapMaxPctAbove as number | undefined) ?? 0.12) * 100,
                 (v) => upd({ emaCapMaxPctAbove: Math.max(0, v) / 100 }),
                 0.5
               )}
@@ -854,7 +854,7 @@ export default function EstrategiasPage() {
               {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 70, (v) =>
                 upd({ autoExecuteMinStrength: v })
               )}
-              {numField('Cron a cada N horas', p.runEveryHours ?? 2, (v) =>
+              {numField('Cron a cada N horas', p.runEveryHours ?? 4, (v) =>
                 upd({ runEveryHours: Math.min(24, Math.max(0, Math.floor(v))) })
               )}
             </div>

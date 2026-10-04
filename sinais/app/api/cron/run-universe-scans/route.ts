@@ -8,7 +8,7 @@ import { syncBybitMissingStopLosses } from '@/lib/tradingExecutor';
 /**
  * Scanner 1 + Scanner 2 + Scanner 6 + Scanner 7 (RSI 1d) + YTD mcap60
  * + rotação Top 4 (inactiva).
- * RSI>80 Top 3 LONG e stch15long descontinuados. rsi_vendido / MA12×21 / VWAP / Rompimento no Scanner 6.
+ * RSI>80 Top 3 LONG e stch15long descontinuados. MA12×21 / VWAP / Rompimento no Scanner 6; rsi_vendido no Scanner 1.
  * No fim do job: sync SL Bybit (repor SLs que a bolsa removeu da UI).
  */
 let universeScansJobPromise: Promise<void> | null = null;
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
       {
         accepted: true,
         background: true,
-        message: 'Scanners de universo iniciados em background (Scanner 6 alimenta MA 12×21, VWAP, Rompimento e rsi_vendido).',
+        message: 'Scanners de universo iniciados em background (Scanner 1 alimenta rsi_vendido; Scanner 6 alimenta MA 12×21, VWAP, Rompimento).',
         startedAt,
         scanners: Object.keys(BUILTIN_UNIVERSE_SCAN_4H),
       },

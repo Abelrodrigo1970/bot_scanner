@@ -351,7 +351,7 @@ export async function runRumersBox15mPipeline(options?: {
     return { status: 'skipped', reason: 'BUY desactivado nos params' };
   }
 
-  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 20)));
+  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 50)));
   const chartTimeframe = String(params.chartTimeframe ?? '15m');
   const dailyTimeframe = String(params.dailyTimeframe ?? '1d');
   const closeAfterHours = Math.max(1, Math.floor(Number(params.closeAfterHours ?? 72)));

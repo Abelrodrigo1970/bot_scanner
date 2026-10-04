@@ -131,7 +131,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '15m',
 
     universe:
-      "Scanner 1 top 20 (EMA70 1d); BUY cruzamento PDH; SL −12%; TP1 +65% (50%); resto@72h",
+      "Scanner 1 top 50 (EMA70 1d); BUY cruzamento PDH; SL −12%; TP1 +65% (50%); resto@72h",
 
   },
 
@@ -144,7 +144,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '4h',
 
     universe:
-      'Scanner 7 (RSI 1d > 69); entra LONG ao entrar no scanner (fecho 4h ≥ EMA70); sai ao sair do scanner ou fecho < EMA70; reentra se ainda no scanner e fecho ≥ EMA70; SL −15%; sem TP',
+      'Scanner 1 top 50 (EMA70 1d); entra/reentra LONG com fecho 4h > EMA21 +0,8% e < EMA70 +12%; sai fecho < EMA21 ou fora top ≥48h; SL −8%; cron 4em4h Lisboa',
 
   },
 

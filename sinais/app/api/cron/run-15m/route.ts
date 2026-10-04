@@ -4,11 +4,11 @@ import { prisma } from '@/lib/db';
 import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrategies';
 
 /**
- * Cron 15m: MA Cross + engolfo + Liquidity Pools + Rompimento 20 + Rumer's Box + rsi_vendido (S6 4h, só 2em2h Lisboa).
+ * Cron 15m: MA Cross + engolfo + Liquidity Pools + Rompimento 20 + Rumer's Box + rsi_vendido (S6 4h, só 4em4h Lisboa).
  */
 async function run15mInBackground(now: Date): Promise<void> {
   console.log(
-    "[Run-15m BG] Iniciando LP + MA Cross + engolfo + rompimento20 + rumers-box + rsi_vendido (S6 4h, 2em2h)..."
+    "[Run-15m BG] Iniciando LP + MA Cross + engolfo + rompimento20 + rumers-box + rsi_vendido (S6 4h, 4em4h)..."
   );
 
   try {

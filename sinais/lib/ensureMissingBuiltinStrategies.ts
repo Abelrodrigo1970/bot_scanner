@@ -300,14 +300,14 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const rumersBoxSync = await syncRumersBox15mConfig(prisma);
   if (rumersBoxSync.updated) {
     console.log(
-      "✅ RUMERS_BOX_15M: Rumer's Box BUY | PDH | Scanner 1 top 20 | SL −12% | TP1 +65% 50% | resto@72h"
+      "✅ RUMERS_BOX_15M: Rumer's Box BUY | PDH | Scanner 1 top 50 | SL −12% | TP1 +65% 50% | resto@72h"
     );
   }
 
   const rsiVendidoSync = await syncRsiVendido4hConfig(prisma);
   if (rsiVendidoSync.updated) {
     console.log(
-      '✅ RSI_VENDIDO_4H: rsi_vendido 4h | Scanner 6 | EMA21+0,8% | sai <EMA21 | cron 2em2h Lisboa | SL −15%'
+      '✅ RSI_VENDIDO_4H: rsi_vendido 4h | Scanner 1 top50 | EMA21+0,8% | sai <EMA21 | cron 4em4h Lisboa | SL −8%'
     );
   }
 

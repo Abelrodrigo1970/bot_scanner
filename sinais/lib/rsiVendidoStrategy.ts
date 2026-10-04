@@ -1,15 +1,15 @@
 /**
- * rsi_vendido LONG — Scanner 6 (SMA80 4h) top N.
- * Entrada (novo no top N): só BUY se fecho 4h > EMA21 + 0,8% E fecho < EMA70 + 15%.
+ * rsi_vendido LONG — Scanner 1 (EMA70 1d) top N.
+ * Entrada (novo no top N): só BUY se fecho 4h > EMA21 + 0,8% E fecho < EMA70 + 12%.
  * Reentrada (ainda no top N, sem posição): mesmos filtros.
  * Saída: fecho 4h < EMA21 OU fora do top N há ≥48h (grace) OU SL −8%.
  * SL −8% (segurança); sem TP — gestão por scanner + EMA21.
  */
 
 import { prisma } from './db';
-import { fetchCandles } from './marketData';
+import { fetchCandles, fetchCurrentPriceSafe } from './marketData';
 import { calculateLastEMA, getCloses } from './indicators';
-import { UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H } from './symbolUniverseDefaults';
+import { UNIVERSE_CODE_SCANNER_1_ABOVE_EMA70_1D } from './symbolUniverseDefaults';
 import {
   buildScanItemsWithPreviousDelta,
   getLatestUniverseScanPair,
@@ -25,8 +25,8 @@ export const RSI_VENDIDO_EMA_REENTRY_MIN_PCT_DEFAULT = 0.008;
 /** EMA de teto (stretch): default 70. */
 export const RSI_VENDIDO_EMA_CAP_PERIOD_DEFAULT = 70;
 
-/** Máx. % acima da EMA70 para permitir BUY (15% → fecho < EMA70 × 1.15). */
-export const RSI_VENDIDO_EMA_CAP_MAX_PCT_ABOVE_DEFAULT = 0.15;
+/** Máx. % acima da EMA70 para permitir BUY (12% → fecho < EMA70 × 1.12). */
+export const RSI_VENDIDO_EMA_CAP_MAX_PCT_ABOVE_DEFAULT = 0.12;
 
 /**
  * Horas fora do top N antes de fechar por scanner (grace).
@@ -35,11 +35,11 @@ export const RSI_VENDIDO_EMA_CAP_MAX_PCT_ABOVE_DEFAULT = 0.15;
 export const RSI_VENDIDO_SCANNER_EXIT_GRACE_HOURS_DEFAULT = 48;
 
 /** Intervalo default do cron rsi_vendido (horas, Lisboa). */
-export const RSI_VENDIDO_RUN_EVERY_HOURS_DEFAULT = 2;
+export const RSI_VENDIDO_RUN_EVERY_HOURS_DEFAULT = 4;
 
 /**
  * Só corre no primeiro slot de 15 min do bloco de N horas (Europe/Lisbon).
- * Ex.: N=2 → 00:00–00:14, 02:00–02:14, 04:00–04:14, …
+ * Ex.: N=4 → 00:00–00:14, 04:00–04:14, 08:00–08:14, …
  */
 export function shouldRunRsiVendidoSchedule(
   now: Date = new Date(),
@@ -90,7 +90,7 @@ export type RsiVendidoParams = {
   emaCapPeriod?: number;
   /**
    * Fecho 4h tem de estar **abaixo** de EMA_cap × (1 + este %).
-   * Ex.: 0.15 = só entra se fecho < EMA70 + 15%.
+   * Ex.: 0.12 = só entra se fecho < EMA70 + 12%.
    */
   emaCapMaxPctAbove?: number;
   /**
@@ -263,6 +263,8 @@ async function createLongSignal(opts: {
   strategyDisplayName: string;
   symbol: string;
   entryPrice: number;
+  /** Fecho da vela 4h usada no filtro (auditoria). */
+  signalBarClose?: number;
   stopLossPct: number;
   chartTimeframe: string;
   emaExitPeriod: number;
@@ -286,7 +288,7 @@ async function createLongSignal(opts: {
   const graceH = opts.scannerExitGraceHours;
 
   console.log(
-    `${opts.logPrefix} 🟢 LONG ${opts.symbol} @ ${opts.entryPrice} (${opts.trigger} | Scanner 6 | 4h EMA${opts.emaExitPeriod} +${minAbovePct.toFixed(1)}% | cap EMA${opts.emaCapPeriod}+${maxCapPct.toFixed(0)}% | grace ${graceH}h | SL −${(opts.stopLossPct * 100).toFixed(0)}%)`
+    `${opts.logPrefix} 🟢 LONG ${opts.symbol} @ ${opts.entryPrice} (${opts.trigger} | Scanner 1 | 4h EMA${opts.emaExitPeriod} +${minAbovePct.toFixed(1)}% | cap EMA${opts.emaCapPeriod}+${maxCapPct.toFixed(0)}% | grace ${graceH}h | SL −${(opts.stopLossPct * 100).toFixed(0)}%)`
   );
 
   await prisma.signal.create({
@@ -304,9 +306,11 @@ async function createLongSignal(opts: {
       strength,
       status: 'NEW',
       extraInfo: JSON.stringify({
-        setup: 'rsi_vendido_s6_4h_ema21',
-        universe: UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H,
+        setup: 'rsi_vendido_s1_4h_ema21',
+        universe: UNIVERSE_CODE_SCANNER_1_ABOVE_EMA70_1D,
         universeTopN: opts.topN,
+        signalBarClose: opts.signalBarClose ?? null,
+        entrySource: 'live_price',
         barCloseTs: opts.barCloseTs,
         trigger: opts.trigger,
         scannerRsi: opts.scannerRsi,
@@ -319,7 +323,7 @@ async function createLongSignal(opts: {
         scannerExitGraceHours: graceH,
         stopLossPct: opts.stopLossPct,
         chartTimeframe: opts.chartTimeframe,
-        executionProfile: `LONG Scanner 6 (SMA80 4h) top ${opts.topN} | TF ${opts.chartTimeframe} | entra/reentra só com fecho > EMA${opts.emaExitPeriod} +${minAbovePct.toFixed(1)}% e fecho < EMA${opts.emaCapPeriod} +${maxCapPct.toFixed(0)}% | sai fecho < EMA${opts.emaExitPeriod} ou fora do top${opts.topN} ≥${graceH}h | SL −${(opts.stopLossPct * 100).toFixed(0)}%`,
+        executionProfile: `LONG Scanner 1 (EMA70 1d) top ${opts.topN} | TF ${opts.chartTimeframe} | entra/reentra só com fecho > EMA${opts.emaExitPeriod} +${minAbovePct.toFixed(1)}% e fecho < EMA${opts.emaCapPeriod} +${maxCapPct.toFixed(0)}% | sai fecho < EMA${opts.emaExitPeriod} ou fora do top${opts.topN} ≥${graceH}h | SL −${(opts.stopLossPct * 100).toFixed(0)}%`,
       }),
     },
   });
@@ -330,7 +334,7 @@ export async function runRsiVendidoPipeline(options?: {
   /** Ignora runEveryHours (útil em /api/cron/run-rsi-vendido manual). */
   force?: boolean;
 }): Promise<RsiVendidoResult> {
-  const logPrefix = options?.logPrefix ?? '[rsi_vendido S6 4h EMA21]';
+  const logPrefix = options?.logPrefix ?? '[rsi_vendido S1 4h EMA21]';
 
   const strategy = await prisma.strategy.findUnique({
     where: { name: RSI_VENDIDO_STRATEGY_NAME },
@@ -359,7 +363,7 @@ export async function runRsiVendidoPipeline(options?: {
 
   const topN = Math.max(
     1,
-    Math.min(120, Math.floor(Number(params.universeTopN ?? params.topN ?? 40)))
+    Math.min(120, Math.floor(Number(params.universeTopN ?? params.topN ?? 50)))
   );
   const chartTimeframe = String(params.chartTimeframe ?? '4h');
   const emaExitPeriod = Math.max(2, Math.floor(Number(params.emaExitPeriod ?? 21)));
@@ -385,11 +389,11 @@ export async function runRsiVendidoPipeline(options?: {
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const allowBuy = params.buyEnabled !== false && params.allowBuy !== false;
 
-  const pair = await getLatestUniverseScanPair(UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H);
+  const pair = await getLatestUniverseScanPair(UNIVERSE_CODE_SCANNER_1_ABOVE_EMA70_1D);
   if (!pair.current || pair.current.rows.length === 0) {
     return {
       status: 'skipped',
-      reason: 'Scanner 6 vazio — correr run-universe-scans',
+      reason: 'Scanner 1 vazio — correr run-universe-scans',
     };
   }
 
@@ -418,7 +422,7 @@ export async function runRsiVendidoPipeline(options?: {
   const openSignalBySymbol = new Map(openLongs.map((s) => [s.symbol, s]));
 
   console.log(
-    `${logPrefix} Scanner 6 top ${topN}: ${universeSet.size} | abertos ${openLongSet.size} | prevScan=${pair.previous ? 'yes' : 'no'} | EMA${emaExitPeriod} +${(emaReentryMinPctAbove * 100).toFixed(1)}% | cap EMA${emaCapPeriod}+${(emaCapMaxPctAbove * 100).toFixed(0)}% | grace ${scannerExitGraceHours}h`
+    `${logPrefix} Scanner 1 top ${topN}: ${universeSet.size} | abertos ${openLongSet.size} | prevScan=${pair.previous ? 'yes' : 'no'} | EMA${emaExitPeriod} +${(emaReentryMinPctAbove * 100).toFixed(1)}% | cap EMA${emaCapPeriod}+${(emaCapMaxPctAbove * 100).toFixed(0)}% | grace ${scannerExitGraceHours}h`
   );
 
   const startedAt = new Date();
@@ -457,7 +461,7 @@ export async function runRsiVendidoPipeline(options?: {
   const nowMs = Date.now();
   const graceMs = scannerExitGraceHours * 3600 * 1000;
 
-  // 1) Fora do Scanner 6: grace — marca saída; só fecha se fora ≥ scannerExitGraceHours
+  // 1) Fora do Scanner 1: grace — marca saída; só fecha se fora ≥ scannerExitGraceHours
   for (const symbol of [...openLongSet]) {
     const sig = openSignalBySymbol.get(symbol);
     if (!sig) continue;
@@ -498,8 +502,8 @@ export async function runRsiVendidoPipeline(options?: {
         exchange,
         logPrefix,
         scannerExitGraceHours <= 0
-          ? 'saiu Scanner 6'
-          : `fora Scanner 6 ≥${scannerExitGraceHours}h (há ${hoursOut}h)`
+          ? 'saiu Scanner 1'
+          : `fora Scanner 1 ≥${scannerExitGraceHours}h (há ${hoursOut}h)`
       );
       leftScannerClosed++;
       closedSymbols.push(symbol);
@@ -614,11 +618,21 @@ export async function runRsiVendidoPipeline(options?: {
     });
     if (openSame) continue;
 
+    // Entrada/SL no preço live (market), não no fecho 4h — evita desvio grande vs fill Bybit.
+    const livePx = await fetchCurrentPriceSafe(symbol);
+    const entryPrice = livePx != null && livePx > 0 ? livePx : bar.close;
+    if (livePx != null && livePx > 0 && Math.abs(livePx / bar.close - 1) > 0.02) {
+      console.log(
+        `${logPrefix} ℹ️ ${symbol} entry live=${livePx} vs fecho4h=${bar.close} (Δ=${(((livePx / bar.close) - 1) * 100).toFixed(1)}%)`
+      );
+    }
+
     await createLongSignal({
       strategyId: strategy.id,
       strategyDisplayName: strategy.displayName,
       symbol,
-      entryPrice: bar.close,
+      entryPrice,
+      signalBarClose: bar.close,
       stopLossPct,
       chartTimeframe,
       emaExitPeriod,
@@ -653,7 +667,7 @@ export async function runRsiVendidoPipeline(options?: {
   });
 
   console.log(
-    `${logPrefix} Concluído: ${leftScannerClosed} saíram S6 (grace), ${emaClosed} EMA21, ${signalsCreated} LONG (${reentries} reentradas), ${executed} executados`
+    `${logPrefix} Concluído: ${leftScannerClosed} saíram S1 (grace), ${emaClosed} EMA21, ${signalsCreated} LONG (${reentries} reentradas), ${executed} executados`
   );
 
   return {

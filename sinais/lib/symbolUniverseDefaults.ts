@@ -276,7 +276,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     displayName: 'Scanner 1 — Acima EMA70 (1d)',
     description:
       'Perpétuos USDT (top volume) com fecho acima da EMA70 em velas diárias. Ordenados por |% vs EMA70|.',
-    strategyNames: 'Pivot Boss Bear (15m, inactivo); rotações Scanner 1 (inactivas)',
+    strategyNames: 'rsi_vendido LONG (4h); Rumer\'s Box (15m); Pivot Boss / rotações (inactivas)',
   },
   UNIVERSE_ABOVE_MA200_1H: {
     displayName: 'Scanner 1 legado — Acima SMA200 (1h)',
@@ -307,7 +307,7 @@ export const BUILTIN_UNIVERSE_META: Record<
     description:
       'Perpétuos USDT (top volume) com fecho acima da SMA80 em velas 4h.',
     strategyNames:
-      'MA Cross 12×21 (15m); Rompimento 20 (15m); rsi_vendido LONG (4h)',
+      'MA Cross 12×21 (15m); Rompimento 20 (15m); Swing VWAP',
   },
   UNIVERSE_RSI_ABOVE_69_1D: {
     displayName: `Scanner 7 — RSI > ${SCANNER_7_RSI_THRESHOLD} (1d)`,
@@ -323,7 +323,7 @@ export const BUILTIN_UNIVERSE_META: Record<
   UNIVERSE_RSI_BELOW_32_4H: {
     displayName: 'rsi_vendido — RSI < 32 (4h, legado)',
     description:
-      'Legado: RSI(14) 4h < 32. A estratégia rsi_vendido passou a usar Scanner 6 em 4h + EMA21 + cap EMA70.',
+      'Legado: RSI(14) 4h < 32. A estratégia rsi_vendido passou a usar Scanner 1 (EMA70 1d) + EMA21 + cap EMA70.',
     strategyNames: '— (legado)',
   },
   UNIVERSE_LATERAL_VOLATILE_4H: {
@@ -352,14 +352,14 @@ export const BUILTIN_UNIVERSE_META: Record<
 };
 
 export const SCANNER_ROTATION_NOTES: Record<string, string> = {
-  '1': 'Scanner 1: fecho > EMA70 (1d). Estratégias Pivot Boss / rotações inactivas.',
+  '1': 'Scanner 1: fecho > EMA70 (1d). rsi_vendido + Rumer\'s Box / Pivot Boss.',
   '2': 'Scanner 2: rotação Top 4 (inactiva). stch15long e RSI>80 descontinuados.',
   '3': 'Scanner 3: MA Cross 12×30 (15m). Universo RSI 1h ≥ 75.',
-  '6': 'Scanner 6: MA Cross 12×21 + Swing VWAP + Rompimento 20 + rsi_vendido (SMA80 4h).',
+  '6': 'Scanner 6: MA Cross 12×21 + Swing VWAP + Rompimento 20 (SMA80 4h).',
   '7': 'Scanner 7: engolfo top 3 + Liquidity Pools (15m). Universo RSI 1d ≥ 69.',
   '8': 'Scanner 8: Bybit stock perps — %24h / %1s / EMA21 / EMA70 (1D) + TradingView. Sem estratégia.',
   rsi_vendido:
-    'Legado RSI <32 4h. A estratégia activa usa Scanner 6 em 4h + EMA21 +0,8% e fecho < EMA70 +15% (cron run-15m).',
+    'Legado RSI <32 4h. A estratégia activa usa Scanner 1 (EMA70 1d) + EMA21 +0,8% e fecho < EMA70 +12% (cron run-15m, 4em4h Lisboa).',
   ytd_mcap60:
     'Universo YTD (mcap > $60M) disponível para ligar a estratégias via dataKey UNIVERSE_TOP50_YTD_MCAP60M.',
   price_range:

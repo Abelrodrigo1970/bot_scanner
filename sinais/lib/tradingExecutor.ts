@@ -425,13 +425,59 @@ async function executeSignalBybit(
     });
     console.log(`[Bybit] Entrada: ${entryOrder.orderId} | SL attach @ ${slPriceStr}`);
 
+    // Rebase SL ao avg fill: o sinal pode ter entry/SL do fecho da vela ≠ preço de mercado.
+    let effectiveSlStr = slPriceStr;
+    let fillAvg: number | null = null;
+    try {
+      await new Promise((r) => setTimeout(r, 400));
+      const positions = await getBybitPositionRisk(executionSignal.symbol);
+      const pos = positions.find(
+        (p) => p.symbol === executionSignal.symbol && parseFloat(p.size) > 0 && p.side !== 'None'
+      );
+      const avg = pos ? parseFloat(pos.avgPrice) : NaN;
+      const signalEntry = executionSignal.entryPrice;
+      const signalSl = executionSignal.stopLoss;
+      if (Number.isFinite(avg) && avg > 0 && signalEntry > 0 && signalSl > 0) {
+        fillAvg = avg;
+        const slPct =
+          executionSignal.direction === 'BUY'
+            ? (signalEntry - signalSl) / signalEntry
+            : (signalSl - signalEntry) / signalEntry;
+        if (slPct > 0.005 && slPct < 0.5) {
+          const rebasedSl =
+            executionSignal.direction === 'BUY' ? avg * (1 - slPct) : avg * (1 + slPct);
+          if (Math.abs(rebasedSl / stopLossPrice - 1) > 0.005) {
+            effectiveSlStr = roundPriceStopLoss(rebasedSl, tick, executionSignal.direction);
+            stopLossPrice = rebasedSl;
+            console.log(
+              `[Bybit] SL rebase fill ${executionSignal.symbol}: avg=${avg} slPct=${(slPct * 100).toFixed(1)}% → SL ${effectiveSlStr} (sinal entry=${signalEntry} sl=${signalSl})`
+            );
+          }
+        }
+        // Actualiza card do sinal com entrada real + SL alinhado
+        try {
+          await prisma.signal.update({
+            where: { id: signal.id },
+            data: {
+              entryPrice: avg,
+              stopLoss: stopLossPrice,
+            },
+          });
+        } catch (dbErr) {
+          console.warn('[Bybit] Falha a actualizar entry/SL no sinal:', dbErr);
+        }
+      }
+    } catch (fillErr) {
+      console.warn('[Bybit] Falha a ler avg fill / rebase SL:', fillErr);
+    }
+
     // Confirma SL Full na posição. Sem TP na bolsa (Partial/Full TP apaga SL na Bybit).
     await cancelBybitAllStopOrders(executionSignal.symbol).catch(() => 0);
 
     let slResult = await ensureBybitStopLoss({
       symbol: executionSignal.symbol,
       side: bybitSide,
-      stopLoss: slPriceStr,
+      stopLoss: effectiveSlStr,
       qty: qtyStr,
       forceUpdate: true,
     });
@@ -447,7 +493,7 @@ async function executeSignalBybit(
         const forced = await ensureBybitStopLoss({
           symbol: executionSignal.symbol,
           side: bybitSide,
-          stopLoss: slPriceStr,
+          stopLoss: effectiveSlStr,
           qty: qtyStr,
           forceUpdate: true,
         });
@@ -463,8 +509,9 @@ async function executeSignalBybit(
 
     const slWarning =
       slResult.ok && slResult.method === 'position'
-        ? ` | SL ${slResult.stopLoss ?? slPriceStr} (position Full)`
-        : ` (⚠️ SL NÃO confirmado @ ${slPriceStr}: ${slResult.error ?? 'desconhecido'})`;
+        ? ` | SL ${slResult.stopLoss ?? effectiveSlStr} (position Full)` +
+          (fillAvg != null ? ` | fill ${fillAvg}` : '')
+        : ` (⚠️ SL NÃO confirmado @ ${effectiveSlStr}: ${slResult.error ?? 'desconhecido'})`;
     // Bybit usa UUIDs — parseInt daria NaN → 0 (falsy). Usa 1 como fallback não-zero.
     const parsedId = parseInt(entryOrder.orderId, 10);
     const orderIdNum = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : 1;

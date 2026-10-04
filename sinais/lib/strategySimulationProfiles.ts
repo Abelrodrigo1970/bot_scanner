@@ -98,7 +98,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(12, 65, 50, 0, 0, 72),
     sell: null,
     summary:
-      "Scanner 1 top 20. Só BUY cruzamento PDH. SL −12%. TP1 +65% (50%). Restante às 72h.",
+      "Scanner 1 top 50. Só BUY cruzamento PDH. SL −12%. TP1 +65% (50%). Restante às 72h.",
   },
   {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
@@ -152,7 +152,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(15, 0, 0, 0, 0, 0),
     sell: null,
     summary:
-      'Scanner 6. LONG ao entrar/reentrar com fecho 4h > EMA21 + 0,8%. Sai ao sair do scanner ou fecho < EMA21. SL −15%. Sem TP.',
+      'Scanner 1 (EMA70 1d). LONG ao entrar/reentrar com fecho 4h > EMA21 + 0,8%. Sai ao sair do scanner ou fecho < EMA21. SL −8%. Sem TP. Cron 4em4h Lisboa.',
   },
   {
     strategyName: 'SCANNER3_RSI_FLIP_1H',

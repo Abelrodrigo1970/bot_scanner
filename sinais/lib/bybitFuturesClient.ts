@@ -739,3 +739,48 @@ export async function fetchBybitAccountInstrumentsInfoAllPages(
   }
   return all;
 }
+
+export type BybitClosedPnlRow = {
+  symbol: string;
+  side: string;
+  qty: string;
+  avgEntryPrice: string;
+  avgExitPrice: string;
+  closedPnl: string;
+  createdTime: string;
+  updatedTime: string;
+  orderId: string;
+};
+
+/**
+ * GET /v5/position/closed-pnl — histórico de PnL fechado (linear).
+ * Docs: https://bybit-exchange.github.io/docs/v5/position/close-pnl
+ */
+export async function fetchBybitClosedPnl(opts: {
+  startTimeMs: number;
+  endTimeMs: number;
+  maxPages?: number;
+}): Promise<BybitClosedPnlRow[]> {
+  const all: BybitClosedPnlRow[] = [];
+  let cursor: string | undefined;
+  const maxPages = Math.max(1, Math.min(50, opts.maxPages ?? 30));
+  for (let i = 0; i < maxPages; i++) {
+    const params: Record<string, string> = {
+      category: 'linear',
+      startTime: String(opts.startTimeMs),
+      endTime: String(opts.endTimeMs),
+      limit: '100',
+    };
+    if (cursor) params.cursor = cursor;
+    const result = await signedGet<{ list?: BybitClosedPnlRow[]; nextPageCursor?: string }>(
+      '/v5/position/closed-pnl',
+      params
+    );
+    const list = result?.list ?? [];
+    all.push(...list);
+    const next = result?.nextPageCursor;
+    if (!list.length || next == null || String(next).trim() === '') break;
+    cursor = String(next);
+  }
+  return all;
+}
