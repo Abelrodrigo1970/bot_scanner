@@ -34,6 +34,7 @@ import { runLiquidityPoolsPro15mPipeline } from '@/lib/liquidityPoolsPro15mStrat
 import { runRompimento20_15mPipeline } from '@/lib/rompimento20_15mStrategy';
 import { runRumersBox15mPipeline } from '@/lib/rumersBox15mStrategy';
 import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
+import { runRsi1hLongPipeline } from '@/lib/rsi1hLongStrategy';
 
 const TIMEFRAME_15M = '15m' as const;
 const MA_CROSS_MIN_STRENGTH = 70;
@@ -352,6 +353,7 @@ export interface Cron15mAllResult {
   rompimento20: Cron15mResult;
   rumersBox: Cron15mResult;
   rsiVendido: Cron15mResult;
+  rsi1hLong: Cron15mResult;
 }
 
 /**
@@ -442,6 +444,22 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     rsiVendido = { status: 'not-found' };
   }
 
+  let rsi1hLong: Cron15mResult;
+  try {
+    const r = await runRsi1hLongPipeline({ logPrefix: '[Run-15m → rsi_1h_long]' });
+    if (r.status === 'skipped') {
+      console.log(`[Run-15m → rsi_1h_long] Saltado: ${r.reason}`);
+      if (r.reason.includes('inactiva')) rsi1hLong = { status: 'inactive' };
+      else if (r.reason.includes('não encontrada')) rsi1hLong = { status: 'not-found' };
+      else rsi1hLong = { status: 'done', signalsCreated: 0 };
+    } else {
+      rsi1hLong = { status: 'done', signalsCreated: r.signalsCreated };
+    }
+  } catch (err) {
+    console.error('[Run-15m → rsi_1h_long] Falhou:', err);
+    rsi1hLong = { status: 'not-found' };
+  }
+
   // Sempre sincroniza SL em falta (não depende só do worker MA Cross)
   try {
     const orphanCleanup = await cleanupBybitOrphanOpenOrders();
@@ -471,5 +489,6 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     rompimento20,
     rumersBox,
     rsiVendido,
+    rsi1hLong,
   };
 }

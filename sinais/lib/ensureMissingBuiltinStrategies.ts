@@ -44,6 +44,9 @@ import {
   RSI_VENDIDO_4H_DESCRIPTION,
   RSI_VENDIDO_4H_DISPLAY,
   RSI_VENDIDO_4H_PARAMS,
+  RSI_1H_LONG_DESCRIPTION,
+  RSI_1H_LONG_DISPLAY,
+  RSI_1H_LONG_PARAMS,
   MA_CROSS_12X21_S2_DESC,
   MA_CROSS_12X21_S2_DISPLAY,
   MA_CROSS_12X21_S2_PARAMS,
@@ -71,6 +74,7 @@ import {
   syncRompimento20_15mConfig,
   syncRumersBox15mConfig,
   syncRsiVendido4hConfig,
+  syncRsi1hLongConfig,
   syncPivotBossBear15mUniverse,
   syncScanner1Top5Config,
   syncAccumulationBreakout15mConfig,
@@ -166,6 +170,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: RSI_VENDIDO_4H_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(RSI_VENDIDO_4H_PARAMS),
+  },
+  {
+    name: 'RSI_1H_LONG',
+    displayName: RSI_1H_LONG_DISPLAY,
+    description: RSI_1H_LONG_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(RSI_1H_LONG_PARAMS),
   },
   {
     name: 'MA_CROSS_12X21_S2',
@@ -308,6 +319,13 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   if (rsiVendidoSync.updated) {
     console.log(
       '✅ RSI_VENDIDO_4H: rsi_vendido 4h | Scanner 1 top50 | EMA21+0,8% | sai <EMA21 | cron 4em4h Lisboa | SL −8%'
+    );
+  }
+
+  const rsi1hLongSync = await syncRsi1hLongConfig(prisma);
+  if (rsi1hLongSync.updated) {
+    console.log(
+      '✅ RSI_1H_LONG: rsi_1h_long | Scanner 1 completo | EMA12 cross↑ + RSI azul <40 | dist EMA70d <40% | TP 19%/39% | 72h | SL −7%'
     );
   }
 

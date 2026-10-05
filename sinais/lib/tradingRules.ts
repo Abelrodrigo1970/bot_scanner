@@ -47,6 +47,8 @@ const ALLOWED_STRATEGIES = [
   'rsi_vendido LONG (4h)',
   'rsi_vendido LONG (15m)',
   'RSI_VENDIDO_4H',
+  'rsi_1h_long',
+  'RSI_1H_LONG',
 ];
 
 /** Força mínima para executar */

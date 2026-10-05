@@ -209,6 +209,25 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   },
 
+  {
+
+    strategyName: 'RSI_1H_LONG',
+
+    displayLabel: 'rsi_1h_long',
+
+    signalTimeframes: ['1h'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_ABOVE_EMA70_1D',
+
+    description:
+      'Scanner 1 completo. LONG 1h: fecho cruza EMA12↑ + RSI azul < 40 + dist EMA70 1d < 40%. TP +19%@30% +39%@50% | resto 72h | SL −7%.',
+
+    refresh: '/api/cron/run-15m (1.º quarto de hora Lisboa)',
+
+  },
+
 ];
 
 
@@ -216,7 +235,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 export const DATA_SOURCE_MENU_ITEMS = [
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — Acima EMA70 (1d) (Rumer\'s Box, rsi_vendido)',
+    label: 'Scanner 1 — Acima EMA70 (1d) (Rumer\'s Box, rsi_vendido, rsi_1h_long)',
   },
   {
     href: '/scanners/2',

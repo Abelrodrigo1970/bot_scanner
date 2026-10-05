@@ -861,6 +861,64 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'RSI_1H_LONG': {
+        const p = params as Record<string, unknown>;
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              <strong>rsi_1h_long</strong> — <strong>LONG</strong> no <strong>Scanner 1 completo</strong>.
+              Entra em <strong>{p.chartTimeframe ?? '1h'}</strong> quando o fecho{' '}
+              <strong>cruza a EMA{p.emaPeriod ?? 12} para cima</strong>, o{' '}
+              <strong>RSI azul</strong> (SMA{p.rsiMaPeriod ?? 14} do RSI{p.rsiPeriod ?? 14}) está{' '}
+              <strong>&lt; {p.rsiMaMax ?? 40}</strong> e a distância ao{' '}
+              <strong>EMA{p.emaDailyPeriod ?? 70} diário</strong> é{' '}
+              <strong>&lt; {((p.emaDailyMaxPctAbove ?? 0.4) * 100).toFixed(0)}%</strong>. Sai com TP1 +
+              {((p.tp1Pct ?? 0.19) * 100).toFixed(0)}% ({p.tp1Position ?? 30}% pos.), TP2 +
+              {((p.tp2Pct ?? 0.39) * 100).toFixed(0)}% ({p.tp2Position ?? 50}% pos.), resto às{' '}
+              {p.closeAfterHours ?? 72}h, SL −{((p.stopLossPct ?? 0.07) * 100).toFixed(0)}%. Cron no
+              1.º quarto de hora (Lisboa).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('EMA cruzamento', p.emaPeriod ?? 12, (v) =>
+                upd({ emaPeriod: Math.min(200, Math.max(2, Math.floor(v))) })
+              )}
+              {numField('RSI período', p.rsiPeriod ?? 14, (v) =>
+                upd({ rsiPeriod: Math.min(100, Math.max(2, Math.floor(v))) })
+              )}
+              {numField('RSI MA (azul)', p.rsiMaPeriod ?? 14, (v) =>
+                upd({ rsiMaPeriod: Math.min(100, Math.max(1, Math.floor(v))) })
+              )}
+              {numField('RSI azul máx.', p.rsiMaMax ?? 40, (v) =>
+                upd({ rsiMaMax: Math.min(100, Math.max(1, v)) })
+              )}
+              {numField('EMA diária (filtro)', p.emaDailyPeriod ?? 70, (v) =>
+                upd({ emaDailyPeriod: Math.min(200, Math.max(2, Math.floor(v))) })
+              )}
+              {numField('Dist. máx. EMA diária (%)', (p.emaDailyMaxPctAbove ?? 0.4) * 100, (v) =>
+                upd({ emaDailyMaxPctAbove: v / 100 }), 1)}
+              {numField('TP1 (%)', (p.tp1Pct ?? 0.19) * 100, (v) =>
+                upd({ tp1Pct: v / 100 }), 0.5)}
+              {numField('TP1 posição (%)', p.tp1Position ?? 30, (v) =>
+                upd({ tp1Position: Math.min(99, Math.max(1, Math.floor(v))) })
+              )}
+              {numField('TP2 (%)', (p.tp2Pct ?? 0.39) * 100, (v) =>
+                upd({ tp2Pct: v / 100 }), 0.5)}
+              {numField('TP2 posição (%)', p.tp2Position ?? 50, (v) =>
+                upd({ tp2Position: Math.min(99, Math.max(1, Math.floor(v))) })
+              )}
+              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.07) * 100, (v) =>
+                upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('Fecho restante (h)', p.closeAfterHours ?? 72, (v) =>
+                upd({ closeAfterHours: Math.min(168, Math.max(1, Math.floor(v))) })
+              )}
+              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 70, (v) =>
+                upd({ autoExecuteMinStrength: v })
+              )}
+            </div>
+          </div>
+        );
+      }
+
       default:
         return <p className="text-sm text-gray-500 dark:text-gray-400">Sem parâmetros configuráveis</p>;
     }
@@ -999,7 +1057,8 @@ export default function EstrategiasPage() {
                 strategy.name === 'SCANNER1_TOP5' ||
                 strategy.name === 'SCANNER2_RSI80_TOP3_LONG_4H' ||
                 strategy.name === 'STCH15LONG' ||
-                strategy.name === 'RSI_VENDIDO_4H';
+                strategy.name === 'RSI_VENDIDO_4H' ||
+                strategy.name === 'RSI_1H_LONG';
 
               return (
               <div

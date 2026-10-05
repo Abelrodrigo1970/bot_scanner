@@ -1359,6 +1359,84 @@ export async function syncRsiVendido4hConfig(
   return { updated: false };
 }
 
+export const RSI_1H_LONG_DISPLAY = 'rsi_1h_long';
+
+export const RSI_1H_LONG_DESCRIPTION =
+  'Scanner 1 completo. LONG 1h quando o fecho cruza a EMA12 para cima, o RSI azul (SMA14 do RSI14) está abaixo de 40 e a distância ao EMA70 diário é < 40%. Sai com TP1 +19% (30%), TP2 +39% (50%), resto às 72h, SL −7%. Só LONG. Corre no 1.º quarto de hora (Lisboa).';
+
+export const RSI_1H_LONG_PARAMS = {
+  chartTimeframe: '1h',
+  emaPeriod: 12,
+  rsiPeriod: 14,
+  rsiMaPeriod: 14,
+  rsiMaMax: 40,
+  emaDailyPeriod: 70,
+  emaDailyMaxPctAbove: 0.4,
+  stopLossPct: 0.07,
+  tp1Pct: 0.19,
+  tp1Position: 30,
+  tp2Pct: 0.39,
+  tp2Position: 50,
+  closeAfterHours: 72,
+  autoExecuteMinStrength: 70,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: false,
+  sellEnabled: false,
+  exchange: 'bybit',
+} as const;
+
+/** Garante registo/descrição da estratégia rsi_1h_long. */
+export async function syncRsi1hLongConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'RSI_1H_LONG' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? stripNumericParamKeys(JSON.parse(row.params)) : {};
+  } catch {
+    p = {};
+  }
+
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit'
+      ? p.exchange
+      : RSI_1H_LONG_PARAMS.exchange;
+  const userAutoStrength = Number.isFinite(Number(p.autoExecuteMinStrength))
+    ? Number(p.autoExecuteMinStrength)
+    : RSI_1H_LONG_PARAMS.autoExecuteMinStrength;
+
+  const next = {
+    ...RSI_1H_LONG_PARAMS,
+    exchange: userExchange,
+    autoExecuteMinStrength: userAutoStrength,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== RSI_1H_LONG_DISPLAY ||
+    row.description !== RSI_1H_LONG_DESCRIPTION ||
+    row.isActive !== true;
+
+  if (needParams || needMeta) {
+    await prisma.strategy.update({
+      where: { name: 'RSI_1H_LONG' },
+      data: {
+        displayName: RSI_1H_LONG_DISPLAY,
+        description: RSI_1H_LONG_DESCRIPTION,
+        params: JSON.stringify(next),
+        isActive: true,
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 /** Garante registo/descrição da estratégia stch15long. */
 export async function syncStch15LongConfig(
   prisma: PrismaClient
