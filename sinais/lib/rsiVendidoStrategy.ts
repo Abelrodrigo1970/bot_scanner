@@ -37,6 +37,12 @@ export const RSI_VENDIDO_SCANNER_EXIT_GRACE_HOURS_DEFAULT = 48;
 /** Intervalo default do cron rsi_vendido (horas, Lisboa). */
 export const RSI_VENDIDO_RUN_EVERY_HOURS_DEFAULT = 4;
 
+/** Não abrir novos LONGs em sábado/domingo (UTC da vela 4h). */
+export const RSI_VENDIDO_SKIP_WEEKENDS_DEFAULT = true;
+
+/** Horas UTC da vela 4h em que não se abrem novos LONGs (estudo YTD). */
+export const RSI_VENDIDO_BLOCKED_ENTRY_HOURS_UTC_DEFAULT = [4, 20] as const;
+
 /**
  * Só corre no primeiro slot de 15 min do bloco de N horas (Europe/Lisbon).
  * Ex.: N=4 → 00:00–00:14, 04:00–04:14, 08:00–08:14, …
@@ -74,6 +80,43 @@ export function shouldRunRsiVendidoSchedule(
   return { ok: true };
 }
 
+/**
+ * Bloqueia novas entradas (não saídas) por fim-de-semana e/ou hora UTC da vela 4h.
+ * Alinhado ao estudo YTD: Sáb/Dom e 04h/20h UTC piores.
+ */
+export function isRsiVendidoEntryScheduleBlocked(
+  barTs: number,
+  opts?: {
+    skipWeekends?: boolean;
+    blockedHoursUtc?: readonly number[];
+  }
+): { blocked: boolean; reason?: string } {
+  const skipWeekends = opts?.skipWeekends ?? RSI_VENDIDO_SKIP_WEEKENDS_DEFAULT;
+  const blockedHours = opts?.blockedHoursUtc ?? RSI_VENDIDO_BLOCKED_ENTRY_HOURS_UTC_DEFAULT;
+  if (!Number.isFinite(barTs)) return { blocked: false };
+
+  const d = new Date(barTs);
+  const dow = d.getUTCDay(); // 0=Dom … 6=Sáb
+  const hour = d.getUTCHours();
+
+  if (skipWeekends && (dow === 0 || dow === 6)) {
+    const label = dow === 0 ? 'Domingo' : 'Sábado';
+    return {
+      blocked: true,
+      reason: `sem sinais ${label} (UTC)`,
+    };
+  }
+
+  if (blockedHours.length > 0 && blockedHours.includes(hour)) {
+    return {
+      blocked: true,
+      reason: `sem sinais às ${String(hour).padStart(2, '0')}h UTC`,
+    };
+  }
+
+  return { blocked: false };
+}
+
 export type RsiVendidoParams = {
   universeTopN?: number;
   /** @deprecated Prefer universeTopN */
@@ -100,6 +143,10 @@ export type RsiVendidoParams = {
   scannerExitGraceHours?: number;
   /** Corre o pipeline no máximo de N em N horas (Europe/Lisbon). 0 = sempre. Default 2. */
   runEveryHours?: number;
+  /** Não abrir LONGs em Sáb/Dom (UTC da vela 4h). Default true. */
+  skipWeekends?: boolean;
+  /** Horas UTC bloqueadas para novas entradas. Default [4, 20]. */
+  blockedEntryHoursUtc?: number[];
   stopLossPct?: number;
   autoExecuteMinStrength?: number;
   allowBuy?: boolean;
@@ -388,6 +435,12 @@ export async function runRsiVendidoPipeline(options?: {
   const stopLossPct = Math.max(0.005, Number(params.stopLossPct ?? 0.08));
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const allowBuy = params.buyEnabled !== false && params.allowBuy !== false;
+  const skipWeekends = params.skipWeekends !== false;
+  const blockedEntryHoursUtc = Array.isArray(params.blockedEntryHoursUtc)
+    ? params.blockedEntryHoursUtc
+        .map((h) => Math.floor(Number(h)))
+        .filter((h) => Number.isFinite(h) && h >= 0 && h <= 23)
+    : [...RSI_VENDIDO_BLOCKED_ENTRY_HOURS_UTC_DEFAULT];
 
   const pair = await getLatestUniverseScanPair(UNIVERSE_CODE_SCANNER_1_ABOVE_EMA70_1D);
   if (!pair.current || pair.current.rows.length === 0) {
@@ -422,7 +475,7 @@ export async function runRsiVendidoPipeline(options?: {
   const openSignalBySymbol = new Map(openLongs.map((s) => [s.symbol, s]));
 
   console.log(
-    `${logPrefix} Scanner 1 top ${topN}: ${universeSet.size} | abertos ${openLongSet.size} | prevScan=${pair.previous ? 'yes' : 'no'} | EMA${emaExitPeriod} +${(emaReentryMinPctAbove * 100).toFixed(1)}% | cap EMA${emaCapPeriod}+${(emaCapMaxPctAbove * 100).toFixed(0)}% | grace ${scannerExitGraceHours}h`
+    `${logPrefix} Scanner 1 top ${topN}: ${universeSet.size} | abertos ${openLongSet.size} | prevScan=${pair.previous ? 'yes' : 'no'} | EMA${emaExitPeriod} +${(emaReentryMinPctAbove * 100).toFixed(1)}% | cap EMA${emaCapPeriod}+${(emaCapMaxPctAbove * 100).toFixed(0)}% | grace ${scannerExitGraceHours}h | skipWeekends=${skipWeekends} | blockHoursUtc=[${blockedEntryHoursUtc.join(',')}]`
   );
 
   const startedAt = new Date();
@@ -432,6 +485,7 @@ export async function runRsiVendidoPipeline(options?: {
   let reentries = 0;
   const hitSymbols: string[] = [];
   const closedSymbols: string[] = [];
+  let loggedEntryScheduleSkip = false;
 
   const minStrength = Number(params.autoExecuteMinStrength ?? 70);
 
@@ -555,6 +609,18 @@ export async function runRsiVendidoPipeline(options?: {
 
     const hasOpenNow = openLongSet.has(symbol);
     if (hasOpenNow || !inUniverse) continue;
+
+    const scheduleBlock = isRsiVendidoEntryScheduleBlocked(bar.barCloseTs, {
+      skipWeekends,
+      blockedHoursUtc: blockedEntryHoursUtc,
+    });
+    if (scheduleBlock.blocked) {
+      if (!loggedEntryScheduleSkip) {
+        console.log(`${logPrefix} ⏭ Entradas bloqueadas neste ciclo: ${scheduleBlock.reason}`);
+        loggedEntryScheduleSkip = true;
+      }
+      continue;
+    }
 
     // Filtro obrigatório: fecho 4h > EMA21 × (1 + 0,8%)
     const aboveEntryBand = bar.close > entryMinClose;

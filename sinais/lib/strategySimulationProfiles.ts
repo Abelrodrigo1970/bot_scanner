@@ -152,7 +152,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(15, 0, 0, 0, 0, 0),
     sell: null,
     summary:
-      'Scanner 1 (EMA70 1d). LONG ao entrar/reentrar com fecho 4h > EMA21 + 0,8%. Sai ao sair do scanner ou fecho < EMA21. SL −8%. Sem TP. Cron 4em4h Lisboa.',
+      'Scanner 1 (EMA70 1d). LONG ao entrar/reentrar com fecho 4h > EMA21 + 0,8%. Sai ao sair do scanner ou fecho < EMA21. SL −8%. Sem TP. Sem sinais Sáb/Dom nem 04h/20h UTC. Cron 4em4h Lisboa.',
   },
   {
     strategyName: 'SCANNER3_RSI_FLIP_1H',
