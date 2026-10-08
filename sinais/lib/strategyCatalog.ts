@@ -26,6 +26,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'RSI_1H_LONG',
 
+  'RSI_QQQ',
+
 ] as const;
 
 
@@ -160,6 +162,19 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     universe:
       'Scanner 1 completo (EMA70 1d); LONG se fecho cruza EMA12↑ e RSI azul < 40 e dist EMA70 1d < 40%; TP +19%@30% +39%@50% | resto 72h | SL −7%',
+
+  },
+
+  RSI_QQQ: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m (1.º quarto hora)',
+
+    timeframe: '1h',
+
+    universe:
+      'Top 30 Bybit stocks + QQQ; LONG RSI SMA18 ↑34 TP +2%@50% +5%@50% | SL −4%; SHORT EMA20↓70 TP −5% | SL +6%',
 
   },
 

@@ -47,6 +47,9 @@ import {
   RSI_1H_LONG_DESCRIPTION,
   RSI_1H_LONG_DISPLAY,
   RSI_1H_LONG_PARAMS,
+  RSI_QQQ_DESCRIPTION,
+  RSI_QQQ_DISPLAY,
+  RSI_QQQ_PARAMS,
   MA_CROSS_12X21_S2_DESC,
   MA_CROSS_12X21_S2_DISPLAY,
   MA_CROSS_12X21_S2_PARAMS,
@@ -75,6 +78,7 @@ import {
   syncRumersBox15mConfig,
   syncRsiVendido4hConfig,
   syncRsi1hLongConfig,
+  syncRsiQqqConfig,
   syncPivotBossBear15mUniverse,
   syncScanner1Top5Config,
   syncAccumulationBreakout15mConfig,
@@ -177,6 +181,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: RSI_1H_LONG_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(RSI_1H_LONG_PARAMS),
+  },
+  {
+    name: 'RSI_QQQ',
+    displayName: RSI_QQQ_DISPLAY,
+    description: RSI_QQQ_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(RSI_QQQ_PARAMS),
   },
   {
     name: 'MA_CROSS_12X21_S2',
@@ -326,6 +337,13 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   if (rsi1hLongSync.updated) {
     console.log(
       '✅ RSI_1H_LONG: rsi_1h_long | Scanner 1 completo | EMA12 cross↑ + RSI azul <40 | dist EMA70d <40% | TP 19%/39% | 72h | SL −7%'
+    );
+  }
+
+  const rsiQqqSync = await syncRsiQqqConfig(prisma);
+  if (rsiQqqSync.updated) {
+    console.log(
+      '✅ RSI_QQQ: rsi_qqq | top30 stocks+QQQ 1h | LONG RSI SMA18 ↑34 TP +2/@50 +5/@50 SL −4% | SHORT EMA20↓70 TP −5% SL +6%'
     );
   }
 

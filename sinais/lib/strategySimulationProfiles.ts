@@ -155,6 +155,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Scanner 1 (EMA70 1d). LONG ao entrar/reentrar com fecho 4h > EMA21 + 0,8%. Sai ao sair do scanner ou fecho < EMA21. SL −8%. Sem TP. Sem sinais Sáb/Dom nem 04h/20h UTC. Cron 4em4h Lisboa.',
   },
   {
+    strategyName: 'RSI_QQQ',
+    displayNames: ['rsi_qqq'],
+    buy: side(4, 2, 50, 5, 50, 0),
+    sell: side(6, 5, 100, 0, 0, 0),
+    summary:
+      'Top 30 Bybit stocks + QQQ 1h. LONG: RSI SMA18 ↑34 · TP1 +2%@50% +5%@50% · SL −4%. SHORT: EMA20↓EMA70 · TP −5% · SL +6% · fecha no LONG. Cron 1.º quarto hora Lisboa.',
+  },
+  {
     strategyName: 'SCANNER3_RSI_FLIP_1H',
     displayNames: ['Scanner 3 RSI Flip 15m', 'Scanner 3 RSI Flip 1h'],
     buy: side(5, 0, 0, 0, 0, 72),

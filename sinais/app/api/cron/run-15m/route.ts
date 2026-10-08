@@ -4,11 +4,11 @@ import { prisma } from '@/lib/db';
 import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrategies';
 
 /**
- * Cron 15m: MA Cross + engolfo + Liquidity Pools + Rompimento 20 + Rumer's Box + rsi_vendido (4em4h) + rsi_1h_long.
+ * Cron 15m: MA Cross + engolfo + Liquidity Pools + Rompimento 20 + Rumer's Box + rsi_vendido (4em4h) + rsi_1h_long + rsi_qqq.
  */
 async function run15mInBackground(now: Date): Promise<void> {
   console.log(
-    "[Run-15m BG] Iniciando LP + MA Cross + engolfo + rompimento20 + rumers-box + rsi_vendido + rsi_1h_long..."
+    "[Run-15m BG] Iniciando LP + MA Cross + engolfo + rompimento20 + rumers-box + rsi_vendido + rsi_1h_long + rsi_qqq..."
   );
 
   try {
@@ -21,6 +21,7 @@ async function run15mInBackground(now: Date): Promise<void> {
     const rumers = result.rumersBox;
     const rsiV = result.rsiVendido;
     const rsi1h = result.rsi1hLong;
+    const rsiQqq = result.rsiQqq;
     console.log(
       `[Run-15m BG] MA Cross 12×30 -> ${ma.status}` +
         (typeof ma.signalsCreated === 'number' ? ` (${ma.signalsCreated} sinais)` : '')
@@ -53,6 +54,10 @@ async function run15mInBackground(now: Date): Promise<void> {
       `[Run-15m BG] rsi_1h_long -> ${rsi1h.status}` +
         (typeof rsi1h.signalsCreated === 'number' ? ` (${rsi1h.signalsCreated} sinais)` : '')
     );
+    console.log(
+      `[Run-15m BG] rsi_qqq -> ${rsiQqq.status}` +
+        (typeof rsiQqq.signalsCreated === 'number' ? ` (${rsiQqq.signalsCreated} sinais)` : '')
+    );
   } catch (error) {
     console.error('[Run-15m BG] Falhou:', error);
   }
@@ -79,7 +84,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Cron 15m (LP + MA Cross + engolfo + Rompimento 20 + Rumer's Box + rsi_vendido + rsi_1h_long) iniciado em background",
+      message: "Cron 15m (LP + MA Cross + engolfo + Rompimento 20 + Rumer's Box + rsi_vendido + rsi_1h_long + rsi_qqq) iniciado em background",
       executedAt: now.toISOString(),
     });
   } catch (error) {

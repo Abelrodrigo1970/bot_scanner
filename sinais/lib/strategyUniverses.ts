@@ -14,7 +14,9 @@ export type UniverseSourceKind =
 
   | 'table'
 
-  | 'universe_scan';
+  | 'universe_scan'
+
+  | 'fixed_symbol';
 
 
 
@@ -223,6 +225,25 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     description:
       'Scanner 1 completo. LONG 1h: fecho cruza EMA12↑ + RSI azul < 40 + dist EMA70 1d < 40%. TP +19%@30% +39%@50% | resto 72h | SL −7%.',
+
+    refresh: '/api/cron/run-15m (1.º quarto de hora Lisboa)',
+
+  },
+
+  {
+
+    strategyName: 'RSI_QQQ',
+
+    displayLabel: 'rsi_qqq',
+
+    signalTimeframes: ['1h'],
+
+    source: 'fixed_symbol',
+
+    dataKey: 'top30_stocks+QQQ',
+
+    description:
+      'Top 30 Bybit stocks + QQQUSDT. LONG 1h: RSI SMA18 ↑34 · TP +2%@50% +5%@50% | SL −4%. SHORT: EMA20↓EMA70 · TP −5% | SL +6% | fecha no LONG.',
 
     refresh: '/api/cron/run-15m (1.º quarto de hora Lisboa)',
 

@@ -11,6 +11,7 @@ import {
   REMOVED_DEPRECATED_STRATEGY_NAMES,
   DEPRECATED_TOP_ROTATION_NAMES,
 } from './strategyNameLists';
+import { RSI_QQQ_SYMBOLS_DEFAULT } from './rsiQqqSymbols';
 
 export interface RemoveDeprecatedStrategiesResult {
   removed: string[];
@@ -1390,6 +1391,35 @@ export const RSI_1H_LONG_PARAMS = {
   exchange: 'bybit',
 } as const;
 
+export const RSI_QQQ_DISPLAY = 'rsi_qqq';
+
+export const RSI_QQQ_DESCRIPTION =
+  'Top 30 Bybit stocks + QQQUSDT. LONG 1h: RSI azul (SMA18 do RSI14) < 34 e sobe ≥ 34; SL −4%; TP1 +2% (50%); TP2 +5% (resto). SHORT 1h: EMA20 cruza ↓ EMA70; SL +6%; TP −5%; fecha quando entra LONG. Corre no 1.º quarto de hora (Lisboa).';
+
+export const RSI_QQQ_PARAMS = {
+  symbols: [...RSI_QQQ_SYMBOLS_DEFAULT],
+  symbol: 'QQQUSDT',
+  chartTimeframe: '1h',
+  rsiPeriod: 14,
+  rsiMaPeriod: 18,
+  rsiMaCrossLevel: 34,
+  stopLossPct: 0.04,
+  tp1Pct: 0.02,
+  tp1Position: 50,
+  tp2Pct: 0.05,
+  tp2Position: 50,
+  shortEmaFast: 20,
+  shortEmaSlow: 70,
+  shortStopLossPct: 0.06,
+  shortTpPct: 0.05,
+  autoExecuteMinStrength: 70,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: true,
+  sellEnabled: true,
+  exchange: 'bybit',
+} as const;
+
 /** Garante registo/descrição da estratégia rsi_1h_long. */
 export async function syncRsi1hLongConfig(
   prisma: PrismaClient
@@ -1432,6 +1462,57 @@ export async function syncRsi1hLongConfig(
       data: {
         displayName: RSI_1H_LONG_DISPLAY,
         description: RSI_1H_LONG_DESCRIPTION,
+        params: JSON.stringify(next),
+        isActive: true,
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
+/** Garante registo/descrição da estratégia rsi_qqq (QQQUSDT). */
+export async function syncRsiQqqConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'RSI_QQQ' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? stripNumericParamKeys(JSON.parse(row.params)) : {};
+  } catch {
+    p = {};
+  }
+
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit'
+      ? p.exchange
+      : RSI_QQQ_PARAMS.exchange;
+  const userAutoStrength = Number.isFinite(Number(p.autoExecuteMinStrength))
+    ? Number(p.autoExecuteMinStrength)
+    : RSI_QQQ_PARAMS.autoExecuteMinStrength;
+
+  const next = {
+    ...RSI_QQQ_PARAMS,
+    exchange: userExchange,
+    autoExecuteMinStrength: userAutoStrength,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== RSI_QQQ_DISPLAY ||
+    row.description !== RSI_QQQ_DESCRIPTION ||
+    row.isActive !== true;
+
+  if (needParams || needMeta) {
+    await prisma.strategy.update({
+      where: { name: 'RSI_QQQ' },
+      data: {
+        displayName: RSI_QQQ_DISPLAY,
+        description: RSI_QQQ_DESCRIPTION,
         params: JSON.stringify(next),
         isActive: true,
       },

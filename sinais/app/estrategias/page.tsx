@@ -862,62 +862,127 @@ export default function EstrategiasPage() {
         );
 
       case 'RSI_1H_LONG': {
-        const p = params as Record<string, unknown>;
+        const p1h = p as Record<string, unknown>;
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               <strong>rsi_1h_long</strong> — <strong>LONG</strong> no <strong>Scanner 1 completo</strong>.
-              Entra em <strong>{p.chartTimeframe ?? '1h'}</strong> quando o fecho{' '}
-              <strong>cruza a EMA{p.emaPeriod ?? 12} para cima</strong>, o{' '}
-              <strong>RSI azul</strong> (SMA{p.rsiMaPeriod ?? 14} do RSI{p.rsiPeriod ?? 14}) está{' '}
-              <strong>&lt; {p.rsiMaMax ?? 40}</strong> e a distância ao{' '}
-              <strong>EMA{p.emaDailyPeriod ?? 70} diário</strong> é{' '}
-              <strong>&lt; {((p.emaDailyMaxPctAbove ?? 0.4) * 100).toFixed(0)}%</strong>. Sai com TP1 +
-              {((p.tp1Pct ?? 0.19) * 100).toFixed(0)}% ({p.tp1Position ?? 30}% pos.), TP2 +
-              {((p.tp2Pct ?? 0.39) * 100).toFixed(0)}% ({p.tp2Position ?? 50}% pos.), resto às{' '}
-              {p.closeAfterHours ?? 72}h, SL −{((p.stopLossPct ?? 0.07) * 100).toFixed(0)}%. Cron no
+              Entra em <strong>{String(p1h.chartTimeframe ?? '1h')}</strong> quando o fecho{' '}
+              <strong>cruza a EMA{Number(p1h.emaPeriod ?? 12)} para cima</strong>, o{' '}
+              <strong>RSI azul</strong> (SMA{Number(p1h.rsiMaPeriod ?? 14)} do RSI{Number(p1h.rsiPeriod ?? 14)}) está{' '}
+              <strong>&lt; {Number(p1h.rsiMaMax ?? 40)}</strong> e a distância ao{' '}
+              <strong>EMA{Number(p1h.emaDailyPeriod ?? 70)} diário</strong> é{' '}
+              <strong>&lt; {(Number(p1h.emaDailyMaxPctAbove ?? 0.4) * 100).toFixed(0)}%</strong>. Sai com TP1 +
+              {(Number(p1h.tp1Pct ?? 0.19) * 100).toFixed(0)}% ({Number(p1h.tp1Position ?? 30)}% pos.), TP2 +
+              {(Number(p1h.tp2Pct ?? 0.39) * 100).toFixed(0)}% ({Number(p1h.tp2Position ?? 50)}% pos.), resto às{' '}
+              {Number(p1h.closeAfterHours ?? 72)}h, SL −{(Number(p1h.stopLossPct ?? 0.07) * 100).toFixed(0)}%. Cron no
               1.º quarto de hora (Lisboa).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('EMA cruzamento', p.emaPeriod ?? 12, (v) =>
+              {numField('EMA cruzamento', Number(p1h.emaPeriod ?? 12), (v) =>
                 upd({ emaPeriod: Math.min(200, Math.max(2, Math.floor(v))) })
               )}
-              {numField('RSI período', p.rsiPeriod ?? 14, (v) =>
+              {numField('RSI período', Number(p1h.rsiPeriod ?? 14), (v) =>
                 upd({ rsiPeriod: Math.min(100, Math.max(2, Math.floor(v))) })
               )}
-              {numField('RSI MA (azul)', p.rsiMaPeriod ?? 14, (v) =>
+              {numField('RSI MA (azul)', Number(p1h.rsiMaPeriod ?? 14), (v) =>
                 upd({ rsiMaPeriod: Math.min(100, Math.max(1, Math.floor(v))) })
               )}
-              {numField('RSI azul máx.', p.rsiMaMax ?? 40, (v) =>
+              {numField('RSI azul máx.', Number(p1h.rsiMaMax ?? 40), (v) =>
                 upd({ rsiMaMax: Math.min(100, Math.max(1, v)) })
               )}
-              {numField('EMA diária (filtro)', p.emaDailyPeriod ?? 70, (v) =>
+              {numField('EMA diária (filtro)', Number(p1h.emaDailyPeriod ?? 70), (v) =>
                 upd({ emaDailyPeriod: Math.min(200, Math.max(2, Math.floor(v))) })
               )}
-              {numField('Dist. máx. EMA diária (%)', (p.emaDailyMaxPctAbove ?? 0.4) * 100, (v) =>
+              {numField('Dist. máx. EMA diária (%)', Number(p1h.emaDailyMaxPctAbove ?? 0.4) * 100, (v) =>
                 upd({ emaDailyMaxPctAbove: v / 100 }), 1)}
-              {numField('TP1 (%)', (p.tp1Pct ?? 0.19) * 100, (v) =>
+              {numField('TP1 (%)', Number(p1h.tp1Pct ?? 0.19) * 100, (v) =>
                 upd({ tp1Pct: v / 100 }), 0.5)}
-              {numField('TP1 posição (%)', p.tp1Position ?? 30, (v) =>
+              {numField('TP1 posição (%)', Number(p1h.tp1Position ?? 30), (v) =>
                 upd({ tp1Position: Math.min(99, Math.max(1, Math.floor(v))) })
               )}
-              {numField('TP2 (%)', (p.tp2Pct ?? 0.39) * 100, (v) =>
+              {numField('TP2 (%)', Number(p1h.tp2Pct ?? 0.39) * 100, (v) =>
                 upd({ tp2Pct: v / 100 }), 0.5)}
-              {numField('TP2 posição (%)', p.tp2Position ?? 50, (v) =>
+              {numField('TP2 posição (%)', Number(p1h.tp2Position ?? 50), (v) =>
                 upd({ tp2Position: Math.min(99, Math.max(1, Math.floor(v))) })
               )}
-              {numField('SL (%) abaixo entrada', (p.stopLossPct ?? 0.07) * 100, (v) =>
+              {numField('SL (%) abaixo entrada', Number(p1h.stopLossPct ?? 0.07) * 100, (v) =>
                 upd({ stopLossPct: v / 100 }), 0.5)}
-              {numField('Fecho restante (h)', p.closeAfterHours ?? 72, (v) =>
+              {numField('Fecho restante (h)', Number(p1h.closeAfterHours ?? 72), (v) =>
                 upd({ closeAfterHours: Math.min(168, Math.max(1, Math.floor(v))) })
               )}
-              {numField('Força mín. auto-exec', p.autoExecuteMinStrength ?? 70, (v) =>
+              {numField('Força mín. auto-exec', Number(p1h.autoExecuteMinStrength ?? 70), (v) =>
                 upd({ autoExecuteMinStrength: v })
               )}
             </div>
           </div>
         );
       }
+
+      case 'RSI_QQQ':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              <strong>rsi_qqq</strong> —{' '}
+              <strong>
+                {Array.isArray(p.symbols) && p.symbols.length
+                  ? `${p.symbols.length} símbolos (top 30 stocks + QQQ)`
+                  : String(p.symbol ?? 'QQQUSDT')}
+              </strong>{' '}
+              em <strong>{String(p.chartTimeframe ?? '1h')}</strong>.{' '}
+              <strong>LONG</strong>: RSI azul (SMA{Number(p.rsiMaPeriod ?? 18)} do RSI
+              {Number(p.rsiPeriod ?? 14)}) &lt; {Number(p.rsiMaCrossLevel ?? 34)} e sobe ≥ nível;
+              TP1 +{(Number(p.tp1Pct ?? 0.02) * 100).toFixed(0)}% ({Number(p.tp1Position ?? 50)}%),
+              TP2 +{(Number(p.tp2Pct ?? 0.05) * 100).toFixed(0)}% ({Number(p.tp2Position ?? 50)}%),
+              SL −{(Number(p.stopLossPct ?? 0.04) * 100).toFixed(0)}%.{' '}
+              <strong>SHORT</strong>: EMA{Number(p.shortEmaFast ?? 20)} cruza ↓ EMA
+              {Number(p.shortEmaSlow ?? 70)}; TP −{(Number(p.shortTpPct ?? 0.05) * 100).toFixed(0)}%,
+              SL +{(Number(p.shortStopLossPct ?? 0.06) * 100).toFixed(0)}%; fecha quando entra LONG.
+              Cron 1.º quarto de hora (Lisboa).
+            </p>
+            {Array.isArray(p.symbols) && p.symbols.length > 0 && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
+                Lista: {(p.symbols as string[]).join(', ')}
+              </p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('RSI período', Number(p.rsiPeriod ?? 14), (v) =>
+                upd({ rsiPeriod: Math.min(100, Math.max(2, Math.floor(v))) })
+              )}
+              {numField('RSI MA (azul)', Number(p.rsiMaPeriod ?? 18), (v) =>
+                upd({ rsiMaPeriod: Math.min(100, Math.max(1, Math.floor(v))) })
+              )}
+              {numField('Nível cruzamento RSI', Number(p.rsiMaCrossLevel ?? 34), (v) =>
+                upd({ rsiMaCrossLevel: Math.min(100, Math.max(1, v)) })
+              )}
+              {numField('TP1 LONG (%)', Number(p.tp1Pct ?? 0.02) * 100, (v) =>
+                upd({ tp1Pct: v / 100 }), 0.1)}
+              {numField('TP1 posição (%)', Number(p.tp1Position ?? 50), (v) =>
+                upd({ tp1Position: Math.min(99, Math.max(1, Math.floor(v))) })
+              )}
+              {numField('TP2 LONG (%)', Number(p.tp2Pct ?? 0.05) * 100, (v) =>
+                upd({ tp2Pct: v / 100 }), 0.1)}
+              {numField('TP2 posição (%)', Number(p.tp2Position ?? 50), (v) =>
+                upd({ tp2Position: Math.min(99, Math.max(1, Math.floor(v))) })
+              )}
+              {numField('SL LONG (%) abaixo', Number(p.stopLossPct ?? 0.04) * 100, (v) =>
+                upd({ stopLossPct: v / 100 }), 0.1)}
+              {numField('EMA rápida SHORT', Number(p.shortEmaFast ?? 20), (v) =>
+                upd({ shortEmaFast: Math.min(200, Math.max(2, Math.floor(v))) })
+              )}
+              {numField('EMA lenta SHORT', Number(p.shortEmaSlow ?? 70), (v) =>
+                upd({ shortEmaSlow: Math.min(400, Math.max(3, Math.floor(v))) })
+              )}
+              {numField('TP SHORT (%)', Number(p.shortTpPct ?? 0.05) * 100, (v) =>
+                upd({ shortTpPct: v / 100 }), 0.1)}
+              {numField('SL SHORT (%) acima', Number(p.shortStopLossPct ?? 0.06) * 100, (v) =>
+                upd({ shortStopLossPct: v / 100 }), 0.1)}
+              {numField('Força mín. auto-exec', Number(p.autoExecuteMinStrength ?? 70), (v) =>
+                upd({ autoExecuteMinStrength: v })
+              )}
+            </div>
+          </div>
+        );
 
       default:
         return <p className="text-sm text-gray-500 dark:text-gray-400">Sem parâmetros configuráveis</p>;
