@@ -1,7 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
 
-import { mapLiquidityPoolSignalStrength } from './liquidityPoolsPro15mStrategy';
-
 export {
   DISCONTINUED_STRATEGY_NAMES,
   DEPRECATED_TOP_ROTATION_NAMES,
@@ -200,14 +198,14 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'ENGOLFO_15M',
     displayName: ENGOLFO_15M_DISPLAY,
     description: ENGOLFO_15M_DESC,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(ENGOLFO_15M_PARAMS),
   },
   {
     name: 'LIQUIDITY_POOLS_PRO_15M',
     displayName: LIQUIDITY_POOLS_PRO_15M_DISPLAY,
     description: LIQUIDITY_POOLS_PRO_15M_DESC,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(LIQUIDITY_POOLS_PRO_15M_PARAMS),
   },
   {
@@ -266,45 +264,12 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const engolfoSync = await syncEngolfo15mConfig(prisma);
   if (engolfoSync.updated) {
-    console.log('✅ ENGOLFO_15M: engolfo | EMA12/21 ou spread<2% | SELL 15m | Scanner 7 top 3 | SL +8% | TP1 −20% 50% | 24h');
+    console.log('⏸️ ENGOLFO_15M descontinuada (YTD negativa)');
   }
 
   const liquidityPoolsSync = await syncLiquidityPoolsPro15mConfig(prisma);
   if (liquidityPoolsSync.updated) {
-    console.log('✅ LIQUIDITY_POOLS_PRO_15M: sweep mitigation 15m | Scanner 7 top 15 | SL 1,5×ATR | TP 1R/2R/3R');
-  }
-
-  const lpStrategy = await prisma.strategy.findUnique({
-    where: { name: 'LIQUIDITY_POOLS_PRO_15M' },
-    select: { id: true },
-  });
-  if (lpStrategy) {
-    const lpOpen = await prisma.signal.findMany({
-      where: {
-        strategyId: lpStrategy.id,
-        status: { in: ['NEW', 'IN_PROGRESS'] },
-        strength: { lt: 60 },
-      },
-      select: { id: true, strength: true, extraInfo: true },
-    });
-    for (const sig of lpOpen) {
-      let poolStrength = sig.strength;
-      if (sig.extraInfo) {
-        try {
-          const ex = JSON.parse(sig.extraInfo) as { poolStrength?: number };
-          if (typeof ex.poolStrength === 'number') poolStrength = ex.poolStrength;
-        } catch {
-          /* ignore */
-        }
-      }
-      await prisma.signal.update({
-        where: { id: sig.id },
-        data: { strength: mapLiquidityPoolSignalStrength(poolStrength) },
-      });
-    }
-    if (lpOpen.length > 0) {
-      console.log(`✅ LIQUIDITY_POOLS_PRO_15M: ${lpOpen.length} sinal(is) abertos com força <60 actualizados para o dashboard`);
-    }
+    console.log('⏸️ LIQUIDITY_POOLS_PRO_15M descontinuada (YTD negativa)');
   }
 
   const swingVwapSync = await syncSwingAnchoredVwap15mConfig(prisma);
@@ -315,7 +280,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const rompimentoSync = await syncRompimento20_15mConfig(prisma);
   if (rompimentoSync.updated) {
     console.log(
-      '✅ ROMPIMENTO_20_15M: Rompimento 20 | fecho > HH20 | filtro ≤30% acima EMA70 | Stoch K<30 (50/40/11) | LONG 15m | Scanner 6 top 40 (4h) | SL −5% | TP1 +9% 50% | 24h'
+      '✅ ROMPIMENTO_20_15M: Rompimento 20 | fecho > HH20 | filtro ≤30% acima EMA70 | Stoch K<30 (50/40/11) | LONG 15m | Scanner 1 top 50 | SL −5% | TP1 +9% 50% | 24h'
     );
   }
 

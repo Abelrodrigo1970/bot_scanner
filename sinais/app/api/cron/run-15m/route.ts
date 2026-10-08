@@ -4,19 +4,17 @@ import { prisma } from '@/lib/db';
 import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrategies';
 
 /**
- * Cron 15m: MA Cross + engolfo + Liquidity Pools + Rompimento 20 + Rumer's Box + rsi_vendido (4em4h) + rsi_1h_long + rsi_qqq.
+ * Cron 15m: MA Cross + Rompimento 20 + Rumer's Box + rsi_vendido (4em4h) + rsi_1h_long + rsi_qqq.
  */
 async function run15mInBackground(now: Date): Promise<void> {
   console.log(
-    "[Run-15m BG] Iniciando LP + MA Cross + engolfo + rompimento20 + rumers-box + rsi_vendido + rsi_1h_long + rsi_qqq..."
+    "[Run-15m BG] Iniciando MA Cross + rompimento20 + rumers-box + rsi_vendido + rsi_1h_long + rsi_qqq..."
   );
 
   try {
     const result = await run15mStrategiesPipeline(now);
     const ma = result.maCross;
     const ma21 = result.maCross12x21S2;
-    const eng = result.engolfo;
-    const lp = result.liquidityPoolsPro;
     const romp = result.rompimento20;
     const rumers = result.rumersBox;
     const rsiV = result.rsiVendido;
@@ -29,14 +27,6 @@ async function run15mInBackground(now: Date): Promise<void> {
     console.log(
       `[Run-15m BG] MA Cross 12×21 S2 -> ${ma21.status}` +
         (typeof ma21.signalsCreated === 'number' ? ` (${ma21.signalsCreated} sinais)` : '')
-    );
-    console.log(
-      `[Run-15m BG] engolfo -> ${eng.status}` +
-        (typeof eng.signalsCreated === 'number' ? ` (${eng.signalsCreated} sinais)` : '')
-    );
-    console.log(
-      `[Run-15m BG] liquidity-pools -> ${lp.status}` +
-        (typeof lp.signalsCreated === 'number' ? ` (${lp.signalsCreated} sinais)` : '')
     );
     console.log(
       `[Run-15m BG] rompimento20 -> ${romp.status}` +
@@ -84,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Cron 15m (LP + MA Cross + engolfo + Rompimento 20 + Rumer's Box + rsi_vendido + rsi_1h_long + rsi_qqq) iniciado em background",
+      message: "Cron 15m (MA Cross + Rompimento 20 + Rumer's Box + rsi_vendido + rsi_1h_long + rsi_qqq) iniciado em background",
       executedAt: now.toISOString(),
     });
   } catch (error) {

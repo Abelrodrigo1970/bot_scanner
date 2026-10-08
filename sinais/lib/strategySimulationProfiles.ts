@@ -66,7 +66,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: null,
     sell: side(10, 20, 50, 0, 0, 24),
     summary:
-      'Scanner 7 top 3. Só VENDA. (EMA12<EMA21 OU |EMA12−EMA21|<2%) + fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante às 24h.',
+      'DESCONTINUADA. Só VENDA. (EMA12<EMA21 OU |EMA12−EMA21|<2%) + fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante às 24h.',
   },
   {
     strategyName: 'LIQUIDITY_POOLS_PRO_15M',
@@ -74,7 +74,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(3, 3, 33, 6, 33, 24),
     sell: side(3, 3, 33, 6, 33, 24),
     summary:
-      'Scanner 7 top 15. Sweep mitigation BSL/SSL. SL 1,5×ATR (preço no sinal). TP1/2/3 ≈ 1R/2R/3R (33%/33%/resto 24h).',
+      'DESCONTINUADA. Sweep mitigation BSL/SSL. SL 1,5×ATR. TP1/2/3 ≈ 1R/2R/3R (33%/33%/resto 24h).',
   },
   {
     strategyName: 'SWING_ANCHORED_VWAP_15M',
@@ -82,7 +82,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 10, 50, 0, 0, 24),
     sell: side(5, 10, 50, 0, 0, 24),
     summary:
-      'Scanner 6 top 40. Cruzamento linha azul hVwap (length 50). BUY fecho > azul; SELL fecho < azul. SL swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.',
+      'DESCONTINUADA. Cruzamento linha azul hVwap (length 50). BUY fecho > azul; SELL fecho < azul. SL swing ±0,5% ou 5%. TP1 10% (50%). Resto 24h.',
   },
   {
     strategyName: 'ROMPIMENTO_20_15M',
@@ -90,7 +90,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 9, 50, 0, 0, 24),
     sell: null,
     summary:
-      'Scanner 6 top 40. Só COMPRA. Fecho > máx. 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante às 24h.',
+      'Scanner 1 top 50. Só COMPRA. Fecho > máx. 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante às 24h.',
   },
   {
     strategyName: 'RUMERS_BOX_15M',

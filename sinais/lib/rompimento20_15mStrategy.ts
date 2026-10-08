@@ -1,5 +1,5 @@
 /**
- * Rompimento 20 (15m) — LONG no Scanner 6
+ * Rompimento 20 (15m) — LONG no Scanner 1 (EMA70 1d)
  * Fecho da última vela fechada acima do máximo das 20 velas anteriores.
  * Filtro: sem sinal se preço > 30% acima da EMA70.
  * Filtro Stochastic clássico (15m): %K < 30 (K 50 / smooth 40 / D 11).
@@ -9,7 +9,7 @@
 import { prisma } from './db';
 import { fetchCandles, type Candle } from './marketData';
 import { calculateLastEMA, calculateSMA, calculateStochasticSeries, getCloses } from './indicators';
-import { UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H } from './symbolUniverseDefaults';
+import { UNIVERSE_CODE_SCANNER_1_ABOVE_EMA70_1D } from './symbolUniverseDefaults';
 import { resolveUniverseScanSymbolsTopN } from './universeScanPersistence';
 import { autoExecuteNewSignalsForStrategy, resolveStrategyExchange } from './autoExecuteNewSignals';
 import { closeActivePositionForSymbol, inspectActivePositionForSymbol } from './tradingExecutor';
@@ -253,7 +253,7 @@ export async function runRompimento20_15mPipeline(options?: {
     return { status: 'skipped', reason: 'BUY desactivado nos params' };
   }
 
-  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 40)));
+  const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? 50)));
   const chartTimeframe = String(params.chartTimeframe ?? '15m');
   const lookback = Math.max(5, Math.floor(Number(params.breakoutLookback ?? 20)));
   const filterMaPeriod = Math.max(2, Math.floor(Number(params.filterMaPeriod ?? 70)));
@@ -264,7 +264,7 @@ export async function runRompimento20_15mPipeline(options?: {
   const exchange = resolveStrategyExchange(params as Record<string, unknown>);
   const minStrength = Math.max(60, Math.floor(Number(params.autoExecuteMinStrength ?? 70)));
 
-  const symbols = await resolveUniverseScanSymbolsTopN(UNIVERSE_CODE_SCANNER_6_ABOVE_MA80_4H, topN);
+  const symbols = await resolveUniverseScanSymbolsTopN(UNIVERSE_CODE_SCANNER_1_ABOVE_EMA70_1D, topN);
   if (symbols.length === 0) {
     return {
       status: 'skipped',

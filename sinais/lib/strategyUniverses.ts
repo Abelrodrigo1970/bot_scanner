@@ -80,44 +80,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
-    strategyName: 'ENGOLFO_15M',
-
-    displayLabel: 'engolfo',
-
-    signalTimeframes: ['15m'],
-
-    source: 'universe_scan',
-
-    dataKey: 'UNIVERSE_RSI_ABOVE_69_1D',
-
-    description:
-      'Scanner 7 top 3. SELL 15m: EMA12<EMA21 OU |EMA12−EMA21|<2%, fecho −1%+ vs vela ant. SL +8%. TP1 −20% (50%). Restante 24h.',
-
-    refresh: '/api/cron/run-15m (cada 15 min)',
-
-  },
-
-  {
-
-    strategyName: 'LIQUIDITY_POOLS_PRO_15M',
-
-    displayLabel: 'Liquidity Pools (15m)',
-
-    signalTimeframes: ['15m'],
-
-    source: 'universe_scan',
-
-    dataKey: 'UNIVERSE_RSI_ABOVE_69_1D',
-
-    description:
-      'Scanner 7 top 15. Sweep de liquidez 15m (mitigation). SL 1,5×ATR. TP 1R/2R/3R (33%/33%/resto 24h).',
-
-    refresh: '/api/cron/run-15m (cada 15 min)',
-
-  },
-
-  {
-
     strategyName: 'ROMPIMENTO_20_15M',
 
     displayLabel: 'Rompimento 20 (15m)',
@@ -126,10 +88,10 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
     source: 'universe_scan',
 
-    dataKey: 'UNIVERSE_ABOVE_MA80_4H',
+    dataKey: 'UNIVERSE_ABOVE_EMA70_1D',
 
     description:
-      'Scanner 6 top 40. LONG 15m: fecho > máximo das 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante 24h.',
+      'Scanner 1 top 50. LONG 15m: fecho > máximo das 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante 24h.',
 
     refresh: '/api/cron/run-universe-scans (cada 4 h)',
 

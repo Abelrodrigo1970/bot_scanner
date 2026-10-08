@@ -14,10 +14,6 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'MA_CROSS_12X21_S2',
 
-  'ENGOLFO_15M',
-
-  'LIQUIDITY_POOLS_PRO_15M',
-
   'ROMPIMENTO_20_15M',
 
   'RUMERS_BOX_15M',
@@ -74,7 +70,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 7 (RSI 1d ≥ 69); só COMPRA; MA12/MA21; spread 0,6–1,5%; dist MA21 2–4%; momentum 1h; 11–22h PT',
+    universe: 'Scanner 6 (SMA80 4h) top 40; só COMPRA; MA12/MA21; spread 0,6–1,5%; dist MA21 2–4%; momentum 1h; 11–22h PT',
 
   },
 
@@ -86,7 +82,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 2 top 3; EMA12<EMA21 ou |EMA|<2%; SELL se fecho −1%+; SL +8%',
+    universe: 'DESCONTINUADA — YTD 2026 negativa em todos os scanners',
 
   },
 
@@ -98,7 +94,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 2 top 15; sweep liquidez (pivot pools); BUY/SELL; SL 1,5×ATR; TP 1R/2R/3R',
+    universe: 'DESCONTINUADA — YTD 2026 negativa em todos os scanners',
 
   },
 
@@ -122,7 +118,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 top 20; fecho > máx. 20 velas; EMA70; Stoch K<30; LONG SL −5% | TP +9% 50%',
+    universe: 'Scanner 1 top 50 (EMA70 1d); fecho > máx. 20 velas; EMA70; Stoch K<30; LONG SL −5% | TP +9% 50%',
 
   },
 

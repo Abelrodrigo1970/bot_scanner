@@ -29,8 +29,6 @@ import {
   syncBybitMissingStopLosses,
 } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
-import { runEngolfo15mPipeline } from '@/lib/engolfo15mStrategy';
-import { runLiquidityPoolsPro15mPipeline } from '@/lib/liquidityPoolsPro15mStrategy';
 import { runRompimento20_15mPipeline } from '@/lib/rompimento20_15mStrategy';
 import { runRumersBox15mPipeline } from '@/lib/rumersBox15mStrategy';
 import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
@@ -359,44 +357,15 @@ export interface Cron15mAllResult {
 }
 
 /**
- * Cron único 15m: Liquidity Pools primeiro, depois MA Cross + engolfo + Rompimento 20 + Rumer's Box + rsi_vendido.
- * LP corre antes do MA Cross 12×21 (80 símbolos) para não ficar bloqueado no pipeline.
+ * Cron único 15m: MA Cross + Rompimento 20 + Rumer's Box + rsi_vendido + rsi_1h_long + rsi_qqq.
+ * ENGOLFO_15M e LIQUIDITY_POOLS_PRO_15M descontinuadas (YTD 2026).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
-  let liquidityPoolsPro: Cron15mResult;
-  try {
-    const r = await runLiquidityPoolsPro15mPipeline({ logPrefix: '[Run-15m → liquidity-pools]' });
-    if (r.status === 'skipped') {
-      console.log(`[Run-15m → liquidity-pools] Saltado: ${r.reason}`);
-      if (r.reason.includes('inactiva')) liquidityPoolsPro = { status: 'inactive' };
-      else if (r.reason.includes('não encontrada')) liquidityPoolsPro = { status: 'not-found' };
-      else liquidityPoolsPro = { status: 'done', signalsCreated: 0 };
-    } else {
-      liquidityPoolsPro = { status: 'done', signalsCreated: r.signalsCreated };
-    }
-  } catch (err) {
-    console.error('[Run-15m → liquidity-pools] Falhou:', err);
-    liquidityPoolsPro = { status: 'not-found' };
-  }
+  const liquidityPoolsPro: Cron15mResult = { status: 'inactive' };
+  const engolfo: Cron15mResult = { status: 'inactive' };
 
   const maCross = await runMaCross15mPipeline(now);
   const maCross12x21S2 = await runMaCross12x21Scanner2Pipeline(now);
-
-  let engolfo: Cron15mResult;
-  try {
-    const r = await runEngolfo15mPipeline({ logPrefix: '[Run-15m → engolfo]' });
-    if (r.status === 'skipped') {
-      console.log(`[Run-15m → engolfo] Saltado: ${r.reason}`);
-      if (r.reason.includes('inactiva')) engolfo = { status: 'inactive' };
-      else if (r.reason.includes('não encontrada')) engolfo = { status: 'not-found' };
-      else engolfo = { status: 'done', signalsCreated: 0 };
-    } else {
-      engolfo = { status: 'done', signalsCreated: r.signalsCreated };
-    }
-  } catch (err) {
-    console.error('[Run-15m → engolfo] Falhou:', err);
-    engolfo = { status: 'not-found' };
-  }
 
   let rompimento20: Cron15mResult;
   try {

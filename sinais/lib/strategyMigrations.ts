@@ -587,9 +587,9 @@ export async function syncLiquidityPoolsPro15mConfig(
   return { updated: false };
 }
 
-/** Rompimento 20 — LONG 15m Scanner 6 (fecho > máx. 20 velas anteriores). */
+/** Rompimento 20 — LONG 15m Scanner 1 (fecho > máx. 20 velas anteriores). */
 export const ROMPIMENTO_20_15M_PARAMS = {
-  universeTopN: 40,
+  universeTopN: 50,
   chartTimeframe: '15m',
   breakoutLookback: 20,
   requireBullishClose: false,
@@ -617,7 +617,7 @@ export const ROMPIMENTO_20_15M_PARAMS = {
 
 export const ROMPIMENTO_20_15M_DISPLAY = 'Rompimento 20 (15m)';
 export const ROMPIMENTO_20_15M_DESC =
-  'Scanner 6 top 40. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. Filtro Stochastic (K 50/40/11): só entra se %K < 30. SL −5%. TP1 +9% (50% pos.). Restante às 24h. Só COMPRA.';
+  'Scanner 1 top 50. LONG em 15m quando o fecho da última vela fechada fica acima do máximo das 20 velas anteriores. Sem sinal se o preço estiver >30% acima da EMA70. Filtro Stochastic (K 50/40/11): só entra se %K < 30. SL −5%. TP1 +9% (50% pos.). Restante às 24h. Só COMPRA.';
 
 export async function syncRompimento20_15mConfig(
   prisma: PrismaClient

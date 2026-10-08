@@ -286,7 +286,7 @@ export default function EstrategiasPage() {
         const maPairLabel = isS2 ? 'MA12 / MA21' : 'MA12 / MA30';
         const diffLabel = maPairLabel;
         const defaultSlow = isS2 ? 21 : 30;
-        const defaultTopN = isS2 ? 80 : 20;
+        const defaultTopN = isS2 ? 40 : 20;
         return (
           <div className="space-y-4">
             <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -295,11 +295,11 @@ export default function EstrategiasPage() {
                 {' O cron corre a cada 15 min.'} Símbolos ={' '}
                 {isS2 ? (
                   <>
-                    <strong>Scanner 7</strong> (RSI 14 · 1d ≥ 69), top {defaultTopN} por RSI; só <strong>COMPRA</strong>; actualize em Origem de dados → Scanner 7
+                    <strong>Scanner 6</strong> (fecho acima SMA80 · 4h), top {defaultTopN}; só <strong>COMPRA</strong>; actualize em Origem de dados → Scanner 6
                   </>
                 ) : (
                   <>
-                    <strong>Scanner 1 top {defaultTopN}</strong> (maior |afastamento| vs EMA70 em 1d); actualize em Origem de dados → Scanner 1
+                    <strong>Scanner 3 top {defaultTopN}</strong> (RSI 1h ≥ 75); actualize em Origem de dados → Scanner 3
                   </>
                 )}{' '}
                 ou aguarde o cron <strong>run-universe-scans</strong> (cada 4 h).
@@ -431,9 +431,12 @@ export default function EstrategiasPage() {
       case 'ENGOLFO_15M':
         return (
           <div className="space-y-4">
+            <p className="text-xs text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-md px-3 py-2">
+              <strong>Descontinuada</strong> (YTD 2026 negativa em todos os scanners). Mantida só para histórico.
+            </p>
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Timeframe <strong>15m</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 2 top N</strong>{' '}
-              (subidas 24h). Entrada quando <strong>EMA12 &lt; EMA21</strong>, fecho abaixo da EMA21, vela bear e o
+              Timeframe <strong>15m</strong>; só <strong>VENDA</strong>. Universo = <strong>Scanner 7 top N</strong>.
+              Entrada quando <strong>EMA12 &lt; EMA21</strong> (ou spread &lt;2%), fecho abaixo da EMA21, vela bear e o
               fecho cai <strong>≥1%</strong> vs o fecho da vela anterior.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -475,7 +478,7 @@ export default function EstrategiasPage() {
               <strong>Stochastic</strong>: só entra se <strong>%K &lt; 30</strong> (K 50 / smooth 40 / D 11).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {numField('Top N Scanner 1', p.universeTopN ?? 20, (v) => upd({ universeTopN: v }))}
+              {numField('Top N Scanner 1', p.universeTopN ?? 50, (v) => upd({ universeTopN: v }))}
               {numField('Lookback (velas)', p.breakoutLookback ?? 20, (v) => upd({ breakoutLookback: v }))}
               {numField('MA filtro (período)', p.filterMaPeriod ?? 70, (v) => upd({ filterMaPeriod: v }))}
               {numField(

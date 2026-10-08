@@ -38,6 +38,8 @@ export const DISCONTINUED_STRATEGY_NAMES = [
   'STCH15LONG',
   'SCANNER2_RSI80_TOP3_LONG_4H',
   'SWING_ANCHORED_VWAP_15M',
+  'ENGOLFO_15M',
+  'LIQUIDITY_POOLS_PRO_15M',
 ] as const;
 
 /** Rotações Top descontinuadas neste projeto. */
