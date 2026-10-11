@@ -66,6 +66,9 @@ import {
   RUMERS_BOX_15M_DESC,
   RUMERS_BOX_15M_DISPLAY,
   RUMERS_BOX_15M_PARAMS,
+  VOLUME_SPIKE_1H_DESC,
+  VOLUME_SPIKE_1H_DISPLAY,
+  VOLUME_SPIKE_1H_PARAMS,
   deactivateDeprecatedStrategies,
   syncMaCrossScanner1UniverseDescriptions,
   syncMaCross12x21Scanner2Config,
@@ -74,6 +77,7 @@ import {
   syncSwingAnchoredVwap15mConfig,
   syncRompimento20_15mConfig,
   syncRumersBox15mConfig,
+  syncVolumeSpike1hConfig,
   syncRsiVendido4hConfig,
   syncRsi1hLongConfig,
   syncRsiQqqConfig,
@@ -229,6 +233,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     isActive: true,
     params: JSON.stringify(RUMERS_BOX_15M_PARAMS),
   },
+  {
+    name: 'VOLUME_SPIKE_1H',
+    displayName: VOLUME_SPIKE_1H_DISPLAY,
+    description: VOLUME_SPIKE_1H_DESC,
+    isActive: true,
+    params: JSON.stringify(VOLUME_SPIKE_1H_PARAMS),
+  },
 ] as const;
 
 /** Seeds builtin — ver sync em ensureMissingBuiltinStrategies. */
@@ -288,6 +299,13 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   if (rumersBoxSync.updated) {
     console.log(
       "✅ RUMERS_BOX_15M: Rumer's Box BUY | PDH | Scanner 1 top 50 | SL −12% | TP1 +65% 50% | resto@72h"
+    );
+  }
+
+  const volumeSpike1hSync = await syncVolumeSpike1hConfig(prisma);
+  if (volumeSpike1hSync.updated) {
+    console.log(
+      '✅ VOLUME_SPIKE_1H: top100 turnover | +5% · vol≥12×MA10 | SL −5% | TP +95% 100% | resto@30h | BTC dump −1,5% fecha tudo | cron 1.º quarto Lisboa'
     );
   }
 

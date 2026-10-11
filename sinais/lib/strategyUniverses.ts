@@ -118,6 +118,25 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
+    strategyName: 'VOLUME_SPIKE_1H',
+
+    displayLabel: 'Volume Spike 1h',
+
+    signalTimeframes: ['1h'],
+
+    source: 'runtime_top_volume',
+
+    dataKey: 'top100_turnover_24h',
+
+    description:
+      'Top 100 Bybit turnover 24h. BUY 1h: fecho ≥+5% e vol ≥12×MA10. SL −5%. TP +95% (100%). Restante às 30h. BTC 1h < −1,5%: sem entradas + fecha abertos.',
+
+    refresh: '/api/cron/run-15m (1.º quarto de hora Lisboa)',
+
+  },
+
+  {
+
     strategyName: 'STCH15LONG',
 
     displayLabel: 'stch15long',

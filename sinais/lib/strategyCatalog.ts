@@ -18,6 +18,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'RUMERS_BOX_15M',
 
+  'VOLUME_SPIKE_1H',
+
   'RSI_VENDIDO_4H',
 
   'RSI_1H_LONG',
@@ -132,6 +134,19 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     universe:
       "Scanner 1 top 50 (EMA70 1d); BUY cruzamento PDH; SL −12%; TP1 +65% (50%); resto@72h",
+
+  },
+
+  VOLUME_SPIKE_1H: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m (1.º quarto hora)',
+
+    timeframe: '1h',
+
+    universe:
+      'Top 100 Bybit turnover 24h; BUY fecho ≥+5% e vol ≥12×MA10; SL −5%; TP +95% (100%); resto@30h; BTC dump −1,5% fecha tudo',
 
   },
 

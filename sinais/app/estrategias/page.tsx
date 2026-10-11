@@ -539,6 +539,66 @@ export default function EstrategiasPage() {
           </div>
         );
 
+      case 'VOLUME_SPIKE_1H':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Timeframe <strong>1h</strong>; só <strong>COMPRA</strong>. Universo ={' '}
+              <strong>top N Bybit por turnover 24h</strong>. Entrada: fecho ≥{' '}
+              <strong>+{(Number(p.priceMovePct ?? 0.05) * 100).toFixed(0)}%</strong> vs fecho
+              anterior e volume ≥ <strong>{Number(p.volMult ?? 12)}×</strong> a média das{' '}
+              {Number(p.volLookback ?? 10)} velas anteriores. <strong>SL −5%</strong>.{' '}
+              <strong>TP +95%</strong> fecha <strong>100%</strong> da posição; se não atingir,{' '}
+              <strong>fecho às 30h</strong>. Se <strong>BTC 1h cair &gt;{' '}
+              {(Number(p.btcDumpMaxDropPct ?? 0.015) * 100).toFixed(1)}%</strong>: bloqueia
+              entradas e fecha todos os trades abertos. Cron no 1.º quarto de hora (Lisboa).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Top N turnover', p.universeTopN ?? 100, (v) => upd({ universeTopN: v }))}
+              {numField('Mín. quote 24h (USDT)', p.minQuoteVolume ?? 500000, (v) =>
+                upd({ minQuoteVolume: v })
+              )}
+              {numField('Subida mín. fecho (%)', (p.priceMovePct ?? 0.05) * 100, (v) =>
+                upd({ priceMovePct: v / 100 }), 0.5)}
+              {numField('Múltiplo volume', p.volMult ?? 12, (v) => upd({ volMult: v }), 0.5)}
+              {numField('Lookback volume (velas)', p.volLookback ?? 10, (v) =>
+                upd({ volLookback: v })
+              )}
+              {numField('SL (%)', (p.stopLossPct ?? 0.05) * 100, (v) =>
+                upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('TP (%)', (p.tp1Pct ?? 0.95) * 100, (v) => upd({ tp1Pct: v / 100 }), 1)}
+              {numField('TP posição (%)', p.tp1Position ?? 100, (v) => upd({ tp1Position: v }))}
+              {numField('Fecho timed (horas)', p.closeAfterHours ?? 30, (v) =>
+                upd({ closeAfterHours: v })
+              )}
+              {numField('BTC dump máx. (%)', (p.btcDumpMaxDropPct ?? 0.015) * 100, (v) =>
+                upd({ btcDumpMaxDropPct: v / 100 }), 0.1)}
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <label className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={p.btcDumpFilter !== false}
+                  onChange={(e) => upd({ btcDumpFilter: e.target.checked })}
+                />
+                Filtro BTC dump
+              </label>
+              <label className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={p.btcDumpCloseOpen !== false}
+                  onChange={(e) => upd({ btcDumpCloseOpen: e.target.checked })}
+                />
+                Fechar abertos no dump
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              TP na exchange na execução; fecho timed / BTC dump via cron 15m. Exchange: Bybit por
+              defeito.
+            </p>
+          </div>
+        );
+
       case 'RSI_OVERBOUGHT_DROP_1H':
         return (
           <div className="space-y-4">

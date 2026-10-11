@@ -36,6 +36,8 @@ const ALLOWED_STRATEGIES = [
   'ROMPIMENTO_20_15M',
   "Rumer's Box (15m)",
   'RUMERS_BOX_15M',
+  'Volume Spike 1h',
+  'VOLUME_SPIKE_1H',
   'rsi_vendido LONG (4h)',
   'rsi_vendido LONG (15m)',
   'RSI_VENDIDO_4H',

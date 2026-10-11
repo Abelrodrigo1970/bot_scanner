@@ -101,6 +101,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       "Scanner 1 top 50. Só BUY cruzamento PDH. SL −12%. TP1 +65% (50%). Restante às 72h.",
   },
   {
+    strategyName: 'VOLUME_SPIKE_1H',
+    displayNames: ['Volume Spike 1h'],
+    buy: side(5, 95, 100, 0, 0, 30),
+    sell: null,
+    summary:
+      'Top 100 Bybit turnover. BUY 1h: fecho ≥+5% e vol ≥12×MA10. SL −5%. TP +95% (100%). Restante às 30h. BTC 1h < −1,5%: bloqueia entradas e fecha abertos.',
+  },
+  {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
     displayNames: ['Pivot Boss Bear 15m (4 EMA venda)'],
     buy: null,

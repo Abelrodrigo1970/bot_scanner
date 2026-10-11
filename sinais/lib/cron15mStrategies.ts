@@ -31,6 +31,7 @@ import {
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
 import { runRompimento20_15mPipeline } from '@/lib/rompimento20_15mStrategy';
 import { runRumersBox15mPipeline } from '@/lib/rumersBox15mStrategy';
+import { runVolumeSpike1hPipeline } from '@/lib/volumeSpike1hStrategy';
 import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 import { runRsi1hLongPipeline } from '@/lib/rsi1hLongStrategy';
 import { runRsiQqqPipeline } from '@/lib/rsiQqqStrategy';
@@ -351,13 +352,14 @@ export interface Cron15mAllResult {
   liquidityPoolsPro: Cron15mResult;
   rompimento20: Cron15mResult;
   rumersBox: Cron15mResult;
+  volumeSpike1h: Cron15mResult;
   rsiVendido: Cron15mResult;
   rsi1hLong: Cron15mResult;
   rsiQqq: Cron15mResult;
 }
 
 /**
- * Cron único 15m: MA Cross + Rompimento 20 + Rumer's Box + rsi_vendido + rsi_1h_long + rsi_qqq.
+ * Cron único 15m: MA Cross + Rompimento 20 + Rumer's Box + Volume Spike 1h + rsi_vendido + rsi_1h_long + rsi_qqq.
  * ENGOLFO_15M e LIQUIDITY_POOLS_PRO_15M descontinuadas (YTD 2026).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
@@ -397,6 +399,22 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
   } catch (err) {
     console.error('[Run-15m → rumers-box] Falhou:', err);
     rumersBox = { status: 'not-found' };
+  }
+
+  let volumeSpike1h: Cron15mResult;
+  try {
+    const r = await runVolumeSpike1hPipeline({ logPrefix: '[Run-15m → volume-spike-1h]' });
+    if (r.status === 'skipped') {
+      console.log(`[Run-15m → volume-spike-1h] Saltado: ${r.reason}`);
+      if (r.reason.includes('inactiva')) volumeSpike1h = { status: 'inactive' };
+      else if (r.reason.includes('não encontrada')) volumeSpike1h = { status: 'not-found' };
+      else volumeSpike1h = { status: 'done', signalsCreated: 0 };
+    } else {
+      volumeSpike1h = { status: 'done', signalsCreated: r.signalsCreated };
+    }
+  } catch (err) {
+    console.error('[Run-15m → volume-spike-1h] Falhou:', err);
+    volumeSpike1h = { status: 'not-found' };
   }
 
   let rsiVendido: Cron15mResult;
@@ -475,6 +493,7 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     liquidityPoolsPro,
     rompimento20,
     rumersBox,
+    volumeSpike1h,
     rsiVendido,
     rsi1hLong,
     rsiQqq,

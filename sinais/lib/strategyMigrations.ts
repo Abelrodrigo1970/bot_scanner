@@ -768,6 +768,83 @@ export async function syncRumersBox15mConfig(
   return { updated: false };
 }
 
+/** Volume Spike 1h — top N turnover; +5% fecho + vol≥12×MA10; SL5% / TP95% full / 30h; BTC dump −1,5%. */
+export const VOLUME_SPIKE_1H_PARAMS = {
+  universeTopN: 100,
+  minQuoteVolume: 500_000,
+  chartTimeframe: '1h',
+  priceMovePct: 0.05,
+  volMult: 12,
+  volLookback: 10,
+  stopLossPct: 0.05,
+  tp1Pct: 0.95,
+  tp1Position: 100,
+  closeAfterHours: 30,
+  btcDumpFilter: true,
+  btcDumpMaxDropPct: 0.015,
+  btcDumpCloseOpen: true,
+  autoExecuteMinStrength: 70,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: false,
+  sellEnabled: false,
+  exchange: 'bybit',
+} as const;
+
+export const VOLUME_SPIKE_1H_DISPLAY = 'Volume Spike 1h';
+export const VOLUME_SPIKE_1H_DESC =
+  'Top 100 Bybit por turnover 24h. Só COMPRA 1h: fecho ≥ +5% vs fecho ant. e volume ≥ 12× média das 10 velas anteriores. SL −5%. TP +95% (100% da posição). Fecho timed às 30h. Se BTC 1h cair >1,5%: bloqueia entradas e fecha todos os trades. Cron no 1.º quarto de hora (Lisboa).';
+
+export async function syncVolumeSpike1hConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'VOLUME_SPIKE_1H' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? stripNumericParamKeys(JSON.parse(row.params)) : {};
+  } catch {
+    p = {};
+  }
+
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit'
+      ? p.exchange
+      : VOLUME_SPIKE_1H_PARAMS.exchange;
+  const userAutoStrength = Number.isFinite(Number(p.autoExecuteMinStrength))
+    ? Number(p.autoExecuteMinStrength)
+    : VOLUME_SPIKE_1H_PARAMS.autoExecuteMinStrength;
+
+  const next = {
+    ...VOLUME_SPIKE_1H_PARAMS,
+    exchange: userExchange,
+    autoExecuteMinStrength: userAutoStrength,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== VOLUME_SPIKE_1H_DISPLAY ||
+    row.description !== VOLUME_SPIKE_1H_DESC ||
+    row.isActive !== true;
+
+  if (needParams || needMeta) {
+    await prisma.strategy.update({
+      where: { name: 'VOLUME_SPIKE_1H' },
+      data: {
+        displayName: VOLUME_SPIKE_1H_DISPLAY,
+        description: VOLUME_SPIKE_1H_DESC,
+        params: JSON.stringify(next),
+        isActive: true,
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 /** MA30/MA200 em 15m — mesma lógica de spread que MA12/MA30 (universo = scan Ma30Near6PriceBetween). */
 export const MA_CROSS_15M_STRATEGY_DESCRIPTION =
   'MA30 / MA200 em 15m: mesma lógica que MA12/MA30 (spread |rápida−lenta|/lenta). Entrada quando o spread ultrapassa o limiar na direção; modo repetir tendência com Δ mínimo opcional; TP parcial quando o preço favorece N% vs entrada; restante fecha quando o spread comprime abaixo do limiar de saída. SL 5%. Filtro SELL por distância do preço à MA200. Universo = scan MA30 entre −6% e +1% vs MA200 (1h) — menu Ma30Near6PriceBetween; actualiza esse scan antes de gerar sinais.';

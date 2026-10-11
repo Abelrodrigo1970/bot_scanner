@@ -64,6 +64,8 @@ export type ClosePositionOptions = {
   rotationClose?: boolean;
   /** Fecho por tempo (ex. Scanner 6 Short Leader 12h). */
   timedClose?: boolean;
+  /** Fecho por dump BTC (Volume Spike 1h). */
+  btcDumpClose?: boolean;
   /** Fecho de dust sem SL (qty/notional abaixo do mínimo Bybit). */
   dustClose?: boolean;
   /**
@@ -666,6 +668,7 @@ export async function closeActivePositionForSymbol(
     !options?.manual &&
     !options?.rotationClose &&
     !options?.timedClose &&
+    !options?.btcDumpClose &&
     !options?.dustClose &&
     !STRATEGY_AUTO_CLOSE_POSITIONS
   ) {
