@@ -279,6 +279,10 @@ export const DATA_SOURCE_MENU_ITEMS = [
     label: 'Scanner 8 — Bybit Stocks (%24h / 1s / EMA21 / EMA70)',
   },
   {
+    href: '/scanners/9',
+    label: 'Scanner 9 — Maior amplitude 6 meses (máx / mín / média)',
+  },
+  {
     href: '/scanners/lateral_volatile',
     label: 'Lateral — |EMA21−EMA70| < 10% (4h, 15 dias)',
   },
