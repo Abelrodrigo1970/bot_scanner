@@ -982,6 +982,67 @@ export default function EstrategiasPage() {
         );
       }
 
+      case 'EMA70_1H_S1_LONG': {
+        const pe = p as Record<string, unknown>;
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              <strong>EMA70 1h S1</strong> — só <strong>LONG</strong> no{' '}
+              <strong>Scanner 1 top {Number(pe.universeTopN ?? 50)}</strong>. Entra em{' '}
+              <strong>{String(pe.chartTimeframe ?? '1h')}</strong> quando o fecho{' '}
+              <strong>cruza a EMA{Number(pe.emaPeriod ?? 70)} para cima</strong>, com corpo da vela{' '}
+              <strong>&lt; {(Number(pe.maxEntryBodyPct ?? 0.04) * 100).toFixed(1)}%</strong>
+              {pe.btcFilter !== false ? (
+                <>
+                  {' '}e <strong>BTC 4h &lt; +{(Number(pe.btcMax4hChangePct ?? 0.01) * 100).toFixed(1)}%</strong>
+                </>
+              ) : null}
+              . TP1 +
+              {(Number(pe.tp1Pct ?? 0.25) * 100).toFixed(0)}% ({Number(pe.tp1Position ?? 50)}% pos.).
+              Restante sai quando o fecho fica{' '}
+              <strong>
+                abaixo da EMA{Number(pe.emaPeriod ?? 70)} −
+                {(Number(pe.exitBelowEmaPct ?? 0.03) * 100).toFixed(1)}%
+              </strong>
+              . SL −{(Number(pe.stopLossPct ?? 0.05) * 100).toFixed(0)}%. Cron no 1.º quarto de hora
+              (Lisboa).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {numField('Scanner 1 top N', Number(pe.universeTopN ?? 50), (v) =>
+                upd({ universeTopN: Math.min(400, Math.max(1, Math.floor(v))) })
+              )}
+              {numField('EMA período', Number(pe.emaPeriod ?? 70), (v) =>
+                upd({ emaPeriod: Math.min(300, Math.max(2, Math.floor(v))) })
+              )}
+              {numField('Saída abaixo EMA (%)', Number(pe.exitBelowEmaPct ?? 0.03) * 100, (v) =>
+                upd({ exitBelowEmaPct: Math.max(0, v) / 100 }), 0.5)}
+              {numField('SL (%) abaixo entrada', Number(pe.stopLossPct ?? 0.05) * 100, (v) =>
+                upd({ stopLossPct: v / 100 }), 0.5)}
+              {numField('TP1 (%)', Number(pe.tp1Pct ?? 0.25) * 100, (v) =>
+                upd({ tp1Pct: v / 100 }), 0.5)}
+              {numField('TP1 posição (%)', Number(pe.tp1Position ?? 50), (v) =>
+                upd({ tp1Position: Math.min(100, Math.max(1, Math.floor(v))) })
+              )}
+              {numField('Corpo máx. vela entrada (%)', Number(pe.maxEntryBodyPct ?? 0.04) * 100, (v) =>
+                upd({ maxEntryBodyPct: Math.max(0, v) / 100 }), 0.5)}
+              {numField('BTC 4h máx. (%)', Number(pe.btcMax4hChangePct ?? 0.01) * 100, (v) =>
+                upd({ btcMax4hChangePct: v / 100 }), 0.1)}
+              {numField('Força mín. auto-exec', Number(pe.autoExecuteMinStrength ?? 70), (v) =>
+                upd({ autoExecuteMinStrength: v })
+              )}
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={pe.btcFilter !== false}
+                onChange={(e) => upd({ btcFilter: e.target.checked })}
+              />
+              Filtro BTC 4h
+            </label>
+          </div>
+        );
+      }
+
       case 'RSI_QQQ':
         return (
           <div className="space-y-4">

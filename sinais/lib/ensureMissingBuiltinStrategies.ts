@@ -45,6 +45,9 @@ import {
   RSI_1H_LONG_DESCRIPTION,
   RSI_1H_LONG_DISPLAY,
   RSI_1H_LONG_PARAMS,
+  EMA70_1H_S1_LONG_DESCRIPTION,
+  EMA70_1H_S1_LONG_DISPLAY,
+  EMA70_1H_S1_LONG_PARAMS,
   RSI_QQQ_DESCRIPTION,
   RSI_QQQ_DISPLAY,
   RSI_QQQ_PARAMS,
@@ -80,6 +83,7 @@ import {
   syncVolumeSpike1hConfig,
   syncRsiVendido4hConfig,
   syncRsi1hLongConfig,
+  syncEma70_1hS1LongConfig,
   syncRsiQqqConfig,
   syncPivotBossBear15mUniverse,
   syncScanner1Top5Config,
@@ -183,6 +187,13 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     description: RSI_1H_LONG_DESCRIPTION,
     isActive: true,
     params: JSON.stringify(RSI_1H_LONG_PARAMS),
+  },
+  {
+    name: 'EMA70_1H_S1_LONG',
+    displayName: EMA70_1H_S1_LONG_DISPLAY,
+    description: EMA70_1H_S1_LONG_DESCRIPTION,
+    isActive: true,
+    params: JSON.stringify(EMA70_1H_S1_LONG_PARAMS),
   },
   {
     name: 'RSI_QQQ',
@@ -320,6 +331,13 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   if (rsi1hLongSync.updated) {
     console.log(
       '✅ RSI_1H_LONG: rsi_1h_long | Scanner 1 completo | EMA12 cross↑ + RSI azul <40 | dist EMA70d <40% | TP 19%/39% | 72h | SL −7%'
+    );
+  }
+
+  const ema70S1Sync = await syncEma70_1hS1LongConfig(prisma);
+  if (ema70S1Sync.updated) {
+    console.log(
+      '✅ EMA70_1H_S1_LONG: Scanner 1 top50 | 1h fecho cruza EMA70↑ | corpo <4% | BTC 4h <+1% | TP1 +25% 50% | resto fecho < EMA70 −3% | SL −5%'
     );
   }
 

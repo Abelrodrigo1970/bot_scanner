@@ -43,6 +43,8 @@ const ALLOWED_STRATEGIES = [
   'RSI_VENDIDO_4H',
   'rsi_1h_long',
   'RSI_1H_LONG',
+  'EMA70 1h S1',
+  'EMA70_1H_S1_LONG',
   'rsi_qqq',
   'RSI_QQQ',
 ];

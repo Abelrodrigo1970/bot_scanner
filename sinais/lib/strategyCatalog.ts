@@ -24,6 +24,8 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'RSI_1H_LONG',
 
+  'EMA70_1H_S1_LONG',
+
   'RSI_QQQ',
 
 ] as const;
@@ -173,6 +175,19 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     universe:
       'Scanner 1 completo (EMA70 1d); LONG se fecho cruza EMA12↑ e RSI azul < 40 e dist EMA70 1d < 40%; TP +19%@30% +39%@50% | resto 72h | SL −7%',
+
+  },
+
+  EMA70_1H_S1_LONG: {
+
+    cron: '15m',
+
+    cronLabel: 'Cron 15m (1.º quarto hora)',
+
+    timeframe: '1h',
+
+    universe:
+      'Scanner 1 top 50 (EMA70 1d); LONG fecho 1h cruza EMA70↑ (corpo <4%, BTC 4h <+1%); TP1 +25% (50%); resto fecho < EMA70 −3%; SL −5%',
 
   },
 

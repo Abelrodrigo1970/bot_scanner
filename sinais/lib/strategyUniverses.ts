@@ -213,6 +213,25 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
+    strategyName: 'EMA70_1H_S1_LONG',
+
+    displayLabel: 'EMA70 1h S1',
+
+    signalTimeframes: ['1h'],
+
+    source: 'universe_scan',
+
+    dataKey: 'UNIVERSE_ABOVE_EMA70_1D',
+
+    description:
+      'Scanner 1 top 50. LONG 1h: fecho cruza EMA70↑, corpo < 4%, BTC 4h < +1%. TP1 +25% (50%). Resto sai com fecho < EMA70 −3%. SL −5%.',
+
+    refresh: '/api/cron/run-15m (1.º quarto de hora Lisboa)',
+
+  },
+
+  {
+
     strategyName: 'RSI_QQQ',
 
     displayLabel: 'rsi_qqq',
@@ -237,7 +256,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 export const DATA_SOURCE_MENU_ITEMS = [
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — Acima EMA70 (1d) (Rumer\'s Box, rsi_vendido, rsi_1h_long)',
+    label: 'Scanner 1 — Acima EMA70 (1d) (Rumer\'s Box, rsi_vendido, rsi_1h_long, EMA70 1h)',
   },
   {
     href: '/scanners/2',

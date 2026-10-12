@@ -163,6 +163,14 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
       'Scanner 1 (EMA70 1d). LONG ao entrar/reentrar com fecho 4h > EMA21 + 0,8%. Sai ao sair do scanner ou fecho < EMA21. SL −8%. Sem TP. Sem sinais Sáb/Dom nem 04h/20h UTC. Cron 4em4h Lisboa.',
   },
   {
+    strategyName: 'EMA70_1H_S1_LONG',
+    displayNames: ['EMA70 1h S1'],
+    buy: side(5, 25, 50, 0, 0, 0),
+    sell: null,
+    summary:
+      'Scanner 1 top 50. Só LONG 1h: fecho cruza EMA70↑, corpo < 4%, BTC 4h < +1%. TP1 +25% (50%). Restante sai com fecho 1h < EMA70 −3%. SL −5%. Cron 1.º quarto hora Lisboa.',
+  },
+  {
     strategyName: 'RSI_QQQ',
     displayNames: ['rsi_qqq'],
     buy: side(4, 2, 50, 5, 50, 0),

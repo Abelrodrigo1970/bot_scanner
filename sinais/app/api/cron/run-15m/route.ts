@@ -4,11 +4,11 @@ import { prisma } from '@/lib/db';
 import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrategies';
 
 /**
- * Cron 15m: MA Cross + Rompimento 20 + Rumer's Box + Volume Spike 1h + rsi_vendido (4em4h) + rsi_1h_long + rsi_qqq.
+ * Cron 15m: MA Cross + Rompimento 20 + Rumer's Box + Volume Spike 1h + rsi_vendido (4em4h) + rsi_1h_long + EMA70 1h S1 + rsi_qqq.
  */
 async function run15mInBackground(now: Date): Promise<void> {
   console.log(
-    '[Run-15m BG] Iniciando MA Cross + rompimento20 + rumers-box + volume-spike-1h + rsi_vendido + rsi_1h_long + rsi_qqq...'
+    '[Run-15m BG] Iniciando MA Cross + rompimento20 + rumers-box + volume-spike-1h + rsi_vendido + rsi_1h_long + ema70_1h_s1 + rsi_qqq...'
   );
 
   try {
@@ -20,6 +20,7 @@ async function run15mInBackground(now: Date): Promise<void> {
     const spike = result.volumeSpike1h;
     const rsiV = result.rsiVendido;
     const rsi1h = result.rsi1hLong;
+    const ema70S1 = result.ema70_1hS1Long;
     const rsiQqq = result.rsiQqq;
     console.log(
       `[Run-15m BG] MA Cross 12×30 -> ${ma.status}` +
@@ -48,6 +49,10 @@ async function run15mInBackground(now: Date): Promise<void> {
     console.log(
       `[Run-15m BG] rsi_1h_long -> ${rsi1h.status}` +
         (typeof rsi1h.signalsCreated === 'number' ? ` (${rsi1h.signalsCreated} sinais)` : '')
+    );
+    console.log(
+      `[Run-15m BG] ema70_1h_s1 -> ${ema70S1.status}` +
+        (typeof ema70S1.signalsCreated === 'number' ? ` (${ema70S1.signalsCreated} sinais)` : '')
     );
     console.log(
       `[Run-15m BG] rsi_qqq -> ${rsiQqq.status}` +
@@ -80,7 +85,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message:
-        "Cron 15m (MA Cross + Rompimento 20 + Rumer's Box + Volume Spike 1h + rsi_vendido + rsi_1h_long + rsi_qqq) iniciado em background",
+        "Cron 15m (MA Cross + Rompimento 20 + Rumer's Box + Volume Spike 1h + rsi_vendido + rsi_1h_long + EMA70 1h S1 + rsi_qqq) iniciado em background",
       executedAt: now.toISOString(),
     });
   } catch (error) {

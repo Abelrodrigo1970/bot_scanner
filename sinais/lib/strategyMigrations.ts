@@ -1468,6 +1468,81 @@ export const RSI_1H_LONG_PARAMS = {
   exchange: 'bybit',
 } as const;
 
+export const EMA70_1H_S1_LONG_DISPLAY = 'EMA70 1h S1';
+
+export const EMA70_1H_S1_LONG_DESCRIPTION =
+  'Scanner 1 top 50 (EMA70 1d). Só LONG 1h quando o fecho cruza a EMA70 1h para cima, com corpo da vela < 4% e BTC 4h < +1%. TP1 +25% (50% da posição). Restante sai quando o fecho 1h fica abaixo da EMA70 −3%. SL −5%. Corre no 1.º quarto de hora (Lisboa).';
+
+export const EMA70_1H_S1_LONG_PARAMS = {
+  universeTopN: 50,
+  chartTimeframe: '1h',
+  emaPeriod: 70,
+  exitBelowEmaPct: 0.03,
+  stopLossPct: 0.05,
+  tp1Pct: 0.25,
+  tp1Position: 50,
+  maxEntryBodyPct: 0.04,
+  btcFilter: true,
+  btcMax4hChangePct: 0.01,
+  autoExecuteMinStrength: 70,
+  allowBuy: true,
+  buyEnabled: true,
+  allowSell: false,
+  sellEnabled: false,
+  exchange: 'bybit',
+} as const;
+
+/** Garante registo/descrição da estratégia EMA70 1h S1 (LONG). */
+export async function syncEma70_1hS1LongConfig(
+  prisma: PrismaClient
+): Promise<{ updated: boolean }> {
+  const row = await prisma.strategy.findUnique({
+    where: { name: 'EMA70_1H_S1_LONG' },
+    select: { params: true, description: true, displayName: true, isActive: true },
+  });
+  if (!row) return { updated: false };
+
+  let p: Record<string, unknown> = {};
+  try {
+    p = row.params ? stripNumericParamKeys(JSON.parse(row.params)) : {};
+  } catch {
+    p = {};
+  }
+
+  const userExchange =
+    p.exchange === 'binance' || p.exchange === 'bybit'
+      ? p.exchange
+      : EMA70_1H_S1_LONG_PARAMS.exchange;
+  const userAutoStrength = Number.isFinite(Number(p.autoExecuteMinStrength))
+    ? Number(p.autoExecuteMinStrength)
+    : EMA70_1H_S1_LONG_PARAMS.autoExecuteMinStrength;
+
+  const next = {
+    ...EMA70_1H_S1_LONG_PARAMS,
+    exchange: userExchange,
+    autoExecuteMinStrength: userAutoStrength,
+  };
+  const needParams = JSON.stringify(next) !== JSON.stringify(p);
+  const needMeta =
+    row.displayName !== EMA70_1H_S1_LONG_DISPLAY ||
+    row.description !== EMA70_1H_S1_LONG_DESCRIPTION ||
+    row.isActive !== true;
+
+  if (needParams || needMeta) {
+    await prisma.strategy.update({
+      where: { name: 'EMA70_1H_S1_LONG' },
+      data: {
+        displayName: EMA70_1H_S1_LONG_DISPLAY,
+        description: EMA70_1H_S1_LONG_DESCRIPTION,
+        params: JSON.stringify(next),
+        isActive: true,
+      },
+    });
+    return { updated: true };
+  }
+  return { updated: false };
+}
+
 export const RSI_QQQ_DISPLAY = 'rsi_qqq';
 
 export const RSI_QQQ_DESCRIPTION =

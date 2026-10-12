@@ -34,6 +34,7 @@ import { runRumersBox15mPipeline } from '@/lib/rumersBox15mStrategy';
 import { runVolumeSpike1hPipeline } from '@/lib/volumeSpike1hStrategy';
 import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 import { runRsi1hLongPipeline } from '@/lib/rsi1hLongStrategy';
+import { runEma70_1hS1LongPipeline } from '@/lib/ema70_1hS1LongStrategy';
 import { runRsiQqqPipeline } from '@/lib/rsiQqqStrategy';
 
 const TIMEFRAME_15M = '15m' as const;
@@ -355,11 +356,12 @@ export interface Cron15mAllResult {
   volumeSpike1h: Cron15mResult;
   rsiVendido: Cron15mResult;
   rsi1hLong: Cron15mResult;
+  ema70_1hS1Long: Cron15mResult;
   rsiQqq: Cron15mResult;
 }
 
 /**
- * Cron único 15m: MA Cross + Rompimento 20 + Rumer's Box + Volume Spike 1h + rsi_vendido + rsi_1h_long + rsi_qqq.
+ * Cron único 15m: MA Cross + Rompimento 20 + Rumer's Box + Volume Spike 1h + rsi_vendido + rsi_1h_long + EMA70 1h S1 + rsi_qqq.
  * ENGOLFO_15M e LIQUIDITY_POOLS_PRO_15M descontinuadas (YTD 2026).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
@@ -449,6 +451,22 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     rsi1hLong = { status: 'not-found' };
   }
 
+  let ema70_1hS1Long: Cron15mResult;
+  try {
+    const r = await runEma70_1hS1LongPipeline({ logPrefix: '[Run-15m → ema70_1h_s1]' });
+    if (r.status === 'skipped') {
+      console.log(`[Run-15m → ema70_1h_s1] Saltado: ${r.reason}`);
+      if (r.reason.includes('inactiva')) ema70_1hS1Long = { status: 'inactive' };
+      else if (r.reason.includes('não encontrada')) ema70_1hS1Long = { status: 'not-found' };
+      else ema70_1hS1Long = { status: 'done', signalsCreated: 0 };
+    } else {
+      ema70_1hS1Long = { status: 'done', signalsCreated: r.signalsCreated };
+    }
+  } catch (err) {
+    console.error('[Run-15m → ema70_1h_s1] Falhou:', err);
+    ema70_1hS1Long = { status: 'not-found' };
+  }
+
   let rsiQqq: Cron15mResult;
   try {
     const r = await runRsiQqqPipeline({ logPrefix: '[Run-15m → rsi_qqq]' });
@@ -496,6 +514,7 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     volumeSpike1h,
     rsiVendido,
     rsi1hLong,
+    ema70_1hS1Long,
     rsiQqq,
   };
 }
