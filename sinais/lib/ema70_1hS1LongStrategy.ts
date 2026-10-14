@@ -173,8 +173,14 @@ export async function runEma70_1hS1LongPipeline(options?: {
       reason: 'Estratégia EMA70_1H_S1_LONG não encontrada (correr seed/sync)',
     };
   }
-  if (!strategy.isActive) {
-    return { status: 'skipped', reason: 'Estratégia inactiva' };
+  const windDown = !strategy.isActive;
+  if (windDown) {
+    const inProgress = await prisma.signal.count({
+      where: { strategyId: strategy.id, direction: 'BUY', status: 'IN_PROGRESS' },
+    });
+    if (inProgress === 0) {
+      return { status: 'skipped', reason: 'Estratégia descontinuada (sem posições abertas)' };
+    }
   }
 
   if (!options?.force) {
@@ -183,7 +189,7 @@ export async function runEma70_1hS1LongPipeline(options?: {
   }
 
   const params = parseParams(strategy.params);
-  const allowBuy = params.allowBuy !== false && params.buyEnabled !== false;
+  const allowBuy = !windDown && params.allowBuy !== false && params.buyEnabled !== false;
 
   const chartTimeframe = String(params.chartTimeframe ?? '1h');
   const topN = Math.max(1, Math.floor(Number(params.universeTopN ?? EMA70_1H_S1_LONG_TOP_N_DEFAULT)));

@@ -665,7 +665,8 @@ export async function syncRompimento20_15mConfig(
   const needParams = JSON.stringify(next) !== JSON.stringify(p);
   const needMeta =
     row.displayName !== ROMPIMENTO_20_15M_DISPLAY ||
-    row.description !== ROMPIMENTO_20_15M_DESC;
+    row.description !== ROMPIMENTO_20_15M_DESC ||
+    row.isActive !== false;
 
   if (needParams || needMeta) {
     await prisma.strategy.update({
@@ -674,6 +675,7 @@ export async function syncRompimento20_15mConfig(
         displayName: ROMPIMENTO_20_15M_DISPLAY,
         description: ROMPIMENTO_20_15M_DESC,
         params: JSON.stringify(next),
+        isActive: false,
       },
     });
     return { updated: true };
@@ -828,7 +830,7 @@ export async function syncVolumeSpike1hConfig(
   const needMeta =
     row.displayName !== VOLUME_SPIKE_1H_DISPLAY ||
     row.description !== VOLUME_SPIKE_1H_DESC ||
-    row.isActive !== true;
+    row.isActive !== false;
 
   if (needParams || needMeta) {
     await prisma.strategy.update({
@@ -837,7 +839,7 @@ export async function syncVolumeSpike1hConfig(
         displayName: VOLUME_SPIKE_1H_DISPLAY,
         description: VOLUME_SPIKE_1H_DESC,
         params: JSON.stringify(next),
-        isActive: true,
+        isActive: false,
       },
     });
     return { updated: true };
@@ -1526,7 +1528,7 @@ export async function syncEma70_1hS1LongConfig(
   const needMeta =
     row.displayName !== EMA70_1H_S1_LONG_DISPLAY ||
     row.description !== EMA70_1H_S1_LONG_DESCRIPTION ||
-    row.isActive !== true;
+    row.isActive !== false;
 
   if (needParams || needMeta) {
     await prisma.strategy.update({
@@ -1535,7 +1537,7 @@ export async function syncEma70_1hS1LongConfig(
         displayName: EMA70_1H_S1_LONG_DISPLAY,
         description: EMA70_1H_S1_LONG_DESCRIPTION,
         params: JSON.stringify(next),
-        isActive: true,
+        isActive: false,
       },
     });
     return { updated: true };

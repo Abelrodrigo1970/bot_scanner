@@ -80,25 +80,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
-    strategyName: 'ROMPIMENTO_20_15M',
-
-    displayLabel: 'Rompimento 20 (15m)',
-
-    signalTimeframes: ['15m'],
-
-    source: 'universe_scan',
-
-    dataKey: 'UNIVERSE_ABOVE_EMA70_1D',
-
-    description:
-      'Scanner 1 top 50. LONG 15m: fecho > máximo das 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante 24h.',
-
-    refresh: '/api/cron/run-universe-scans (cada 4 h)',
-
-  },
-
-  {
-
     strategyName: 'RUMERS_BOX_15M',
 
     displayLabel: "Rumer's Box (15m)",
@@ -113,25 +94,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
       "Scanner 1 top 50. Só BUY: cruzamento PDH (vela ant. dentro da caixa). SL −12%. TP1 +65% (50%). Restante às 72h.",
 
     refresh: '/api/cron/run-15m (cada 15 min)',
-
-  },
-
-  {
-
-    strategyName: 'VOLUME_SPIKE_1H',
-
-    displayLabel: 'Volume Spike 1h',
-
-    signalTimeframes: ['1h'],
-
-    source: 'runtime_top_volume',
-
-    dataKey: 'top100_turnover_24h',
-
-    description:
-      'Top 100 Bybit turnover 24h. BUY 1h: fecho ≥+5% e vol ≥12×MA10. SL −5%. TP +95% (100%). Restante às 30h. BTC 1h < −1,5%: sem entradas + fecha abertos.',
-
-    refresh: '/api/cron/run-15m (1.º quarto de hora Lisboa)',
 
   },
 
@@ -213,25 +175,6 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 
   {
 
-    strategyName: 'EMA70_1H_S1_LONG',
-
-    displayLabel: 'EMA70 1h S1',
-
-    signalTimeframes: ['1h'],
-
-    source: 'universe_scan',
-
-    dataKey: 'UNIVERSE_ABOVE_EMA70_1D',
-
-    description:
-      'Scanner 1 top 50. LONG 1h: fecho cruza EMA70↑, corpo < 4%, BTC 4h < +1%. TP1 +25% (50%). Resto sai com fecho < EMA70 −3%. SL −5%.',
-
-    refresh: '/api/cron/run-15m (1.º quarto de hora Lisboa)',
-
-  },
-
-  {
-
     strategyName: 'RSI_QQQ',
 
     displayLabel: 'rsi_qqq',
@@ -256,7 +199,7 @@ export const ACTIVE_STRATEGY_UNIVERSES: StrategyUniverseSpec[] = [
 export const DATA_SOURCE_MENU_ITEMS = [
   {
     href: '/scanners/1',
-    label: 'Scanner 1 — Acima EMA70 (1d) (Rumer\'s Box, rsi_vendido, rsi_1h_long, EMA70 1h)',
+    label: 'Scanner 1 — Acima EMA70 (1d) (Rumer\'s Box, rsi_vendido, rsi_1h_long)',
   },
   {
     href: '/scanners/2',

@@ -470,6 +470,9 @@ export default function EstrategiasPage() {
       case 'ROMPIMENTO_20_15M':
         return (
           <div className="space-y-4">
+            <p className="text-xs text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-md px-3 py-2">
+              <strong>Descontinuada</strong> (YTD 2025–2026 negativa). Mantida só para histórico.
+            </p>
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Timeframe <strong>15m</strong>; só <strong>COMPRA</strong>. Universo = <strong>Scanner 1 top N</strong>{' '}
               (acima EMA70 1d). Entrada quando o <strong>fecho</strong> da última vela fechada fica{' '}
@@ -542,6 +545,9 @@ export default function EstrategiasPage() {
       case 'VOLUME_SPIKE_1H':
         return (
           <div className="space-y-4">
+            <p className="text-xs text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-md px-3 py-2">
+              <strong>Descontinuada</strong> (2025–2026 ≈ break-even). Mantida só para histórico.
+            </p>
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Timeframe <strong>1h</strong>; só <strong>COMPRA</strong>. Universo ={' '}
               <strong>top N Bybit por turnover 24h</strong>. Entrada: fecho ≥{' '}
@@ -986,6 +992,9 @@ export default function EstrategiasPage() {
         const pe = p as Record<string, unknown>;
         return (
           <div className="space-y-4">
+            <p className="text-xs text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-md px-3 py-2">
+              <strong>Descontinuada</strong> (2025–2026 ≈ break-even). Sem novas entradas; posições abertas continuam geridas até fechar.
+            </p>
             <p className="text-xs text-gray-600 dark:text-gray-400">
               <strong>EMA70 1h S1</strong> — só <strong>LONG</strong> no{' '}
               <strong>Scanner 1 top {Number(pe.universeTopN ?? 50)}</strong>. Entra em{' '}

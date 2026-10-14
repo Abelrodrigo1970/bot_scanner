@@ -9,6 +9,7 @@ export {
 import {
   DISCONTINUED_STRATEGY_NAMES,
   DEPRECATED_TOP_ROTATION_NAMES,
+  WIND_DOWN_STRATEGY_NAMES,
 } from './strategyNameLists';
 
 import {
@@ -192,7 +193,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'EMA70_1H_S1_LONG',
     displayName: EMA70_1H_S1_LONG_DISPLAY,
     description: EMA70_1H_S1_LONG_DESCRIPTION,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(EMA70_1H_S1_LONG_PARAMS),
   },
   {
@@ -234,7 +235,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'ROMPIMENTO_20_15M',
     displayName: ROMPIMENTO_20_15M_DISPLAY,
     description: ROMPIMENTO_20_15M_DESC,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(ROMPIMENTO_20_15M_PARAMS),
   },
   {
@@ -248,7 +249,7 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
     name: 'VOLUME_SPIKE_1H',
     displayName: VOLUME_SPIKE_1H_DISPLAY,
     description: VOLUME_SPIKE_1H_DESC,
-    isActive: true,
+    isActive: false,
     params: JSON.stringify(VOLUME_SPIKE_1H_PARAMS),
   },
 ] as const;
@@ -301,9 +302,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const rompimentoSync = await syncRompimento20_15mConfig(prisma);
   if (rompimentoSync.updated) {
-    console.log(
-      '✅ ROMPIMENTO_20_15M: Rompimento 20 | fecho > HH20 | filtro ≤30% acima EMA70 | Stoch K<30 (50/40/11) | LONG 15m | Scanner 1 top 50 | SL −5% | TP1 +9% 50% | 24h'
-    );
+    console.log('⏸️ ROMPIMENTO_20_15M descontinuada (YTD 2025–2026 negativa)');
   }
 
   const rumersBoxSync = await syncRumersBox15mConfig(prisma);
@@ -315,9 +314,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
 
   const volumeSpike1hSync = await syncVolumeSpike1hConfig(prisma);
   if (volumeSpike1hSync.updated) {
-    console.log(
-      '✅ VOLUME_SPIKE_1H: top100 turnover | +5% · vol≥12×MA10 | SL −5% | TP +95% 100% | resto@30h | BTC dump −1,5% fecha tudo | cron 1.º quarto Lisboa'
-    );
+    console.log('⏸️ VOLUME_SPIKE_1H descontinuada (2025–2026 ≈ break-even)');
   }
 
   const rsiVendidoSync = await syncRsiVendido4hConfig(prisma);
@@ -337,7 +334,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   const ema70S1Sync = await syncEma70_1hS1LongConfig(prisma);
   if (ema70S1Sync.updated) {
     console.log(
-      '✅ EMA70_1H_S1_LONG: Scanner 1 top50 | 1h fecho cruza EMA70↑ | corpo <4% | BTC 4h <+1% | TP1 +25% 50% | resto fecho < EMA70 −3% | SL −5%'
+      '⏸️ EMA70_1H_S1_LONG descontinuada (2025–2026 ≈ break-even) — sem entradas, posições abertas geridas até fechar'
     );
   }
 
@@ -414,9 +411,10 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
     console.log(`⏸️ ${discontinued.count} estratégias descontinuadas forçadas inactivas`);
   }
 
+  const windDown = new Set<string>(WIND_DOWN_STRATEGY_NAMES);
   const expiredDiscontinued = await prisma.signal.updateMany({
     where: {
-      strategy: { name: { in: [...DISCONTINUED_STRATEGY_NAMES] } },
+      strategy: { name: { in: DISCONTINUED_STRATEGY_NAMES.filter((n) => !windDown.has(n)) } },
       status: { in: ['NEW', 'IN_PROGRESS'] },
     },
     data: { status: 'EXPIRED' },
@@ -424,6 +422,19 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   if (expiredDiscontinued.count > 0) {
     console.log(
       `⏸️ ${expiredDiscontinued.count} sinais NEW/IN_PROGRESS de estratégias descontinuadas → EXPIRED (fechar Bybit manualmente se necessário)`
+    );
+  }
+
+  const expiredWindDown = await prisma.signal.updateMany({
+    where: {
+      strategy: { name: { in: [...WIND_DOWN_STRATEGY_NAMES] } },
+      status: 'NEW',
+    },
+    data: { status: 'EXPIRED' },
+  });
+  if (expiredWindDown.count > 0) {
+    console.log(
+      `⏸️ ${expiredWindDown.count} sinais NEW de estratégias em fecho gradual → EXPIRED (IN_PROGRESS continuam geridos)`
     );
   }
 }

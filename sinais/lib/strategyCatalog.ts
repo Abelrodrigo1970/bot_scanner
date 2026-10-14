@@ -14,17 +14,11 @@ export const ACTIVE_STRATEGY_DISPLAY_ORDER = [
 
   'MA_CROSS_12X21_S2',
 
-  'ROMPIMENTO_20_15M',
-
   'RUMERS_BOX_15M',
-
-  'VOLUME_SPIKE_1H',
 
   'RSI_VENDIDO_4H',
 
   'RSI_1H_LONG',
-
-  'EMA70_1H_S1_LONG',
 
   'RSI_QQQ',
 
@@ -122,7 +116,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
 
     timeframe: '15m',
 
-    universe: 'Scanner 1 top 50 (EMA70 1d); fecho > máx. 20 velas; EMA70; Stoch K<30; LONG SL −5% | TP +9% 50%',
+    universe: 'DESCONTINUADA — YTD 2025–2026 negativa',
 
   },
 
@@ -148,7 +142,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '1h',
 
     universe:
-      'Top 100 Bybit turnover 24h; BUY fecho ≥+5% e vol ≥12×MA10; SL −5%; TP +95% (100%); resto@30h; BTC dump −1,5% fecha tudo',
+      'DESCONTINUADA — 2025–2026 ≈ break-even',
 
   },
 
@@ -187,7 +181,7 @@ export const STRATEGY_CATALOG: Record<string, StrategyCatalogEntry> = {
     timeframe: '1h',
 
     universe:
-      'Scanner 1 top 50 (EMA70 1d); LONG fecho 1h cruza EMA70↑ (corpo <4%, BTC 4h <+1%); TP1 +25% (50%); resto fecho < EMA70 −3%; SL −5%',
+      'DESCONTINUADA — 2025–2026 ≈ break-even; sem entradas, posições abertas geridas até fechar',
 
   },
 

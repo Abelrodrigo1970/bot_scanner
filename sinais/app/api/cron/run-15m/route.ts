@@ -4,20 +4,18 @@ import { prisma } from '@/lib/db';
 import { ensureMissingBuiltinStrategies } from '@/lib/ensureMissingBuiltinStrategies';
 
 /**
- * Cron 15m: MA Cross + Rompimento 20 + Rumer's Box + Volume Spike 1h + rsi_vendido (4em4h) + rsi_1h_long + EMA70 1h S1 + rsi_qqq.
+ * Cron 15m: MA Cross + Rumer's Box + rsi_vendido (4em4h) + rsi_1h_long + rsi_qqq (+ EMA70 1h S1 só saídas, descontinuada).
  */
 async function run15mInBackground(now: Date): Promise<void> {
   console.log(
-    '[Run-15m BG] Iniciando MA Cross + rompimento20 + rumers-box + volume-spike-1h + rsi_vendido + rsi_1h_long + ema70_1h_s1 + rsi_qqq...'
+    '[Run-15m BG] Iniciando MA Cross + rumers-box + rsi_vendido + rsi_1h_long + ema70_1h_s1 + rsi_qqq...'
   );
 
   try {
     const result = await run15mStrategiesPipeline(now);
     const ma = result.maCross;
     const ma21 = result.maCross12x21S2;
-    const romp = result.rompimento20;
     const rumers = result.rumersBox;
-    const spike = result.volumeSpike1h;
     const rsiV = result.rsiVendido;
     const rsi1h = result.rsi1hLong;
     const ema70S1 = result.ema70_1hS1Long;
@@ -31,16 +29,8 @@ async function run15mInBackground(now: Date): Promise<void> {
         (typeof ma21.signalsCreated === 'number' ? ` (${ma21.signalsCreated} sinais)` : '')
     );
     console.log(
-      `[Run-15m BG] rompimento20 -> ${romp.status}` +
-        (typeof romp.signalsCreated === 'number' ? ` (${romp.signalsCreated} sinais)` : '')
-    );
-    console.log(
       `[Run-15m BG] rumers-box -> ${rumers.status}` +
         (typeof rumers.signalsCreated === 'number' ? ` (${rumers.signalsCreated} sinais)` : '')
-    );
-    console.log(
-      `[Run-15m BG] volume-spike-1h -> ${spike.status}` +
-        (typeof spike.signalsCreated === 'number' ? ` (${spike.signalsCreated} sinais)` : '')
     );
     console.log(
       `[Run-15m BG] rsi_vendido -> ${rsiV.status}` +
@@ -85,7 +75,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message:
-        "Cron 15m (MA Cross + Rompimento 20 + Rumer's Box + Volume Spike 1h + rsi_vendido + rsi_1h_long + EMA70 1h S1 + rsi_qqq) iniciado em background",
+        "Cron 15m (MA Cross + Rumer's Box + rsi_vendido + rsi_1h_long + rsi_qqq; EMA70 1h S1 só saídas) iniciado em background",
       executedAt: now.toISOString(),
     });
   } catch (error) {

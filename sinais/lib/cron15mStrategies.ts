@@ -29,9 +29,7 @@ import {
   syncBybitMissingStopLosses,
 } from '@/lib/tradingExecutor';
 import { getAutoExecuteMinStrength } from '@/lib/binanceConfig';
-import { runRompimento20_15mPipeline } from '@/lib/rompimento20_15mStrategy';
 import { runRumersBox15mPipeline } from '@/lib/rumersBox15mStrategy';
-import { runVolumeSpike1hPipeline } from '@/lib/volumeSpike1hStrategy';
 import { runRsiVendidoPipeline } from '@/lib/rsiVendidoStrategy';
 import { runRsi1hLongPipeline } from '@/lib/rsi1hLongStrategy';
 import { runEma70_1hS1LongPipeline } from '@/lib/ema70_1hS1LongStrategy';
@@ -361,31 +359,18 @@ export interface Cron15mAllResult {
 }
 
 /**
- * Cron único 15m: MA Cross + Rompimento 20 + Rumer's Box + Volume Spike 1h + rsi_vendido + rsi_1h_long + EMA70 1h S1 + rsi_qqq.
- * ENGOLFO_15M e LIQUIDITY_POOLS_PRO_15M descontinuadas (YTD 2026).
+ * Cron único 15m: MA Cross + Rumer's Box + rsi_vendido + rsi_1h_long + rsi_qqq.
+ * ENGOLFO_15M, LIQUIDITY_POOLS_PRO_15M, ROMPIMENTO_20_15M e VOLUME_SPIKE_1H descontinuadas.
+ * EMA70_1H_S1_LONG descontinuada em fecho gradual (só saídas das posições abertas).
  */
 export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<Cron15mAllResult> {
   const liquidityPoolsPro: Cron15mResult = { status: 'inactive' };
   const engolfo: Cron15mResult = { status: 'inactive' };
+  const rompimento20: Cron15mResult = { status: 'inactive' };
+  const volumeSpike1h: Cron15mResult = { status: 'inactive' };
 
   const maCross = await runMaCross15mPipeline(now);
   const maCross12x21S2 = await runMaCross12x21Scanner2Pipeline(now);
-
-  let rompimento20: Cron15mResult;
-  try {
-    const r = await runRompimento20_15mPipeline({ logPrefix: '[Run-15m → rompimento20]' });
-    if (r.status === 'skipped') {
-      console.log(`[Run-15m → rompimento20] Saltado: ${r.reason}`);
-      if (r.reason.includes('inactiva')) rompimento20 = { status: 'inactive' };
-      else if (r.reason.includes('não encontrada')) rompimento20 = { status: 'not-found' };
-      else rompimento20 = { status: 'done', signalsCreated: 0 };
-    } else {
-      rompimento20 = { status: 'done', signalsCreated: r.signalsCreated };
-    }
-  } catch (err) {
-    console.error('[Run-15m → rompimento20] Falhou:', err);
-    rompimento20 = { status: 'not-found' };
-  }
 
   let rumersBox: Cron15mResult;
   try {
@@ -401,22 +386,6 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
   } catch (err) {
     console.error('[Run-15m → rumers-box] Falhou:', err);
     rumersBox = { status: 'not-found' };
-  }
-
-  let volumeSpike1h: Cron15mResult;
-  try {
-    const r = await runVolumeSpike1hPipeline({ logPrefix: '[Run-15m → volume-spike-1h]' });
-    if (r.status === 'skipped') {
-      console.log(`[Run-15m → volume-spike-1h] Saltado: ${r.reason}`);
-      if (r.reason.includes('inactiva')) volumeSpike1h = { status: 'inactive' };
-      else if (r.reason.includes('não encontrada')) volumeSpike1h = { status: 'not-found' };
-      else volumeSpike1h = { status: 'done', signalsCreated: 0 };
-    } else {
-      volumeSpike1h = { status: 'done', signalsCreated: r.signalsCreated };
-    }
-  } catch (err) {
-    console.error('[Run-15m → volume-spike-1h] Falhou:', err);
-    volumeSpike1h = { status: 'not-found' };
   }
 
   let rsiVendido: Cron15mResult;
@@ -456,7 +425,7 @@ export async function run15mStrategiesPipeline(now: Date = new Date()): Promise<
     const r = await runEma70_1hS1LongPipeline({ logPrefix: '[Run-15m → ema70_1h_s1]' });
     if (r.status === 'skipped') {
       console.log(`[Run-15m → ema70_1h_s1] Saltado: ${r.reason}`);
-      if (r.reason.includes('inactiva')) ema70_1hS1Long = { status: 'inactive' };
+      if (r.reason.includes('descontinuada')) ema70_1hS1Long = { status: 'inactive' };
       else if (r.reason.includes('não encontrada')) ema70_1hS1Long = { status: 'not-found' };
       else ema70_1hS1Long = { status: 'done', signalsCreated: 0 };
     } else {

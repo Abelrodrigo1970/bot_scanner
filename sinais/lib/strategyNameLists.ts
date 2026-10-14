@@ -40,7 +40,16 @@ export const DISCONTINUED_STRATEGY_NAMES = [
   'SWING_ANCHORED_VWAP_15M',
   'ENGOLFO_15M',
   'LIQUIDITY_POOLS_PRO_15M',
+  'VOLUME_SPIKE_1H',
+  'EMA70_1H_S1_LONG',
+  'ROMPIMENTO_20_15M',
 ] as const;
+
+/**
+ * Descontinuadas em fecho gradual: sem novas entradas, mas o cron continua a gerir as
+ * posições IN_PROGRESS (saídas da estratégia) até fecharem; só os sinais NEW expiram.
+ */
+export const WIND_DOWN_STRATEGY_NAMES = ['EMA70_1H_S1_LONG'] as const;
 
 /** Rotações Top descontinuadas neste projeto. */
 export const DEPRECATED_TOP_ROTATION_NAMES = [

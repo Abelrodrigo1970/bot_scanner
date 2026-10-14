@@ -90,7 +90,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 9, 50, 0, 0, 24),
     sell: null,
     summary:
-      'Scanner 1 top 50. Só COMPRA. Fecho > máx. 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante às 24h.',
+      'DESCONTINUADA. Scanner 1 top 50. Só COMPRA. Fecho > máx. 20 velas anteriores. Sem sinal se preço >30% acima EMA70. Stoch K 50/40/11: %K < 30. SL −5%. TP1 +9% (50%). Restante às 24h.',
   },
   {
     strategyName: 'RUMERS_BOX_15M',
@@ -106,7 +106,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 95, 100, 0, 0, 30),
     sell: null,
     summary:
-      'Top 100 Bybit turnover. BUY 1h: fecho ≥+5% e vol ≥12×MA10. SL −5%. TP +95% (100%). Restante às 30h. BTC 1h < −1,5%: bloqueia entradas e fecha abertos.',
+      'DESCONTINUADA. Top 100 Bybit turnover. BUY 1h: fecho ≥+5% e vol ≥12×MA10. SL −5%. TP +95% (100%). Restante às 30h. BTC 1h < −1,5%: bloqueia entradas e fecha abertos.',
   },
   {
     strategyName: 'PIVOT_BOSS_BEAR_15M',
@@ -168,7 +168,7 @@ export const STRATEGY_SIMULATION_PROFILES: StrategySimulationProfile[] = [
     buy: side(5, 25, 50, 0, 0, 0),
     sell: null,
     summary:
-      'Scanner 1 top 50. Só LONG 1h: fecho cruza EMA70↑, corpo < 4%, BTC 4h < +1%. TP1 +25% (50%). Restante sai com fecho 1h < EMA70 −3%. SL −5%. Cron 1.º quarto hora Lisboa.',
+      'DESCONTINUADA. Scanner 1 top 50. Só LONG 1h: fecho cruza EMA70↑, corpo < 4%, BTC 4h < +1%. TP1 +25% (50%). Restante sai com fecho 1h < EMA70 −3%. SL −5%. Cron 1.º quarto hora Lisboa.',
   },
   {
     strategyName: 'RSI_QQQ',
