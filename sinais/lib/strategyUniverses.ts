@@ -226,6 +226,10 @@ export const DATA_SOURCE_MENU_ITEMS = [
     label: 'Scanner 9 — Maior amplitude 6 meses (máx / mín / média)',
   },
   {
+    href: '/scanners/10',
+    label: 'Scanner 10 — Caça-rali (low 30d + stack 4H EMA/RSI)',
+  },
+  {
     href: '/scanners/lateral_volatile',
     label: 'Lateral — |EMA21−EMA70| < 10% (4h, 15 dias)',
   },

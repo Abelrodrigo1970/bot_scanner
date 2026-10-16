@@ -40,6 +40,9 @@ export const UNIVERSE_CODE_SCANNER_8_BYBIT_STOCKS = 'UNIVERSE_BYBIT_STOCKS_1D' a
 /** Scanner 9 — top 30 maior amplitude máx/mín 6 meses (1D; UI dedicada /scanners/9). */
 export const UNIVERSE_CODE_SCANNER_9_RANGE_6M = 'UNIVERSE_RANGE_6M_1D' as const;
 
+/** Scanner 10 — caça-rali: low 90d recente + stack 4H EMA/RSI (UI dedicada /scanners/10). */
+export const UNIVERSE_CODE_SCANNER_10_RALLY = 'UNIVERSE_RALLY_IGNITION_4H' as const;
+
 /** rsi_vendido — RSI(14) 4h abaixo de 32. */
 export const UNIVERSE_CODE_RSI_VENDIDO = 'UNIVERSE_RSI_BELOW_32_4H' as const;
 
@@ -329,6 +332,12 @@ export const BUILTIN_UNIVERSE_META: Record<
       'Top 30 perps USDT com maior diferença entre máxima e mínima dos últimos 6 meses (1D). Preço actual, % vs máx., % vs mín. e média 6m. Actualização manual na página.',
     strategyNames: '— (screener; sem estratégia ligada)',
   },
+  UNIVERSE_RALLY_IGNITION_4H: {
+    displayName: 'Scanner 10 — Caça-rali (ignição)',
+    description:
+      'Perps USDT a 0–15 dias de um mínimo de 30d (queda ≥12%), com stack 4H (preço > EMA21, EMA12 > EMA21, RSI ≥ 50). Confirma 1D (verde, vol ≥2×). Rejeita bounces abaixo da EMA21. Actualização manual na página.',
+    strategyNames: '— (screener; sem estratégia ligada)',
+  },
   UNIVERSE_RSI_BELOW_32_4H: {
     displayName: 'rsi_vendido — RSI < 32 (4h, legado)',
     description:
@@ -368,6 +377,7 @@ export const SCANNER_ROTATION_NOTES: Record<string, string> = {
   '7': 'Scanner 7: engolfo top 3 + Liquidity Pools (15m). Universo RSI 1d ≥ 69.',
   '8': 'Scanner 8: Bybit stock perps — %24h / %1s / EMA21 / EMA70 (1D) + TradingView. Sem estratégia.',
   '9': 'Scanner 9: top 30 amplitude máx/mín 6 meses (1D) — preço, % vs máx./mín., média. Sem estratégia.',
+  '10': 'Scanner 10: caça-rali — low 30d recente + stack 4H EMA12/21 e RSI ≥ 50. Sem estratégia.',
   rsi_vendido:
     'Legado RSI <32 4h. A estratégia activa usa Scanner 1 (EMA70 1d) + EMA21 +0,8% e fecho < EMA70 +12% (cron run-15m, 4em4h Lisboa).',
   ytd_mcap60:
@@ -386,6 +396,7 @@ export const SCANNER_UI_ROUTES = [
   { scannerId: '7', code: UNIVERSE_CODE_SCANNER_7_RSI_ABOVE_69_1D },
   { scannerId: '8', code: UNIVERSE_CODE_SCANNER_8_BYBIT_STOCKS },
   { scannerId: '9', code: UNIVERSE_CODE_SCANNER_9_RANGE_6M },
+  { scannerId: '10', code: UNIVERSE_CODE_SCANNER_10_RALLY },
   { scannerId: 'rsi_vendido', code: UNIVERSE_CODE_RSI_VENDIDO },
   { scannerId: 'lateral_volatile', code: UNIVERSE_CODE_LATERAL_VOLATILE },
   { scannerId: 'rumers_bands', code: UNIVERSE_CODE_RUMERS_NEAR_BANDS },

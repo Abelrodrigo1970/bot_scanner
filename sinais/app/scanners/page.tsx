@@ -32,10 +32,13 @@ export default function ScannersIndexPage() {
 
             const isScanner8 = scannerId === '8';
             const isScanner9 = scannerId === '9';
+            const isScanner10 = scannerId === '10';
             const metricLabel = isScanner8
               ? 'EMA21 / EMA70'
               : isScanner9
                 ? 'Máx / mín 6m'
+                : isScanner10
+                  ? '4H EMA12/21 + RSI'
                 : isRsiRankUniverseScan(code)
                 ? `RSI${def?.rsiPeriod ?? 14} (${def?.timeframe ?? '—'})`
                 : def?.ruleType === 'NEAR_RUMERS_BANDS'
@@ -67,7 +70,7 @@ export default function ScannersIndexPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{meta.description}</p>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
                   <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
-                    Velas {isScanner8 || isScanner9 ? '1d' : (def?.timeframe ?? '—')}
+                    Velas {isScanner8 || isScanner9 ? '1d' : isScanner10 ? '1d+4h' : (def?.timeframe ?? '—')}
                   </span>
                   <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
                     {metricLabel}
