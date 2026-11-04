@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { ensureDatabase } from '@/lib/db-init';
 import {
   ensureMissingBuiltinStrategies,
-} from '@/lib/ensureMissingBuiltinStrategies';
+ REMOVED_STRATEGY_NAMES } from '@/lib/ensureMissingBuiltinStrategies';
 import {
   ACTIVE_SCANNER_STRATEGY_NAMES,
   sortActiveStrategies,
@@ -53,7 +53,8 @@ async function ensureMissingStrategies() {
   });
 
   if (!existingMaCross5m) {
-    await prisma.strategy.create({
+    // removida a 04/11/2026 (ver REMOVED_STRATEGY_NAMES): não volta a ser criada
+    if (!REMOVED_STRATEGY_NAMES.has('MA_CROSS_5M')) await prisma.strategy.create({
       data: {
         name: 'MA_CROSS_5M',
         displayName: MA_CROSS_5M_DISPLAY,
