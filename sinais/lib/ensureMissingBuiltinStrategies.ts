@@ -256,6 +256,23 @@ export const IMPORTED_BUILTIN_STRATEGY_SEEDS = [
 
 /** Seeds builtin — ver sync em ensureMissingBuiltinStrategies. */
 
+/**
+ * Estratégias removidas a pedido do utilizador (backtest de 03/11/2026: perdem depois de custos).
+ * Nunca são recriadas e, se ainda existirem na BD, são apagadas com todo o histórico (sinais em cascata).
+ * Cópia do histórico: ~/claude/projetos/backups/bot_scanner/removidas-2026-11-04.json
+ */
+export const REMOVED_STRATEGY_NAMES = new Set<string>(['MA_CROSS_5M', 'MA_CROSS_12X21_S2', 'RUMERS_BOX_15M', 'RSI_VENDIDO_4H', 'RSI_1H_LONG', 'RSI_QQQ']);
+
+async function purgeRemovedStrategies(prisma: PrismaClient): Promise<void> {
+  for (const name of Array.from(REMOVED_STRATEGY_NAMES)) {
+    const row = await prisma.strategy.findUnique({ where: { name }, select: { id: true } });
+    if (!row) continue;
+    const signals = await prisma.signal.deleteMany({ where: { strategyId: row.id } });
+    await prisma.strategy.delete({ where: { id: row.id } });
+    console.log(`🗑️ ${name}: estratégia removida e ${signals.count} sinais apagados`);
+  }
+}
+
 export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Promise<void> {
   await deactivateDeprecatedStrategies(prisma, [...DEPRECATED_TOP_ROTATION_NAMES]);
 
@@ -267,6 +284,7 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
   }
 
   for (const def of IMPORTED_BUILTIN_STRATEGY_SEEDS) {
+    if (REMOVED_STRATEGY_NAMES.has(def.name)) continue;
     const existing = await prisma.strategy.findUnique({ where: { name: def.name } });
 
     if (!existing) {
@@ -437,4 +455,6 @@ export async function ensureMissingBuiltinStrategies(prisma: PrismaClient): Prom
       `⏸️ ${expiredWindDown.count} sinais NEW de estratégias em fecho gradual → EXPIRED (IN_PROGRESS continuam geridos)`
     );
   }
+
+  await purgeRemovedStrategies(prisma);
 }
